@@ -203,8 +203,18 @@ jobs:
               original_head = os.environ["GITHUB_SHA"]
               remote_head = git("ls-remote", "origin", "refs/heads/main").decode().split()[0]
               assert remote_head == original_head, "Destination main changed; refusing to overwrite"
-              assert set(read_entries(original_head)) == {".github/workflows/import-urp-map.yml"}, "Destination is not the new empty transfer repo"
+              bootstrap_entries = read_entries(original_head)
+              workflow_path = ".github/workflows/import-urp-map.yml"
+              assert set(bootstrap_entries) == {workflow_path}, "Destination is not the new empty transfer repo"
               tree = git("rev-parse", map_commit + "^{tree}").decode().strip()
+              # Keep the existing workflow byte-for-byte during the GITHUB_TOKEN push.
+              # The authorized connector removes this temporary helper after verification.
+              git("read-tree", tree)
+              helper = bootstrap_entries[workflow_path]
+              git("update-index", "--add", "--cacheinfo", helper["mode"], helper["blob"], workflow_path)
+              tree = git("write-tree").decode().strip()
+              final_entries = dict(entries)
+              final_entries[workflow_path] = helper
               git("config", "user.name", "Aaris Map Recovery")
               git("config", "user.email", "map-recovery@users.noreply.github.com")
               new_commit = git("commit-tree", tree, "-p", original_head,
@@ -229,7 +239,7 @@ jobs:
               retry_git("lfs", "fetch", "--include=Assets/TerrainDemoScene_URP/**", "--exclude=", "origin", new_commit)
               verify_objects(cold_storage, objects)
               retry_git("fetch", "--no-tags", "origin", "refs/heads/main:refs/remotes/origin/main")
-              assert read_entries("refs/remotes/origin/main") == entries
+              assert read_entries("refs/remotes/origin/main") == final_entries
               report = {"passed":True, "destination":"https://github.com/Aaris-khan-don/Unity-Game-Aris",
                         "destination_commit":new_commit, "source_commit":manifest["source_commit"],
                         "map_files_verified":1315, "tiles_verified":16, "terrain_colliders_verified":16,
