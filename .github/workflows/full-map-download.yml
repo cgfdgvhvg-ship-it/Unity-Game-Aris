@@ -1,0 +1,84 @@
+name: Full Unity project download
+on:
+  push:
+    branches: [deliver/full-map-download-20261103]
+    paths: [.github/workflows/full-map-download.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: aaris-source-download-20261103
+  cancel-in-progress: false
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 1d5e5f66745b01ce742ab7cfc9eb33169207a20e
+          lfs: false
+          fetch-depth: 1
+      - name: Fetch all real LFS files in the selected map version
+        run: |
+          git lfs install --local
+          git lfs pull
+          git lfs fsck --objects --pointers HEAD
+      - name: Package and verify the complete project
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,subprocess,zipfile
+          root=pathlib.Path.cwd();out=root/'download';out.mkdir()
+          paths=[pathlib.Path(p) for p in subprocess.check_output(['git','ls-files','-z']).decode().split('\0') if p]
+          manifest=[]
+          for p in paths:
+              with p.open('rb') as f:
+                  first=f.read(200)
+                  assert not first.startswith(b'version https://git-lfs.github.com/spec/v1\n'),str(p)+' is an LFS pointer'
+              assert not p.is_symlink(),str(p)
+              digest=hashlib.file_digest(p.open('rb'),'sha256').hexdigest()
+              manifest.append({'path':p.as_posix(),'bytes':p.stat().st_size,'sha256':digest})
+          total=sum(x['bytes'] for x in manifest)
+          base='Unity-Game-Aris/'
+          summary={'source_commit':'1d5e5f66745b01ce742ab7cfc9eb33169207a20e','file_count':len(paths),'uncompressed_bytes':total,
+            'all_lfs_objects_materialized':True,'files':manifest}
+          manifest_bytes=(json.dumps(summary,indent=2)+'\n').encode()
+          notes=('Complete camera-enabled 2km Unity map source.\nContains all tracked Assets, .meta, .prefab, .unity, C# scripts, textures, native TerrainData, Packages and ProjectSettings.\nAll Git LFS content is materialized; no pointer files.\n\nPHONE: download the ZIP. If numbered ZIP parts are supplied, download ALL parts and extract every ZIP into the SAME parent folder, merging the Unity-Game-Aris folders. These are independent standard ZIP files.\nOpen the resulting project folder with Unity 6000.3.26f1 on a computer. Package Manager restores declared Unity packages.\nThis is source, not the Android APK. The APK build is separate.\nThe archive includes the four selected terrain tiles only, with shared vendor assets preserved.\nKeep licensed vendor sources private.\n').encode()
+          def write_zip(name,items,extra):
+              target=out/name
+              with zipfile.ZipFile(target,'w',compression=zipfile.ZIP_DEFLATED,compresslevel=6,allowZip64=True) as z:
+                  for p in items:z.write(p,base+p.as_posix())
+                  if extra:
+                      z.writestr(base+'DOWNLOAD_MANIFEST.json',manifest_bytes)
+                      z.writestr(base+'DOWNLOAD_README.txt',notes)
+              with zipfile.ZipFile(target) as z:assert z.testzip() is None,name+' CRC check failed'
+              return target
+          full=write_zip('Aaris_Unity_Complete_Project.zip',paths,True)
+          files=[full]
+          if full.stat().st_size>1900*1024*1024:
+              full.unlink();files=[];batch=[];size=0
+              for p in paths:
+                  n=p.stat().st_size
+                  if batch and size+n>700*1024*1024:
+                      files.append(write_zip(f'Aaris_Unity_Project_Part_{len(files)+1:02d}.zip',batch,not files));batch=[];size=0
+                  batch.append(p);size+=n
+              if batch:files.append(write_zip(f'Aaris_Unity_Project_Part_{len(files)+1:02d}.zip',batch,not files))
+          (out/'DOWNLOAD_README.txt').write_bytes(notes)
+          (out/'DOWNLOAD_MANIFEST.json').write_bytes(manifest_bytes)
+          sums=[]
+          for p in files:sums.append(hashlib.file_digest(p.open('rb'),'sha256').hexdigest()+'  '+p.name)
+          (out/'SHA256SUMS.txt').write_text('\n'.join(sums)+'\n')
+          rows=['# Complete Unity map source download','','Source: `1d5e5f66745b01ce742ab7cfc9eb33169207a20e`.',f'{len(paths)} original tracked files; {total/1024**3:.2f} GiB uncompressed. All current LFS files downloaded and checksum-checked.','',
+                'Includes .prefab, .meta, .unity, native terrain/model assets, materials, textures, scripts, Packages and ProjectSettings. Four terrain tiles, 13 districts and the map review camera are included.','',
+                'Download the ZIP below. If there are numbered ZIP parts, download all of them and extract each into the same parent folder, merging the Unity-Game-Aris folders. No Git or Git LFS installation is required to unpack these files.','',
+                'These are Unity project source files, not the Android APK. The APK build is separate. Keep licensed vendor sources private.','','Files:']
+          rows += [f'- {p.name}: {p.stat().st_size/1024**2:.1f} MiB' for p in files]
+          (out/'release-notes.md').write_text('\n'.join(rows)+'\n')
+          print(json.dumps({'file_count':len(paths),'uncompressed_bytes':total,'archives':[{'name':p.name,'bytes':p.stat().st_size} for p in files]}),flush=True)
+          PY
+      - name: Publish the private repository download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(gh api repos/Aaris-khan-don/Unity-Game-Aris --jq .private)" = true
+          gh release create aaris-map-source-20261103-1d5e5f6 download/*.zip download/DOWNLOAD_README.txt download/DOWNLOAD_MANIFEST.json download/SHA256SUMS.txt --repo Aaris-khan-don/Unity-Game-Aris --target 1d5e5f66745b01ce742ab7cfc9eb33169207a20e --title "Aaris complete 2km Unity project - phone download" --notes-file download/release-notes.md
