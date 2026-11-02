@@ -34,7 +34,9 @@ class Terrain:
         # Rounded rectangle: original land survives in the interior, all corners are offshore.
         qx=np.abs(x)-810;qz=np.abs(z)-810
         sd=np.hypot(np.maximum(qx,0),np.maximum(qz,0))+np.minimum(np.maximum(qx,qz),0)-190
-        inland=-sd;self.coast=inland
+        inland=-sd
+        inland+=(9*np.sin(x*.009+np.sin(z*.006))+5*np.sin(z*.015+np.sin(x*.01)))*smooth(inland/50)
+        self.coast=inland
         t=smooth((inland-25)/180)
         # No coastal spikes or open vertical Terrain edges: boundary is 24m below sea.
         beach=SEA-24+np.clip(inland/80,0,1)*27
@@ -47,10 +49,12 @@ class Terrain:
         return (slice(z0,z1),slice(x0,x1)),xx[None,:],zz[:,None]
     def pad(self,x,z,hx,hz,y,blend=18):
         sl,xx,zz=self.region(x,z,hx,hz,blend)
-        dist=np.hypot(np.maximum(np.abs(xx-x)-hx,0),np.maximum(np.abs(zz-z)-hz,0))
+        radius=min(hx,hz)*.25 if min(hx,hz)>20 else 0
+        qx=np.abs(xx-x)-(hx-radius);qz=np.abs(zz-z)-(hz-radius)
+        dist=np.maximum(np.hypot(np.maximum(qx,0),np.maximum(qz,0))+np.minimum(np.maximum(qx,qz),0)-radius,0)
         weight=1-smooth(dist/blend)
         self.h[sl]=self.h[sl]*(1-weight)+float(y)*weight
-        self.cleared[sl]|=dist<blend*.75
+        self.cleared[sl]|=dist<min(blend*.75,10)
     def road(self,points,width=8,shoulder=5):
         # Each segment blends onto one continuous, graded centerline.
         for a,b in zip(points[:-1],points[1:]):

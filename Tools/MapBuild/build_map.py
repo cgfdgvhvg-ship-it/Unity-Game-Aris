@@ -128,7 +128,7 @@ def place_buildings(t,sites,models):
 
 def sculpt_layout(t,sites,roads,buildings,spawns,models):
     # Reassert flat foundations after external road grading. Roads use the service strip.
-    for s in sites:t.pad(s['x'],s['z'],s['width']/2,s['depth']/2,s['height'],25)
+    for s in sites:t.pad(s['x'],s['z'],s['width']/2,s['depth']/2,s['height'],70)
     for road in roads:
         if 'sites' not in road:t.road(road['points'],road['width'],5)
     for sp in spawns:
@@ -254,6 +254,7 @@ def project_settings():
     jsonsave(ROOT/'Packages/manifest.json',{'dependencies':packages})
     folder=ROOT/'ProjectSettings';folder.mkdir(exist_ok=True);(folder/'ProjectVersion.txt').write_text('m_EditorVersion: 6000.3.26f1\n')
     from native_assets import write_yaml
+    write_yaml(folder/'ProjectSettings.asset',[(129,1,'PlayerSettings',{'m_ObjectHideFlags':0,'serializedVersion':27,'companyName':'Aaris','productName':'Aaris Island','m_ActiveColorSpace':1})])
     write_yaml(folder/'GraphicsSettings.asset',[(30,1,'GraphicsSettings',{'m_ObjectHideFlags':0,'serializedVersion':16,
         'm_CustomRenderPipeline':ref(11400000,'4f455263fdaa19b4894b6dbdb822f8d6'),'m_SRPDefaultSettings':{},
         'm_LightsUseLinearIntensity':1,'m_LightsUseColorTemperature':1,'m_DefaultRenderingLayerMask':1,
@@ -276,7 +277,7 @@ def run():
     original_scene=(TOOLS/'original_scene.yaml').read_text() if (TOOLS/'original_scene.yaml').exists() else SCENE.read_text()
     original_terrain=(TOOLS/'original_terrain.yaml').read_text() if (TOOLS/'original_terrain.yaml').exists() else next((ROOT/'Assets').rglob('TerrainHigh.prefab')).read_text()
     terrain_template=next(d for c,i,n,d in unity_docs(original_terrain) if c==218)
-    terrain_template.update(m_HeightmapPixelError=5,m_RenderingLayerMask=1)
+    terrain_template.update(m_HeightmapPixelError=5,m_RenderingLayerMask=1,m_LightmapParameters=ref())
     render_settings=next(d for c,i,n,d in unity_docs(original_scene) if c==104)
     log('Load four original TerrainData assets');t=Terrain(DATA)
     sources,models=model_export(template)
@@ -284,6 +285,8 @@ def run():
     buildings,spawns,internals=place_buildings(t,sites,models);roads+=internals
     sculpt_layout(t,sites,roads,buildings,spawns,models)
     log('Save edited native TerrainData');tile_reports=t.save()
+    from export_index import export
+    export(t,DOCS,TOOLS)
     log('Save native scene, static colliders, roads and empty vehicle markers')
     scene_build(t,sites,roads,buildings,spawns,models,template,terrain_template,render_settings)
     removed=remove_extra_tiles(t);project_settings();folder_metas()

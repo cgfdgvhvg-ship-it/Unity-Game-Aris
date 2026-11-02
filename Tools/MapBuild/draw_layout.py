@@ -23,7 +23,7 @@ def draw():
         x,y,z=sp['position_m'];a=np.radians(sp['yaw_degrees']);ax.arrow(x,z,4*np.sin(a),4*np.cos(a),color='#72e5d1',head_width=6,length_includes_head=True,zorder=6)
     for k,s in enumerate(d['districts'],1):
         name=''.join(' '+c if c.isupper() else c for c in s['name']).strip()
-        ax.annotate(f'{k:02d}  {name}',(s['x'],s['z']),xytext=(0,45 if s['name']!='CoastalHamlet' else -60),textcoords='offset points',ha='center',fontsize=8,color='white',weight='bold',bbox={'facecolor':'#142b32','edgecolor':'#81a4a2','alpha':.9,'boxstyle':'round,pad=.35'},arrowprops={'arrowstyle':'-','color':'#c6dad4','lw':.7},zorder=7)
+        ax.annotate(f'{k:02d}  {name}',(s['x'],s['z']),xytext=(0,45),textcoords='offset points',ha='center',fontsize=8,color='white',weight='bold',bbox={'facecolor':'#142b32','edgecolor':'#81a4a2','alpha':.9,'boxstyle':'round,pad=.35'},arrowprops={'arrowstyle':'-','color':'#c6dad4','lw':.7},zorder=7)
     ax.axhline(0,color='white',lw=.6,ls='--',alpha=.6);ax.axvline(0,color='white',lw=.6,ls='--',alpha=.6)
     for x,z,label in [(-960,-960,'1_1'),(-960,925,'1_2'),(905,-960,'2_1'),(905,925,'2_2')]:ax.text(x,z,label,color='#d4eeee',fontsize=11,weight='bold')
     ax.set_xlim(-1000,1000);ax.set_ylim(-1000,1000);ax.set_aspect('equal');ax.set_xticks(np.arange(-1000,1001,500));ax.set_yticks(np.arange(-1000,1001,500));ax.tick_params(colors='#bed0d0');ax.set_xlabel('World X / metres',color='#bed0d0');ax.set_ylabel('World Z / metres',color='#bed0d0')

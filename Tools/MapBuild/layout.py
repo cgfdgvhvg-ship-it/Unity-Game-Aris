@@ -27,7 +27,7 @@ def create_sites(t):
         if name=='EasternPort':y=SEA+5
         y=max(y,SEA+7)
         if name=='SoutheastLighthouse':y=max(y,10)
-        t.pad(x,z,w/2,d/2,y,blend=25)
+        t.pad(x,z,w/2,d/2,y,blend=70)
         sites.append({'name':name,'x':x,'z':z,'width':w,'depth':d,'height':y,'focal_model':model,
                       'gate':([x-w/2-42,y,z-20] if x>750 else [x-w*.16,y,z-d/2-42]),'gate_side':'west' if x>750 else 'south'})
     return sites
