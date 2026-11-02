@@ -1,0 +1,41 @@
+name: Aaris map assembly
+on:
+  push:
+    branches: [map/aaris-2km-island-20261103]
+    paths: ['.github/workflows/map-assembly.yml', 'Tools/MapBuild/**']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: aaris-map-assembly
+  cancel-in-progress: false
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: map/aaris-2km-island-20261103
+          fetch-depth: 1
+          lfs: false
+      - name: Retrieve native Mesh serialization fixture
+        run: |
+          git lfs install --local
+          git lfs pull --include="Assets/TerrainDemoScene_URP/Prefabs/Details/Models/GrassDry_D.asset"
+          mkdir -p Tools/MapBuild
+          python - <<'PY'
+          import base64, pathlib
+          p=pathlib.Path("Assets/TerrainDemoScene_URP/Prefabs/Details/Models/GrassDry_D.asset")
+          b=p.read_bytes()
+          assert len(b)==18176 and not b.startswith(b"version https://git-lfs")
+          pathlib.Path("Tools/MapBuild/mesh_template.b64").write_text(base64.b64encode(b).decode()+"\n")
+          print("Native mesh fixture downloaded:", len(b), "bytes")
+          PY
+      - name: Commit serialization fixture
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Tools/MapBuild/mesh_template.b64
+          git diff --cached --quiet || git commit -m "Record native Unity Mesh fixture for offline map assembly"
+          git push origin HEAD:map/aaris-2km-island-20261103
