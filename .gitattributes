@@ -286,38 +286,10 @@
 "Assets/TerrainDemoScene_URP/Terrain/Brushes/Heightmaps/volcanic.tif" filter=lfs diff=lfs merge=lfs -text
 "Assets/TerrainDemoScene_URP/Terrain/Brushes/Heightmaps/volcano01.tif" filter=lfs diff=lfs merge=lfs -text
 "Assets/TerrainDemoScene_URP/Terrain/Brushes/Heightmaps/white_square.tif" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_0_0_8723fb12-db1c-4ba2-97c5-90e784c8adbf 1.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_0_0_8723fb12-db1c-4ba2-97c5-90e784c8adbf.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_0_1_e85387be-618a-4f11-a28f-1cbc224e6e94 1.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_0_1_e85387be-618a-4f11-a28f-1cbc224e6e94.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_0_2_5f735b10-59bc-418b-b24d-4385eb3a186d 1.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_0_2_5f735b10-59bc-418b-b24d-4385eb3a186d.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_0_3_f8883893-11fe-4631-8dfb-2d342383567b 1.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_0_3_f8883893-11fe-4631-8dfb-2d342383567b.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_1_0_548791b1-5119-4501-a6f8-e5b8e45c25d8 1.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_1_0_548791b1-5119-4501-a6f8-e5b8e45c25d8.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_1_1_4bf22c8f-eb55-436d-84e3-dedfa85665b1 1.asset" filter=lfs diff=lfs merge=lfs -text
 "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_1_1_4bf22c8f-eb55-436d-84e3-dedfa85665b1.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_1_2_1694bb0f-cffe-402c-b6f9-cf47692fbb78 1.asset" filter=lfs diff=lfs merge=lfs -text
 "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_1_2_1694bb0f-cffe-402c-b6f9-cf47692fbb78.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_1_3_c8bbd3cb-768c-4918-85c9-b01968beea93 1.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_1_3_c8bbd3cb-768c-4918-85c9-b01968beea93.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_0_1170b034-efff-4ff0-8513-60d934e963db 1.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_0_1170b034-efff-4ff0-8513-60d934e963db.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_1_82fc4922-5564-4a18-858e-787f6d901556 1.asset" filter=lfs diff=lfs merge=lfs -text
 "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_1_82fc4922-5564-4a18-858e-787f6d901556.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_2_b6e03cf0-de91-4cae-b6af-0128d856ae43 1.asset" filter=lfs diff=lfs merge=lfs -text
 "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_2_b6e03cf0-de91-4cae-b6af-0128d856ae43.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_3_f3ed9c1f-cb52-413a-a7d7-8e03961f4d5b 1.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_3_f3ed9c1f-cb52-413a-a7d7-8e03961f4d5b.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_3_0_ae064d43-ab51-4240-a34a-6f1f5da8134d 1.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_3_0_ae064d43-ab51-4240-a34a-6f1f5da8134d.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_3_1_f87b3edd-12d5-4d51-aea4-88280910a3d8 1.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_3_1_f87b3edd-12d5-4d51-aea4-88280910a3d8.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_3_2_77e49ac9-7f8e-47c2-ae00-57296acecb1c 1.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_3_2_77e49ac9-7f8e-47c2-ae00-57296acecb1c.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_3_3_9b11d05b-b237-4de7-82ed-a402f9cedebd 1.asset" filter=lfs diff=lfs merge=lfs -text
-"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_3_3_9b11d05b-b237-4de7-82ed-a402f9cedebd.asset" filter=lfs diff=lfs merge=lfs -text
 "Assets/TerrainDemoScene_URP/Terrain/DetailMaps/_Terrain_2_2_b6e03cf0-de91-4cae-b6af-0128d856ae43_0.asset" filter=lfs diff=lfs merge=lfs -text
 "Assets/TerrainDemoScene_URP/Terrain/DetailMaps/_Terrain_2_2_b6e03cf0-de91-4cae-b6af-0128d856ae43_1.asset" filter=lfs diff=lfs merge=lfs -text
 "Assets/TerrainDemoScene_URP/Terrain/DetailMaps/_Terrain_2_2_b6e03cf0-de91-4cae-b6af-0128d856ae43_10.asset" filter=lfs diff=lfs merge=lfs -text
@@ -393,3 +365,7 @@
 "Assets/TerrainDemoScene_URP/VFXGraphs/Textures/WispySmoke02b_8x8.tga" filter=lfs diff=lfs merge=lfs -text
 "Assets/TerrainDemoScene_URP/VFXGraphs/Textures/WispySmoke03_8x8.tga" filter=lfs diff=lfs merge=lfs -text
 "Assets/TerrainDemoScene_URP/VFXGraphs/Textures/WispySmoke03b_8x8.tga" filter=lfs diff=lfs merge=lfs -text
+
+# Generated native map meshes and extracted textures
+Assets/AarisWorld/**/*.asset filter=lfs diff=lfs merge=lfs -text
+Assets/AarisWorld/**/*.png filter=lfs diff=lfs merge=lfs -text

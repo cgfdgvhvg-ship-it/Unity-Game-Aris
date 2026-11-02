@@ -1,0 +1,61 @@
+name: Aaris map assembly
+on:
+  push:
+    branches: [map/aaris-2km-island-20261103]
+    paths: ['.github/workflows/map-assembly.yml', 'Tools/MapBuild/**']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: aaris-map-assembly
+  cancel-in-progress: false
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: map/aaris-2km-island-20261103
+          fetch-depth: 1
+          lfs: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: Tools/MapBuild/requirements.txt
+      - name: Install pinned native asset tools
+        run: python -m pip install -r Tools/MapBuild/requirements.txt
+      - name: Restore the four verified original TerrainData inputs
+        run: |
+          git lfs install --local
+          git fetch --depth=1 origin 3550c283405fbf02ec000e0d97a7ad8ff69f70b0
+          python - <<'PY'
+          import json,pathlib,subprocess,hashlib
+          source='3550c283405fbf02ec000e0d97a7ad8ff69f70b0'
+          manifest=json.loads(pathlib.Path('TRANSFER-MANIFEST.json').read_text())
+          keep=('Terrain_1_1_','Terrain_1_2_','Terrain_2_1_','Terrain_2_2_')
+          entries=[e for e in manifest['lfs_files'] if '/Terrain/Data/' in e['path'] and e['path'].endswith('.asset') and not e['path'].endswith(' 1.asset') and any(k in e['path'] for k in keep)]
+          assert len(entries)==4
+          subprocess.run(['git','lfs','fetch','origin',source,'--include='+','.join(e['path'] for e in entries)],check=True)
+          for e in entries:
+              oid=e['oid'];cached=pathlib.Path('.git/lfs/objects')/oid[:2]/oid[2:4]/oid
+              b=cached.read_bytes();assert hashlib.sha256(b).hexdigest()==oid
+              pathlib.Path(e['path']).write_bytes(b)
+          for name,path in [('original_scene.yaml','Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity'),('original_terrain.yaml','Assets/TerrainDemoScene_URP/Prefabs/Terrain/TerrainHigh.prefab')]:
+              pathlib.Path('Tools/MapBuild',name).write_bytes(subprocess.check_output(['git','show',source+':'+path]))
+          PY
+      - name: Assemble saved native map assets
+        run: python -u Tools/MapBuild/build_map.py
+      - name: Verify saved buffers, GUIDs and scene references
+        run: |
+          python -u Tools/MapBuild/validate_map.py
+          python Tools/MapBuild/draw_layout.py
+      - name: Save map assets and reports on the working branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Assets Docs Packages ProjectSettings .gitattributes README.md
+          git diff --cached --quiet || git commit -m "Save 2km island: four terrains, 13 districts and empty vehicle bays"
+          python Tools/MapBuild/verify_lfs.py
+          git push origin HEAD:map/aaris-2km-island-20261103

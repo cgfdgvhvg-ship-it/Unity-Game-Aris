@@ -1,0 +1,6887 @@
+{
+  "world_units": "metres",
+  "size_m": [
+    2000,
+    2000
+  ],
+  "area_m2": 4000000,
+  "terrain_bounds_xz_m": [
+    -1000,
+    -1000,
+    1000,
+    1000
+  ],
+  "sea_level_m": -38.07552,
+  "terrain_base_y_m": -120.0,
+  "districts": [
+    {
+      "name": "ClockTowerTown",
+      "x": 350,
+      "z": 220,
+      "width": 190,
+      "depth": 170,
+      "height": -11.936767578125,
+      "focal_model": "TownHall",
+      "gate": [
+        319.6,
+        -11.936767578125,
+        93.0
+      ],
+      "gate_side": "south"
+    },
+    {
+      "name": "HighlandObservatory",
+      "x": 570,
+      "z": -630,
+      "width": 150,
+      "depth": 140,
+      "height": 23.758773803710938,
+      "focal_model": "observatory_dome",
+      "gate": [
+        546.0,
+        23.758773803710938,
+        -742.0
+      ],
+      "gate_side": "south"
+    },
+    {
+      "name": "EasternPort",
+      "x": 840,
+      "z": 350,
+      "width": 130,
+      "depth": 160,
+      "height": -31.07855224609375,
+      "focal_model": "Harbour",
+      "gate": [
+        733.0,
+        -31.07855224609375,
+        330
+      ],
+      "gate_side": "west"
+    },
+    {
+      "name": "SouthernAirfield",
+      "x": 180,
+      "z": -430,
+      "width": 300,
+      "depth": 160,
+      "height": 24.95513916015625,
+      "focal_model": "Airfield",
+      "gate": [
+        132.0,
+        24.95513916015625,
+        -552.0
+      ],
+      "gate_side": "south",
+      "runway": [
+        180,
+        -465,
+        240,
+        24
+      ]
+    },
+    {
+      "name": "FreightDistrict",
+      "x": 550,
+      "z": -160,
+      "width": 180,
+      "depth": 150,
+      "height": -1.07183837890625,
+      "focal_model": "ParcelDepot",
+      "gate": [
+        521.2,
+        -1.07183837890625,
+        -277.0
+      ],
+      "gate_side": "south"
+    },
+    {
+      "name": "CanalMarket",
+      "x": -120,
+      "z": 650,
+      "width": 160,
+      "depth": 140,
+      "height": -31.07855224609375,
+      "focal_model": "CanalTown",
+      "gate": [
+        -145.6,
+        -31.07855224609375,
+        538.0
+      ],
+      "gate_side": "south"
+    },
+    {
+      "name": "OldVillage",
+      "x": -530,
+      "z": -590,
+      "width": 180,
+      "depth": 140,
+      "height": 1.7115249633789062,
+      "focal_model": "HanokVillage",
+      "gate": [
+        -558.8,
+        1.7115249633789062,
+        -702.0
+      ],
+      "gate_side": "south"
+    },
+    {
+      "name": "LakesideHamlet",
+      "x": -720,
+      "z": 65,
+      "width": 130,
+      "depth": 110,
+      "height": -2.6588516235351562,
+      "focal_model": "pitched_roof_cottage",
+      "gate": [
+        -740.8,
+        -2.6588516235351562,
+        -32.0
+      ],
+      "gate_side": "south"
+    },
+    {
+      "name": "ValleySettlement",
+      "x": -420,
+      "z": -210,
+      "width": 170,
+      "depth": 150,
+      "height": 15.408645629882812,
+      "focal_model": "row_three_townhouses",
+      "gate": [
+        -447.2,
+        15.408645629882812,
+        -327.0
+      ],
+      "gate_side": "south"
+    },
+    {
+      "name": "NorthernRidgeTown",
+      "x": 300,
+      "z": 650,
+      "width": 180,
+      "depth": 150,
+      "height": -30.83440399169922,
+      "focal_model": "detached_two_storey_house",
+      "gate": [
+        271.2,
+        -30.83440399169922,
+        533.0
+      ],
+      "gate_side": "south"
+    },
+    {
+      "name": "CoastalHamlet",
+      "x": 650,
+      "z": 650,
+      "width": 150,
+      "depth": 140,
+      "height": -18.211563110351562,
+      "focal_model": "bungalow_house",
+      "gate": [
+        626.0,
+        -18.211563110351562,
+        538.0
+      ],
+      "gate_side": "south"
+    },
+    {
+      "name": "SoutheastLighthouse",
+      "x": 825,
+      "z": -750,
+      "width": 70,
+      "depth": 70,
+      "height": 40.0439453125,
+      "focal_model": "lighthouse",
+      "gate": [
+        748.0,
+        40.0439453125,
+        -770
+      ],
+      "gate_side": "west"
+    },
+    {
+      "name": "ForestLookout",
+      "x": -650,
+      "z": -125,
+      "width": 70,
+      "depth": 70,
+      "height": 6.7655487060546875,
+      "focal_model": "watchtower",
+      "gate": [
+        -661.2,
+        6.7655487060546875,
+        -202.0
+      ],
+      "gate_side": "south"
+    }
+  ],
+  "buildings": [
+    {
+      "name": "ClockTowerTown_TownHall_01",
+      "district": "ClockTowerTown",
+      "model": "TownHall",
+      "position_m": [
+        350,
+        -11.936767578125,
+        245
+      ],
+      "ground_y_m": -11.936767578125,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        331.3799991607666,
+        232.69000053405762,
+        368.6200008392334,
+        257.3099994659424
+      ]
+    },
+    {
+      "name": "ClockTowerTown_a_frame_cabin_02",
+      "district": "ClockTowerTown",
+      "model": "a_frame_cabin",
+      "position_m": [
+        289.2,
+        -11.936767578125,
+        245
+      ],
+      "ground_y_m": -11.936767578125,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        285.9300000190735,
+        240.4720001220703,
+        292.4699999809265,
+        249.5279998779297
+      ]
+    },
+    {
+      "name": "ClockTowerTown_bungalow_house_03",
+      "district": "ClockTowerTown",
+      "model": "bungalow_house",
+      "position_m": [
+        410.8,
+        -11.936767578125,
+        245
+      ],
+      "ground_y_m": -11.936767578125,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        404.3500001907349,
+        238.5939998626709,
+        417.24999980926515,
+        251.4060001373291
+      ]
+    },
+    {
+      "name": "ClockTowerTown_pitched_roof_cottage_04",
+      "district": "ClockTowerTown",
+      "model": "pitched_roof_cottage",
+      "position_m": [
+        289.2,
+        -11.936767578125,
+        167.3
+      ],
+      "ground_y_m": -11.936767578125,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        284.75000019073485,
+        160.8939998626709,
+        293.6499998092651,
+        173.7060001373291
+      ]
+    },
+    {
+      "name": "ClockTowerTown_detached_two_storey_house_05",
+      "district": "ClockTowerTown",
+      "model": "detached_two_storey_house",
+      "position_m": [
+        410.8,
+        -11.936767578125,
+        167.3
+      ],
+      "ground_y_m": -11.936767578125,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        405.2720001220703,
+        159.96499996185304,
+        416.3279998779297,
+        174.63500003814698
+      ]
+    },
+    {
+      "name": "ClockTowerTown_garage_apartment_06",
+      "district": "ClockTowerTown",
+      "model": "garage_apartment",
+      "position_m": [
+        350,
+        -11.936767578125,
+        167.3
+      ],
+      "ground_y_m": -11.936767578125,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        345.1950001716614,
+        162.81700019836427,
+        354.8049998283386,
+        171.78299980163575
+      ]
+    },
+    {
+      "name": "HighlandObservatory_observatory_dome_01",
+      "district": "HighlandObservatory",
+      "model": "observatory_dome",
+      "position_m": [
+        570,
+        23.758773803710938,
+        -605
+      ],
+      "ground_y_m": 23.758773803710938,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        565.6499996185303,
+        -609.9550004005432,
+        574.3500003814697,
+        -600.0449995994568
+      ]
+    },
+    {
+      "name": "HighlandObservatory_pitched_roof_cottage_02",
+      "district": "HighlandObservatory",
+      "model": "pitched_roof_cottage",
+      "position_m": [
+        522.0,
+        23.758773803710938,
+        -605
+      ],
+      "ground_y_m": 23.758773803710938,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        517.5500001907349,
+        -611.4060001373291,
+        526.4499998092651,
+        -598.5939998626709
+      ]
+    },
+    {
+      "name": "HighlandObservatory_detached_two_storey_house_03",
+      "district": "HighlandObservatory",
+      "model": "detached_two_storey_house",
+      "position_m": [
+        618.0,
+        23.758773803710938,
+        -605
+      ],
+      "ground_y_m": 23.758773803710938,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        612.4720001220703,
+        -612.335000038147,
+        623.5279998779297,
+        -597.664999961853
+      ]
+    },
+    {
+      "name": "HighlandObservatory_garage_apartment_04",
+      "district": "HighlandObservatory",
+      "model": "garage_apartment",
+      "position_m": [
+        522.0,
+        23.758773803710938,
+        -673.4
+      ],
+      "ground_y_m": 23.758773803710938,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        517.1950001716614,
+        -677.8829998016357,
+        526.8049998283386,
+        -668.9170001983642
+      ]
+    },
+    {
+      "name": "HighlandObservatory_two_bedroom_garage_house_05",
+      "district": "HighlandObservatory",
+      "model": "two_bedroom_garage_house",
+      "position_m": [
+        618.0,
+        23.758773803710938,
+        -673.4
+      ],
+      "ground_y_m": 23.758773803710938,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        610.9499998092651,
+        -680.4250000953674,
+        625.0500001907349,
+        -666.3749999046325
+      ]
+    },
+    {
+      "name": "EasternPort_Harbour_01",
+      "district": "EasternPort",
+      "model": "Harbour",
+      "position_m": [
+        840,
+        -31.07855224609375,
+        375
+      ],
+      "ground_y_m": -31.07855224609375,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        827.6911849975586,
+        364.57999992370605,
+        852.3088150024414,
+        385.42000007629395
+      ]
+    },
+    {
+      "name": "EasternPort_garage_apartment_02",
+      "district": "EasternPort",
+      "model": "garage_apartment",
+      "position_m": [
+        798.4,
+        -31.07855224609375,
+        375
+      ],
+      "ground_y_m": -31.07855224609375,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        793.5950001716614,
+        370.51700019836426,
+        803.2049998283386,
+        379.48299980163574
+      ]
+    },
+    {
+      "name": "EasternPort_two_bedroom_garage_house_03",
+      "district": "EasternPort",
+      "model": "two_bedroom_garage_house",
+      "position_m": [
+        881.6,
+        -31.07855224609375,
+        375
+      ],
+      "ground_y_m": -31.07855224609375,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        874.5499998092652,
+        367.97499990463257,
+        888.6500001907349,
+        382.02500009536743
+      ]
+    },
+    {
+      "name": "EasternPort_row_three_townhouses_04",
+      "district": "EasternPort",
+      "model": "row_three_townhouses",
+      "position_m": [
+        798.4,
+        -31.07855224609375,
+        300.4
+      ],
+      "ground_y_m": -31.07855224609375,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        789.0400003433227,
+        294.314999961853,
+        807.7599996566772,
+        306.48500003814695
+      ]
+    },
+    {
+      "name": "EasternPort_a_frame_cabin_05",
+      "district": "EasternPort",
+      "model": "a_frame_cabin",
+      "position_m": [
+        881.6,
+        -31.07855224609375,
+        300.4
+      ],
+      "ground_y_m": -31.07855224609375,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        878.3300000190735,
+        295.8720001220703,
+        884.8699999809265,
+        304.92799987792966
+      ]
+    },
+    {
+      "name": "SouthernAirfield_Airfield_01",
+      "district": "SouthernAirfield",
+      "model": "Airfield",
+      "position_m": [
+        180,
+        24.734998165369035,
+        -395
+      ],
+      "ground_y_m": 24.95513916015625,
+      "yaw_degrees": 90,
+      "aabb_xz_m": [
+        163.6600112915039,
+        -431.15518951416016,
+        196.3399887084961,
+        -358.84481048583984
+      ]
+    },
+    {
+      "name": "SouthernAirfield_warehouse_loading_dock_02",
+      "district": "SouthernAirfield",
+      "model": "warehouse_loading_dock",
+      "position_m": [
+        75,
+        24.95513916015625,
+        -388
+      ],
+      "ground_y_m": 24.95513916015625,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        59.75,
+        -399.125,
+        90.25,
+        -376.875
+      ]
+    },
+    {
+      "name": "SouthernAirfield_garage_apartment_03",
+      "district": "SouthernAirfield",
+      "model": "garage_apartment",
+      "position_m": [
+        284,
+        24.95513916015625,
+        -388
+      ],
+      "ground_y_m": 24.95513916015625,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        279.1950001716614,
+        -392.48299980163574,
+        288.8049998283386,
+        -383.51700019836426
+      ]
+    },
+    {
+      "name": "FreightDistrict_ParcelDepot_01",
+      "district": "FreightDistrict",
+      "model": "ParcelDepot",
+      "position_m": [
+        550,
+        -1.1618988068401814,
+        -135
+      ],
+      "ground_y_m": -1.07183837890625,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        537.9400615692139,
+        -145.05993843078613,
+        562.0599384307861,
+        -124.94006156921387
+      ]
+    },
+    {
+      "name": "FreightDistrict_warehouse_loading_dock_02",
+      "district": "FreightDistrict",
+      "model": "warehouse_loading_dock",
+      "position_m": [
+        497,
+        -1.07183837890625,
+        -135
+      ],
+      "ground_y_m": -1.07183837890625,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        481.75,
+        -146.125,
+        512.25,
+        -123.875
+      ]
+    },
+    {
+      "name": "FreightDistrict_warehouse_loading_dock_03",
+      "district": "FreightDistrict",
+      "model": "warehouse_loading_dock",
+      "position_m": [
+        603,
+        -1.07183837890625,
+        -135
+      ],
+      "ground_y_m": -1.07183837890625,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        587.75,
+        -146.125,
+        618.25,
+        -123.875
+      ]
+    },
+    {
+      "name": "FreightDistrict_garage_apartment_04",
+      "district": "FreightDistrict",
+      "model": "garage_apartment",
+      "position_m": [
+        495,
+        -1.07183837890625,
+        -208
+      ],
+      "ground_y_m": -1.07183837890625,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        490.1950001716614,
+        -212.48299980163574,
+        499.8049998283386,
+        -203.51700019836426
+      ]
+    },
+    {
+      "name": "FreightDistrict_two_bedroom_garage_house_05",
+      "district": "FreightDistrict",
+      "model": "two_bedroom_garage_house",
+      "position_m": [
+        602,
+        -1.07183837890625,
+        -208
+      ],
+      "ground_y_m": -1.07183837890625,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        594.9499998092651,
+        -215.02500009536743,
+        609.0500001907349,
+        -200.97499990463257
+      ]
+    },
+    {
+      "name": "CanalMarket_CanalTown_01",
+      "district": "CanalMarket",
+      "model": "CanalTown",
+      "position_m": [
+        -120,
+        -32.25084002214707,
+        675
+      ],
+      "ground_y_m": -31.07855224609375,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        -136.63084030151367,
+        660.2709550857544,
+        -103.36915969848633,
+        689.7290449142456
+      ],
+      "canal_basin": {
+        "center_xz_m": [
+          -117.43083989620209,
+          672.9709549938873
+        ],
+        "size_xz_m": [
+          28,
+          8
+        ],
+        "depth_m": 1.25
+      }
+    },
+    {
+      "name": "CanalMarket_detached_two_storey_house_02",
+      "district": "CanalMarket",
+      "model": "detached_two_storey_house",
+      "position_m": [
+        -171.2,
+        -31.07855224609375,
+        675
+      ],
+      "ground_y_m": -31.07855224609375,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        -176.72799987792968,
+        667.664999961853,
+        -165.6720001220703,
+        682.335000038147
+      ]
+    },
+    {
+      "name": "CanalMarket_garage_apartment_03",
+      "district": "CanalMarket",
+      "model": "garage_apartment",
+      "position_m": [
+        -68.8,
+        -31.07855224609375,
+        675
+      ],
+      "ground_y_m": -31.07855224609375,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        -73.60499982833862,
+        670.5170001983643,
+        -63.995000171661374,
+        679.4829998016357
+      ]
+    },
+    {
+      "name": "CanalMarket_two_bedroom_garage_house_04",
+      "district": "CanalMarket",
+      "model": "two_bedroom_garage_house",
+      "position_m": [
+        -171.2,
+        -31.07855224609375,
+        606.6
+      ],
+      "ground_y_m": -31.07855224609375,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        -178.25000019073485,
+        599.5749999046326,
+        -164.14999980926513,
+        613.6250000953675
+      ]
+    },
+    {
+      "name": "CanalMarket_row_three_townhouses_05",
+      "district": "CanalMarket",
+      "model": "row_three_townhouses",
+      "position_m": [
+        -68.8,
+        -31.07855224609375,
+        606.6
+      ],
+      "ground_y_m": -31.07855224609375,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        -78.15999965667724,
+        600.514999961853,
+        -59.44000034332275,
+        612.685000038147
+      ]
+    },
+    {
+      "name": "OldVillage_HanokVillage_01",
+      "district": "OldVillage",
+      "model": "HanokVillage",
+      "position_m": [
+        -530,
+        1.4415054298192262,
+        -565
+      ],
+      "ground_y_m": 1.7115249633789062,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        -545.0,
+        -581.7075004577637,
+        -515.0,
+        -548.2924995422363
+      ]
+    },
+    {
+      "name": "OldVillage_two_bedroom_garage_house_02",
+      "district": "OldVillage",
+      "model": "two_bedroom_garage_house",
+      "position_m": [
+        -587.6,
+        1.7115249633789062,
+        -565
+      ],
+      "ground_y_m": 1.7115249633789062,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        -594.6500001907349,
+        -572.0250000953674,
+        -580.5499998092652,
+        -557.9749999046326
+      ]
+    },
+    {
+      "name": "OldVillage_row_three_townhouses_03",
+      "district": "OldVillage",
+      "model": "row_three_townhouses",
+      "position_m": [
+        -472.4,
+        1.7115249633789062,
+        -565
+      ],
+      "ground_y_m": 1.7115249633789062,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        -481.7599996566772,
+        -571.085000038147,
+        -463.04000034332273,
+        -558.914999961853
+      ]
+    },
+    {
+      "name": "OldVillage_a_frame_cabin_04",
+      "district": "OldVillage",
+      "model": "a_frame_cabin",
+      "position_m": [
+        -587.6,
+        1.7115249633789062,
+        -633.4
+      ],
+      "ground_y_m": 1.7115249633789062,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        -590.8699999809265,
+        -637.9279998779297,
+        -584.3300000190735,
+        -628.8720001220703
+      ]
+    },
+    {
+      "name": "OldVillage_bungalow_house_05",
+      "district": "OldVillage",
+      "model": "bungalow_house",
+      "position_m": [
+        -472.4,
+        1.7115249633789062,
+        -633.4
+      ],
+      "ground_y_m": 1.7115249633789062,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        -478.8499998092651,
+        -639.8060001373291,
+        -465.95000019073484,
+        -626.9939998626709
+      ]
+    },
+    {
+      "name": "OldVillage_garage_apartment_06",
+      "district": "OldVillage",
+      "model": "garage_apartment",
+      "position_m": [
+        -530,
+        1.7115249633789062,
+        -633.4
+      ],
+      "ground_y_m": 1.7115249633789062,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        -534.8049998283386,
+        -637.8829998016357,
+        -525.1950001716614,
+        -628.9170001983642
+      ]
+    },
+    {
+      "name": "LakesideHamlet_pitched_roof_cottage_01",
+      "district": "LakesideHamlet",
+      "model": "pitched_roof_cottage",
+      "position_m": [
+        -720,
+        -2.6588516235351562,
+        90
+      ],
+      "ground_y_m": -2.6588516235351562,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        -724.4499998092651,
+        83.5939998626709,
+        -715.5500001907349,
+        96.4060001373291
+      ]
+    },
+    {
+      "name": "LakesideHamlet_a_frame_cabin_02",
+      "district": "LakesideHamlet",
+      "model": "a_frame_cabin",
+      "position_m": [
+        -761.6,
+        -2.6588516235351562,
+        90
+      ],
+      "ground_y_m": -2.6588516235351562,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        -764.8699999809265,
+        85.47200012207031,
+        -758.3300000190735,
+        94.52799987792969
+      ]
+    },
+    {
+      "name": "LakesideHamlet_bungalow_house_03",
+      "district": "LakesideHamlet",
+      "model": "bungalow_house",
+      "position_m": [
+        -678.4,
+        -2.6588516235351562,
+        90
+      ],
+      "ground_y_m": -2.6588516235351562,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        -684.8499998092651,
+        83.5939998626709,
+        -671.9500001907348,
+        96.4060001373291
+      ]
+    },
+    {
+      "name": "LakesideHamlet_pitched_roof_cottage_04",
+      "district": "LakesideHamlet",
+      "model": "pitched_roof_cottage",
+      "position_m": [
+        -761.6,
+        -2.6588516235351562,
+        30.9
+      ],
+      "ground_y_m": -2.6588516235351562,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        -766.0499998092652,
+        24.493999862670897,
+        -757.1500001907349,
+        37.3060001373291
+      ]
+    },
+    {
+      "name": "LakesideHamlet_detached_two_storey_house_05",
+      "district": "LakesideHamlet",
+      "model": "detached_two_storey_house",
+      "position_m": [
+        -678.4,
+        -2.6588516235351562,
+        30.9
+      ],
+      "ground_y_m": -2.6588516235351562,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        -683.9279998779297,
+        23.564999961853026,
+        -672.8720001220703,
+        38.23500003814697
+      ]
+    },
+    {
+      "name": "ValleySettlement_row_three_townhouses_01",
+      "district": "ValleySettlement",
+      "model": "row_three_townhouses",
+      "position_m": [
+        -420,
+        15.408645629882812,
+        -185
+      ],
+      "ground_y_m": 15.408645629882812,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        -429.35999965667725,
+        -191.08500003814697,
+        -410.64000034332275,
+        -178.91499996185303
+      ]
+    },
+    {
+      "name": "ValleySettlement_pitched_roof_cottage_02",
+      "district": "ValleySettlement",
+      "model": "pitched_roof_cottage",
+      "position_m": [
+        -474.4,
+        15.408645629882812,
+        -185
+      ],
+      "ground_y_m": 15.408645629882812,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        -478.8499998092651,
+        -191.4060001373291,
+        -469.95000019073484,
+        -178.5939998626709
+      ]
+    },
+    {
+      "name": "ValleySettlement_detached_two_storey_house_03",
+      "district": "ValleySettlement",
+      "model": "detached_two_storey_house",
+      "position_m": [
+        -365.6,
+        15.408645629882812,
+        -185
+      ],
+      "ground_y_m": 15.408645629882812,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        -371.1279998779297,
+        -192.33500003814697,
+        -360.07200012207034,
+        -177.66499996185303
+      ]
+    },
+    {
+      "name": "ValleySettlement_garage_apartment_04",
+      "district": "ValleySettlement",
+      "model": "garage_apartment",
+      "position_m": [
+        -474.4,
+        15.408645629882812,
+        -256.5
+      ],
+      "ground_y_m": 15.408645629882812,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        -479.2049998283386,
+        -260.98299980163574,
+        -469.59500017166135,
+        -252.01700019836426
+      ]
+    },
+    {
+      "name": "ValleySettlement_two_bedroom_garage_house_05",
+      "district": "ValleySettlement",
+      "model": "two_bedroom_garage_house",
+      "position_m": [
+        -365.6,
+        15.408645629882812,
+        -256.5
+      ],
+      "ground_y_m": 15.408645629882812,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        -372.6500001907349,
+        -263.52500009536743,
+        -358.54999980926516,
+        -249.47499990463257
+      ]
+    },
+    {
+      "name": "ValleySettlement_garage_apartment_06",
+      "district": "ValleySettlement",
+      "model": "garage_apartment",
+      "position_m": [
+        -420,
+        15.408645629882812,
+        -256.5
+      ],
+      "ground_y_m": 15.408645629882812,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        -424.8049998283386,
+        -260.98299980163574,
+        -415.1950001716614,
+        -252.01700019836426
+      ]
+    },
+    {
+      "name": "NorthernRidgeTown_detached_two_storey_house_01",
+      "district": "NorthernRidgeTown",
+      "model": "detached_two_storey_house",
+      "position_m": [
+        300,
+        -30.83440399169922,
+        675
+      ],
+      "ground_y_m": -30.83440399169922,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        294.4720001220703,
+        667.664999961853,
+        305.5279998779297,
+        682.335000038147
+      ]
+    },
+    {
+      "name": "NorthernRidgeTown_garage_apartment_02",
+      "district": "NorthernRidgeTown",
+      "model": "garage_apartment",
+      "position_m": [
+        242.4,
+        -30.83440399169922,
+        675
+      ],
+      "ground_y_m": -30.83440399169922,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        237.59500017166138,
+        670.5170001983643,
+        247.20499982833863,
+        679.4829998016357
+      ]
+    },
+    {
+      "name": "NorthernRidgeTown_two_bedroom_garage_house_03",
+      "district": "NorthernRidgeTown",
+      "model": "two_bedroom_garage_house",
+      "position_m": [
+        357.6,
+        -30.83440399169922,
+        675
+      ],
+      "ground_y_m": -30.83440399169922,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        350.54999980926516,
+        667.9749999046326,
+        364.6500001907349,
+        682.0250000953674
+      ]
+    },
+    {
+      "name": "NorthernRidgeTown_row_three_townhouses_04",
+      "district": "NorthernRidgeTown",
+      "model": "row_three_townhouses",
+      "position_m": [
+        242.4,
+        -30.83440399169922,
+        603.5
+      ],
+      "ground_y_m": -30.83440399169922,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        233.04000034332276,
+        597.414999961853,
+        251.75999965667725,
+        609.585000038147
+      ]
+    },
+    {
+      "name": "NorthernRidgeTown_a_frame_cabin_05",
+      "district": "NorthernRidgeTown",
+      "model": "a_frame_cabin",
+      "position_m": [
+        357.6,
+        -30.83440399169922,
+        603.5
+      ],
+      "ground_y_m": -30.83440399169922,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        354.3300000190735,
+        598.9720001220703,
+        360.86999998092654,
+        608.0279998779297
+      ]
+    },
+    {
+      "name": "NorthernRidgeTown_garage_apartment_06",
+      "district": "NorthernRidgeTown",
+      "model": "garage_apartment",
+      "position_m": [
+        300,
+        -30.83440399169922,
+        603.5
+      ],
+      "ground_y_m": -30.83440399169922,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        295.1950001716614,
+        599.0170001983643,
+        304.8049998283386,
+        607.9829998016357
+      ]
+    },
+    {
+      "name": "CoastalHamlet_bungalow_house_01",
+      "district": "CoastalHamlet",
+      "model": "bungalow_house",
+      "position_m": [
+        650,
+        -18.211563110351562,
+        675
+      ],
+      "ground_y_m": -18.211563110351562,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        643.5500001907349,
+        668.5939998626709,
+        656.4499998092651,
+        681.4060001373291
+      ]
+    },
+    {
+      "name": "CoastalHamlet_row_three_townhouses_02",
+      "district": "CoastalHamlet",
+      "model": "row_three_townhouses",
+      "position_m": [
+        602.0,
+        -18.211563110351562,
+        675
+      ],
+      "ground_y_m": -18.211563110351562,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        592.6400003433228,
+        668.914999961853,
+        611.3599996566772,
+        681.085000038147
+      ]
+    },
+    {
+      "name": "CoastalHamlet_a_frame_cabin_03",
+      "district": "CoastalHamlet",
+      "model": "a_frame_cabin",
+      "position_m": [
+        698.0,
+        -18.211563110351562,
+        675
+      ],
+      "ground_y_m": -18.211563110351562,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        694.7300000190735,
+        670.4720001220703,
+        701.2699999809265,
+        679.5279998779297
+      ]
+    },
+    {
+      "name": "CoastalHamlet_bungalow_house_04",
+      "district": "CoastalHamlet",
+      "model": "bungalow_house",
+      "position_m": [
+        602.0,
+        -18.211563110351562,
+        606.6
+      ],
+      "ground_y_m": -18.211563110351562,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        595.5500001907349,
+        600.1939998626709,
+        608.4499998092651,
+        613.0060001373291
+      ]
+    },
+    {
+      "name": "CoastalHamlet_pitched_roof_cottage_05",
+      "district": "CoastalHamlet",
+      "model": "pitched_roof_cottage",
+      "position_m": [
+        698.0,
+        -18.211563110351562,
+        606.6
+      ],
+      "ground_y_m": -18.211563110351562,
+      "yaw_degrees": 180,
+      "aabb_xz_m": [
+        693.5500001907349,
+        600.1939998626709,
+        702.4499998092651,
+        613.0060001373291
+      ]
+    },
+    {
+      "name": "SoutheastLighthouse_lighthouse_01",
+      "district": "SoutheastLighthouse",
+      "model": "lighthouse",
+      "position_m": [
+        825,
+        40.0439453125,
+        -742
+      ],
+      "ground_y_m": 40.0439453125,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        820.6577663421631,
+        -747.0911169052124,
+        829.3422336578369,
+        -736.9088830947876
+      ]
+    },
+    {
+      "name": "ForestLookout_watchtower_01",
+      "district": "ForestLookout",
+      "model": "watchtower",
+      "position_m": [
+        -650,
+        6.7655487060546875,
+        -117
+      ],
+      "ground_y_m": 6.7655487060546875,
+      "yaw_degrees": 0,
+      "aabb_xz_m": [
+        -654.7766466140747,
+        -120.44329333305359,
+        -645.2233533859253,
+        -113.55670666694641
+      ]
+    }
+  ],
+  "roads": [
+    {
+      "name": "ClockTowerTown__FreightDistrict",
+      "sites": [
+        0,
+        4
+      ],
+      "points": [
+        [
+          319.6,
+          -11.936767578125,
+          93.0
+        ],
+        [
+          325.5515105691047,
+          -10.919897079467773,
+          86.56846535753712
+        ],
+        [
+          328.01529763233475,
+          -10.44589900970459,
+          79.78606420492679
+        ],
+        [
+          330.87085440300064,
+          -9.97477912902832,
+          71.98523227826914
+        ],
+        [
+          336.468401025073,
+          -9.20024585723877,
+          63.999598508126155
+        ],
+        [
+          343.56914162563135,
+          -8.310844421386719,
+          56.0
+        ],
+        [
+          349.5968445224213,
+          -7.500991344451904,
+          48.0
+        ],
+        [
+          354.4042261225756,
+          -6.8094940185546875,
+          40.0
+        ],
+        [
+          360.4673839123259,
+          -6.614166259765625,
+          32.0
+        ],
+        [
+          368.0,
+          -6.565338134765625,
+          24.0
+        ],
+        [
+          375.5326160876741,
+          -6.516510009765625,
+          16.0
+        ],
+        [
+          381.5957738774244,
+          -6.443267822265625,
+          8.0
+        ],
+        [
+          386.40422612257566,
+          -6.321189880371094,
+          0.0
+        ],
+        [
+          392.4673839123259,
+          -6.174690246582031,
+          -8.0
+        ],
+        [
+          399.99892935500304,
+          -6.024489402770996,
+          -16.0
+        ],
+        [
+          407.49501990472004,
+          -5.853586673736572,
+          -24.0
+        ],
+        [
+          413.08972313714753,
+          -5.4648823738098145,
+          -32.0
+        ],
+        [
+          415.4939492597231,
+          -4.98028564453125,
+          -40.0
+        ],
+        [
+          415.9624038170459,
+          -4.394505500793457,
+          -48.0
+        ],
+        [
+          416.0,
+          -3.780404567718506,
+          -56.0
+        ],
+        [
+          416.03652553795723,
+          -3.190725803375244,
+          -64.0
+        ],
+        [
+          416.46845455732284,
+          -2.6618082523345947,
+          -72.0
+        ],
+        [
+          418.40422612257566,
+          -2.2232818603515625,
+          -80.0
+        ],
+        [
+          421.59577387742445,
+          -1.5003845691680908,
+          -88.0
+        ],
+        [
+          423.5315454426772,
+          -1.0814087390899658,
+          -96.0
+        ],
+        [
+          423.9634744620429,
+          -0.8278854489326477,
+          -104.0
+        ],
+        [
+          423.9989293550031,
+          -0.5255187749862671,
+          -112.0
+        ],
+        [
+          424.0,
+          -0.2719879150390625,
+          -120.0
+        ],
+        [
+          424.0,
+          -0.01846466027200222,
+          -128.0
+        ],
+        [
+          424.0,
+          0.21065619587898254,
+          -136.0
+        ],
+        [
+          424.0,
+          0.36651915311813354,
+          -144.0
+        ],
+        [
+          424.0,
+          0.466339111328125,
+          -152.0
+        ],
+        [
+          424.0,
+          0.515167236328125,
+          -160.0
+        ],
+        [
+          424.0,
+          0.5655578374862671,
+          -168.0
+        ],
+        [
+          424.0,
+          0.6726043820381165,
+          -176.0
+        ],
+        [
+          424.0,
+          0.8284713625907898,
+          -184.0
+        ],
+        [
+          424.0,
+          1.0575882196426392,
+          -192.0
+        ],
+        [
+          424.0,
+          1.3257598876953125,
+          -200.0
+        ],
+        [
+          424.0,
+          1.6378921270370483,
+          -208.0
+        ],
+        [
+          424.0,
+          2.104719638824463,
+          -216.0
+        ],
+        [
+          424.0,
+          2.6455702781677246,
+          -224.0
+        ],
+        [
+          424.0,
+          3.3383872509002686,
+          -232.0
+        ],
+        [
+          424.00107064499696,
+          4.1306233406066895,
+          -240.0
+        ],
+        [
+          424.03759618295413,
+          4.879380226135254,
+          -247.9989293550031
+        ],
+        [
+          424.5060507402769,
+          5.452310562133789,
+          -255.96347446204283
+        ],
+        [
+          426.91027686285247,
+          5.592998504638672,
+          -263.5315454426772
+        ],
+        [
+          432.5060507402769,
+          5.322584629058838,
+          -269.5947032324275
+        ],
+        [
+          440.03759618295413,
+          4.665809631347656,
+          -274.36662993962153
+        ],
+        [
+          448.00107064499696,
+          4.099761962890625,
+          -279.9624038170459
+        ],
+        [
+          456.0,
+          3.3297555446624756,
+          -285.12624867510465
+        ],
+        [
+          464.0,
+          2.5217347145080566,
+          -287.49501990472004
+        ],
+        [
+          472.0,
+          1.9480688571929932,
+          -287.9624038170459
+        ],
+        [
+          480.0,
+          1.4156183004379272,
+          -287.9989293550031
+        ],
+        [
+          488.00016059674954,
+          0.8606818914413452,
+          -287.99852786312925
+        ],
+        [
+          496.00440818569666,
+          0.37760457396507263,
+          -287.94977738530895
+        ],
+        [
+          504.03144075889793,
+          -0.04651481658220291,
+          -287.35734712055194
+        ],
+        [
+          511.8115081644618,
+          -0.4211778938770294,
+          -284.74441169614965
+        ],
+        [
+          521.2,
+          -1.07183837890625,
+          -277.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "ClockTowerTown__NorthernRidgeTown",
+      "sites": [
+        0,
+        9
+      ],
+      "points": [
+        [
+          319.6,
+          -11.936767578125,
+          93.0
+        ],
+        [
+          311.33796804753814,
+          -11.187479019165039,
+          95.11211228076809
+        ],
+        [
+          303.9379639764327,
+          -10.776175498962402,
+          95.82473103287779
+        ],
+        [
+          295.9971030781053,
+          -10.432863235473633,
+          95.98630292326607
+        ],
+        [
+          287.9999464677502,
+          -10.048163414001465,
+          95.99959850812616
+        ],
+        [
+          280.0,
+          -9.663185119628906,
+          96.0
+        ],
+        [
+          272.0,
+          -9.276834487915039,
+          96.0
+        ],
+        [
+          264.0,
+          -8.876811027526855,
+          96.0
+        ],
+        [
+          256.0,
+          -8.59886646270752,
+          96.0
+        ],
+        [
+          248.0,
+          -8.445343017578125,
+          96.00107064499693
+        ],
+        [
+          240.0010706449969,
+          -8.408180236816406,
+          96.03759618295409
+        ],
+        [
+          232.0375961829541,
+          -8.584784507751465,
+          96.5060507402769
+        ],
+        [
+          224.50605074027692,
+          -8.971731185913086,
+          98.9102768628525
+        ],
+        [
+          218.9102768628525,
+          -9.513689041137695,
+          104.50605074027689
+        ],
+        [
+          216.50605074027692,
+          -10.089941024780273,
+          112.0375961829541
+        ],
+        [
+          216.0375961829541,
+          -10.612518310546875,
+          120.00107064499691
+        ],
+        [
+          216.00107064499693,
+          -11.064831733703613,
+          128.0
+        ],
+        [
+          216.0,
+          -11.436924934387207,
+          136.0
+        ],
+        [
+          216.0,
+          -11.692604064941406,
+          144.0
+        ],
+        [
+          215.9989293550031,
+          -11.943994522094727,
+          152.0
+        ],
+        [
+          215.96240381704592,
+          -12.148696899414062,
+          160.0
+        ],
+        [
+          215.49394925972314,
+          -12.304563522338867,
+          168.0
+        ],
+        [
+          213.09079378214443,
+          -12.529196739196777,
+          176.0
+        ],
+        [
+          207.5315454426772,
+          -12.96221923828125,
+          184.0
+        ],
+        [
+          200.4684545573228,
+          -13.580198287963867,
+          192.0
+        ],
+        [
+          194.90920621785557,
+          -14.429483413696289,
+          200.0
+        ],
+        [
+          192.50605074027692,
+          -15.030695915222168,
+          208.0
+        ],
+        [
+          192.0375961829541,
+          -15.421736717224121,
+          216.0
+        ],
+        [
+          192.0010706449969,
+          -15.739535331726074,
+          224.0
+        ],
+        [
+          192.0,
+          -15.993061065673828,
+          232.0
+        ],
+        [
+          192.0,
+          -16.232135772705078,
+          240.0
+        ],
+        [
+          192.0,
+          -16.4512996673584,
+          248.0
+        ],
+        [
+          192.0,
+          -16.680408477783203,
+          256.0
+        ],
+        [
+          192.0,
+          -16.885112762451172,
+          264.0
+        ],
+        [
+          192.0,
+          -17.115596771240234,
+          272.0
+        ],
+        [
+          192.0,
+          -17.378501892089844,
+          280.0
+        ],
+        [
+          192.0,
+          -17.64570426940918,
+          288.0
+        ],
+        [
+          192.0010706449969,
+          -17.923648834228516,
+          296.0
+        ],
+        [
+          192.0375961829541,
+          -18.177188873291016,
+          304.0
+        ],
+        [
+          192.50605074027692,
+          -18.339651107788086,
+          312.0
+        ],
+        [
+          194.9102768628525,
+          -18.554931640625,
+          320.0
+        ],
+        [
+          200.50498009527996,
+          -18.91960906982422,
+          328.0
+        ],
+        [
+          208.00107064499693,
+          -19.43541717529297,
+          336.0
+        ],
+        [
+          215.5326160876741,
+          -20.316429138183594,
+          344.0
+        ],
+        [
+          221.59577387742442,
+          -21.183956146240234,
+          352.0
+        ],
+        [
+          226.4031554775787,
+          -22.00741195678711,
+          360.0
+        ],
+        [
+          232.4308583743687,
+          -22.79363441467285,
+          368.0
+        ],
+        [
+          239.5315454426772,
+          -23.214921951293945,
+          376.0
+        ],
+        [
+          245.1273193201016,
+          -22.31647491455078,
+          384.0
+        ],
+        [
+          247.96240381704592,
+          -21.63422966003418,
+          392.0
+        ],
+        [
+          250.36662993962153,
+          -21.162174224853516,
+          400.0
+        ],
+        [
+          253.5947032324275,
+          -21.08260726928711,
+          408.0
+        ],
+        [
+          255.53154544267719,
+          -21.847917556762695,
+          416.0
+        ],
+        [
+          255.96347446204283,
+          -22.543075561523438,
+          424.0
+        ],
+        [
+          255.99892935500307,
+          -23.172998428344727,
+          432.0
+        ],
+        [
+          256.00107064499696,
+          -23.765609741210938,
+          440.00000000000006
+        ],
+        [
+          256.0365255379572,
+          -24.35675621032715,
+          448.0
+        ],
+        [
+          256.46952520231974,
+          -24.776607513427734,
+          456.0
+        ],
+        [
+          258.4407516605328,
+          -25.209590911865234,
+          464.0
+        ],
+        [
+          262.0642284347472,
+          -25.889375686645508,
+          472.0
+        ],
+        [
+          265.9357715652528,
+          -26.58928680419922,
+          480.0
+        ],
+        [
+          269.5592483394672,
+          -27.531475067138672,
+          488.0
+        ],
+        [
+          271.5304747976803,
+          -28.378780364990234,
+          496.0
+        ],
+        [
+          271.96336739754315,
+          -29.173065185546875,
+          503.99959850812616
+        ],
+        [
+          271.9952768012074,
+          -30.00874137878418,
+          511.98523227826917
+        ],
+        [
+          271.95326160876743,
+          -30.712326049804688,
+          519.7860642049268
+        ],
+        [
+          271.76322994153816,
+          -30.771217346191406,
+          526.5684653575371
+        ],
+        [
+          271.2,
+          -30.83440399169922,
+          533.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "NorthernRidgeTown__CoastalHamlet",
+      "sites": [
+        9,
+        10
+      ],
+      "points": [
+        [
+          271.2,
+          -30.83440399169922,
+          533.0
+        ],
+        [
+          280.30687686476915,
+          -30.281288146972656,
+          526.569536002534
+        ],
+        [
+          287.99192843671847,
+          -29.263896942138672,
+          519.8236603878809
+        ],
+        [
+          295.9974180912012,
+          -28.242218017578125,
+          512.491283018546
+        ],
+        [
+          303.9998929355003,
+          -27.228574752807617,
+          506.9098753709786
+        ],
+        [
+          312.0,
+          -26.36752700805664,
+          504.5060507402769
+        ],
+        [
+          320.0,
+          -25.558691024780273,
+          504.0375961829541
+        ],
+        [
+          328.0,
+          -24.865093231201172,
+          504.00107064499696
+        ],
+        [
+          336.0,
+          -24.313282012939453,
+          504.0
+        ],
+        [
+          344.0,
+          -23.94921112060547,
+          504.0
+        ],
+        [
+          352.0,
+          -23.946672439575195,
+          504.0
+        ],
+        [
+          360.0,
+          -24.207046508789062,
+          504.0
+        ],
+        [
+          368.0,
+          -24.429319381713867,
+          504.0
+        ],
+        [
+          376.0,
+          -24.609607696533203,
+          504.0
+        ],
+        [
+          384.0,
+          -24.81430435180664,
+          504.00107064499696
+        ],
+        [
+          392.0,
+          -24.970178604125977,
+          504.0375961829541
+        ],
+        [
+          400.0,
+          -25.10163116455078,
+          504.50498009527996
+        ],
+        [
+          408.0,
+          -25.243240356445312,
+          506.8726806798984
+        ],
+        [
+          416.0,
+          -25.462982177734375,
+          512.0
+        ],
+        [
+          424.0,
+          -25.69131088256836,
+          517.1273193201016
+        ],
+        [
+          432.0,
+          -25.755966186523438,
+          519.49501990472
+        ],
+        [
+          440.00000000000006,
+          -25.704200744628906,
+          519.9624038170459
+        ],
+        [
+          448.0,
+          -25.572755813598633,
+          519.9989293550032
+        ],
+        [
+          456.0,
+          -25.392467498779297,
+          520.0
+        ],
+        [
+          464.0,
+          -25.138935089111328,
+          520.001070644997
+        ],
+        [
+          472.0,
+          -24.909818649291992,
+          520.0365255379572
+        ],
+        [
+          480.0,
+          -24.728639602661133,
+          520.4684545573228
+        ],
+        [
+          488.0,
+          -24.50042152404785,
+          522.4042261225757
+        ],
+        [
+          496.0,
+          -24.149227142333984,
+          525.5957738774244
+        ],
+        [
+          504.0,
+          -23.90038299560547,
+          527.5315454426773
+        ],
+        [
+          512.0,
+          -23.753890991210938,
+          527.9634744620429
+        ],
+        [
+          520.0,
+          -23.632789611816406,
+          527.9989293550032
+        ],
+        [
+          528.0,
+          -23.5013370513916,
+          528.0
+        ],
+        [
+          536.0,
+          -23.321056365966797,
+          528.0
+        ],
+        [
+          544.0,
+          -23.062047958374023,
+          528.0
+        ],
+        [
+          552.0,
+          -22.655384063720703,
+          528.0
+        ],
+        [
+          560.0,
+          -22.19715118408203,
+          528.0
+        ],
+        [
+          568.0,
+          -21.683643341064453,
+          528.0
+        ],
+        [
+          576.0,
+          -21.158613204956055,
+          528.001070644997
+        ],
+        [
+          584.0,
+          -20.65077018737793,
+          528.0365255379572
+        ],
+        [
+          592.0002676612493,
+          -20.20037841796875,
+          528.4687222185721
+        ],
+        [
+          600.0080607394923,
+          -19.817270278930664,
+          530.4133575070649
+        ],
+        [
+          608.0781791501305,
+          -19.048603057861328,
+          533.7126198555059
+        ],
+        [
+          616.0482782229236,
+          -18.724281311035156,
+          536.1234705888319
+        ],
+        [
+          626.0,
+          -18.211563110351562,
+          538.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "CoastalHamlet__EasternPort",
+      "sites": [
+        10,
+        2
+      ],
+      "points": [
+        [
+          626.0,
+          -18.211563110351562,
+          538.0
+        ],
+        [
+          630.2618207444903,
+          -18.323076248168945,
+          528.0482782229236
+        ],
+        [
+          632.1544421610356,
+          -18.165666580200195,
+          520.0781791501305
+        ],
+        [
+          634.8452865264305,
+          -17.843706130981445,
+          512.0080607394924
+        ],
+        [
+          639.9991970162523,
+          -17.308181762695312,
+          504.00026766124927
+        ],
+        [
+          645.1273193201016,
+          -16.723241806030273,
+          496.0
+        ],
+        [
+          647.496090549717,
+          -16.970081329345703,
+          488.0
+        ],
+        [
+          648.0,
+          -17.478118896484375,
+          480.0
+        ],
+        [
+          648.50498009528,
+          -17.914329528808594,
+          472.0
+        ],
+        [
+          650.9102768628525,
+          -18.351417541503906,
+          464.0
+        ],
+        [
+          656.5060507402769,
+          -19.130474090576172,
+          456.0
+        ],
+        [
+          664.0365255379572,
+          -20.005361557006836,
+          448.0
+        ],
+        [
+          671.9634744620429,
+          -20.87674903869629,
+          440.00000000000006
+        ],
+        [
+          679.4939492597232,
+          -21.78656768798828,
+          432.0
+        ],
+        [
+          685.0907937821444,
+          -22.810998916625977,
+          424.0
+        ],
+        [
+          687.5315454426773,
+          -23.658571243286133,
+          416.0
+        ],
+        [
+          688.4673839123259,
+          -24.13001251220703,
+          408.0
+        ],
+        [
+          690.8716100349016,
+          -24.55286979675293,
+          400.0
+        ],
+        [
+          696.001070644997,
+          -25.322818756103516,
+          392.0
+        ],
+        [
+          701.1649155030557,
+          -26.282211303710938,
+          384.0
+        ],
+        [
+          704.001070644997,
+          -26.877910614013672,
+          376.0
+        ],
+        [
+          706.8716100349016,
+          -27.446157455444336,
+          368.0
+        ],
+        [
+          712.468053065449,
+          -28.299909591674805,
+          360.00026766124927
+        ],
+        [
+          719.5543739039005,
+          -29.299562454223633,
+          352.01020202948627
+        ],
+        [
+          725.3829087273481,
+          -30.348356246948242,
+          344.1555128060325
+        ],
+        [
+          728.9737621251096,
+          -30.870649337768555,
+          337.1355720693856
+        ],
+        [
+          733.0,
+          -31.07855224609375,
+          330.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "NorthernRidgeTown__CanalMarket",
+      "sites": [
+        9,
+        5
+      ],
+      "points": [
+        [
+          271.2,
+          -30.83440399169922,
+          533.0
+        ],
+        [
+          263.2195830183072,
+          -30.25742530822754,
+          535.1121122807681
+        ],
+        [
+          255.9145947808164,
+          -29.69239044189453,
+          535.8247310328777
+        ],
+        [
+          247.99527680120738,
+          -29.39130210876465,
+          535.9863029232661
+        ],
+        [
+          239.99989293550033,
+          -29.14972686767578,
+          535.9995985081262
+        ],
+        [
+          232.0,
+          -29.05207061767578,
+          536.0
+        ],
+        [
+          224.0,
+          -28.94835090637207,
+          536.0
+        ],
+        [
+          216.0,
+          -28.743648529052734,
+          536.0
+        ],
+        [
+          208.0,
+          -28.416088104248047,
+          536.0
+        ],
+        [
+          200.0,
+          -27.92406463623047,
+          536.0
+        ],
+        [
+          192.0,
+          -27.426769256591797,
+          536.0
+        ],
+        [
+          184.0,
+          -26.968534469604492,
+          536.0010706449968
+        ],
+        [
+          176.0,
+          -26.645862579345703,
+          536.0365255379572
+        ],
+        [
+          168.0,
+          -26.488433837890625,
+          536.4684545573227
+        ],
+        [
+          160.0,
+          -26.444698333740234,
+          538.4042261225757
+        ],
+        [
+          152.0,
+          -26.5544490814209,
+          541.5957738774243
+        ],
+        [
+          144.0,
+          -26.683753967285156,
+          543.5315454426773
+        ],
+        [
+          136.0,
+          -26.792943954467773,
+          543.9634744620429
+        ],
+        [
+          128.0,
+          -26.87908172607422,
+          543.9989293550032
+        ],
+        [
+          120.0,
+          -26.981943130493164,
+          544.0
+        ],
+        [
+          112.0,
+          -27.065221786499023,
+          544.0
+        ],
+        [
+          104.0,
+          -27.14765167236328,
+          544.0
+        ],
+        [
+          96.0,
+          -27.230472564697266,
+          544.0
+        ],
+        [
+          88.0,
+          -27.294151306152344,
+          544.0
+        ],
+        [
+          80.0,
+          -27.371299743652344,
+          544.0
+        ],
+        [
+          72.0,
+          -27.465049743652344,
+          544.0
+        ],
+        [
+          64.0,
+          -27.538299560546875,
+          544.0
+        ],
+        [
+          56.0,
+          -27.635963439941406,
+          544.0
+        ],
+        [
+          48.0,
+          -27.709213256835938,
+          544.0
+        ],
+        [
+          40.0,
+          -27.733627319335938,
+          544.0
+        ],
+        [
+          32.0,
+          -27.758041381835938,
+          544.0
+        ],
+        [
+          24.0,
+          -27.782455444335938,
+          544.0
+        ],
+        [
+          16.0,
+          -27.885784149169922,
+          544.0
+        ],
+        [
+          8.0,
+          -28.105525970458984,
+          544.0
+        ],
+        [
+          0.0,
+          -28.441673278808594,
+          544.0
+        ],
+        [
+          -8.0,
+          -28.94873809814453,
+          544.0
+        ],
+        [
+          -16.0,
+          -29.429288864135742,
+          544.0
+        ],
+        [
+          -24.0,
+          -29.868913650512695,
+          544.0
+        ],
+        [
+          -32.0,
+          -30.29755210876465,
+          544.0
+        ],
+        [
+          -40.0,
+          -30.635169982910156,
+          544.0
+        ],
+        [
+          -48.0,
+          -30.970495223999023,
+          544.0
+        ],
+        [
+          -56.0,
+          -31.283065795898438,
+          544.0
+        ],
+        [
+          -64.0,
+          -31.59480094909668,
+          544.0
+        ],
+        [
+          -72.0,
+          -31.955366134643555,
+          544.0
+        ],
+        [
+          -80.0,
+          -32.24659729003906,
+          544.0
+        ],
+        [
+          -88.0,
+          -32.52454376220703,
+          544.0
+        ],
+        [
+          -96.0,
+          -32.650726318359375,
+          544.0
+        ],
+        [
+          -104.0,
+          -32.51946258544922,
+          544.0
+        ],
+        [
+          -112.0002141289994,
+          -32.183292388916016,
+          543.9991970162523
+        ],
+        [
+          -120.00623446259452,
+          -31.88981819152832,
+          543.9726058465321
+        ],
+        [
+          -128.05480995451416,
+          -31.63385772705078,
+          543.6494620657556
+        ],
+        [
+          -135.92989319369272,
+          -31.508649826049805,
+          542.2242245615362
+        ],
+        [
+          -145.6,
+          -31.07855224609375,
+          538.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "FreightDistrict__SouthernAirfield",
+      "sites": [
+        4,
+        3
+      ],
+      "points": [
+        [
+          521.2,
+          -1.07183837890625,
+          -277.0
+        ],
+        [
+          519.8856298853731,
+          -0.4919687509536743,
+          -287.6557592039991
+        ],
+        [
+          517.6282852813192,
+          0.3442535400390625,
+          -295.8633978608288
+        ],
+        [
+          513.9047248579892,
+          1.2370426654815674,
+          -303.987373568263
+        ],
+        [
+          509.595934474174,
+          1.9639599323272705,
+          -311.99959850812616
+        ],
+        [
+          504.03652553795723,
+          2.767850160598755,
+          -320.0
+        ],
+        [
+          498.8726806798984,
+          3.7555477619171143,
+          -328.0
+        ],
+        [
+          496.4673839123259,
+          4.601942539215088,
+          -336.0
+        ],
+        [
+          495.5315454426772,
+          5.0708513259887695,
+          -344.0
+        ],
+        [
+          493.09079378214443,
+          5.450387954711914,
+          -352.0
+        ],
+        [
+          487.4939492597231,
+          6.281430721282959,
+          -360.0
+        ],
+        [
+          479.9624038170459,
+          7.156796455383301,
+          -368.0
+        ],
+        [
+          471.99892935500304,
+          8.059975624084473,
+          -376.0
+        ],
+        [
+          464.0,
+          8.970629692077637,
+          -384.0
+        ],
+        [
+          456.0,
+          9.84415054321289,
+          -392.0
+        ],
+        [
+          448.00107064499696,
+          10.786637306213379,
+          -400.0
+        ],
+        [
+          440.03759618295413,
+          11.684529304504395,
+          -408.0
+        ],
+        [
+          432.50498009528,
+          12.533049583435059,
+          -416.0
+        ],
+        [
+          426.8726806798984,
+          13.54010009765625,
+          -424.0
+        ],
+        [
+          424.00107064499696,
+          14.19304084777832,
+          -432.0
+        ],
+        [
+          421.1649155030557,
+          14.701937675476074,
+          -440.00000000000006
+        ],
+        [
+          416.00107064499696,
+          15.482636451721191,
+          -448.0
+        ],
+        [
+          410.87268067989845,
+          16.467342376708984,
+          -456.0
+        ],
+        [
+          408.50498009527996,
+          17.342166900634766,
+          -464.0
+        ],
+        [
+          408.03652553795723,
+          18.101978302001953,
+          -472.0
+        ],
+        [
+          407.9645451070397,
+          18.646873474121094,
+          -480.0
+        ],
+        [
+          407.53154544267716,
+          19.144407272338867,
+          -488.0
+        ],
+        [
+          405.5957738774244,
+          19.61015510559082,
+          -496.0
+        ],
+        [
+          402.4042261225756,
+          20.505260467529297,
+          -504.0
+        ],
+        [
+          400.4684545573228,
+          21.355525970458984,
+          -512.0
+        ],
+        [
+          400.0354548929603,
+          21.9989013671875,
+          -520.0
+        ],
+        [
+          399.9634744620429,
+          22.579204559326172,
+          -528.0
+        ],
+        [
+          399.4939492597231,
+          22.96792984008789,
+          -536.0
+        ],
+        [
+          397.08972313714753,
+          23.389413833618164,
+          -544.0
+        ],
+        [
+          391.4939492597231,
+          24.200925827026367,
+          -552.0
+        ],
+        [
+          383.9624038170459,
+          25.066617965698242,
+          -559.9989293550032
+        ],
+        [
+          375.99892935500304,
+          25.936119079589844,
+          -567.9624038170459
+        ],
+        [
+          368.0,
+          26.864574432373047,
+          -575.4939492597232
+        ],
+        [
+          360.0,
+          27.872583389282227,
+          -581.0897231371475
+        ],
+        [
+          352.0,
+          28.75223159790039,
+          -583.4939492597232
+        ],
+        [
+          344.0,
+          29.53217124938965,
+          -583.9624038170459
+        ],
+        [
+          336.0,
+          30.173725128173828,
+          -583.9989293550032
+        ],
+        [
+          328.0,
+          30.833038330078125,
+          -584.0
+        ],
+        [
+          320.0,
+          31.456506729125977,
+          -584.0
+        ],
+        [
+          312.0,
+          32.062984466552734,
+          -584.0
+        ],
+        [
+          304.0,
+          32.749168395996094,
+          -584.0
+        ],
+        [
+          296.0,
+          33.36833953857422,
+          -584.0
+        ],
+        [
+          288.0,
+          34.006080627441406,
+          -584.0
+        ],
+        [
+          280.0,
+          34.63986587524414,
+          -584.0
+        ],
+        [
+          272.0,
+          35.110633850097656,
+          -584.0
+        ],
+        [
+          264.0,
+          35.348148345947266,
+          -584.0
+        ],
+        [
+          256.0,
+          35.084266662597656,
+          -584.0
+        ],
+        [
+          248.0,
+          34.46782684326172,
+          -584.0
+        ],
+        [
+          240.0,
+          33.78282928466797,
+          -584.0
+        ],
+        [
+          232.0,
+          33.16871643066406,
+          -584.0
+        ],
+        [
+          224.0,
+          32.52415084838867,
+          -584.0
+        ],
+        [
+          216.0,
+          31.882715225219727,
+          -584.0
+        ],
+        [
+          208.0,
+          31.27720069885254,
+          -584.0
+        ],
+        [
+          200.0,
+          30.590240478515625,
+          -584.0
+        ],
+        [
+          192.0,
+          29.995288848876953,
+          -583.9989293550032
+        ],
+        [
+          184.0,
+          29.4597110748291,
+          -583.9624038170459
+        ],
+        [
+          176.0,
+          29.005578994750977,
+          -583.4939492597232
+        ],
+        [
+          168.0,
+          28.493751525878906,
+          -581.0897231371475
+        ],
+        [
+          160.00053532249848,
+          27.489118576049805,
+          -575.49501990472
+        ],
+        [
+          152.01933341397552,
+          26.460079193115234,
+          -568.0
+        ],
+        [
+          144.27235878411398,
+          25.47304916381836,
+          -560.50498009528
+        ],
+        [
+          137.7274972155402,
+          24.95587730407715,
+          -554.9113475078494
+        ],
+        [
+          132.0,
+          24.95513916015625,
+          -552.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "SouthernAirfield__HighlandObservatory",
+      "sites": [
+        3,
+        1
+      ],
+      "points": [
+        [
+          132.0,
+          24.95513916015625,
+          -552.0
+        ],
+        [
+          137.7274972155402,
+          25.029979705810547,
+          -560.5436469232311
+        ],
+        [
+          144.27235878411398,
+          25.886871337890625,
+          -568.038666827951
+        ],
+        [
+          152.01933341397552,
+          26.96786880493164,
+          -576.001070644997
+        ],
+        [
+          160.00053532249848,
+          28.080854415893555,
+          -584.0
+        ],
+        [
+          168.0,
+          29.215164184570312,
+          -592.0
+        ],
+        [
+          176.0,
+          30.237648010253906,
+          -600.0
+        ],
+        [
+          184.0,
+          31.115339279174805,
+          -608.0
+        ],
+        [
+          192.0,
+          32.05474090576172,
+          -615.9989293550032
+        ],
+        [
+          200.0,
+          32.96343994140625,
+          -623.9624038170459
+        ],
+        [
+          208.0,
+          33.825191497802734,
+          -631.4939492597232
+        ],
+        [
+          216.0,
+          34.840118408203125,
+          -637.0897231371475
+        ],
+        [
+          224.0,
+          35.70423126220703,
+          -639.49501990472
+        ],
+        [
+          232.0,
+          36.39065170288086,
+          -640.0
+        ],
+        [
+          240.0,
+          36.818946838378906,
+          -640.50498009528
+        ],
+        [
+          248.0,
+          37.22676086425781,
+          -642.9102768628526
+        ],
+        [
+          256.0,
+          38.018428802490234,
+          -648.50498009528
+        ],
+        [
+          264.0,
+          38.9044303894043,
+          -656.0
+        ],
+        [
+          272.0,
+          39.729061126708984,
+          -663.49501990472
+        ],
+        [
+          280.0,
+          40.76298904418945,
+          -669.0897231371475
+        ],
+        [
+          288.0,
+          41.6268310546875,
+          -671.49501990472
+        ],
+        [
+          296.0,
+          42.35424041748047,
+          -671.9989293550032
+        ],
+        [
+          304.0,
+          42.82045364379883,
+          -672.4673839123259
+        ],
+        [
+          312.0,
+          43.217384338378906,
+          -674.4052967675726
+        ],
+        [
+          320.0,
+          43.77073669433594,
+          -677.6322994153817
+        ],
+        [
+          328.0,
+          43.57883071899414,
+          -680.0000000000001
+        ],
+        [
+          336.0,
+          43.05015563964844,
+          -682.3677005846184
+        ],
+        [
+          344.0,
+          42.15378189086914,
+          -685.5947032324275
+        ],
+        [
+          352.0,
+          41.31863021850586,
+          -687.5326160876741
+        ],
+        [
+          360.0,
+          40.71391296386719,
+          -688.0010706449971
+        ],
+        [
+          368.0,
+          40.31977462768555,
+          -688.50498009528
+        ],
+        [
+          376.0,
+          39.92072296142578,
+          -690.9102768628525
+        ],
+        [
+          384.0,
+          39.08706283569336,
+          -696.5060507402769
+        ],
+        [
+          392.0,
+          38.23719787597656,
+          -704.0375961829542
+        ],
+        [
+          400.0,
+          37.32459259033203,
+          -712.0010706449968
+        ],
+        [
+          408.0,
+          36.39805221557617,
+          -720.0
+        ],
+        [
+          416.0,
+          35.551483154296875,
+          -728.0
+        ],
+        [
+          424.0,
+          34.59648895263672,
+          -735.9989293550032
+        ],
+        [
+          432.0,
+          33.68449783325195,
+          -743.9624038170459
+        ],
+        [
+          440.00000000000006,
+          32.83698272705078,
+          -751.4939492597232
+        ],
+        [
+          448.0,
+          31.81513023376465,
+          -757.0897231371475
+        ],
+        [
+          456.0,
+          30.945154190063477,
+          -759.4939492597232
+        ],
+        [
+          464.0,
+          30.153501510620117,
+          -759.9624038170459
+        ],
+        [
+          472.0,
+          29.448383331298828,
+          -759.998929355003
+        ],
+        [
+          480.0,
+          28.783493041992188,
+          -760.0
+        ],
+        [
+          488.0,
+          28.049266815185547,
+          -760.0
+        ],
+        [
+          496.0,
+          27.40607261657715,
+          -760.0
+        ],
+        [
+          504.0,
+          26.79666519165039,
+          -759.998929355003
+        ],
+        [
+          512.0002676612492,
+          26.275501251220703,
+          -759.9621361557968
+        ],
+        [
+          520.0080607394924,
+          25.94251823425293,
+          -759.4858885202308
+        ],
+        [
+          528.0781791501305,
+          25.38672637939453,
+          -757.011543987017
+        ],
+        [
+          536.0482782229237,
+          24.636947631835938,
+          -751.4456710367995
+        ],
+        [
+          546.0,
+          23.758773803710938,
+          -742.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "HighlandObservatory__SoutheastLighthouse",
+      "sites": [
+        1,
+        11
+      ],
+      "points": [
+        [
+          546.0,
+          23.758773803710938,
+          -742.0
+        ],
+        [
+          553.1355720693857,
+          24.613311767578125,
+          -751.9506511320794
+        ],
+        [
+          560.1555128060326,
+          25.551883697509766,
+          -759.8842246669154
+        ],
+        [
+          568.0102020294862,
+          26.523372650146484,
+          -767.4858885202308
+        ],
+        [
+          576.0002676612493,
+          27.53758430480957,
+          -773.0894554758983
+        ],
+        [
+          584.0,
+          28.401641845703125,
+          -775.4939492597232
+        ],
+        [
+          592.0,
+          29.20949935913086,
+          -775.9624038170459
+        ],
+        [
+          600.0,
+          29.852890014648438,
+          -775.9989293550032
+        ],
+        [
+          608.0,
+          30.49102210998535,
+          -776.0
+        ],
+        [
+          616.0,
+          31.149465560913086,
+          -776.0
+        ],
+        [
+          624.0,
+          31.74031639099121,
+          -776.0
+        ],
+        [
+          632.0,
+          32.42648696899414,
+          -776.0
+        ],
+        [
+          640.0,
+          33.04742431640625,
+          -776.0
+        ],
+        [
+          648.0,
+          33.63028335571289,
+          -776.0
+        ],
+        [
+          656.0,
+          34.14728927612305,
+          -776.0
+        ],
+        [
+          664.0,
+          34.428375244140625,
+          -775.9989293550032
+        ],
+        [
+          672.0,
+          34.60553741455078,
+          -775.9634744620429
+        ],
+        [
+          680.0000000000001,
+          34.88094711303711,
+          -775.5315454426773
+        ],
+        [
+          688.0,
+          35.30948257446289,
+          -773.5957738774243
+        ],
+        [
+          696.0,
+          36.22040557861328,
+          -770.4042261225757
+        ],
+        [
+          704.0,
+          37.074424743652344,
+          -768.4684545573228
+        ],
+        [
+          712.0,
+          37.86250305175781,
+          -768.0365255379572
+        ],
+        [
+          719.9994646775016,
+          38.63359069824219,
+          -768.0013383062462
+        ],
+        [
+          727.9806665860244,
+          39.448387145996094,
+          -768.0091313844894
+        ],
+        [
+          735.7276412158861,
+          40.01953125,
+          -768.1168459780815
+        ],
+        [
+          742.2725027844598,
+          40.0439453125,
+          -768.5919251461546
+        ],
+        [
+          748.0,
+          40.0439453125,
+          -770.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "SouthernAirfield__ValleySettlement",
+      "sites": [
+        3,
+        8
+      ],
+      "points": [
+        [
+          132.0,
+          24.95513916015625,
+          -552.0
+        ],
+        [
+          120.64020336907825,
+          25.491493225097656,
+          -546.3677005846184
+        ],
+        [
+          112.19502512821195,
+          25.912832260131836,
+          -544.4673839123259
+        ],
+        [
+          104.01719212398167,
+          26.0294189453125,
+          -544.0365255379572
+        ],
+        [
+          96.00053532249845,
+          26.0294189453125,
+          -544.001070644997
+        ],
+        [
+          88.0,
+          25.937231063842773,
+          -544.0
+        ],
+        [
+          80.0,
+          25.756942749023438,
+          -544.0
+        ],
+        [
+          72.0,
+          25.5034122467041,
+          -544.0
+        ],
+        [
+          64.0,
+          25.225467681884766,
+          -544.0
+        ],
+        [
+          56.0,
+          24.891077041625977,
+          -544.0
+        ],
+        [
+          48.0,
+          24.5719051361084,
+          -544.0
+        ],
+        [
+          40.0,
+          24.192398071289062,
+          -544.0
+        ],
+        [
+          32.0,
+          23.68729019165039,
+          -544.0
+        ],
+        [
+          24.0,
+          23.11069679260254,
+          -544.0
+        ],
+        [
+          16.0,
+          22.412017822265625,
+          -544.0
+        ],
+        [
+          8.0,
+          21.638324737548828,
+          -544.0
+        ],
+        [
+          0.0,
+          20.902145385742188,
+          -543.9989293550032
+        ],
+        [
+          -8.0,
+          20.16597557067871,
+          -543.9624038170459
+        ],
+        [
+          -16.0,
+          19.64006233215332,
+          -543.4939492597232
+        ],
+        [
+          -24.0,
+          19.09225845336914,
+          -541.0907937821444
+        ],
+        [
+          -32.0,
+          18.249160766601562,
+          -535.5315454426773
+        ],
+        [
+          -40.0,
+          17.410736083984375,
+          -528.4684545573228
+        ],
+        [
+          -48.0,
+          16.386201858520508,
+          -522.9092062178556
+        ],
+        [
+          -56.0,
+          15.504755020141602,
+          -520.5060507402769
+        ],
+        [
+          -64.0,
+          14.740710258483887,
+          -520.0375961829541
+        ],
+        [
+          -72.0,
+          14.056819915771484,
+          -520.001070644997
+        ],
+        [
+          -80.0,
+          13.438812255859375,
+          -520.0
+        ],
+        [
+          -88.0,
+          12.798727035522461,
+          -520.0
+        ],
+        [
+          -96.0,
+          12.180532455444336,
+          -519.9989293550032
+        ],
+        [
+          -104.0,
+          11.6732759475708,
+          -519.9624038170459
+        ],
+        [
+          -112.0,
+          11.223735809326172,
+          -519.49501990472
+        ],
+        [
+          -120.0,
+          10.801356315612793,
+          -517.1262486751046
+        ],
+        [
+          -128.0,
+          10.056376457214355,
+          -511.9634744620428
+        ],
+        [
+          -136.0,
+          9.378005981445312,
+          -506.40422612257566
+        ],
+        [
+          -144.0,
+          9.857452392578125,
+          -502.1007539727044
+        ],
+        [
+          -152.0,
+          10.736705780029297,
+          -498.44182230552974
+        ],
+        [
+          -160.0,
+          11.225784301757812,
+          -496.46952520231974
+        ],
+        [
+          -168.0,
+          11.503728866577148,
+          -496.0365255379572
+        ],
+        [
+          -176.0,
+          11.7328462600708,
+          -496.00107064499696
+        ],
+        [
+          -184.0,
+          11.937546730041504,
+          -495.9989293550031
+        ],
+        [
+          -192.0,
+          12.117825508117676,
+          -495.9634744620429
+        ],
+        [
+          -200.0,
+          12.285712242126465,
+          -495.5304747976803
+        ],
+        [
+          -208.0,
+          12.429962158203125,
+          -493.55817769447026
+        ],
+        [
+          -216.0,
+          12.576446533203125,
+          -489.89817538229875
+        ],
+        [
+          -224.0,
+          12.478790283203125,
+          -485.5592483394672
+        ],
+        [
+          -232.0,
+          12.03650188446045,
+          -479.5680709806344
+        ],
+        [
+          -240.0,
+          11.131070137023926,
+          -472.4695252023197
+        ],
+        [
+          -248.0,
+          10.120238304138184,
+          -466.90920621785557
+        ],
+        [
+          -256.0,
+          9.247357368469238,
+          -464.5060507402769
+        ],
+        [
+          -264.0,
+          8.490655899047852,
+          -464.03652553795723
+        ],
+        [
+          -272.0,
+          7.9822187423706055,
+          -463.9634744620429
+        ],
+        [
+          -280.0,
+          7.539353370666504,
+          -463.49501990472004
+        ],
+        [
+          -288.0,
+          7.156196594238281,
+          -461.12624867510465
+        ],
+        [
+          -296.0,
+          6.961836338043213,
+          -455.9624038170459
+        ],
+        [
+          -304.0,
+          7.082954406738281,
+          -450.36662993962153
+        ],
+        [
+          -312.0,
+          7.107368469238281,
+          -445.5947032324275
+        ],
+        [
+          -320.0,
+          7.00970458984375,
+          -439.5315454426772
+        ],
+        [
+          -328.0,
+          6.86322021484375,
+          -431.9645451070398
+        ],
+        [
+          -336.0,
+          6.889432430267334,
+          -424.0354548929603
+        ],
+        [
+          -344.0,
+          7.242854118347168,
+          -416.46845455732284
+        ],
+        [
+          -352.0,
+          7.961906433105469,
+          -410.40422612257566
+        ],
+        [
+          -360.0,
+          8.727954864501953,
+          -405.5957738774244
+        ],
+        [
+          -368.0,
+          9.536815643310547,
+          -399.53154544267716
+        ],
+        [
+          -376.0,
+          10.38654899597168,
+          -391.9634744620429
+        ],
+        [
+          -384.0,
+          11.31285285949707,
+          -383.9989293550031
+        ],
+        [
+          -392.0,
+          12.185806274414062,
+          -376.0
+        ],
+        [
+          -400.0,
+          13.126633644104004,
+          -368.00107064499696
+        ],
+        [
+          -408.0,
+          14.026166915893555,
+          -360.0365255379572
+        ],
+        [
+          -415.9998929355003,
+          14.874943733215332,
+          -352.4683207266982
+        ],
+        [
+          -423.9952768012074,
+          15.940109252929688,
+          -346.4007310753279
+        ],
+        [
+          -431.91459478081646,
+          16.775924682617188,
+          -341.5760177163347
+        ],
+        [
+          -439.2195830183073,
+          16.189956665039062,
+          -335.7792297928309
+        ],
+        [
+          -447.2,
+          15.408645629882812,
+          -327.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "ValleySettlement__ForestLookout",
+      "sites": [
+        8,
+        12
+      ],
+      "points": [
+        [
+          -447.2,
+          15.408645629882812,
+          -327.0
+        ],
+        [
+          -456.30687686476915,
+          16.58989143371582,
+          -333.33633684230426
+        ],
+        [
+          -463.9919284367184,
+          17.185279846191406,
+          -335.4741930986334
+        ],
+        [
+          -471.9974180912012,
+          17.686664581298828,
+          -335.95783812480124
+        ],
+        [
+          -479.99989293550027,
+          18.120716094970703,
+          -335.9622699864213
+        ],
+        [
+          -488.0,
+          18.47955894470215,
+          -335.53154544267716
+        ],
+        [
+          -496.0,
+          18.793699264526367,
+          -333.5957738774244
+        ],
+        [
+          -504.0,
+          19.488554000854492,
+          -330.4031554775787
+        ],
+        [
+          -512.0,
+          20.173404693603516,
+          -328.4308583743687
+        ],
+        [
+          -520.0,
+          20.535919189453125,
+          -327.5304747976803
+        ],
+        [
+          -528.0,
+          20.729448318481445,
+          -325.0907937821445
+        ],
+        [
+          -535.9989293550032,
+          20.133285522460938,
+          -319.4939492597231
+        ],
+        [
+          -543.9634744620429,
+          19.45826530456543,
+          -311.9624038170459
+        ],
+        [
+          -551.5315454426773,
+          18.743572235107422,
+          -303.9989293550031
+        ],
+        [
+          -557.5957738774244,
+          18.0943603515625,
+          -296.0
+        ],
+        [
+          -562.4031554775787,
+          17.456119537353516,
+          -288.0
+        ],
+        [
+          -568.4319290193656,
+          16.709796905517578,
+          -280.0
+        ],
+        [
+          -575.5680709806344,
+          15.89697265625,
+          -272.0
+        ],
+        [
+          -581.5968445224213,
+          15.065964698791504,
+          -264.0
+        ],
+        [
+          -586.4042261225757,
+          14.334381103515625,
+          -256.0
+        ],
+        [
+          -592.4684545573228,
+          13.526896476745605,
+          -248.0
+        ],
+        [
+          -600.0365255379572,
+          12.639436721801758,
+          -240.0
+        ],
+        [
+          -608.001070644997,
+          11.76681900024414,
+          -232.00107064499693
+        ],
+        [
+          -616.0,
+          10.742913246154785,
+          -224.03759618295408
+        ],
+        [
+          -624.0,
+          9.657161712646484,
+          -216.50605074027692
+        ],
+        [
+          -631.9996252742511,
+          8.64447021484375,
+          -210.90947387910484
+        ],
+        [
+          -639.986145416718,
+          7.747603893280029,
+          -208.47865658680905
+        ],
+        [
+          -647.797748802735,
+          6.9760236740112305,
+          -207.68705824870966
+        ],
+        [
+          -654.6276578721527,
+          6.7899627685546875,
+          -206.2252952065331
+        ],
+        [
+          -661.2,
+          6.7655487060546875,
+          -202.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "ForestLookout__LakesideHamlet",
+      "sites": [
+        12,
+        7
+      ],
+      "points": [
+        [
+          -661.2,
+          6.7655487060546875,
+          -202.0
+        ],
+        [
+          -671.7149517186147,
+          5.919013023376465,
+          -200.5908545011577
+        ],
+        [
+          -679.875082458637,
+          5.5260186195373535,
+          -200.0803204401243
+        ],
+        [
+          -687.988286706712,
+          5.19458532333374,
+          -199.53960618216956
+        ],
+        [
+          -695.9985546292542,
+          4.857171058654785,
+          -197.55844535571953
+        ],
+        [
+          -703.962403817046,
+          4.397239685058594,
+          -193.89817538229872
+        ],
+        [
+          -711.4939492597232,
+          4.295155048370361,
+          -189.55817769447032
+        ],
+        [
+          -717.0897231371475,
+          4.945775985717773,
+          -183.53047479768028
+        ],
+        [
+          -719.4939492597232,
+          5.453297138214111,
+          -175.96347446204285
+        ],
+        [
+          -719.9624038170459,
+          5.860658168792725,
+          -167.9989293550031
+        ],
+        [
+          -719.9989293550032,
+          6.236213684082031,
+          -160.0
+        ],
+        [
+          -720.0,
+          6.423728942871094,
+          -152.0
+        ],
+        [
+          -720.0,
+          6.419432163238525,
+          -144.0
+        ],
+        [
+          -720.0,
+          6.1680498123168945,
+          -136.0
+        ],
+        [
+          -720.0,
+          5.844786643981934,
+          -128.0
+        ],
+        [
+          -720.0,
+          5.508640289306641,
+          -120.0
+        ],
+        [
+          -720.001070644997,
+          5.123660087585449,
+          -112.0
+        ],
+        [
+          -720.0375961829541,
+          4.6650285720825195,
+          -104.0
+        ],
+        [
+          -720.506050740277,
+          4.113393306732178,
+          -96.0
+        ],
+        [
+          -722.9092062178556,
+          3.5573010444641113,
+          -88.0
+        ],
+        [
+          -728.4684545573227,
+          2.611377477645874,
+          -80.0
+        ],
+        [
+          -735.5315454426773,
+          1.535723328590393,
+          -72.0
+        ],
+        [
+          -741.0903655241457,
+          0.5247114896774292,
+          -64.0
+        ],
+        [
+          -743.4793390445402,
+          -0.35277965664863586,
+          -56.00107064499693
+        ],
+        [
+          -743.7754502521157,
+          -1.223588466644287,
+          -48.038666827951005
+        ],
+        [
+          -743.0518491211557,
+          -1.809736967086792,
+          -40.54364692323098
+        ],
+        [
+          -740.8,
+          -2.6588516235351562,
+          -32.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "ValleySettlement__OldVillage",
+      "sites": [
+        8,
+        6
+      ],
+      "points": [
+        [
+          -447.2,
+          15.408645629882812,
+          -327.0
+        ],
+        [
+          -439.25717920126135,
+          16.19618034362793,
+          -336.2476843501537
+        ],
+        [
+          -432.4206455210933,
+          16.75977897644043,
+          -343.98024383891027
+        ],
+        [
+          -426.9055536640599,
+          15.884979248046875,
+          -351.99650495275233
+        ],
+        [
+          -424.5059436757772,
+          16.709510803222656,
+          -359.9998661693754
+        ],
+        [
+          -424.0365255379572,
+          16.841175079345703,
+          -368.0
+        ],
+        [
+          -423.9645451070398,
+          16.307666778564453,
+          -376.0
+        ],
+        [
+          -423.5315454426772,
+          15.802621841430664,
+          -384.0
+        ],
+        [
+          -421.59577387742445,
+          15.328503608703613,
+          -392.0
+        ],
+        [
+          -418.40422612257566,
+          14.436391830444336,
+          -400.0
+        ],
+        [
+          -416.46845455732284,
+          13.592957496643066,
+          -408.0
+        ],
+        [
+          -416.03652553795723,
+          12.919836044311523,
+          -416.0
+        ],
+        [
+          -416.00107064499696,
+          12.233266830444336,
+          -424.0
+        ],
+        [
+          -416.0,
+          11.6127290725708,
+          -432.0
+        ],
+        [
+          -416.0,
+          10.977720260620117,
+          -440.00000000000006
+        ],
+        [
+          -416.0,
+          10.293301582336426,
+          -448.0
+        ],
+        [
+          -416.0,
+          9.630380630493164,
+          -456.0
+        ],
+        [
+          -415.99892935500316,
+          8.863142967224121,
+          -464.0
+        ],
+        [
+          -415.9634744620429,
+          8.158007621765137,
+          -472.0
+        ],
+        [
+          -415.53154544267727,
+          7.591984748840332,
+          -480.0
+        ],
+        [
+          -413.59577387742445,
+          6.9307355880737305,
+          -488.0
+        ],
+        [
+          -410.40422612257566,
+          6.032749176025391,
+          -496.0
+        ],
+        [
+          -408.46845455732284,
+          5.184206962585449,
+          -504.0
+        ],
+        [
+          -408.03652553795723,
+          4.382997989654541,
+          -512.0
+        ],
+        [
+          -408.00107064499696,
+          3.5944595336914062,
+          -520.0
+        ],
+        [
+          -408.0,
+          2.8178513050079346,
+          -528.0
+        ],
+        [
+          -408.0,
+          2.352973461151123,
+          -536.0
+        ],
+        [
+          -408.0,
+          2.0750319957733154,
+          -544.0
+        ],
+        [
+          -408.0,
+          1.7970870733261108,
+          -552.0
+        ],
+        [
+          -408.0,
+          1.565032958984375,
+          -560.0
+        ],
+        [
+          -408.0,
+          1.394134521484375,
+          -568.0
+        ],
+        [
+          -408.0,
+          1.3697052001953125,
+          -576.0
+        ],
+        [
+          -408.0,
+          1.491790771484375,
+          -584.0
+        ],
+        [
+          -408.0,
+          1.5996109247207642,
+          -592.0
+        ],
+        [
+          -408.0,
+          1.7115249633789062,
+          -600.0
+        ],
+        [
+          -408.0,
+          1.8336105346679688,
+          -608.0
+        ],
+        [
+          -408.0,
+          1.945133924484253,
+          -616.0
+        ],
+        [
+          -408.0,
+          2.076594591140747,
+          -624.0
+        ],
+        [
+          -408.0,
+          2.232461452484131,
+          -632.0
+        ],
+        [
+          -408.0,
+          2.412750244140625,
+          -640.0
+        ],
+        [
+          -408.0,
+          2.6199843883514404,
+          -648.0
+        ],
+        [
+          -408.0,
+          2.9561362266540527,
+          -656.0
+        ],
+        [
+          -408.00107064499696,
+          3.316702365875244,
+          -664.0
+        ],
+        [
+          -408.0375961829541,
+          3.7016899585723877,
+          -672.0
+        ],
+        [
+          -408.5060507402769,
+          3.997802734375,
+          -680.0000000000001
+        ],
+        [
+          -410.9102768628525,
+          4.27545166015625,
+          -687.9989293550032
+        ],
+        [
+          -416.5060507402769,
+          4.673962593078613,
+          -695.9624038170459
+        ],
+        [
+          -424.03759618295413,
+          5.327058792114258,
+          -703.49501990472
+        ],
+        [
+          -432.00107064499696,
+          6.203987121582031,
+          -709.1262486751048
+        ],
+        [
+          -440.00000000000006,
+          6.42958927154541,
+          -711.9624038170459
+        ],
+        [
+          -448.0,
+          6.778134822845459,
+          -714.3666299396216
+        ],
+        [
+          -456.0,
+          7.327110290527344,
+          -717.5947032324275
+        ],
+        [
+          -464.0,
+          7.369297981262207,
+          -719.5315454426773
+        ],
+        [
+          -472.0,
+          7.140181064605713,
+          -719.9634744620428
+        ],
+        [
+          -480.0,
+          6.7626190185546875,
+          -719.9989293550032
+        ],
+        [
+          -488.0,
+          6.2217607498168945,
+          -720.0
+        ],
+        [
+          -496.0,
+          5.700644016265869,
+          -720.0
+        ],
+        [
+          -504.0,
+          5.115649700164795,
+          -720.0
+        ],
+        [
+          -512.0,
+          4.550379753112793,
+          -720.0
+        ],
+        [
+          -520.0,
+          4.080810546875,
+          -719.9989293550032
+        ],
+        [
+          -527.9998394032505,
+          3.631967544555664,
+          -719.9621361557968
+        ],
+        [
+          -535.9934505243095,
+          3.3787636756896973,
+          -719.4858885202308
+        ],
+        [
+          -543.8912255852001,
+          3.12762451171875,
+          -717.0115439870169
+        ],
+        [
+          -551.1011979890762,
+          2.419586181640625,
+          -711.4456710367995
+        ],
+        [
+          -558.8,
+          1.7115249633789062,
+          -702.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "SouthernAirfield__OldVillage",
+      "sites": [
+        3,
+        6
+      ],
+      "points": [
+        [
+          132.0,
+          24.95513916015625,
+          -552.0
+        ],
+        [
+          120.64020336907825,
+          25.429433822631836,
+          -554.9113475078494
+        ],
+        [
+          112.19502512821195,
+          26.425098419189453,
+          -560.5060507402769
+        ],
+        [
+          104.01719212398167,
+          27.453624725341797,
+          -568.0375961829541
+        ],
+        [
+          96.00053532249845,
+          28.52601432800293,
+          -576.001070644997
+        ],
+        [
+          88.0,
+          29.44820785522461,
+          -584.0
+        ],
+        [
+          80.0,
+          30.37702178955078,
+          -592.0
+        ],
+        [
+          72.0,
+          31.28938865661621,
+          -600.0
+        ],
+        [
+          64.0,
+          32.10478210449219,
+          -607.9989293550032
+        ],
+        [
+          56.0,
+          31.592403411865234,
+          -615.9634744620429
+        ],
+        [
+          48.0,
+          30.717208862304688,
+          -623.5315454426773
+        ],
+        [
+          40.0,
+          29.91069793701172,
+          -629.5947032324275
+        ],
+        [
+          32.0,
+          29.176959991455078,
+          -634.3666299396216
+        ],
+        [
+          24.0,
+          28.690719604492188,
+          -639.9624038170459
+        ],
+        [
+          16.0,
+          28.667543411254883,
+          -645.1262486751048
+        ],
+        [
+          8.0,
+          28.827829360961914,
+          -647.49501990472
+        ],
+        [
+          0.0,
+          28.95928955078125,
+          -647.962403817046
+        ],
+        [
+          -8.0,
+          29.03253173828125,
+          -648.0
+        ],
+        [
+          -16.0,
+          28.989368438720703,
+          -648.0375961829542
+        ],
+        [
+          -24.0,
+          28.851289749145508,
+          -648.5060507402769
+        ],
+        [
+          -32.0,
+          28.543394088745117,
+          -650.9102768628525
+        ],
+        [
+          -40.0,
+          27.77556037902832,
+          -656.5060507402769
+        ],
+        [
+          -48.0,
+          26.90135955810547,
+          -664.0365255379572
+        ],
+        [
+          -56.0,
+          26.001924514770508,
+          -671.9645451070398
+        ],
+        [
+          -64.0,
+          25.124841690063477,
+          -679.5315454426773
+        ],
+        [
+          -72.0,
+          24.294797897338867,
+          -685.5957738774243
+        ],
+        [
+          -80.0,
+          23.587860107421875,
+          -690.4031554775788
+        ],
+        [
+          -88.0,
+          22.754560470581055,
+          -696.4308583743688
+        ],
+        [
+          -96.0,
+          21.8908634185791,
+          -703.5304747976804
+        ],
+        [
+          -104.0,
+          20.872800827026367,
+          -709.0907937821445
+        ],
+        [
+          -112.0,
+          19.986469268798828,
+          -711.4939492597232
+        ],
+        [
+          -120.0,
+          19.210647583007812,
+          -711.9624038170459
+        ],
+        [
+          -128.0,
+          18.593036651611328,
+          -711.9989293550032
+        ],
+        [
+          -136.0,
+          17.933618545532227,
+          -712.0
+        ],
+        [
+          -144.0,
+          17.31736183166504,
+          -712.0
+        ],
+        [
+          -152.0,
+          16.649356842041016,
+          -712.0
+        ],
+        [
+          -160.0,
+          16.0180721282959,
+          -712.0
+        ],
+        [
+          -168.0,
+          15.402395248413086,
+          -712.0
+        ],
+        [
+          -176.0,
+          14.716623306274414,
+          -712.0
+        ],
+        [
+          -184.0,
+          14.098428726196289,
+          -712.0
+        ],
+        [
+          -192.0,
+          13.458734512329102,
+          -712.0
+        ],
+        [
+          -200.0,
+          12.815719604492188,
+          -712.0
+        ],
+        [
+          -208.0,
+          12.2110013961792,
+          -712.0
+        ],
+        [
+          -216.0,
+          11.524051666259766,
+          -712.0
+        ],
+        [
+          -224.0,
+          10.888751029968262,
+          -712.0
+        ],
+        [
+          -232.0,
+          10.268106460571289,
+          -712.0
+        ],
+        [
+          -240.0,
+          9.608497619628906,
+          -712.0
+        ],
+        [
+          -248.0,
+          8.992053031921387,
+          -712.0
+        ],
+        [
+          -256.0,
+          8.324429512023926,
+          -712.0
+        ],
+        [
+          -264.0,
+          7.692953586578369,
+          -712.0
+        ],
+        [
+          -272.0,
+          7.077485084533691,
+          -712.0
+        ],
+        [
+          -280.0,
+          6.415916442871094,
+          -712.0
+        ],
+        [
+          -288.0,
+          5.821932792663574,
+          -712.0
+        ],
+        [
+          -296.0,
+          5.290462970733643,
+          -712.0
+        ],
+        [
+          -304.0,
+          4.944348335266113,
+          -712.0
+        ],
+        [
+          -312.0,
+          4.8123016357421875,
+          -712.0
+        ],
+        [
+          -320.0,
+          4.7634735107421875,
+          -712.0
+        ],
+        [
+          -328.0,
+          4.7634735107421875,
+          -712.0
+        ],
+        [
+          -336.0,
+          4.7878875732421875,
+          -712.0
+        ],
+        [
+          -344.0,
+          4.849215507507324,
+          -712.0
+        ],
+        [
+          -352.0,
+          4.931848049163818,
+          -712.0
+        ],
+        [
+          -360.0,
+          5.03204345703125,
+          -712.0
+        ],
+        [
+          -368.0,
+          5.1297149658203125,
+          -712.0
+        ],
+        [
+          -376.0,
+          5.252957344055176,
+          -712.0
+        ],
+        [
+          -384.0,
+          5.373863220214844,
+          -712.0
+        ],
+        [
+          -392.0,
+          5.495948791503906,
+          -712.0
+        ],
+        [
+          -400.0,
+          5.618019104003906,
+          -712.0
+        ],
+        [
+          -408.0,
+          5.666847229003906,
+          -712.0
+        ],
+        [
+          -416.0,
+          5.666847229003906,
+          -712.0
+        ],
+        [
+          -424.0,
+          5.790292263031006,
+          -712.0010706449968
+        ],
+        [
+          -432.0,
+          6.2219557762146,
+          -712.0365255379572
+        ],
+        [
+          -440.00000000000006,
+          6.432894706726074,
+          -712.4684545573228
+        ],
+        [
+          -448.0,
+          6.779082298278809,
+          -714.4042261225757
+        ],
+        [
+          -456.0,
+          7.327110290527344,
+          -717.5957738774243
+        ],
+        [
+          -464.0,
+          7.369297981262207,
+          -719.5315454426773
+        ],
+        [
+          -472.0,
+          7.140181064605713,
+          -719.9634744620428
+        ],
+        [
+          -480.0,
+          6.7626190185546875,
+          -719.9989293550032
+        ],
+        [
+          -488.0,
+          6.2217607498168945,
+          -720.0
+        ],
+        [
+          -496.0,
+          5.700644016265869,
+          -720.0
+        ],
+        [
+          -504.0,
+          5.115649700164795,
+          -720.0
+        ],
+        [
+          -512.0,
+          4.550379753112793,
+          -720.0
+        ],
+        [
+          -520.0,
+          4.080810546875,
+          -719.9989293550032
+        ],
+        [
+          -527.9998394032505,
+          3.631967544555664,
+          -719.9621361557968
+        ],
+        [
+          -535.9934505243095,
+          3.3787636756896973,
+          -719.4858885202308
+        ],
+        [
+          -543.8912255852001,
+          3.12762451171875,
+          -717.0115439870169
+        ],
+        [
+          -551.1011979890762,
+          2.419586181640625,
+          -711.4456710367995
+        ],
+        [
+          -558.8,
+          1.7115249633789062,
+          -702.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "ClockTowerTown_Entry",
+      "points": [
+        [
+          319.6,
+          -11.936767578125,
+          93.0
+        ],
+        [
+          319.6,
+          -11.936767578125,
+          200.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "ClockTowerTown_Street",
+      "points": [
+        [
+          263.0,
+          -11.936767578125,
+          200.0
+        ],
+        [
+          437.0,
+          -11.936767578125,
+          200.0
+        ]
+      ],
+      "width": 7
+    },
+    {
+      "name": "HighlandObservatory_Entry",
+      "points": [
+        [
+          546.0,
+          23.758773803710938,
+          -742.0
+        ],
+        [
+          546.0,
+          23.758773803710938,
+          -650.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "HighlandObservatory_Street",
+      "points": [
+        [
+          503.0,
+          23.758773803710938,
+          -650.0
+        ],
+        [
+          637.0,
+          23.758773803710938,
+          -650.0
+        ]
+      ],
+      "width": 7
+    },
+    {
+      "name": "EasternPort_Entry",
+      "points": [
+        [
+          733.0,
+          -31.07855224609375,
+          330.0
+        ],
+        [
+          840.0,
+          -31.07855224609375,
+          330.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "EasternPort_Street",
+      "points": [
+        [
+          783.0,
+          -31.07855224609375,
+          330.0
+        ],
+        [
+          897.0,
+          -31.07855224609375,
+          330.0
+        ]
+      ],
+      "width": 7
+    },
+    {
+      "name": "SouthernAirfield_Entry",
+      "points": [
+        [
+          132.0,
+          24.95513916015625,
+          -552.0
+        ],
+        [
+          132.0,
+          24.95513916015625,
+          -450.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "SouthernAirfield_Street",
+      "points": [
+        [
+          38.0,
+          24.95513916015625,
+          -450.0
+        ],
+        [
+          322.0,
+          24.95513916015625,
+          -450.0
+        ]
+      ],
+      "width": 7
+    },
+    {
+      "name": "FreightDistrict_Entry",
+      "points": [
+        [
+          521.2,
+          -1.07183837890625,
+          -277.0
+        ],
+        [
+          521.2,
+          -1.07183837890625,
+          -180.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "FreightDistrict_Street",
+      "points": [
+        [
+          468.0,
+          -1.07183837890625,
+          -180.0
+        ],
+        [
+          632.0,
+          -1.07183837890625,
+          -180.0
+        ]
+      ],
+      "width": 7
+    },
+    {
+      "name": "CanalMarket_Entry",
+      "points": [
+        [
+          -145.6,
+          -31.07855224609375,
+          538.0
+        ],
+        [
+          -145.6,
+          -31.07855224609375,
+          630.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "CanalMarket_Street",
+      "points": [
+        [
+          -192.0,
+          -31.07855224609375,
+          630.0
+        ],
+        [
+          -48.0,
+          -31.07855224609375,
+          630.0
+        ]
+      ],
+      "width": 7
+    },
+    {
+      "name": "OldVillage_Entry",
+      "points": [
+        [
+          -558.8,
+          1.7115249633789062,
+          -702.0
+        ],
+        [
+          -558.8,
+          1.7115249633789062,
+          -610.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "OldVillage_Street",
+      "points": [
+        [
+          -612.0,
+          1.7115249633789062,
+          -610.0
+        ],
+        [
+          -448.0,
+          1.7115249633789062,
+          -610.0
+        ]
+      ],
+      "width": 7
+    },
+    {
+      "name": "LakesideHamlet_Entry",
+      "points": [
+        [
+          -740.8,
+          -2.6588516235351562,
+          -32.0
+        ],
+        [
+          -740.8,
+          -2.6588516235351562,
+          45.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "LakesideHamlet_Street",
+      "points": [
+        [
+          -777.0,
+          -2.6588516235351562,
+          45.0
+        ],
+        [
+          -663.0,
+          -2.6588516235351562,
+          45.0
+        ]
+      ],
+      "width": 7
+    },
+    {
+      "name": "ValleySettlement_Entry",
+      "points": [
+        [
+          -447.2,
+          15.408645629882812,
+          -327.0
+        ],
+        [
+          -447.2,
+          15.408645629882812,
+          -230.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "ValleySettlement_Street",
+      "points": [
+        [
+          -497.0,
+          15.408645629882812,
+          -230.0
+        ],
+        [
+          -343.0,
+          15.408645629882812,
+          -230.0
+        ]
+      ],
+      "width": 7
+    },
+    {
+      "name": "NorthernRidgeTown_Entry",
+      "points": [
+        [
+          271.2,
+          -30.83440399169922,
+          533.0
+        ],
+        [
+          271.2,
+          -30.83440399169922,
+          630.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "NorthernRidgeTown_Street",
+      "points": [
+        [
+          218.0,
+          -30.83440399169922,
+          630.0
+        ],
+        [
+          382.0,
+          -30.83440399169922,
+          630.0
+        ]
+      ],
+      "width": 7
+    },
+    {
+      "name": "CoastalHamlet_Entry",
+      "points": [
+        [
+          626.0,
+          -18.211563110351562,
+          538.0
+        ],
+        [
+          626.0,
+          -18.211563110351562,
+          630.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "CoastalHamlet_Street",
+      "points": [
+        [
+          583.0,
+          -18.211563110351562,
+          630.0
+        ],
+        [
+          717.0,
+          -18.211563110351562,
+          630.0
+        ]
+      ],
+      "width": 7
+    },
+    {
+      "name": "SoutheastLighthouse_Entry",
+      "points": [
+        [
+          748.0,
+          40.0439453125,
+          -770.0
+        ],
+        [
+          825.0,
+          40.0439453125,
+          -770.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "SoutheastLighthouse_Street",
+      "points": [
+        [
+          798.0,
+          40.0439453125,
+          -770.0
+        ],
+        [
+          852.0,
+          40.0439453125,
+          -770.0
+        ]
+      ],
+      "width": 7
+    },
+    {
+      "name": "ForestLookout_Entry",
+      "points": [
+        [
+          -661.2,
+          6.7655487060546875,
+          -202.0
+        ],
+        [
+          -661.2,
+          6.7655487060546875,
+          -145.0
+        ]
+      ],
+      "width": 8
+    },
+    {
+      "name": "ForestLookout_Street",
+      "points": [
+        [
+          -677.0,
+          6.7655487060546875,
+          -145.0
+        ],
+        [
+          -623.0,
+          6.7655487060546875,
+          -145.0
+        ]
+      ],
+      "width": 7
+    }
+  ],
+  "vehicle_spawns": [
+    {
+      "district": "ClockTowerTown",
+      "position_m": [
+        289.2,
+        -11.936767578125,
+        209
+      ],
+      "exit_world_xz_m": [
+        289.2,
+        200
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_01"
+    },
+    {
+      "district": "ClockTowerTown",
+      "position_m": [
+        410.8,
+        -11.936767578125,
+        209
+      ],
+      "exit_world_xz_m": [
+        410.8,
+        200
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_02"
+    },
+    {
+      "district": "ClockTowerTown",
+      "position_m": [
+        350.0,
+        -11.936767578125,
+        179.78299980163575
+      ],
+      "exit_world_xz_m": [
+        350.0,
+        200
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "ClockTowerTown_garage_apartment_06",
+      "yaw_degrees": 0.0,
+      "name": "VehicleSpawnPoint_03"
+    },
+    {
+      "district": "HighlandObservatory",
+      "position_m": [
+        522.0,
+        23.758773803710938,
+        -641
+      ],
+      "exit_world_xz_m": [
+        522.0,
+        -650
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_04"
+    },
+    {
+      "district": "HighlandObservatory",
+      "position_m": [
+        618.0,
+        23.758773803710938,
+        -641
+      ],
+      "exit_world_xz_m": [
+        618.0,
+        -650
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_05"
+    },
+    {
+      "district": "HighlandObservatory",
+      "position_m": [
+        522.0,
+        23.758773803710938,
+        -660.9170001983642
+      ],
+      "exit_world_xz_m": [
+        522.0,
+        -650
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "HighlandObservatory_garage_apartment_04",
+      "yaw_degrees": 0.0,
+      "name": "VehicleSpawnPoint_06"
+    },
+    {
+      "district": "HighlandObservatory",
+      "position_m": [
+        618.0,
+        23.758773803710938,
+        -658.3749999046325
+      ],
+      "exit_world_xz_m": [
+        618.0,
+        -650
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "HighlandObservatory_two_bedroom_garage_house_05",
+      "yaw_degrees": 0.0,
+      "name": "VehicleSpawnPoint_07"
+    },
+    {
+      "district": "EasternPort",
+      "position_m": [
+        798.4,
+        -31.07855224609375,
+        339
+      ],
+      "exit_world_xz_m": [
+        798.4,
+        330
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_08"
+    },
+    {
+      "district": "EasternPort",
+      "position_m": [
+        881.6,
+        -31.07855224609375,
+        339
+      ],
+      "exit_world_xz_m": [
+        881.6,
+        330
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_09"
+    },
+    {
+      "district": "EasternPort",
+      "position_m": [
+        798.4,
+        -31.07855224609375,
+        362.51700019836426
+      ],
+      "exit_world_xz_m": [
+        798.4,
+        330
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "EasternPort_garage_apartment_02",
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_10"
+    },
+    {
+      "district": "EasternPort",
+      "position_m": [
+        881.6,
+        -31.07855224609375,
+        359.97499990463257
+      ],
+      "exit_world_xz_m": [
+        881.6,
+        330
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "EasternPort_two_bedroom_garage_house_03",
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_11"
+    },
+    {
+      "district": "SouthernAirfield",
+      "position_m": [
+        72,
+        24.95513916015625,
+        -413
+      ],
+      "exit_world_xz_m": [
+        72,
+        -450
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_12"
+    },
+    {
+      "district": "SouthernAirfield",
+      "position_m": [
+        285,
+        24.95513916015625,
+        -413
+      ],
+      "exit_world_xz_m": [
+        285,
+        -450
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_13"
+    },
+    {
+      "district": "FreightDistrict",
+      "position_m": [
+        492.4,
+        -1.07183837890625,
+        -171
+      ],
+      "exit_world_xz_m": [
+        492.4,
+        -180
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_14"
+    },
+    {
+      "district": "FreightDistrict",
+      "position_m": [
+        607.6,
+        -1.07183837890625,
+        -171
+      ],
+      "exit_world_xz_m": [
+        607.6,
+        -180
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_15"
+    },
+    {
+      "district": "FreightDistrict",
+      "position_m": [
+        497.0,
+        -1.07183837890625,
+        -154.125
+      ],
+      "exit_world_xz_m": [
+        497.0,
+        -180
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "FreightDistrict_warehouse_loading_dock_02",
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_16"
+    },
+    {
+      "district": "FreightDistrict",
+      "position_m": [
+        603.0,
+        -1.07183837890625,
+        -154.125
+      ],
+      "exit_world_xz_m": [
+        603.0,
+        -180
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "FreightDistrict_warehouse_loading_dock_03",
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_17"
+    },
+    {
+      "district": "FreightDistrict",
+      "position_m": [
+        495.0,
+        -1.07183837890625,
+        -195.51700019836426
+      ],
+      "exit_world_xz_m": [
+        495.0,
+        -180
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "FreightDistrict_garage_apartment_04",
+      "yaw_degrees": 0.0,
+      "name": "VehicleSpawnPoint_18"
+    },
+    {
+      "district": "FreightDistrict",
+      "position_m": [
+        602.0,
+        -1.07183837890625,
+        -192.97499990463257
+      ],
+      "exit_world_xz_m": [
+        602.0,
+        -180
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "FreightDistrict_two_bedroom_garage_house_05",
+      "yaw_degrees": 0.0,
+      "name": "VehicleSpawnPoint_19"
+    },
+    {
+      "district": "CanalMarket",
+      "position_m": [
+        -171.2,
+        -31.07855224609375,
+        639
+      ],
+      "exit_world_xz_m": [
+        -171.2,
+        630
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_20"
+    },
+    {
+      "district": "CanalMarket",
+      "position_m": [
+        -68.8,
+        -31.07855224609375,
+        639
+      ],
+      "exit_world_xz_m": [
+        -68.8,
+        630
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_21"
+    },
+    {
+      "district": "CanalMarket",
+      "position_m": [
+        -68.8,
+        -31.07855224609375,
+        662.5170001983643
+      ],
+      "exit_world_xz_m": [
+        -68.8,
+        630
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "CanalMarket_garage_apartment_03",
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_22"
+    },
+    {
+      "district": "CanalMarket",
+      "position_m": [
+        -171.2,
+        -31.07855224609375,
+        621.6250000953675
+      ],
+      "exit_world_xz_m": [
+        -171.2,
+        630
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "CanalMarket_two_bedroom_garage_house_04",
+      "yaw_degrees": 0.0,
+      "name": "VehicleSpawnPoint_23"
+    },
+    {
+      "district": "OldVillage",
+      "position_m": [
+        -587.6,
+        1.7115249633789062,
+        -601
+      ],
+      "exit_world_xz_m": [
+        -587.6,
+        -610
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_24"
+    },
+    {
+      "district": "OldVillage",
+      "position_m": [
+        -472.4,
+        1.7115249633789062,
+        -601
+      ],
+      "exit_world_xz_m": [
+        -472.4,
+        -610
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_25"
+    },
+    {
+      "district": "OldVillage",
+      "position_m": [
+        -587.6,
+        1.7115249633789062,
+        -580.0250000953674
+      ],
+      "exit_world_xz_m": [
+        -587.6,
+        -610
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "OldVillage_two_bedroom_garage_house_02",
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_26"
+    },
+    {
+      "district": "OldVillage",
+      "position_m": [
+        -530.0,
+        1.7115249633789062,
+        -620.9170001983642
+      ],
+      "exit_world_xz_m": [
+        -530.0,
+        -610
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "OldVillage_garage_apartment_06",
+      "yaw_degrees": 0.0,
+      "name": "VehicleSpawnPoint_27"
+    },
+    {
+      "district": "LakesideHamlet",
+      "position_m": [
+        -761.6,
+        -2.6588516235351562,
+        54
+      ],
+      "exit_world_xz_m": [
+        -761.6,
+        45
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_28"
+    },
+    {
+      "district": "LakesideHamlet",
+      "position_m": [
+        -678.4,
+        -2.6588516235351562,
+        54
+      ],
+      "exit_world_xz_m": [
+        -678.4,
+        45
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_29"
+    },
+    {
+      "district": "ValleySettlement",
+      "position_m": [
+        -474.4,
+        15.408645629882812,
+        -221
+      ],
+      "exit_world_xz_m": [
+        -474.4,
+        -230
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_30"
+    },
+    {
+      "district": "ValleySettlement",
+      "position_m": [
+        -365.6,
+        15.408645629882812,
+        -221
+      ],
+      "exit_world_xz_m": [
+        -365.6,
+        -230
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_31"
+    },
+    {
+      "district": "ValleySettlement",
+      "position_m": [
+        -474.4,
+        15.408645629882812,
+        -244.01700019836426
+      ],
+      "exit_world_xz_m": [
+        -474.4,
+        -230
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "ValleySettlement_garage_apartment_04",
+      "yaw_degrees": 0.0,
+      "name": "VehicleSpawnPoint_32"
+    },
+    {
+      "district": "ValleySettlement",
+      "position_m": [
+        -365.6,
+        15.408645629882812,
+        -241.47499990463257
+      ],
+      "exit_world_xz_m": [
+        -365.6,
+        -230
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "ValleySettlement_two_bedroom_garage_house_05",
+      "yaw_degrees": 0.0,
+      "name": "VehicleSpawnPoint_33"
+    },
+    {
+      "district": "ValleySettlement",
+      "position_m": [
+        -420.0,
+        15.408645629882812,
+        -244.01700019836426
+      ],
+      "exit_world_xz_m": [
+        -420.0,
+        -230
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "ValleySettlement_garage_apartment_06",
+      "yaw_degrees": 0.0,
+      "name": "VehicleSpawnPoint_34"
+    },
+    {
+      "district": "NorthernRidgeTown",
+      "position_m": [
+        242.4,
+        -30.83440399169922,
+        639
+      ],
+      "exit_world_xz_m": [
+        242.4,
+        630
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_35"
+    },
+    {
+      "district": "NorthernRidgeTown",
+      "position_m": [
+        357.6,
+        -30.83440399169922,
+        639
+      ],
+      "exit_world_xz_m": [
+        357.6,
+        630
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_36"
+    },
+    {
+      "district": "NorthernRidgeTown",
+      "position_m": [
+        242.4,
+        -30.83440399169922,
+        662.5170001983643
+      ],
+      "exit_world_xz_m": [
+        242.4,
+        630
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "NorthernRidgeTown_garage_apartment_02",
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_37"
+    },
+    {
+      "district": "NorthernRidgeTown",
+      "position_m": [
+        357.6,
+        -30.83440399169922,
+        659.9749999046326
+      ],
+      "exit_world_xz_m": [
+        357.6,
+        630
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "NorthernRidgeTown_two_bedroom_garage_house_03",
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_38"
+    },
+    {
+      "district": "NorthernRidgeTown",
+      "position_m": [
+        300.0,
+        -30.83440399169922,
+        615.9829998016357
+      ],
+      "exit_world_xz_m": [
+        300.0,
+        630
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "serves": "NorthernRidgeTown_garage_apartment_06",
+      "yaw_degrees": 0.0,
+      "name": "VehicleSpawnPoint_39"
+    },
+    {
+      "district": "CoastalHamlet",
+      "position_m": [
+        602.0,
+        -18.211563110351562,
+        639
+      ],
+      "exit_world_xz_m": [
+        602.0,
+        630
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_40"
+    },
+    {
+      "district": "CoastalHamlet",
+      "position_m": [
+        698.0,
+        -18.211563110351562,
+        639
+      ],
+      "exit_world_xz_m": [
+        698.0,
+        630
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_41"
+    },
+    {
+      "district": "SoutheastLighthouse",
+      "position_m": [
+        799.0,
+        40.0439453125,
+        -762
+      ],
+      "exit_world_xz_m": [
+        799.0,
+        -770
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_42"
+    },
+    {
+      "district": "SoutheastLighthouse",
+      "position_m": [
+        851.0,
+        40.0439453125,
+        -762
+      ],
+      "exit_world_xz_m": [
+        851.0,
+        -770
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_43"
+    },
+    {
+      "district": "ForestLookout",
+      "position_m": [
+        -676.0,
+        6.7655487060546875,
+        -137
+      ],
+      "exit_world_xz_m": [
+        -676.0,
+        -145
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_44"
+    },
+    {
+      "district": "ForestLookout",
+      "position_m": [
+        -624.0,
+        6.7655487060546875,
+        -137
+      ],
+      "exit_world_xz_m": [
+        -624.0,
+        -145
+      ],
+      "reserved_size_m": [
+        6,
+        12
+      ],
+      "yaw_degrees": 180.0,
+      "name": "VehicleSpawnPoint_45"
+    }
+  ],
+  "models": {
+    "TownHall": {
+      "guid": "413b3df3bba15a16adbda07c37f4987a",
+      "bounds": {
+        "m_Center": {
+          "x": 0.0,
+          "y": 19.600000381469727,
+          "z": 0.0
+        },
+        "m_Extent": {
+          "x": 18.6200008392334,
+          "y": 19.600000381469727,
+          "z": 12.309999465942383
+        }
+      },
+      "triangles": 63558,
+      "vertices": 96276,
+      "submeshes": 14,
+      "dimensions_m": [
+        37.2400016784668,
+        39.20000076293945,
+        24.619998931884766
+      ],
+      "source_pivot": [
+        0.0,
+        0.0,
+        -2.690000057220459
+      ],
+      "source_sha256": "3b2cae98e7453b60f68da4667dc9c41dfc2a12268bbcebb1ae468f25a16e6afa",
+      "excluded_source_nodes": []
+    },
+    "a_frame_cabin": {
+      "guid": "e69a3cb92dd95565bc318c4bcd8be7ef",
+      "bounds": {
+        "m_Center": {
+          "x": 0.0,
+          "y": 3.0030763149261475,
+          "z": 0.0
+        },
+        "m_Extent": {
+          "x": 3.2699999809265137,
+          "y": 3.0030763149261475,
+          "z": 4.5279998779296875
+        }
+      },
+      "triangles": 11000,
+      "vertices": 10915,
+      "submeshes": 7,
+      "dimensions_m": [
+        6.539999961853027,
+        6.006152629852295,
+        9.055999755859375
+      ],
+      "source_pivot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_sha256": "af113014ac01e2e0e1f3ae7968f639f8863c44e7f35a4d2dec603c6dd1983215",
+      "excluded_source_nodes": []
+    },
+    "bungalow_house": {
+      "guid": "cd65d2e9e88851b599b773ef0a88215f",
+      "bounds": {
+        "m_Center": {
+          "x": 0.0,
+          "y": 2.9789230823516846,
+          "z": 0.0
+        },
+        "m_Extent": {
+          "x": 6.449999809265137,
+          "y": 2.9789230823516846,
+          "z": 6.406000137329102
+        }
+      },
+      "triangles": 14796,
+      "vertices": 15221,
+      "submeshes": 8,
+      "dimensions_m": [
+        12.899999618530273,
+        5.957846164703369,
+        12.812000274658203
+      ],
+      "source_pivot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_sha256": "bf194d518767450bdc2bfa4d90948ec274bf07f23f5e3ae767c63e20bfd9e1cb",
+      "excluded_source_nodes": []
+    },
+    "detached_two_storey_house": {
+      "guid": "3605834cb7ac519b82d7269c86ea52d5",
+      "bounds": {
+        "m_Center": {
+          "x": 0.0,
+          "y": 4.573375701904297,
+          "z": 0.0
+        },
+        "m_Extent": {
+          "x": 5.5279998779296875,
+          "y": 4.573375701904297,
+          "z": 7.335000038146973
+        }
+      },
+      "triangles": 12646,
+      "vertices": 14586,
+      "submeshes": 10,
+      "dimensions_m": [
+        11.055999755859375,
+        9.146751403808594,
+        14.670000076293945
+      ],
+      "source_pivot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_sha256": "60dba909937942ea617501b989afc0cd9863ee218dcbd7d8ef8b032cb9e39234",
+      "excluded_source_nodes": []
+    },
+    "garage_apartment": {
+      "guid": "79e03cd45c435714bce146615449a1dc",
+      "bounds": {
+        "m_Center": {
+          "x": 0.0,
+          "y": 4.294700622558594,
+          "z": 0.0
+        },
+        "m_Extent": {
+          "x": 4.804999828338623,
+          "y": 4.294700622558594,
+          "z": 4.482999801635742
+        }
+      },
+      "triangles": 14760,
+      "vertices": 17532,
+      "submeshes": 10,
+      "dimensions_m": [
+        9.609999656677246,
+        8.589401245117188,
+        8.965999603271484
+      ],
+      "source_pivot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_sha256": "ddb5a14616f5986c48b2e256bf840f9c63bcc2f512a460a97f435523fe796803",
+      "excluded_source_nodes": []
+    },
+    "pitched_roof_cottage": {
+      "guid": "eced1a74ce2a5766a4a24d7edd053ad2",
+      "bounds": {
+        "m_Center": {
+          "x": 0.0,
+          "y": 3.3558080196380615,
+          "z": 0.0
+        },
+        "m_Extent": {
+          "x": 4.449999809265137,
+          "y": 3.3558080196380615,
+          "z": 6.406000137329102
+        }
+      },
+      "triangles": 14716,
+      "vertices": 15118,
+      "submeshes": 8,
+      "dimensions_m": [
+        8.899999618530273,
+        6.711616039276123,
+        12.812000274658203
+      ],
+      "source_pivot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_sha256": "13226d4a2b61aa5e3729501074d84c1112f06aa871901d6eae3db41aaf1de70f",
+      "excluded_source_nodes": []
+    },
+    "row_three_townhouses": {
+      "guid": "f460dcdab22757168e5d414161771ea4",
+      "bounds": {
+        "m_Center": {
+          "x": 0.0,
+          "y": 4.573375701904297,
+          "z": 0.0
+        },
+        "m_Extent": {
+          "x": 9.359999656677246,
+          "y": 4.573375701904297,
+          "z": 6.085000038146973
+        }
+      },
+      "triangles": 14484,
+      "vertices": 17235,
+      "submeshes": 10,
+      "dimensions_m": [
+        18.719999313354492,
+        9.146751403808594,
+        12.170000076293945
+      ],
+      "source_pivot": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_sha256": "1bf796ef28f1c4198086594c112b0168a70d55edf345b02b80547e414448693a",
+      "excluded_source_nodes": []
+    },
+    "two_bedroom_garage_house": {
+      "guid": "fef57e694d7e5a17a5221a9746e5b8ce",
+      "bounds": {
+        "m_Center": {
+          "x": 0.0,
+          "y": 1.9200000762939453,
+          "z": 0.0
+        },
+        "m_Extent": {
+          "x": 7.050000190734863,
+          "y": 1.9200000762939453,
+          "z": 7.025000095367432
+        }
+      },
+      "triangles": 3060,
+      "vertices": 6120,
+      "submeshes": 18,
+      "dimensions_m": [
+        14.100000381469727,
+        3.8400001525878906,
+        14.050000190734863
+      ],
+      "source_pivot": [
+        7.000000094994903,
+        0.0,
+        4.025000095367432
+      ],
+      "source_sha256": "e4dc62b28e6e7594ba1ae3e4d535070b3ea5ed4eb4b5a64a6338c34ea178f5db",
+      "excluded_source_nodes": []
+    },
+    "observatory_dome": {
+      "guid": "751bd2e617595f9698bbcc2e04a49b15",
+      "bounds": {
+        "m_Center": {
+          "x": 0.0,
+          "y": 4.232878684997559,
+          "z": 0.0
+        },
+        "m_Extent": {
+          "x": 4.350000381469727,
+          "y": 4.232878684997559,
+          "z": 4.955000400543213
+        }
+      },
+      "triangles": 10704,
+      "vertices": 7804,
+      "submeshes": 10,
+      "dimensions_m": [
+        8.700000762939453,
+        8.465757369995117,
+        9.910000801086426
+      ],
+      "source_pivot": [
+        0.0,
+        0.0,
+        -0.6050000190734863
+      ],
+      "source_sha256": "8202d4f1fc2f2a465829c05b32705072d323c29c4e4dd20d45d196e68ae42edc",
+      "excluded_source_nodes": []
+    },
+    "warehouse_loading_dock": {
+      "guid": "f7fc740e701d575b95fa0ce5fa5be0a8",
+      "bounds": {
+        "m_Center": {
+          "x": 0.0,
+          "y": 4.199999809265137,
+          "z": 0.0
+        },
+        "m_Extent": {
+          "x": 15.25,
+          "y": 4.199999809265137,
+          "z": 11.125
+        }
+      },
+      "triangles": 1440,
+      "vertices": 2880,
+      "submeshes": 8,
+      "dimensions_m": [
+        30.5,
+        8.399999618530273,
+        22.25
+      ],
+      "source_pivot": [
+        15.0,
+        0.0,
+        9.125
+      ],
+      "source_sha256": "4ce21b2344c3daadacc61fa772fd00dc4089fa0e3488c567e993990a1d14bd07",
+      "excluded_source_nodes": []
+    },
+    "lighthouse": {
+      "guid": "6c2d7d8f4bdb57408fac268ef1dc6d21",
+      "bounds": {
+        "m_Center": {
+          "x": 0.0,
+          "y": 18.625,
+          "z": 0.0
+        },
+        "m_Extent": {
+          "x": 4.342233657836914,
+          "y": 18.625,
+          "z": 5.091116905212402
+        }
+      },
+      "triangles": 8456,
+      "vertices": 10848,
+      "submeshes": 12,
+      "dimensions_m": [
+        8.684467315673828,
+        37.25,
+        10.182233810424805
+      ],
+      "source_pivot": [
+        0.0,
+        0.0,
+        -0.7488832473754883
+      ],
+      "source_sha256": "36904fb876a6f47ab4692849ad987331774efef12b045d88a480b24835c1b353",
+      "excluded_source_nodes": []
+    },
+    "watchtower": {
+      "guid": "6d0fe0e15b4c57e9ba9d921e437cc280",
+      "bounds": {
+        "m_Center": {
+          "x": 0.0,
+          "y": 7.041321277618408,
+          "z": 0.0
+        },
+        "m_Extent": {
+          "x": 4.776646614074707,
+          "y": 7.041321277618408,
+          "z": 3.443293333053589
+        }
+      },
+      "triangles": 2970,
+      "vertices": 5936,
+      "submeshes": 8,
+      "dimensions_m": [
+        9.553293228149414,
+        14.082642555236816,
+        6.886586666107178
+      ],
+      "source_pivot": [
+        -1.3333534002304077,
+        0.0,
+        0.0
+      ],
+      "source_sha256": "1c6875d7278cdda601f64fc37c728660425ab20581250fe51c1be78e76a097f8",
+      "excluded_source_nodes": []
+    },
+    "Airfield": {
+      "guid": "3cada2f3148859b186e66011513ba58b",
+      "bounds": {
+        "m_Center": {
+          "x": 0.0,
+          "y": 8.100069999694824,
+          "z": 0.0
+        },
+        "m_Extent": {
+          "x": 36.155189514160156,
+          "y": 8.100069999694824,
+          "z": 16.339988708496094
+        }
+      },
+      "triangles": 315612,
+      "vertices": 290128,
+      "submeshes": 15,
+      "dimensions_m": [
+        72.31037902832031,
+        16.20013999938965,
+        32.67997741699219
+      ],
+      "source_pivot": [
+        2.1551878452301025,
+        -0.2501409947872162,
+        -14.339989332894266
+      ],
+      "source_sha256": "f849d14ae4b416d4f2f2158113931c294cc62f068d78c61a64ae03625f722a6c",
+      "excluded_source_nodes": [
+        "/first-circle-town-edge/140-utility-helicopter",
+        "/first-circle-town-edge/141-aircraft-tug",
+        "/first-circle-town-edge/142-fuel-bowser-trailer",
+        "/first-circle-town-edge/155-cargo-truck-canvas",
+        "/first-circle-town-edge/156-quad-bike",
+        "/first-circle-town-edge/165-munitions-crate",
+        "/first-circle-town-edge/189-suv-four-door",
+        "/first-circle-town-edge/190-abandoned-sedan",
+        "/first-circle-town-edge/191-burnt-car-shell",
+        "/first-circle-town-edge/192-technical-pickup",
+        "/first-circle-town-edge/193-quad-bike",
+        "/first-circle-town-edge/210-loot-assault-rifle-rare",
+        "/first-circle-town-edge/211-loot-pistol-common",
+        "/first-circle-town-edge/212-loot-smg-uncommon",
+        "/first-circle-town-edge/213-loot-battle-rifle-epic",
+        "/first-circle-town-edge/214-loot-marksman-rifle-legendary",
+        "/first-circle-town-edge/215-munitions-crate",
+        "/first-circle-town-edge/216-munitions-crate",
+        "/first-circle-town-edge/220-ammo-box",
+        "/first-circle-town-edge/225-operator-parachute-drop",
+        "/first-circle-town-edge/226-operator-landing-slide",
+        "/first-circle-town-edge/227-operator-aiming-rifle",
+        "/first-circle-town-edge/228-operator-reviving-teammate"
+      ]
+    },
+    "HanokVillage": {
+      "guid": "6c8198e52e995ccfb2302e074db8ed93",
+      "bounds": {
+        "m_Center": {
+          "x": 0.0,
+          "y": 3.0690858364105225,
+          "z": 0.0
+        },
+        "m_Extent": {
+          "x": 15.0,
+          "y": 3.0690858364105225,
+          "z": 16.707500457763672
+        }
+      },
+      "triangles": 191570,
+      "vertices": 311875,
+      "submeshes": 12,
+      "dimensions_m": [
+        30.0,
+        6.138171672821045,
+        33.415000915527344
+      ],
+      "source_pivot": [
+        0.0,
+        -0.30001953355968,
+        -1.7074999809265137
+      ],
+      "source_sha256": "05bd4cfd806750cad9e2f53e84206d87ed679b2cc9e17715491a77536a23382a",
+      "excluded_source_nodes": []
+    },
+    "CanalTown": {
+      "guid": "aa55967f50455f9896967e2393da348e",
+      "bounds": {
+        "m_Center": {
+          "x": 0.0,
+          "y": 7.501143932342529,
+          "z": 0.0
+        },
+        "m_Extent": {
+          "x": 16.630840301513672,
+          "y": 7.501143932342529,
+          "z": 14.729044914245605
+        }
+      },
+      "triangles": 275178,
+      "vertices": 327967,
+      "submeshes": 12,
+      "dimensions_m": [
+        33.261680603027344,
+        15.002287864685059,
+        29.45808982849121
+      ],
+      "source_pivot": [
+        -2.5691601037979126,
+        -1.2022877760533135,
+        2.0290450061127263
+      ],
+      "source_sha256": "09fc3fc0e7e06b5dc5e36003cc26e13a480d47e4c1b87c158f47d20b43007369",
+      "excluded_source_nodes": [
+        "/canal-town-quay-and-mill/114-canal-barge-hull",
+        "/canal-town-quay-and-mill/115-canal-rowing-boat",
+        "/canal-town-quay-and-mill/116-canal-punt",
+        "/canal-town-quay-and-mill/124-delivery-bicycle/124-delivery-bicycle/wheel-bike-front/iron",
+        "/canal-town-quay-and-mill/124-delivery-bicycle/124-delivery-bicycle/wheel-bike-front/pine",
+        "/canal-town-quay-and-mill/124-delivery-bicycle/124-delivery-bicycle/wheel-bike-rear/iron",
+        "/canal-town-quay-and-mill/124-delivery-bicycle/124-delivery-bicycle/wheel-bike-rear/pine"
+      ]
+    },
+    "ParcelDepot": {
+      "guid": "9a98599327bd55cdbcf3befde2017d4f",
+      "bounds": {
+        "m_Center": {
+          "x": 0.0,
+          "y": 2.360049247741699,
+          "z": 0.0
+        },
+        "m_Extent": {
+          "x": 12.059938430786133,
+          "y": 2.360049247741699,
+          "z": 10.059938430786133
+        }
+      },
+      "triangles": 20352,
+      "vertices": 46509,
+      "submeshes": 12,
+      "dimensions_m": [
+        24.119876861572266,
+        4.720098495483398,
+        20.119876861572266
+      ],
+      "source_pivot": [
+        -3.9400616474449635,
+        -0.12006042793393135,
+        2.0599383525550365
+      ],
+      "source_sha256": "cd8e0363aa324649b9777ec164573340fb4de5249bc0a0f8ff352b3cf6633ef0",
+      "excluded_source_nodes": [
+        "/parcel-depot-and-sorting-hall-starter-scene/072-parcel-depot-and-sorting-hall-delivery-van-open",
+        "/parcel-depot-and-sorting-hall-starter-scene/073-parcel-depot-and-sorting-hall-delivery-van-red",
+        "/parcel-depot-and-sorting-hall-starter-scene/074-parcel-depot-and-sorting-hall-box-lorry-trailer",
+        "/parcel-depot-and-sorting-hall-starter-scene/075-parcel-depot-and-sorting-hall-forklift-truck",
+        "/parcel-depot-and-sorting-hall-starter-scene/076-parcel-depot-and-sorting-hall-forklift-charging-point",
+        "/parcel-depot-and-sorting-hall-starter-scene/077-parcel-depot-and-sorting-hall-pallet-truck",
+        "/parcel-depot-and-sorting-hall-starter-scene/078-parcel-depot-and-sorting-hall-sack-truck"
+      ]
+    },
+    "Harbour": {
+      "guid": "2f969b9ccb775872b2e781d5eb02ae08",
+      "bounds": {
+        "m_Center": {
+          "x": 0.0,
+          "y": 3.1849405765533447,
+          "z": 0.0
+        },
+        "m_Extent": {
+          "x": 12.308815002441406,
+          "y": 3.1849405765533447,
+          "z": 10.420000076293945
+        }
+      },
+      "triangles": 31012,
+      "vertices": 70698,
+      "submeshes": 8,
+      "dimensions_m": [
+        24.617630004882812,
+        6.3698811531066895,
+        20.84000015258789
+      ],
+      "source_pivot": [
+        -0.24881486122659968,
+        -7.62379379750655e-05,
+        2.4199999570846558
+      ],
+      "source_sha256": "5f4b1309fb0589b435fe5ef0960f67bb81e5049afffb3f4440569940324504d3",
+      "excluded_source_nodes": [
+        "/harbour-quay/033-brig-two-masted",
+        "/harbour-quay/034-sloop-single-masted",
+        "/harbour-quay/035-ships-longboat",
+        "/harbour-quay/036-jolly-boat",
+        "/harbour-quay/037-brig-deck-section",
+        "/harbour-quay/038-brig-deck-section",
+        "/harbour-quay/039-ship-mast-module",
+        "/harbour-quay/040-ship-mast-module-sails-set",
+        "/harbour-quay/041-ships-wheel",
+        "/harbour-quay/042-binnacle-compass-box",
+        "/harbour-quay/043-deck-capstan",
+        "/harbour-quay/044-deck-hatch-grating",
+        "/harbour-quay/045-deck-cannon",
+        "/harbour-quay/046-deck-cannon",
+        "/harbour-quay/047-swivel-gun",
+        "/harbour-quay/048-ships-bell",
+        "/harbour-quay/049-stern-lantern",
+        "/harbour-quay/050-carved-figurehead",
+        "/harbour-quay/051-admiralty-anchor",
+        "/harbour-quay/052-deck-cannon"
+      ]
+    }
+  },
+  "provenance": [
+    {
+      "id": "a_frame_cabin",
+      "title": "A-frame cabin",
+      "url": "https://files.innerscene.com/library/a-frame-cabin-73442f48/83eb6ed32b110913e555/a-frame-cabin.glb",
+      "sha256": "af113014ac01e2e0e1f3ae7968f639f8863c44e7f35a4d2dec603c6dd1983215",
+      "source_page": "https://www.innerscene.com/tools/library/3d-parts/a-frame-cabin-73442f48",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "bungalow_house",
+      "title": "Bungalow house",
+      "url": "https://files.innerscene.com/library/bungalow-house-85d40048/f10f4a431ea91a445691/bungalow-house.glb",
+      "sha256": "bf194d518767450bdc2bfa4d90948ec274bf07f23f5e3ae767c63e20bfd9e1cb",
+      "source_page": "https://www.innerscene.com/tools/library/3d-parts/bungalow-house-85d40048",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "detached_two_storey_house",
+      "title": "Detached two-storey house",
+      "url": "https://files.innerscene.com/library/detached-two-storey-house-66774933/0870035dc2c6e93c05cf/detached-two-storey-house.glb",
+      "sha256": "60dba909937942ea617501b989afc0cd9863ee218dcbd7d8ef8b032cb9e39234",
+      "source_page": "https://www.innerscene.com/tools/library/3d-parts/detached-two-storey-house-66774933",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "garage_apartment",
+      "title": "Garage with apartment above",
+      "url": "https://files.innerscene.com/library/garage-with-apartment-above-60d5222c/0b8f5f308aabc48d8520/garage-with-apartment-above.glb",
+      "sha256": "ddb5a14616f5986c48b2e256bf840f9c63bcc2f512a460a97f435523fe796803",
+      "source_page": "https://www.innerscene.com/tools/library/3d-parts/garage-with-apartment-above-60d5222c",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "pitched_roof_cottage",
+      "title": "Cottage with pitched roof",
+      "url": "https://files.innerscene.com/library/cottage-with-pitched-roof-bc88ab4f/dbfc87e1e275a68f0254/cottage-with-pitched-roof.glb",
+      "sha256": "13226d4a2b61aa5e3729501074d84c1112f06aa871901d6eae3db41aaf1de70f",
+      "source_page": "https://www.innerscene.com/tools/library/3d-parts/cottage-with-pitched-roof-bc88ab4f",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "row_three_townhouses",
+      "title": "Row of three townhouses",
+      "url": "https://files.innerscene.com/library/row-of-three-townhouses-c954dc27/daf92bc1d12a0599c7e4/row-of-three-townhouses.glb",
+      "sha256": "1bf796ef28f1c4198086594c112b0168a70d55edf345b02b80547e414448693a",
+      "source_page": "https://www.innerscene.com/tools/library/3d-parts/row-of-three-townhouses-c954dc27",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "two_bedroom_garage_house",
+      "title": "Two-bedroom house with garage",
+      "url": "https://files.innerscene.com/library/two-bedroom-two-bath-house-with-one-car-garage-3d-model-5d980d0f/802b75e068a5e466d331/two-bedroom-two-bath-house-with-one-car-garage-3d-model.glb",
+      "sha256": "e4dc62b28e6e7594ba1ae3e4d535070b3ea5ed4eb4b5a64a6338c34ea178f5db",
+      "source_page": "https://www.innerscene.com/tools/library/3d-parts/two-bedroom-two-bath-house-with-one-car-garage-3d-model-5d980d0f",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "observatory_dome",
+      "title": "Telescope observatory dome",
+      "url": "https://files.innerscene.com/library/telescope-observatory-dome-4fd84b60/0b8dbeea9099fc446679/telescope-observatory-dome.glb",
+      "sha256": "8202d4f1fc2f2a465829c05b32705072d323c29c4e4dd20d45d196e68ae42edc",
+      "source_page": "https://www.innerscene.com/tools/library/3d-parts/telescope-observatory-dome-4fd84b60",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "warehouse_loading_dock",
+      "title": "Warehouse with loading dock",
+      "url": "https://files.innerscene.com/library/godown-warehouse-30-x-20-m-with-loading-dock-3d-model-c8599c4b/f1a30515b8de57bd35b5/godown-warehouse-30-x-20-m-with-loading-dock-3d-model.glb",
+      "sha256": "4ce21b2344c3daadacc61fa772fd00dc4089fa0e3488c567e993990a1d14bd07",
+      "source_page": "https://www.innerscene.com/tools/library/3d-parts/godown-warehouse-30-x-20-m-with-loading-dock-3d-model-c8599c4b",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "lighthouse",
+      "title": "Lighthouse",
+      "url": "https://files.innerscene.com/library/lighthouse-af1ed63d/95bf1dea96ed8eb642cd/lighthouse.glb",
+      "sha256": "36904fb876a6f47ab4692849ad987331774efef12b045d88a480b24835c1b353",
+      "source_page": "https://www.innerscene.com/tools/library/3d-parts/lighthouse-af1ed63d",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "watchtower",
+      "title": "Watchtower",
+      "url": "https://files.innerscene.com/library/watchtower-53085ba7/20a03b3024e59cea9b6e/watchtower.glb",
+      "sha256": "1c6875d7278cdda601f64fc37c728660425ab20581250fe51c1be78e76a097f8",
+      "source_page": "https://www.innerscene.com/tools/library/3d-parts/watchtower-53085ba7",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "TownHall",
+      "title": "TownHall",
+      "url": "https://files.innerscene.com/library/town-hall-with-clock-tower-0d09c56c/28cc1ab5036448f20c43/town-hall-with-clock-tower.glb",
+      "sha256": "3b2cae98e7453b60f68da4667dc9c41dfc2a12268bbcebb1ae468f25a16e6afa",
+      "source_page": "https://files.innerscene.com/library/town-hall-with-clock-tower-0d09c56c/28cc1ab5036448f20c43/town-hall-with-clock-tower.glb",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "Airfield",
+      "title": "Airfield",
+      "url": "https://cdn.3dassets.dev/assets/28276/v1/model.glb",
+      "sha256": "f849d14ae4b416d4f2f2158113931c294cc62f068d78c61a64ae03625f722a6c",
+      "source_page": "https://cdn.3dassets.dev/assets/28276/v1/model.glb",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "HanokVillage",
+      "title": "HanokVillage",
+      "url": "https://cdn.3dassets.dev/assets/38093/v1/model.glb",
+      "sha256": "05bd4cfd806750cad9e2f53e84206d87ed679b2cc9e17715491a77536a23382a",
+      "source_page": "https://cdn.3dassets.dev/assets/38093/v1/model.glb",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "CanalTown",
+      "title": "CanalTown",
+      "url": "https://cdn.3dassets.dev/assets/36693/v1/model.glb",
+      "sha256": "09fc3fc0e7e06b5dc5e36003cc26e13a480d47e4c1b87c158f47d20b43007369",
+      "source_page": "https://cdn.3dassets.dev/assets/36693/v1/model.glb",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "ParcelDepot",
+      "title": "ParcelDepot",
+      "url": "https://cdn.3dassets.dev/assets/34833/v1/model.glb",
+      "sha256": "cd8e0363aa324649b9777ec164573340fb4de5249bc0a0f8ff352b3cf6633ef0",
+      "source_page": "https://cdn.3dassets.dev/assets/34833/v1/model.glb",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "Harbour",
+      "title": "Harbour",
+      "url": "https://cdn.3dassets.dev/assets/30169/v1/model.glb",
+      "sha256": "5f4b1309fb0589b435fe5ef0960f67bb81e5049afffb3f4440569940324504d3",
+      "source_page": "https://cdn.3dassets.dev/assets/30169/v1/model.glb",
+      "license": "CC0-1.0"
+    }
+  ],
+  "removed_assets": [
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_3_f3ed9c1f-cb52-413a-a7d7-8e03961f4d5b 1.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_1_3_c8bbd3cb-768c-4918-85c9-b01968beea93.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_1_0_548791b1-5119-4501-a6f8-e5b8e45c25d8 1.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_1_2_1694bb0f-cffe-402c-b6f9-cf47692fbb78 1.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_0_1170b034-efff-4ff0-8513-60d934e963db 1.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_1_0_548791b1-5119-4501-a6f8-e5b8e45c25d8.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_0_0_8723fb12-db1c-4ba2-97c5-90e784c8adbf.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_3_2_77e49ac9-7f8e-47c2-ae00-57296acecb1c 1.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_0_1_e85387be-618a-4f11-a28f-1cbc224e6e94.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_3_1_f87b3edd-12d5-4d51-aea4-88280910a3d8.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_3_0_ae064d43-ab51-4240-a34a-6f1f5da8134d 1.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_0_2_5f735b10-59bc-418b-b24d-4385eb3a186d.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_3_3_9b11d05b-b237-4de7-82ed-a402f9cedebd.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_0_1_e85387be-618a-4f11-a28f-1cbc224e6e94 1.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_0_0_8723fb12-db1c-4ba2-97c5-90e784c8adbf 1.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_3_3_9b11d05b-b237-4de7-82ed-a402f9cedebd 1.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_1_3_c8bbd3cb-768c-4918-85c9-b01968beea93 1.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_0_3_f8883893-11fe-4631-8dfb-2d342383567b 1.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_3_f3ed9c1f-cb52-413a-a7d7-8e03961f4d5b.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_3_1_f87b3edd-12d5-4d51-aea4-88280910a3d8 1.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_1_82fc4922-5564-4a18-858e-787f6d901556 1.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_1_1_4bf22c8f-eb55-436d-84e3-dedfa85665b1 1.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_3_0_ae064d43-ab51-4240-a34a-6f1f5da8134d.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_2_b6e03cf0-de91-4cae-b6af-0128d856ae43 1.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_0_3_f8883893-11fe-4631-8dfb-2d342383567b.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_0_2_5f735b10-59bc-418b-b24d-4385eb3a186d 1.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_3_2_77e49ac9-7f8e-47c2-ae00-57296acecb1c.asset",
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_0_1170b034-efff-4ff0-8513-60d934e963db.asset",
+    "Assets/TerrainDemoScene_URP/Prefabs/Terrain/TerrainProxy.prefab"
+  ],
+  "tile_reports": [
+    {
+      "tile": "1_1",
+      "origin_m": [
+        -1000,
+        -120.0,
+        -1000
+      ],
+      "size_m": [
+        1000,
+        800,
+        1000
+      ],
+      "remaining_terrain_instances": 1625,
+      "removed_terrain_instances": 400,
+      "cleared_detail_patches": 2308
+    },
+    {
+      "tile": "1_2",
+      "origin_m": [
+        -1000,
+        -120.0,
+        0
+      ],
+      "size_m": [
+        1000,
+        800,
+        1000
+      ],
+      "remaining_terrain_instances": 3986,
+      "removed_terrain_instances": 1317,
+      "cleared_detail_patches": 1798
+    },
+    {
+      "tile": "2_1",
+      "origin_m": [
+        0,
+        -120.0,
+        -1000
+      ],
+      "size_m": [
+        1000,
+        800,
+        1000
+      ],
+      "remaining_terrain_instances": 388,
+      "removed_terrain_instances": 325,
+      "cleared_detail_patches": 2514
+    },
+    {
+      "tile": "2_2",
+      "origin_m": [
+        0,
+        -120.0,
+        0
+      ],
+      "size_m": [
+        1000,
+        800,
+        1000
+      ],
+      "remaining_terrain_instances": 426,
+      "removed_terrain_instances": 22,
+      "cleared_detail_patches": 2393
+    }
+  ],
+  "vehicle_phase": "Empty markers only. Vehicle prefabs/physics intentionally deferred."
+}

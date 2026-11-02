@@ -1,0 +1,3580 @@
+{
+  "units": "metres",
+  "height_sample_spacing_m": 7.8125,
+  "height_csv_note": "Sampled world-space heights; authoritative full 0.48828125m grid remains in native TerrainData.",
+  "instance_jsonl_note": "Exact retained native tree/rock/shrub instances, rounded to 1mm. Terrain uses procedural detail density patches for grass.",
+  "tiles": [
+    {
+      "tile": "1_1",
+      "terrain_instances": {
+        "rock": 1330,
+        "tree": 295
+      },
+      "detail_density_patches": 993,
+      "tree_and_rock_prototypes": [
+        {
+          "guid": "398b156fac7c6f44db09e9ad046c24dd",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Rock_C_01.prefab",
+          "category": "rock"
+        },
+        {
+          "guid": "6b63070b5a692dc4389c591157da475d",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Rock_C_02.prefab",
+          "category": "rock"
+        },
+        {
+          "guid": "a93f80d252523a14d9206681c7713ce8",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Rock_Overgrown_D.prefab",
+          "category": "rock"
+        },
+        {
+          "guid": "e730e362773695e408e48f59e6dff87a",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Cypress_Forest_Desktop.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "c06ecca5c3d565e42808724839b39b6f",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Foliage/Red_Bush/Red_Bush.prefab",
+          "category": "shrub"
+        },
+        {
+          "guid": "cce4d8667f2436a479759f07084d8ff4",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Conifer.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "e71b98edf7da4b448bc6ae07b82d6935",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Rock_B_01.prefab",
+          "category": "rock"
+        },
+        {
+          "guid": "35e087cfaa0f57244b67615777188d3e",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_D/Pine_D.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "451d860cead90b64bbbab1639909594c",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_A/Pine_A.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "34776a9356ed54141bf7fed4fded28a0",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_B/Pine_B.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "942660f4ebcf9cd438f45122b0ad63eb",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_C/Pine_C.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "8d8873bd1f85c3942bf7f961cec01074",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Models/Rock_B_01.fbx",
+          "category": "rock"
+        },
+        {
+          "guid": "9ec4ab395efae3f44b859f77742dd451",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Models/Rock_C_01.fbx",
+          "category": "rock"
+        }
+      ],
+      "detail_prototypes_native_properties": [
+        {
+          "prototype": {
+            "m_FileID": 8,
+            "m_PathID": 6011036630121576164
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 9,
+            "m_PathID": 2803505663424749585
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 1311760659,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 10,
+            "m_PathID": 3381235597526909217
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 3.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1003651803,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 11,
+            "m_PathID": 7219107292882874463
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 5.0,
+          "maxWidth": 10.0,
+          "minHeight": 5.0,
+          "maxHeight": 10.0,
+          "noiseSeed": 1311760659,
+          "noiseSpread": 1.0,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 12,
+            "m_PathID": 2085449277718671952
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 5.0,
+          "minHeight": 3.0,
+          "maxHeight": 6.0,
+          "noiseSeed": 605548117,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 13,
+            "m_PathID": 7369509780391000685
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 5.0,
+          "minHeight": 3.0,
+          "maxHeight": 5.0,
+          "noiseSeed": 224470994,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 14,
+            "m_PathID": 8486787402013068894
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 605548117,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 15,
+            "m_PathID": 398929321252300881
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 3.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 378234000,
+          "noiseSpread": 0.17000000178813934,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 16,
+            "m_PathID": 1245006558584958560
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 6.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 17,
+            "m_PathID": 6846659341408791651
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 1990038259,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 18,
+            "m_PathID": 658749458356824200
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 1.0,
+          "maxHeight": 4.0,
+          "noiseSeed": 1670561882,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 19,
+            "m_PathID": 1565408744048187519
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 1754895846,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 15,
+            "m_PathID": 398929321252300881
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 5.0,
+          "minHeight": 3.0,
+          "maxHeight": 5.0,
+          "noiseSeed": 1795669518,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 15,
+            "m_PathID": 398929321252300881
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 2.0,
+          "maxWidth": 3.0,
+          "minHeight": 2.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1795669518,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 17,
+            "m_PathID": 6846659341408791651
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 1.0,
+          "maxHeight": 4.0,
+          "noiseSeed": 1990038259,
+          "noiseSpread": 0.2800000011920929,
+          "holeTestRadius": 0.03999999910593033,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 16,
+            "m_PathID": 1245006558584958560
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 2.0,
+          "maxWidth": 5.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10999999940395355,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 8,
+            "m_PathID": 6011036630121576164
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 3.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 12,
+            "m_PathID": 2085449277718671952
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 6.0,
+          "minHeight": 3.0,
+          "maxHeight": 6.0,
+          "noiseSeed": 605548117,
+          "noiseSpread": 0.800000011920929,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 18,
+            "m_PathID": 658749458356824200
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 2.0,
+          "maxHeight": 4.5,
+          "noiseSeed": 1670561882,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 11,
+            "m_PathID": 7219107292882874463
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 4.0,
+          "maxWidth": 6.0,
+          "minHeight": 4.0,
+          "maxHeight": 6.0,
+          "noiseSeed": 1311760659,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 10,
+            "m_PathID": 3381235597526909217
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.5,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1003651803,
+          "noiseSpread": 0.5,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 8,
+            "m_PathID": 6011036630121576164
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 2.0,
+          "maxWidth": 4.0,
+          "minHeight": 2.0,
+          "maxHeight": 4.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 18,
+            "m_PathID": 658749458356824200
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 1.0,
+          "maxHeight": 4.0,
+          "noiseSeed": 1670561882,
+          "noiseSpread": 0.10999999940395355,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 17,
+            "m_PathID": 6846659341408791651
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 0.75,
+          "maxHeight": 4.0,
+          "noiseSeed": 1990038259,
+          "noiseSpread": 0.2800000011920929,
+          "holeTestRadius": 0.03999999910593033,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        }
+      ]
+    },
+    {
+      "tile": "1_2",
+      "terrain_instances": {
+        "rock": 3442,
+        "tree": 539,
+        "shrub": 5
+      },
+      "detail_density_patches": 1946,
+      "tree_and_rock_prototypes": [
+        {
+          "guid": "398b156fac7c6f44db09e9ad046c24dd",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Rock_C_01.prefab",
+          "category": "rock"
+        },
+        {
+          "guid": "6b63070b5a692dc4389c591157da475d",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Rock_C_02.prefab",
+          "category": "rock"
+        },
+        {
+          "guid": "a93f80d252523a14d9206681c7713ce8",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Rock_Overgrown_D.prefab",
+          "category": "rock"
+        },
+        {
+          "guid": "e730e362773695e408e48f59e6dff87a",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Cypress_Forest_Desktop.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "c06ecca5c3d565e42808724839b39b6f",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Foliage/Red_Bush/Red_Bush.prefab",
+          "category": "shrub"
+        },
+        {
+          "guid": "cce4d8667f2436a479759f07084d8ff4",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Conifer.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "451d860cead90b64bbbab1639909594c",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_A/Pine_A.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "35e087cfaa0f57244b67615777188d3e",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_D/Pine_D.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "34776a9356ed54141bf7fed4fded28a0",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_B/Pine_B.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "8d8873bd1f85c3942bf7f961cec01074",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Models/Rock_B_01.fbx",
+          "category": "rock"
+        },
+        {
+          "guid": "942660f4ebcf9cd438f45122b0ad63eb",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_C/Pine_C.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "e71b98edf7da4b448bc6ae07b82d6935",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Rock_B_01.prefab",
+          "category": "rock"
+        },
+        {
+          "guid": "9ec4ab395efae3f44b859f77742dd451",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Models/Rock_C_01.fbx",
+          "category": "rock"
+        }
+      ],
+      "detail_prototypes_native_properties": [
+        {
+          "prototype": {
+            "m_FileID": 8,
+            "m_PathID": 6011036630121576164
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 3.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 9,
+            "m_PathID": 2803505663424749585
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 1311760659,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 10,
+            "m_PathID": 3381235597526909217
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.5,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1003651803,
+          "noiseSpread": 0.5,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 11,
+            "m_PathID": 7219107292882874463
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 4.0,
+          "maxWidth": 6.0,
+          "minHeight": 4.0,
+          "maxHeight": 6.0,
+          "noiseSeed": 1311760659,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 12,
+            "m_PathID": 2085449277718671952
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 6.0,
+          "minHeight": 3.0,
+          "maxHeight": 6.0,
+          "noiseSeed": 605548117,
+          "noiseSpread": 0.800000011920929,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 13,
+            "m_PathID": 7369509780391000685
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 2.0,
+          "maxWidth": 3.0,
+          "minHeight": 2.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 224470994,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 14,
+            "m_PathID": 8486787402013068894
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 2.0,
+          "maxWidth": 3.0,
+          "minHeight": 2.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 605548117,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 15,
+            "m_PathID": 398929321252300881
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 5.0,
+          "minHeight": 3.0,
+          "maxHeight": 5.0,
+          "noiseSeed": 1795669518,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 16,
+            "m_PathID": 1245006558584958560
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 2.0,
+          "maxWidth": 5.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10999999940395355,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 17,
+            "m_PathID": 6846659341408791651
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 0.75,
+          "maxHeight": 4.0,
+          "noiseSeed": 1990038259,
+          "noiseSpread": 0.2800000011920929,
+          "holeTestRadius": 0.03999999910593033,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 18,
+            "m_PathID": 658749458356824200
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 2.0,
+          "maxHeight": 4.5,
+          "noiseSeed": 1670561882,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 19,
+            "m_PathID": 1565408744048187519
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 5.0,
+          "minHeight": 2.0,
+          "maxHeight": 5.0,
+          "noiseSeed": 1754895846,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 18,
+            "m_PathID": 658749458356824200
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 1.0,
+          "maxHeight": 4.0,
+          "noiseSeed": 1670561882,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 17,
+            "m_PathID": 6846659341408791651
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 1990038259,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 16,
+            "m_PathID": 1245006558584958560
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 6.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 17,
+            "m_PathID": 6846659341408791651
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 1.0,
+          "maxHeight": 4.0,
+          "noiseSeed": 1990038259,
+          "noiseSpread": 0.2800000011920929,
+          "holeTestRadius": 0.03999999910593033,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 15,
+            "m_PathID": 398929321252300881
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 3.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 378234000,
+          "noiseSpread": 0.17000000178813934,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 8,
+            "m_PathID": 6011036630121576164
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 15,
+            "m_PathID": 398929321252300881
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 2.0,
+          "maxWidth": 3.0,
+          "minHeight": 2.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1795669518,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 12,
+            "m_PathID": 2085449277718671952
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 5.0,
+          "minHeight": 3.0,
+          "maxHeight": 6.0,
+          "noiseSeed": 605548117,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 19,
+            "m_PathID": 1565408744048187519
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 1754895846,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 14,
+            "m_PathID": 8486787402013068894
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 605548117,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 8,
+            "m_PathID": 6011036630121576164
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 2.0,
+          "maxWidth": 4.0,
+          "minHeight": 2.0,
+          "maxHeight": 4.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 18,
+            "m_PathID": 658749458356824200
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 1.0,
+          "maxHeight": 4.0,
+          "noiseSeed": 1670561882,
+          "noiseSpread": 0.10999999940395355,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        }
+      ]
+    },
+    {
+      "tile": "2_1",
+      "terrain_instances": {
+        "rock": 388
+      },
+      "detail_density_patches": 234,
+      "tree_and_rock_prototypes": [
+        {
+          "guid": "398b156fac7c6f44db09e9ad046c24dd",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Rock_C_01.prefab",
+          "category": "rock"
+        },
+        {
+          "guid": "d08e58249c8b5444cb22e208478dc55f",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Models/Rock_B_02.fbx",
+          "category": "rock"
+        },
+        {
+          "guid": "6b63070b5a692dc4389c591157da475d",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Rock_C_02.prefab",
+          "category": "rock"
+        },
+        {
+          "guid": "c06ecca5c3d565e42808724839b39b6f",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Foliage/Red_Bush/Red_Bush.prefab",
+          "category": "shrub"
+        },
+        {
+          "guid": "cce4d8667f2436a479759f07084d8ff4",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Conifer.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "e730e362773695e408e48f59e6dff87a",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Cypress_Forest_Desktop.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "451d860cead90b64bbbab1639909594c",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_A/Pine_A.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "34776a9356ed54141bf7fed4fded28a0",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_B/Pine_B.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "942660f4ebcf9cd438f45122b0ad63eb",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_C/Pine_C.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "35e087cfaa0f57244b67615777188d3e",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_D/Pine_D.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "8d8873bd1f85c3942bf7f961cec01074",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Models/Rock_B_01.fbx",
+          "category": "rock"
+        },
+        {
+          "guid": "9ec4ab395efae3f44b859f77742dd451",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Models/Rock_C_01.fbx",
+          "category": "rock"
+        },
+        {
+          "guid": "e71b98edf7da4b448bc6ae07b82d6935",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Rock_B_01.prefab",
+          "category": "rock"
+        }
+      ],
+      "detail_prototypes_native_properties": [
+        {
+          "prototype": {
+            "m_FileID": 9,
+            "m_PathID": 6011036630121576164
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 10,
+            "m_PathID": 2803505663424749585
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 1311760659,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 11,
+            "m_PathID": 3381235597526909217
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 1003651803,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 12,
+            "m_PathID": 7219107292882874463
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 4.0,
+          "maxWidth": 6.0,
+          "minHeight": 4.0,
+          "maxHeight": 6.0,
+          "noiseSeed": 1311760659,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 13,
+            "m_PathID": 2085449277718671952
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 605548117,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 14,
+            "m_PathID": 7369509780391000685
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 5.0,
+          "minHeight": 3.0,
+          "maxHeight": 5.0,
+          "noiseSeed": 224470994,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 15,
+            "m_PathID": 8486787402013068894
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 605548117,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 16,
+            "m_PathID": 398929321252300881
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 2.0,
+          "maxWidth": 3.0,
+          "minHeight": 2.0,
+          "maxHeight": 4.0,
+          "noiseSeed": 1795669518,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 17,
+            "m_PathID": 1245006558584958560
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 2.0,
+          "maxWidth": 4.0,
+          "minHeight": 2.0,
+          "maxHeight": 4.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 18,
+            "m_PathID": 6846659341408791651
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 2.0,
+          "maxWidth": 3.0,
+          "minHeight": 2.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1990038259,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 19,
+            "m_PathID": 658749458356824200
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 1.0,
+          "maxHeight": 4.0,
+          "noiseSeed": 1670561882,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 20,
+            "m_PathID": 1565408744048187519
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 1754895846,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 9,
+            "m_PathID": 6011036630121576164
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 3.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 16,
+            "m_PathID": 398929321252300881
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 5.0,
+          "minHeight": 3.0,
+          "maxHeight": 5.0,
+          "noiseSeed": 1795669518,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 18,
+            "m_PathID": 6846659341408791651
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.5,
+          "noiseSeed": 1990038259,
+          "noiseSpread": 0.2800000011920929,
+          "holeTestRadius": 0.03999999910593033,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 18,
+            "m_PathID": 6846659341408791651
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 0.75,
+          "maxHeight": 4.0,
+          "noiseSeed": 1990038259,
+          "noiseSpread": 0.2800000011920929,
+          "holeTestRadius": 0.03999999910593033,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 17,
+            "m_PathID": 1245006558584958560
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 2.0,
+          "maxWidth": 5.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10999999940395355,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 18,
+            "m_PathID": 6846659341408791651
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 1990038259,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 16,
+            "m_PathID": 398929321252300881
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 2.0,
+          "maxWidth": 3.0,
+          "minHeight": 2.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1795669518,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 13,
+            "m_PathID": 2085449277718671952
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 6.0,
+          "minHeight": 3.0,
+          "maxHeight": 6.0,
+          "noiseSeed": 605548117,
+          "noiseSpread": 0.800000011920929,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 19,
+            "m_PathID": 658749458356824200
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 2.0,
+          "maxHeight": 4.5,
+          "noiseSeed": 1670561882,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 17,
+            "m_PathID": 1245006558584958560
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 6.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 18,
+            "m_PathID": 6846659341408791651
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 1.0,
+          "maxHeight": 4.0,
+          "noiseSeed": 1990038259,
+          "noiseSpread": 0.2800000011920929,
+          "holeTestRadius": 0.03999999910593033,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 16,
+            "m_PathID": 398929321252300881
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 3.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 378234000,
+          "noiseSpread": 0.17000000178813934,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 13,
+            "m_PathID": 2085449277718671952
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 5.0,
+          "minHeight": 3.0,
+          "maxHeight": 6.0,
+          "noiseSeed": 605548117,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 11,
+            "m_PathID": 3381235597526909217
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.5,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1003651803,
+          "noiseSpread": 0.5,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 9,
+            "m_PathID": 6011036630121576164
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 2.0,
+          "maxWidth": 4.0,
+          "minHeight": 2.0,
+          "maxHeight": 4.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 19,
+            "m_PathID": 658749458356824200
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 1.0,
+          "maxHeight": 4.0,
+          "noiseSeed": 1670561882,
+          "noiseSpread": 0.10999999940395355,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        }
+      ]
+    },
+    {
+      "tile": "2_2",
+      "terrain_instances": {
+        "rock": 404,
+        "tree": 22
+      },
+      "detail_density_patches": 648,
+      "tree_and_rock_prototypes": [
+        {
+          "guid": "398b156fac7c6f44db09e9ad046c24dd",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Rock_C_01.prefab",
+          "category": "rock"
+        },
+        {
+          "guid": "6b63070b5a692dc4389c591157da475d",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Rock_C_02.prefab",
+          "category": "rock"
+        },
+        {
+          "guid": "a93f80d252523a14d9206681c7713ce8",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Rock_Overgrown_D.prefab",
+          "category": "rock"
+        },
+        {
+          "guid": "e730e362773695e408e48f59e6dff87a",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Cypress_Forest_Desktop.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "c06ecca5c3d565e42808724839b39b6f",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Foliage/Red_Bush/Red_Bush.prefab",
+          "category": "shrub"
+        },
+        {
+          "guid": "cce4d8667f2436a479759f07084d8ff4",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Conifer.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "9ec4ab395efae3f44b859f77742dd451",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Models/Rock_C_01.fbx",
+          "category": "rock"
+        },
+        {
+          "guid": "451d860cead90b64bbbab1639909594c",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_A/Pine_A.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "34776a9356ed54141bf7fed4fded28a0",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_B/Pine_B.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "942660f4ebcf9cd438f45122b0ad63eb",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_C/Pine_C.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "35e087cfaa0f57244b67615777188d3e",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_D/Pine_D.prefab",
+          "category": "tree"
+        },
+        {
+          "guid": "8d8873bd1f85c3942bf7f961cec01074",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Models/Rock_B_01.fbx",
+          "category": "rock"
+        },
+        {
+          "guid": "e71b98edf7da4b448bc6ae07b82d6935",
+          "path": "Assets/TerrainDemoScene_URP/Prefabs/Rocks/Rock_B_01.prefab",
+          "category": "rock"
+        }
+      ],
+      "detail_prototypes_native_properties": [
+        {
+          "prototype": {
+            "m_FileID": 8,
+            "m_PathID": 6011036630121576164
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 2.0,
+          "maxWidth": 4.0,
+          "minHeight": 2.0,
+          "maxHeight": 4.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 9,
+            "m_PathID": 2803505663424749585
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 1311760659,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 10,
+            "m_PathID": 3381235597526909217
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 1003651803,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 11,
+            "m_PathID": 7219107292882874463
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 4.0,
+          "maxWidth": 6.0,
+          "minHeight": 4.0,
+          "maxHeight": 6.0,
+          "noiseSeed": 1311760659,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 12,
+            "m_PathID": 2085449277718671952
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 605548117,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 13,
+            "m_PathID": 7369509780391000685
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 224470994,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 14,
+            "m_PathID": 8486787402013068894
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 605548117,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 15,
+            "m_PathID": 398929321252300881
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 2.0,
+          "maxWidth": 3.0,
+          "minHeight": 2.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1795669518,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 16,
+            "m_PathID": 1245006558584958560
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 2.0,
+          "maxWidth": 3.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.5,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 1.0,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 17,
+            "m_PathID": 6846659341408791651
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 1990038259,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 18,
+            "m_PathID": 658749458356824200
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 1.0,
+          "maxHeight": 4.0,
+          "noiseSeed": 1670561882,
+          "noiseSpread": 0.10999999940395355,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 19,
+            "m_PathID": 1565408744048187519
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 1754895846,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 8,
+            "m_PathID": 6011036630121576164
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 3.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 12,
+            "m_PathID": 2085449277718671952
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 6.0,
+          "minHeight": 3.0,
+          "maxHeight": 6.0,
+          "noiseSeed": 605548117,
+          "noiseSpread": 0.800000011920929,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 18,
+            "m_PathID": 658749458356824200
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 2.0,
+          "maxHeight": 4.5,
+          "noiseSeed": 1670561882,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 15,
+            "m_PathID": 398929321252300881
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 5.0,
+          "minHeight": 3.0,
+          "maxHeight": 5.0,
+          "noiseSeed": 1795669518,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 17,
+            "m_PathID": 6846659341408791651
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 0.75,
+          "maxHeight": 4.0,
+          "noiseSeed": 1990038259,
+          "noiseSpread": 0.2800000011920929,
+          "holeTestRadius": 0.03999999910593033,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 18,
+            "m_PathID": 658749458356824200
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 1.0,
+          "maxHeight": 4.0,
+          "noiseSeed": 1670561882,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 16,
+            "m_PathID": 1245006558584958560
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 6.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 17,
+            "m_PathID": 6846659341408791651
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 4.0,
+          "minHeight": 1.0,
+          "maxHeight": 4.0,
+          "noiseSeed": 1990038259,
+          "noiseSpread": 0.2800000011920929,
+          "holeTestRadius": 0.03999999910593033,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 15,
+            "m_PathID": 398929321252300881
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 3.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 378234000,
+          "noiseSpread": 0.17000000178813934,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 12,
+            "m_PathID": 2085449277718671952
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 5.0,
+          "minHeight": 3.0,
+          "maxHeight": 6.0,
+          "noiseSeed": 605548117,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 16,
+            "m_PathID": 1245006558584958560
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 2.0,
+          "maxWidth": 5.0,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10999999940395355,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 8,
+            "m_PathID": 6011036630121576164
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.0,
+          "minHeight": 1.0,
+          "maxHeight": 2.0,
+          "noiseSeed": 1596488194,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 10,
+            "m_PathID": 3381235597526909217
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 1.0,
+          "maxWidth": 2.5,
+          "minHeight": 1.0,
+          "maxHeight": 3.0,
+          "noiseSeed": 1003651803,
+          "noiseSpread": 0.5,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        },
+        {
+          "prototype": {
+            "m_FileID": 19,
+            "m_PathID": 1565408744048187519
+          },
+          "prototypeTexture": {
+            "m_FileID": 0,
+            "m_PathID": 0
+          },
+          "minWidth": 3.0,
+          "maxWidth": 5.0,
+          "minHeight": 2.0,
+          "maxHeight": 5.0,
+          "noiseSeed": 1754895846,
+          "noiseSpread": 0.10000000149011612,
+          "holeTestRadius": 0.0,
+          "healthyColor": {
+            "r": 0.26274511218070984,
+            "g": 0.9764705896377563,
+            "b": 0.16470588743686676,
+            "a": 1.0
+          },
+          "dryColor": {
+            "r": 0.8039215803146362,
+            "g": 0.7372549176216125,
+            "b": 0.10196078568696976,
+            "a": 1.0
+          },
+          "renderMode": 1,
+          "usePrototypeMesh": 1,
+          "useInstancing": 1
+        }
+      ]
+    }
+  ]
+}

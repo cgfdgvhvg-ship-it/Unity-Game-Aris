@@ -1,0 +1,752 @@
+{
+  "schema_version": 1,
+  "status": "offline_checks_passed",
+  "unity_editor_import_tested": false,
+  "unity_render_tested": false,
+  "unity_build_tested": false,
+  "scene": "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity",
+  "map_size_m": [
+    2000,
+    2000
+  ],
+  "area_m2": 4000000,
+  "district_count": 13,
+  "building_instance_count": 59,
+  "unique_model_count": 17,
+  "vehicle_spawn_count": 45,
+  "checks": {
+    "exactly_four_1000m_tiles": {
+      "passed": true,
+      "detail": [
+        "1_1",
+        "1_2",
+        "2_1",
+        "2_2"
+      ]
+    },
+    "all_terrain_edges_match": {
+      "passed": true,
+      "detail": [
+        {
+          "tiles": [
+            "1_1",
+            "2_1"
+          ],
+          "axis": "X",
+          "maximum_difference_m": 0.0
+        },
+        {
+          "tiles": [
+            "1_2",
+            "2_2"
+          ],
+          "axis": "X",
+          "maximum_difference_m": 0.0
+        },
+        {
+          "tiles": [
+            "1_1",
+            "1_2"
+          ],
+          "axis": "Z",
+          "maximum_difference_m": 0.0
+        },
+        {
+          "tiles": [
+            "2_1",
+            "2_2"
+          ],
+          "axis": "Z",
+          "maximum_difference_m": 0.0
+        }
+      ]
+    },
+    "outer_edges_below_ocean": {
+      "passed": true,
+      "detail": {
+        "highest_boundary_m": -62.086307525634766,
+        "sea_level_m": -38.07552
+      }
+    },
+    "at_least_ten_districts": {
+      "passed": true,
+      "detail": 13
+    },
+    "all_17_unique_models_used": {
+      "passed": true,
+      "detail": [
+        "Airfield",
+        "CanalTown",
+        "HanokVillage",
+        "Harbour",
+        "ParcelDepot",
+        "TownHall",
+        "a_frame_cabin",
+        "bungalow_house",
+        "detached_two_storey_house",
+        "garage_apartment",
+        "lighthouse",
+        "observatory_dome",
+        "pitched_roof_cottage",
+        "row_three_townhouses",
+        "two_bedroom_garage_house",
+        "warehouse_loading_dock",
+        "watchtower"
+      ]
+    },
+    "building_foundations_flat": {
+      "passed": true,
+      "detail": {
+        "max_deviation_m": 0.0,
+        "instances": 59
+      }
+    },
+    "no_building_aabb_overlap": {
+      "passed": true,
+      "detail": []
+    },
+    "empty_vehicle_bays_flat_and_grounded": {
+      "passed": true,
+      "detail": [
+        {
+          "name": "VehicleSpawnPoint_01",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            289.2,
+            -11.936767578125,
+            209
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_02",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            410.8,
+            -11.936767578125,
+            209
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_03",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            350.0,
+            -11.936767578125,
+            179.78299980163575
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_04",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            522.0,
+            23.758773803710938,
+            -641
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_05",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            618.0,
+            23.758773803710938,
+            -641
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_06",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            522.0,
+            23.758773803710938,
+            -660.9170001983642
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_07",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            618.0,
+            23.758773803710938,
+            -658.3749999046325
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_08",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            798.4,
+            -31.07855224609375,
+            339
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_09",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            881.6,
+            -31.07855224609375,
+            339
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_10",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            798.4,
+            -31.07855224609375,
+            362.51700019836426
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_11",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            881.6,
+            -31.07855224609375,
+            359.97499990463257
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_12",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            72,
+            24.95513916015625,
+            -413
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_13",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            285,
+            24.95513916015625,
+            -413
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_14",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            492.4,
+            -1.07183837890625,
+            -171
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_15",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            607.6,
+            -1.07183837890625,
+            -171
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_16",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            497.0,
+            -1.07183837890625,
+            -154.125
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_17",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            603.0,
+            -1.07183837890625,
+            -154.125
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_18",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            495.0,
+            -1.07183837890625,
+            -195.51700019836426
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_19",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            602.0,
+            -1.07183837890625,
+            -192.97499990463257
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_20",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            -171.2,
+            -31.07855224609375,
+            639
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_21",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            -68.8,
+            -31.07855224609375,
+            639
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_22",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            -68.8,
+            -31.07855224609375,
+            662.5170001983643
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_23",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            -171.2,
+            -31.07855224609375,
+            621.6250000953675
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_24",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            -587.6,
+            1.7115249633789062,
+            -601
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_25",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            -472.4,
+            1.7115249633789062,
+            -601
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_26",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            -587.6,
+            1.7115249633789062,
+            -580.0250000953674
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_27",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            -530.0,
+            1.7115249633789062,
+            -620.9170001983642
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_28",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            -761.6,
+            -2.6588516235351562,
+            54
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_29",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            -678.4,
+            -2.6588516235351562,
+            54
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_30",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            -474.4,
+            15.408645629882812,
+            -221
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_31",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            -365.6,
+            15.408645629882812,
+            -221
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_32",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            -474.4,
+            15.408645629882812,
+            -244.01700019836426
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_33",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            -365.6,
+            15.408645629882812,
+            -241.47499990463257
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_34",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            -420.0,
+            15.408645629882812,
+            -244.01700019836426
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_35",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            242.4,
+            -30.83440399169922,
+            639
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_36",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            357.6,
+            -30.83440399169922,
+            639
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_37",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            242.4,
+            -30.83440399169922,
+            662.5170001983643
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_38",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            357.6,
+            -30.83440399169922,
+            659.9749999046326
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_39",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            300.0,
+            -30.83440399169922,
+            615.9829998016357
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_40",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            602.0,
+            -18.211563110351562,
+            639
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_41",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            698.0,
+            -18.211563110351562,
+            639
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_42",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            799.0,
+            40.0439453125,
+            -762
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_43",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            851.0,
+            40.0439453125,
+            -762
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_44",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            -676.0,
+            6.7655487060546875,
+            -137
+          ]
+        },
+        {
+          "name": "VehicleSpawnPoint_45",
+          "ground_error_m": 0.0,
+          "pad_max_deviation_m": 0.0,
+          "exit_yaw_error_degrees": 0.0,
+          "position_m": [
+            -624.0,
+            6.7655487060546875,
+            -137
+          ]
+        }
+      ]
+    },
+    "vehicle_yaw_faces_exit": {
+      "passed": true,
+      "detail": "Unity +Z points towards the connecting street"
+    },
+    "every_district_has_vehicle_bays": {
+      "passed": true,
+      "detail": [
+        "CanalMarket",
+        "ClockTowerTown",
+        "CoastalHamlet",
+        "EasternPort",
+        "ForestLookout",
+        "FreightDistrict",
+        "HighlandObservatory",
+        "LakesideHamlet",
+        "NorthernRidgeTown",
+        "OldVillage",
+        "SoutheastLighthouse",
+        "SouthernAirfield",
+        "ValleySettlement"
+      ]
+    },
+    "no_terrain_instances_in_vehicle_bays": {
+      "passed": true,
+      "detail": []
+    },
+    "connected_district_road_graph": {
+      "passed": true,
+      "detail": {
+        "connected_districts": 13,
+        "road_links": 13
+      }
+    },
+    "roads_have_bounded_grades": {
+      "passed": true,
+      "detail": [
+        {
+          "road": "ClockTowerTown__FreightDistrict",
+          "max_grade_percent": 11.604518513118276,
+          "length_m": 495.81379133639007
+        },
+        {
+          "road": "ClockTowerTown__NorthernRidgeTown",
+          "max_grade_percent": 10.728208257688784,
+          "length_m": 562.0891403391853
+        },
+        {
+          "road": "NorthernRidgeTown__CoastalHamlet",
+          "max_grade_percent": 10.389282689867748,
+          "length_m": 370.5948049651613
+        },
+        {
+          "road": "CoastalHamlet__EasternPort",
+          "max_grade_percent": 10.722766514730923,
+          "length_m": 239.12727556439012
+        },
+        {
+          "road": "NorthernRidgeTown__CanalMarket",
+          "max_grade_percent": 7.6983743210874795,
+          "length_m": 419.2262734829747
+        },
+        {
+          "road": "FreightDistrict__SouthernAirfield",
+          "max_grade_percent": 10.530344912720837,
+          "length_m": 597.2125101978911
+        },
+        {
+          "road": "SouthernAirfield__HighlandObservatory",
+          "max_grade_percent": 10.591127762200014,
+          "length_m": 495.58216184726746
+        },
+        {
+          "road": "HighlandObservatory__SoutheastLighthouse",
+          "max_grade_percent": 10.575983370405345,
+          "length_m": 217.18193879461603
+        },
+        {
+          "road": "SouthernAirfield__ValleySettlement",
+          "max_grade_percent": 10.612366268728934,
+          "length_m": 652.5556029422029
+        },
+        {
+          "road": "ValleySettlement__ForestLookout",
+          "max_grade_percent": 10.743157990334486,
+          "length_m": 271.1477158740575
+        },
+        {
+          "road": "ForestLookout__LakesideHamlet",
+          "max_grade_percent": 10.928951743755652,
+          "length_m": 219.97052271570936
+        },
+        {
+          "road": "ValleySettlement__OldVillage",
+          "max_grade_percent": 10.425787160278164,
+          "length_m": 536.6007386970064
+        },
+        {
+          "road": "SouthernAirfield__OldVillage",
+          "max_grade_percent": 10.610743201620702,
+          "length_m": 755.0863305254239
+        }
+      ]
+    },
+    "no_roads_through_buildings": {
+      "passed": true,
+      "detail": []
+    },
+    "canal_bed_excavated_under_authored_water": {
+      "passed": true,
+      "detail": [
+        {
+          "district": "CanalMarket",
+          "ground_m": -31.07855224609375,
+          "bed_m": -32.32374572753906,
+          "model_root_y_m": -32.25084002214707
+        }
+      ]
+    }
+  },
+  "terrain_files": {
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_1_1_4bf22c8f-eb55-436d-84e3-dedfa85665b1.asset": {
+      "sha256": "6c9856fd3ae5bf643b635684f27e18131986b0cdcc52aa69d5fbbb2cdf820e7c",
+      "size": 53664912
+    },
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_1_2_1694bb0f-cffe-402c-b6f9-cf47692fbb78.asset": {
+      "sha256": "9cd8048360716d77071b0b55ff0a7885621a83838ae9b2cb6f12db366644e456",
+      "size": 54071120
+    },
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_1_82fc4922-5564-4a18-858e-787f6d901556.asset": {
+      "sha256": "5bcf17003c04d60bc3192c4f5dfd632017c345effdcc54b5146f9e120960e351",
+      "size": 53490240
+    },
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_2_b6e03cf0-de91-4cae-b6af-0128d856ae43.asset": {
+      "sha256": "cc5991257139952d35b191b459a4ea2b4c2ce07407eadd2479483095ba57a052",
+      "size": 53553400
+    }
+  },
+  "limitations": [
+    "A Unity 6000.3.26f1 import, shader compilation, visual inspection and target-device playtest remain required.",
+    "Some source packs contain exterior shells or authored closed doors. No promise that every building is enterable.",
+    "The ocean is visual only; swim, damage, map boundary and vehicle gameplay systems are not included.",
+    "Roads are graded using an 8% planning target; final measured slopes and maximum appear above after intersections and flat district transitions.",
+    "LOD currently performs distance culling, not independently authored lower-poly building meshes. Profile on the intended device."
+  ]
+}
