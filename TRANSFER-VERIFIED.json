@@ -1,0 +1,26 @@
+{
+  "passed": true,
+  "destination": "https://github.com/Aaris-khan-don/Unity-Game-Aris",
+  "destination_commit": "1655bd053e5197a3a9fc436e845be9bc35ac72e2",
+  "source_commit": "7dfc521a5a58b6295487acdaf93a8257111d9a09",
+  "map_files_verified": 1315,
+  "tiles_verified": 16,
+  "terrain_colliders_verified": 16,
+  "proxy_tiles_verified": 16,
+  "proxy_colliders_verified": 0,
+  "lfs_paths_verified": 393,
+  "unique_lfs_objects_verified": 381,
+  "missing": 0,
+  "corrupt": 0,
+  "csharp_files": 0,
+  "source_game_history_imported": false,
+  "destination_cold_download_verified": true,
+  "excluded_vendor_scripts": [
+    "Assets/TerrainDemoScene_URP/Scripts/SceneAnnotation.cs",
+    "Assets/TerrainDemoScene_URP/Scripts/SceneAnnotation.cs.meta",
+    "Assets/TerrainDemoScene_URP/Scripts/TerrainTreeToggle.cs",
+    "Assets/TerrainDemoScene_URP/Scripts/TerrainTreeToggle.cs.meta"
+  ],
+  "verification_run": "https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41473150255",
+  "note": "Verified by fresh destination LFS download. Temporary import workflow removed after success. Original vendor C# helpers excluded at the owner's request; this is a map asset archive, not a complete Unity project or an Editor-tested build."
+}
