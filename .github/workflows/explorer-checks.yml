@@ -1,0 +1,29 @@
+name: Map explorer checks
+on:
+  push:
+    branches: [review/map-explorer-camera-20261103]
+  pull_request:
+    paths:
+      - 'Assets/AarisWorld/Scripts/**'
+      - 'Assets/AarisWorld/Editor/**'
+      - 'Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity'
+      - 'ProjectSettings/**'
+      - 'Packages/manifest.json'
+      - 'Tools/Validation/check_explorer.py'
+      - '.github/workflows/explorer-checks.yml'
+permissions:
+  contents: read
+jobs:
+  saved-camera-and-syntax:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          lfs: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install PyYAML==6.0.3 tree-sitter==0.26.0 tree-sitter-c-sharp==0.23.5
+      - name: Check C# syntax, saved camera binding and unchanged terrain pointers
+        run: python Tools/Validation/check_explorer.py

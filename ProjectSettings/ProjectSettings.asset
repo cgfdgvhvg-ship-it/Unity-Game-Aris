@@ -5,5 +5,20 @@ PlayerSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 27
   companyName: Aaris
-  productName: Aaris Island
+  productName: Aaris Map Explorer
   m_ActiveColorSpace: 1
+  activeInputHandler: 0
+  bundleVersion: 0.1.0
+  defaultInterfaceOrientation: 4
+  allowedAutorotateToPortrait: 0
+  allowedAutorotateToPortraitUpsideDown: 0
+  allowedAutorotateToLandscapeLeft: 1
+  allowedAutorotateToLandscapeRight: 1
+  applicationIdentifier:
+    Android: com.aaris.mapexplorer
+  AndroidTargetArchitectures: 2
+  AndroidMinSdkVersion: 26
+  AndroidTargetSdkVersion: 0
+  AndroidUseCustomKeystore: 0
+  scriptingBackend:
+    Android: 1

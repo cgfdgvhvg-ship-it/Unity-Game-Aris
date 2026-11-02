@@ -149,17 +149,25 @@ Light:
 --- !u!1 &10011
 GameObject:
   m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
+  m_CorrespondingSourceObject:
+    fileID: 0
+  m_PrefabInstance:
+    fileID: 0
+  m_PrefabAsset:
+    fileID: 0
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 10012}
-  - component: {fileID: 10021}
+  - component:
+      fileID: 10012
+  - component:
+      fileID: 10021
+  - component: {fileID: 13893}
+  - component: {fileID: 13894}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
-  m_Icon: {fileID: 0}
+  m_Icon:
+    fileID: 0
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
@@ -27266,6 +27274,34 @@ Transform:
   m_Children: []
   m_Father: {fileID: 13442}
   m_LocalEulerAnglesHint: {x: 0.0, y: 180.0, z: 0.0}
+--- !u!114 &13893
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 10011}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7717a02aeb215c7dadc584c8f3575cbe, type: 3}
+  m_Name: ''
+  m_EditorClassIdentifier: Assembly-CSharp::Aaris.MapReview.AarisMapExplorer
+  moveSpeed: 45
+  fastMultiplier: 4
+  mouseLookSensitivity: 0.15
+  touchLookSensitivity: 0.1
+  terrainClearance: 2.5
+  mapBoundary: 980
+  maximumAltitude: 1800
+  showHelp: 1
+--- !u!81 &13894
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 10011}
+  m_Enabled: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

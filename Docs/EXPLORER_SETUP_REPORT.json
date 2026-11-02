@@ -1,0 +1,19 @@
+{
+  "status": "passed",
+  "unity_editor_compilation_tested": false,
+  "unity_runtime_input_tested": false,
+  "saved_camera_controller_bound": true,
+  "audio_listener_count_on_camera": 1,
+  "terrain_count": 4,
+  "vehicle_marker_count": 45,
+  "csharp_syntax_checked": [
+    "Assets/AarisWorld/Editor/AarisExplorerBuild.cs",
+    "Assets/AarisWorld/Scripts/AarisMapExplorer.cs"
+  ],
+  "map_terrain_bytes_unchanged": true,
+  "android": "ARM64 / IL2CPP / landscape / Android 8+",
+  "controls": {
+    "desktop": "WASD/arrows; Q/E height; Shift fast; right-drag look; middle-drag pan; wheel zoom; F home; O overview",
+    "touch": "Hold movement buttons; drag to look; pinch or +/- zoom; Up/Down altitude; Home/Overview/Speed buttons"
+  }
+}

@@ -19,7 +19,8 @@ prototypes, splat textures, terrain layers and external references.
 ## Reproduction
 
 Use Python 3.11 and install `requirements.txt`. Start from the original vendor
-archive commit `3550c283405fbf02ec000e0d97a7ad8ff69f70b0`, bring in these tools,
+archive commit `3550c283405fbf02ec000e0d97a7ad8ff69f70b0`, bring in these tools and the current `Assets/AarisWorld/Scripts` and
+`Assets/AarisWorld/Editor` sources,
 fetch the four main TerrainData LFS objects, and run from repository root:
 
 ```

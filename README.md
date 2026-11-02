@@ -14,6 +14,29 @@ already saved. Package Manager restores the declared URP/VFX dependencies.
 Clone with **Git LFS** and run `git lfs pull`. GitHub ZIP source downloads may
 contain LFS pointers instead of the original meshes and textures.
 
+## Map explorer controls
+
+The saved Main Camera now has `AarisMapExplorer` and an AudioListener. Open the
+scene and press Play, or install the Android preview APK when its cloud build
+is available.
+
+- Phone/tablet: hold the arrow buttons to move, drag empty space to look,
+  pinch or use + / - to zoom, and use Up / Down to change altitude.
+- Desktop: WASD / arrow keys move; Q / E change altitude; hold Shift for faster
+  travel; right-drag looks; middle-drag pans; mouse wheel zooms.
+- Home / F restores the starting view. Overview / O shows the whole island.
+  Speed switches between normal and fast travel; Help / H toggles hints.
+
+The camera stays inside the 2km Terrain boundary and above terrain/ocean level.
+It is a flying review camera; it does not provide a player character or vehicles.
+Android preview settings target ARM64, IL2CPP, Android 8+ and landscape, with
+the standard debug signing key. No store release or custom keystore is configured.
+
+Cloud builds use the repository root and saved scene; no terrain pre-export
+method is needed. `Aaris.MapReview.Editor.AarisExplorerBuild.BuildAndroid` is also
+available for a batchmode/manual Editor build. The build preprocessor checks the
+camera, all four TerrainData references and all 45 spawn markers before building.
+
 ## Layout
 
 ![Measured terrain and placement plan — not a Unity render](Docs/MAP_LAYOUT_2KM.png)
