@@ -2,8 +2,8 @@ name: Import original URP map and verify destination LFS (no APK)
 on:
   workflow_dispatch:
     inputs:
-      source_url:
-        description: 'Temporary private cloud package download URL'
+      chunks_json:
+        description: 'Eight private cloud package-part URLs and SHA-256 values (JSON)'
         required: true
         type: string
       archive_sha256:
@@ -29,6 +29,7 @@ jobs:
           python3 - <<'PY'
           """One-time private-repository import with a fresh remote LFS readback."""
           import hashlib
+          from concurrent.futures import ThreadPoolExecutor
           import json
           import os
           from pathlib import Path, PurePosixPath
@@ -85,27 +86,60 @@ jobs:
                       print("SHA-256 verified", i, "/", len(objects), flush=True)
           
           
-          def main():
-              assert os.environ["GITHUB_REPOSITORY"].lower() == "aaris-khan-don/unity-game-aris"
-              event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
-              url = event["inputs"]["source_url"]
-              expected = event["inputs"]["archive_sha256"].strip()
-              assert re.fullmatch(r"[0-9a-f]{64}", expected)
+          def private_download(url, path):
               host = urllib.parse.urlparse(url)
               assert host.scheme == "https" and (host.hostname or "").endswith(".oaiusercontent.com")
               print("::add-mask::" + url, flush=True)
+              for attempt in range(4):
+                  try:
+                      with urllib.request.urlopen(url, timeout=90) as response, path.open("wb") as f:
+                          shutil.copyfileobj(response, f, length=8 * 1024 * 1024)
+                      return
+                  except Exception:
+                      if attempt == 3:
+                          raise RuntimeError("Cloud part download failed or temporary URL expired; refresh URLs and rerun.") from None
+                      time.sleep(3)
+          
+          
+          def assemble_parts(parts, temp, archive):
+              assert isinstance(parts, list) and len(parts) == 8
+              def download_one(pair):
+                  i, part = pair
+                  expected = part["sha256"]
+                  assert re.fullmatch(r"[0-9a-f]{64}", expected)
+                  wrapped = temp / ("part-" + str(i) + ".zip")
+                  private_download(part["url"], wrapped)
+                  assert digest(wrapped) == expected, "Relay part ZIP checksum mismatch"
+                  raw = temp / ("raw-" + str(i))
+                  with zipfile.ZipFile(wrapped) as z:
+                      names = z.namelist()
+                      assert names == ["map-" + str(i).zfill(3)], names
+                      with z.open(names[0]) as f, raw.open("wb") as out:
+                          shutil.copyfileobj(f, out, length=8*1024*1024)
+                  wrapped.unlink()
+                  print("Downloaded and verified part", i+1, "/ 8", flush=True)
+                  return raw
+              with ThreadPoolExecutor(max_workers=8) as pool:
+                  paths = list(pool.map(download_one, enumerate(parts)))
+              with archive.open("wb") as out:
+                  for path in paths:
+                      with path.open("rb") as f:
+                          shutil.copyfileobj(f, out, length=8*1024*1024)
+                      path.unlink()
+          
+          
+          def main():
+              assert os.environ["GITHUB_REPOSITORY"].lower() == "aaris-khan-don/unity-game-aris"
+              event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+              expected = event["inputs"]["archive_sha256"].strip()
+              assert re.fullmatch(r"[0-9a-f]{64}", expected)
               temp = Path(os.environ["RUNNER_TEMP"]) / "verified-urp-transfer"
               temp.mkdir(exist_ok=True)
               archive = temp / "map.zip"
-              for attempt in range(4):
-                  try:
-                      with urllib.request.urlopen(url, timeout=90) as response, archive.open("wb") as f:
-                          shutil.copyfileobj(response, f, length=8 * 1024 * 1024)
-                      break
-                  except Exception:
-                      if attempt == 3:
-                          raise RuntimeError("Cloud package download failed or temporary URL expired. Reissue the URL and rerun.") from None
-                      time.sleep(3)
+              if event["inputs"].get("chunks_json"):
+                  assemble_parts(json.loads(event["inputs"]["chunks_json"]), temp, archive)
+              else:
+                  private_download(event["inputs"]["source_url"], archive)
               assert digest(archive) == expected, "Archive SHA-256 mismatch"
               print("Private cloud archive downloaded and checksum verified.", flush=True)
               package = temp / "package"
