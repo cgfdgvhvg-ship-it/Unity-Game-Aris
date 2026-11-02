@@ -24,7 +24,14 @@ jobs:
         with:
           lfs: false
           fetch-depth: 1
+      - name: Restore verified map package after an interrupted transfer
+        id: mapcache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ${{ runner.temp }}/verified-urp-transfer/package
+          key: private-urp-map-7dfc521a5a58b6295487acdaf93a8257111d9a09-v1
       - name: Import only the map and cold-verify every destination LFS object
+        id: importmap
         run: |
           python3 - <<'PY'
           """One-time private-repository import with a fresh remote LFS readback."""
@@ -136,24 +143,31 @@ jobs:
               temp = Path(os.environ["RUNNER_TEMP"]) / "verified-urp-transfer"
               temp.mkdir(exist_ok=True)
               archive = temp / "map.zip"
-              if event["inputs"].get("chunks_json"):
-                  assemble_parts(json.loads(event["inputs"]["chunks_json"]), temp, archive)
-              else:
-                  private_download(event["inputs"]["source_url"], archive)
-              assert digest(archive) == expected, "Archive SHA-256 mismatch"
-              print("Private cloud archive downloaded and checksum verified.", flush=True)
               package = temp / "package"
-              package.mkdir(exist_ok=True)
-              with zipfile.ZipFile(archive) as z:
-                  for item in z.infolist():
-                      p = PurePosixPath(item.filename)
-                      assert not p.is_absolute() and ".." not in p.parts
-                      assert (item.external_attr >> 16) & 0o170000 != 0o120000, "No symlinks permitted"
-                  z.extractall(package)
-              archive.unlink()
+              if (package / "map-only.bundle").is_file():
+                  print("Reusing the verified private map package cache.", flush=True)
+              else:
+                  if event["inputs"].get("chunks_json"):
+                      assemble_parts(json.loads(event["inputs"]["chunks_json"]), temp, archive)
+                  else:
+                      private_download(event["inputs"]["source_url"], archive)
+                  assert digest(archive) == expected, "Archive SHA-256 mismatch"
+                  print("Private cloud archive downloaded and checksum verified.", flush=True)
+                  package.mkdir(exist_ok=True)
+                  with zipfile.ZipFile(archive) as z:
+                      for item in z.infolist():
+                          p = PurePosixPath(item.filename)
+                          assert not p.is_absolute() and ".." not in p.parts
+                          assert (item.external_attr >> 16) & 0o170000 != 0o120000, "No symlinks permitted"
+                      z.extractall(package)
+                  archive.unlink()
               summary = json.loads((package / "export-summary.json").read_text())
               bundle = package / "map-only.bundle"
               assert digest(bundle) == summary["bundle_sha256"]
+              assert summary["bundle_sha256"] == "01cbdd86709f9ea3d7df7769e5a08753e686069eee8254f85cbcbd9727be2ca4", "Untrusted map export bundle"
+              if os.environ.get("GITHUB_OUTPUT"):
+                  with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+                      out.write("package_ready=true\n")
               git("bundle", "verify", str(bundle))
               git("fetch", str(bundle), "refs/heads/main:refs/heads/imported-urp-map")
               map_commit = git("rev-parse", "refs/heads/imported-urp-map").decode().strip()
@@ -192,11 +206,11 @@ jobs:
               assert proxy_coords == coords
               proxy_guids = {re.search(r"^guid: ([0-9a-f]{32})$", git("show", map_commit+":"+p+".meta").decode(), re.M)[1] for p in proxy_tiles}
               proxy_prefab = git("show", map_commit+":Assets/TerrainDemoScene_URP/Prefabs/Terrain/TerrainProxy.prefab").decode()
-              for component in ("Terrain", "TerrainCollider"):
-                  blocks = re.findall(r"^"+component+r":\n(.*?)(?=^--- |\Z)", proxy_prefab, re.M|re.S)
-                  assert len(blocks) == 16
-                  refs = [re.search(r"m_TerrainData:.*?guid: ([0-9a-f]{32})", b)[1] for b in blocks]
-                  assert set(refs) == proxy_guids and len(set(refs)) == 16
+              blocks = re.findall(r"^Terrain:\n(.*?)(?=^--- |\Z)", proxy_prefab, re.M|re.S)
+              assert len(blocks) == 16
+              refs = [re.search(r"m_TerrainData:.*?guid: ([0-9a-f]{32})", b)[1] for b in blocks]
+              assert set(refs) == proxy_guids and len(set(refs)) == 16
+              assert not re.findall(r"^TerrainCollider:$", proxy_prefab, re.M), "Original proxy has no colliders"
               verify_objects(package / "lfs", objects)
               print("All map files, all 16 tiles and all LFS binaries verified before upload.", flush=True)
           
@@ -205,20 +219,25 @@ jobs:
               assert remote_head == original_head, "Destination main changed; refusing to overwrite"
               bootstrap_entries = read_entries(original_head)
               workflow_path = ".github/workflows/import-urp-map.yml"
-              assert set(bootstrap_entries) == {workflow_path}, "Destination is not the new empty transfer repo"
+              helper = bootstrap_entries[workflow_path]
+              final_entries = dict(entries)
+              final_entries[workflow_path] = helper
+              assert set(bootstrap_entries) == {workflow_path} or bootstrap_entries == final_entries, "Destination contains unrelated edits"
               tree = git("rev-parse", map_commit + "^{tree}").decode().strip()
               # Keep the existing workflow byte-for-byte during the GITHUB_TOKEN push.
               # The authorized connector removes this temporary helper after verification.
               git("read-tree", tree)
-              helper = bootstrap_entries[workflow_path]
               git("update-index", "--add", "--cacheinfo", helper["mode"], helper["blob"], workflow_path)
               tree = git("write-tree").decode().strip()
               final_entries = dict(entries)
               final_entries[workflow_path] = helper
               git("config", "user.name", "Aaris Map Recovery")
               git("config", "user.email", "map-recovery@users.noreply.github.com")
-              new_commit = git("commit-tree", tree, "-p", original_head,
-                               data=b"Import verified original 16-tile Unity URP Terrain map only; no C# or gameplay\n").decode().strip()
+              if bootstrap_entries == final_entries:
+                  new_commit = original_head
+              else:
+                  new_commit = git("commit-tree", tree, "-p", original_head,
+                                   data=b"Import verified original 16-tile Unity URP Terrain map only; no C# or gameplay\n").decode().strip()
               git("update-ref", "refs/heads/transfer-map", new_commit)
               git("lfs", "install", "--local")
               git("config", "lfs.storage", str(package / "lfs"))
@@ -243,7 +262,7 @@ jobs:
               report = {"passed":True, "destination":"https://github.com/Aaris-khan-don/Unity-Game-Aris",
                         "destination_commit":new_commit, "source_commit":manifest["source_commit"],
                         "map_files_verified":1315, "tiles_verified":16, "terrain_colliders_verified":16,
-                        "proxy_tiles_verified":16, "proxy_colliders_verified":16,
+                        "proxy_tiles_verified":16, "proxy_colliders_verified":0,
                         "lfs_paths_verified":393, "unique_lfs_objects_verified":381,
                         "missing":0, "corrupt":0, "csharp_files":0, "source_game_history_imported":False,
                         "destination_cold_download_verified":True, "excluded_vendor_scripts":manifest["excluded_scripts"]}
@@ -263,3 +282,9 @@ jobs:
           path: urp-transfer-verified.json
           retention-days: 14
           if-no-files-found: error
+      - name: Preserve verified package if a later network operation fails
+        if: failure() && steps.importmap.outputs.package_ready == 'true' && steps.mapcache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ${{ runner.temp }}/verified-urp-transfer/package
+          key: private-urp-map-7dfc521a5a58b6295487acdaf93a8257111d9a09-v1
