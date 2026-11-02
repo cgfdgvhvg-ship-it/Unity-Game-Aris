@@ -1,0 +1,60 @@
+{
+  "status": "passed",
+  "unity_editor_tested": false,
+  "tiles": [
+    {
+      "tile": "1_1",
+      "embedded_alpha_textures_preserved": 2,
+      "terrain_layers_and_detail_prototypes_preserved": true,
+      "external_references_preserved": true,
+      "native_height_roundtrip_max_error_m": 1.3089606397898024e-05,
+      "indexed_instance_count": 1625,
+      "original_unity_serialization_version": "2021.2.6f1"
+    },
+    {
+      "tile": "1_2",
+      "embedded_alpha_textures_preserved": 2,
+      "terrain_layers_and_detail_prototypes_preserved": true,
+      "external_references_preserved": true,
+      "native_height_roundtrip_max_error_m": 1.3089606397898024e-05,
+      "indexed_instance_count": 3986,
+      "original_unity_serialization_version": "2021.3.0f1"
+    },
+    {
+      "tile": "2_1",
+      "embedded_alpha_textures_preserved": 2,
+      "terrain_layers_and_detail_prototypes_preserved": true,
+      "external_references_preserved": true,
+      "native_height_roundtrip_max_error_m": 1.8864158818132637e-05,
+      "indexed_instance_count": 388,
+      "original_unity_serialization_version": "2021.3.0f1"
+    },
+    {
+      "tile": "2_2",
+      "embedded_alpha_textures_preserved": 2,
+      "terrain_layers_and_detail_prototypes_preserved": true,
+      "external_references_preserved": true,
+      "native_height_roundtrip_max_error_m": 1.3089606397898024e-05,
+      "indexed_instance_count": 426,
+      "original_unity_serialization_version": "2021.3.0f1"
+    }
+  ],
+  "terrain_files": {
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_1_1_4bf22c8f-eb55-436d-84e3-dedfa85665b1.asset": {
+      "sha256": "6c9856fd3ae5bf643b635684f27e18131986b0cdcc52aa69d5fbbb2cdf820e7c",
+      "size": 53664912
+    },
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_1_2_1694bb0f-cffe-402c-b6f9-cf47692fbb78.asset": {
+      "sha256": "9cd8048360716d77071b0b55ff0a7885621a83838ae9b2cb6f12db366644e456",
+      "size": 54071120
+    },
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_1_82fc4922-5564-4a18-858e-787f6d901556.asset": {
+      "sha256": "5bcf17003c04d60bc3192c4f5dfd632017c345effdcc54b5146f9e120960e351",
+      "size": 53490240
+    },
+    "Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_2_b6e03cf0-de91-4cae-b6af-0128d856ae43.asset": {
+      "sha256": "cc5991257139952d35b191b459a4ea2b4c2ce07407eadd2479483095ba57a052",
+      "size": 53553400
+    }
+  }
+}

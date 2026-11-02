@@ -57,6 +57,9 @@ at marker y without that offset.
   model placements, roads, vehicle bays, source URLs/hashes and tile removals.
 - [`Docs/MAP_BUILD_REPORT.json`](Docs/MAP_BUILD_REPORT.json): exact tile dimensions,
   seam comparison, shoreline, foundation, spawn and road-grade assertions.
+- [`Docs/NATIVE_TERRAIN_VERIFICATION.json`](Docs/NATIVE_TERRAIN_VERIFICATION.json):
+  saved TerrainData reopened; source alpha textures, prototypes and external
+  references compared with original bytes.
 - [`Docs/TERRAIN_INDEX.json`](Docs/TERRAIN_INDEX.json): searchable per-tile tree,
   rock and shrub coordinates, sampled height CSVs and grass-density patches.
 - [`Docs/MAP_STRUCTURE_REPORT.json`](Docs/MAP_STRUCTURE_REPORT.json): native Mesh
