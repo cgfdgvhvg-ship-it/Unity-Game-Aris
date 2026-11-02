@@ -1,0 +1,51 @@
+name: URP compatibility fix verification and download patch
+on:
+  push:
+    branches: [fix/urp-compatibility-20261103]
+permissions:
+  contents: write
+jobs:
+  verify-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          lfs: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install PyYAML==6.0.3 tree-sitter==0.26.0 tree-sitter-c-sharp==0.23.5
+      - name: Verify saved settings, generator and unchanged map data
+        run: python Tools/Validation/check_explorer.py
+      - name: Create the small patch for existing six-part source downloads
+        run: |
+          python - <<'PY'
+          import pathlib,zipfile,json,hashlib,subprocess
+          paths=['ProjectSettings/ProjectSettings.asset','Tools/MapBuild/build_map.py','Tools/Validation/check_explorer.py','Docs/EXPLORER_SETUP_REPORT.json','README.md']
+          commit=subprocess.check_output(['git','rev-parse','HEAD']).decode().strip()
+          report={'fix':'URP_COMPATIBILITY_MODE in Android, Standalone and WebGL settings; preserved by the map assembler.','commit':commit,'base_download_commit':'1d5e5f66745b01ce742ab7cfc9eb33169207a20e','files':[{ 'path':p,'sha256':hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()} for p in paths]}
+          target=pathlib.Path('/tmp/Aaris_URP_Compatibility_Fix.zip')
+          with zipfile.ZipFile(target,'w',zipfile.ZIP_DEFLATED) as z:
+              for p in paths:z.write(p,'Unity-Game-Aris/'+p)
+              z.writestr('Unity-Game-Aris/URP_COMPATIBILITY_PATCH.json',json.dumps(report,indent=2)+'\n')
+              z.writestr('APPLY_PATCH.txt','After extracting ALL six source ZIPs, extract this patch into the SAME parent folder and replace the matching Unity-Game-Aris files. No terrain, models, prefabs or textures are re-downloaded. The original DOWNLOAD_MANIFEST describes the pre-patch snapshot; URP_COMPATIBILITY_PATCH.json gives hashes for the replacement files.\n')
+          with zipfile.ZipFile(target) as z:assert z.testzip() is None
+          print('Verified patch ZIP:',target.stat().st_size,'bytes')
+          PY
+      - name: Attach verified patch to the private source download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$(gh api repos/Aaris-khan-don/Unity-Game-Aris --jq .private)" = true
+          gh release upload aaris-map-source-20261103-1d5e5f6 /tmp/Aaris_URP_Compatibility_Fix.zip --repo Aaris-khan-don/Unity-Game-Aris --clobber
+          gh release view aaris-map-source-20261103-1d5e5f6 --repo Aaris-khan-don/Unity-Game-Aris --json body --jq .body > /tmp/aaris-source-notes.md
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('/tmp/aaris-source-notes.md');s=p.read_text()
+          marker='## Unity 6.3 compatibility correction'
+          if marker in s:s=s.split(marker)[0].rstrip()+'\n'
+          s+='\n'+marker+'\n\nAlso download `Aaris_URP_Compatibility_Fix.zip` and extract it into the same parent folder after all six source ZIPs, replacing the matching files. This small patch adds the committed compatibility define and prevents the map generator from removing it. No map assets need to be downloaded again.\n'
+          p.write_text(s)
+          PY
+          gh release edit aaris-map-source-20261103-1d5e5f6 --repo Aaris-khan-don/Unity-Game-Aris --notes-file /tmp/aaris-source-notes.md

@@ -254,7 +254,8 @@ def project_settings():
     jsonsave(ROOT/'Packages/manifest.json',{'dependencies':packages})
     folder=ROOT/'ProjectSettings';folder.mkdir(exist_ok=True);(folder/'ProjectVersion.txt').write_text('m_EditorVersion: 6000.3.26f1\n')
     from native_assets import write_yaml
-    write_yaml(folder/'ProjectSettings.asset',[(129,1,'PlayerSettings',{'m_ObjectHideFlags':0,'serializedVersion':27,'companyName':'Aaris','productName':'Aaris Map Explorer','m_ActiveColorSpace':1,'activeInputHandler':0,'bundleVersion':'0.1.0',
+    write_yaml(folder/'ProjectSettings.asset',[(129,1,'PlayerSettings',{'m_ObjectHideFlags':0,'serializedVersion':27,'companyName':'Aaris','productName':'Aaris Map Explorer','m_ActiveColorSpace':1,'activeInputHandler':0,
+        'scriptingDefineSymbols':{'Android':'URP_COMPATIBILITY_MODE','Standalone':'URP_COMPATIBILITY_MODE','WebGL':'URP_COMPATIBILITY_MODE'},'bundleVersion':'0.1.0',
         'defaultInterfaceOrientation':4,'allowedAutorotateToPortrait':0,'allowedAutorotateToPortraitUpsideDown':0,
         'allowedAutorotateToLandscapeLeft':1,'allowedAutorotateToLandscapeRight':1,
         'applicationIdentifier':{'Android':'com.aaris.mapexplorer'},'AndroidTargetArchitectures':2,

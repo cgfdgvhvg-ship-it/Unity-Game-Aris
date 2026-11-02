@@ -14,6 +14,20 @@ already saved. Package Manager restores the declared URP/VFX dependencies.
 Clone with **Git LFS** and run `git lfs pull`. GitHub ZIP source downloads may
 contain LFS pointers instead of the original meshes and textures.
 
+## Unity 6.3 renderer compatibility
+
+The imported vendor renderer currently uses URP Compatibility Mode. Unity 6.3
+rejects a player build without the `URP_COMPATIBILITY_MODE` scripting define.
+The project commits this define for Android, Standalone and WebGL, and the map
+assembler preserves it when recreating ProjectSettings. No Cloud-only override
+is required for this opt-in.
+
+This keeps the existing renderer available for the map preview; it does not
+migrate the renderer to Render Graph. Keep the pinned Unity 6000.3 editor until
+that migration is done. Existing six-part source downloads were packaged from
+commit `1d5e5f6`, before this correction; the small compatibility patch supplied
+with that release updates them without re-downloading the map assets.
+
 ## Map explorer controls
 
 The saved Main Camera now has `AarisMapExplorer` and an AudioListener. Open the

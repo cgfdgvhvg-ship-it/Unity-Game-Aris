@@ -22,3 +22,7 @@ PlayerSettings:
   AndroidUseCustomKeystore: 0
   scriptingBackend:
     Android: 1
+  scriptingDefineSymbols:
+    Android: URP_COMPATIBILITY_MODE
+    Standalone: URP_COMPATIBILITY_MODE
+    WebGL: URP_COMPATIBILITY_MODE

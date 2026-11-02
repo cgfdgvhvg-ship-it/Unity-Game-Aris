@@ -11,6 +11,11 @@
     "Assets/AarisWorld/Scripts/AarisMapExplorer.cs"
   ],
   "map_terrain_bytes_unchanged": true,
+  "urp_compatibility_define_targets": [
+    "Android",
+    "Standalone",
+    "WebGL"
+  ],
   "android": "ARM64 / IL2CPP / landscape / Android 8+",
   "controls": {
     "desktop": "WASD/arrows; Q/E height; Shift fast; right-drag look; middle-drag pan; wheel zoom; F home; O overview",
