@@ -153,6 +153,16 @@ jobs:
                   assert len(blocks) == 16
                   refs = [re.search(r"m_TerrainData:.*?guid: ([0-9a-f]{32})",b)[1] for b in blocks]
                   assert set(refs) == guids and len(set(refs)) == 16
+              proxy_tiles = sorted(p["path"] for p in pointers if re.search(r"/Terrain/Data/Terrain_\d_\d_", p["path"]) and p["path"].endswith(" 1.asset"))
+              proxy_coords = sorted([list(map(int, re.search(r"/Terrain_(\d)_(\d)_", p).groups())) for p in proxy_tiles])
+              assert proxy_coords == coords
+              proxy_guids = {re.search(r"^guid: ([0-9a-f]{32})$", git("show", map_commit+":"+p+".meta").decode(), re.M)[1] for p in proxy_tiles}
+              proxy_prefab = git("show", map_commit+":Assets/TerrainDemoScene_URP/Prefabs/Terrain/TerrainProxy.prefab").decode()
+              for component in ("Terrain", "TerrainCollider"):
+                  blocks = re.findall(r"^"+component+r":\n(.*?)(?=^--- |\Z)", proxy_prefab, re.M|re.S)
+                  assert len(blocks) == 16
+                  refs = [re.search(r"m_TerrainData:.*?guid: ([0-9a-f]{32})", b)[1] for b in blocks]
+                  assert set(refs) == proxy_guids and len(set(refs)) == 16
               verify_objects(package / "lfs", objects)
               print("All map files, all 16 tiles and all LFS binaries verified before upload.", flush=True)
           
@@ -189,6 +199,7 @@ jobs:
               report = {"passed":True, "destination":"https://github.com/Aaris-khan-don/Unity-Game-Aris",
                         "destination_commit":new_commit, "source_commit":manifest["source_commit"],
                         "map_files_verified":1315, "tiles_verified":16, "terrain_colliders_verified":16,
+                        "proxy_tiles_verified":16, "proxy_colliders_verified":16,
                         "lfs_paths_verified":393, "unique_lfs_objects_verified":381,
                         "missing":0, "corrupt":0, "csharp_files":0, "source_game_history_imported":False,
                         "destination_cold_download_verified":True, "excluded_vendor_scripts":manifest["excluded_scripts"]}
