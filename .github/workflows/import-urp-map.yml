@@ -1,0 +1,210 @@
+name: Import original URP map and verify destination LFS (no APK)
+on:
+  workflow_dispatch:
+    inputs:
+      source_url:
+        description: 'Temporary private cloud package download URL'
+        required: true
+        type: string
+      archive_sha256:
+        description: 'Verified GitHub artifact ZIP SHA-256'
+        required: true
+        type: string
+permissions:
+  contents: write
+concurrency:
+  group: one-time-urp-map-import
+  cancel-in-progress: false
+jobs:
+  import-and-cold-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          lfs: false
+          fetch-depth: 1
+      - name: Import only the map and cold-verify every destination LFS object
+        run: |
+          python3 - <<'PY'
+          """One-time private-repository import with a fresh remote LFS readback."""
+          import hashlib
+          import json
+          import os
+          from pathlib import Path, PurePosixPath
+          import re
+          import shutil
+          import subprocess
+          import time
+          import urllib.parse
+          import urllib.request
+          import zipfile
+          
+          
+          def git(*args, data=None):
+              return subprocess.check_output(["git", *args], input=data)
+          
+          
+          def digest(path):
+              h = hashlib.sha256()
+              with path.open("rb") as f:
+                  for chunk in iter(lambda: f.read(8 * 1024 * 1024), b""):
+                      h.update(chunk)
+              return h.hexdigest()
+          
+          
+          def retry_git(*args, data=None):
+              for attempt in range(4):
+                  try:
+                      subprocess.run(["git", *args], input=data, check=True)
+                      return
+                  except subprocess.CalledProcessError:
+                      if attempt == 3:
+                          raise
+                      print("Network operation will resume; attempt", attempt + 2, flush=True)
+                      time.sleep(10 * (attempt + 1))
+          
+          
+          def read_entries(ref):
+              result = {}
+              for raw in git("ls-tree", "-r", "-z", ref).split(b"\0"):
+                  if raw:
+                      header, path = raw.split(b"\t", 1)
+                      mode, kind, oid = header.decode().split()
+                      assert kind == "blob" and mode == "100644"
+                      result[path.decode()] = {"mode": mode, "blob": oid}
+              return result
+          
+          
+          def verify_objects(storage, objects):
+              for i, (oid, size) in enumerate(sorted(objects.items()), 1):
+                  path = storage / "objects" / oid[:2] / oid[2:4] / oid
+                  assert path.is_file() and path.stat().st_size == size, "Missing/truncated LFS object: " + oid
+                  assert digest(path) == oid, "Corrupt LFS object: " + oid
+                  if i % 50 == 0:
+                      print("SHA-256 verified", i, "/", len(objects), flush=True)
+          
+          
+          def main():
+              assert os.environ["GITHUB_REPOSITORY"].lower() == "aaris-khan-don/unity-game-aris"
+              event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+              url = event["inputs"]["source_url"]
+              expected = event["inputs"]["archive_sha256"].strip()
+              assert re.fullmatch(r"[0-9a-f]{64}", expected)
+              host = urllib.parse.urlparse(url)
+              assert host.scheme == "https" and (host.hostname or "").endswith(".oaiusercontent.com")
+              print("::add-mask::" + url, flush=True)
+              temp = Path(os.environ["RUNNER_TEMP"]) / "verified-urp-transfer"
+              temp.mkdir(exist_ok=True)
+              archive = temp / "map.zip"
+              for attempt in range(4):
+                  try:
+                      with urllib.request.urlopen(url, timeout=90) as response, archive.open("wb") as f:
+                          shutil.copyfileobj(response, f, length=8 * 1024 * 1024)
+                      break
+                  except Exception:
+                      if attempt == 3:
+                          raise RuntimeError("Cloud package download failed or temporary URL expired. Reissue the URL and rerun.") from None
+                      time.sleep(3)
+              assert digest(archive) == expected, "Archive SHA-256 mismatch"
+              print("Private cloud archive downloaded and checksum verified.", flush=True)
+              package = temp / "package"
+              package.mkdir(exist_ok=True)
+              with zipfile.ZipFile(archive) as z:
+                  for item in z.infolist():
+                      p = PurePosixPath(item.filename)
+                      assert not p.is_absolute() and ".." not in p.parts
+                      assert (item.external_attr >> 16) & 0o170000 != 0o120000, "No symlinks permitted"
+                  z.extractall(package)
+              archive.unlink()
+              summary = json.loads((package / "export-summary.json").read_text())
+              bundle = package / "map-only.bundle"
+              assert digest(bundle) == summary["bundle_sha256"]
+              git("bundle", "verify", str(bundle))
+              git("fetch", str(bundle), "refs/heads/main:refs/heads/imported-urp-map")
+              map_commit = git("rev-parse", "refs/heads/imported-urp-map").decode().strip()
+              assert map_commit == summary["commit"]
+              assert int(git("rev-list", "--count", map_commit)) == 1, "Source game history must not be imported"
+              manifest = json.loads(git("show", map_commit + ":TRANSFER-MANIFEST.json"))
+              assert manifest["source_commit"] == "7dfc521a5a58b6295487acdaf93a8257111d9a09"
+              assert manifest["source_map_tree"] == "ba0e1823895aedafebc5d797c78362653c44c467"
+              entries = read_entries(map_commit)
+              assert not any(re.search(r"\.(cs|dll|asmdef|asmref|js|boo)(\.meta)?$", p, re.I) for p in entries)
+              assert len(manifest["map_files"]) == 1315
+              support = {".gitattributes", "README.md", "URP-TERRAIN-PROVENANCE.md", "TRANSFER-MANIFEST.json"}
+              assert set(entries) == support | {e["path"] for e in manifest["map_files"]}
+              for e in manifest["map_files"]:
+                  assert e["path"] == "Assets/TerrainDemoScene_URP.meta" or e["path"].startswith("Assets/TerrainDemoScene_URP/")
+                  assert entries[e["path"]] == {"mode":e["mode"], "blob":e["blob"]}, e["path"]
+              pointers = manifest["lfs_files"]
+              objects = {p["oid"]:p["size"] for p in pointers}
+              assert len(pointers) == 393 and len(objects) == 381
+              for p in pointers:
+                  original_pointer = git("show", map_commit + ":" + p["path"]).decode()
+                  assert original_pointer == "version https://git-lfs.github.com/spec/v1\noid sha256:" + p["oid"] + "\nsize " + str(p["size"]) + "\n"
+              tiles = sorted(p["path"] for p in pointers if re.search(r"/Terrain/Data/Terrain_\d_\d_",p["path"]) and not p["path"].endswith(" 1.asset"))
+              coords = sorted([list(map(int,re.search(r"/Terrain_(\d)_(\d)_",p).groups())) for p in tiles])
+              assert coords == [[x,z] for x in range(4) for z in range(4)] == manifest["tile_coordinates"]
+              guids = {re.search(r"^guid: ([0-9a-f]{32})$",git("show",map_commit+":"+p+".meta").decode(),re.M)[1] for p in tiles}
+              assert len(guids) == 16
+              prefab = git("show",map_commit+":Assets/TerrainDemoScene_URP/Prefabs/Terrain/TerrainHigh.prefab").decode()
+              for component in ("Terrain", "TerrainCollider"):
+                  blocks = re.findall(r"^"+component+r":\n(.*?)(?=^--- |\Z)",prefab,re.M|re.S)
+                  assert len(blocks) == 16
+                  refs = [re.search(r"m_TerrainData:.*?guid: ([0-9a-f]{32})",b)[1] for b in blocks]
+                  assert set(refs) == guids and len(set(refs)) == 16
+              verify_objects(package / "lfs", objects)
+              print("All map files, all 16 tiles and all LFS binaries verified before upload.", flush=True)
+          
+              original_head = os.environ["GITHUB_SHA"]
+              remote_head = git("ls-remote", "origin", "refs/heads/main").decode().split()[0]
+              assert remote_head == original_head, "Destination main changed; refusing to overwrite"
+              assert set(read_entries(original_head)) == {".github/workflows/import-urp-map.yml"}, "Destination is not the new empty transfer repo"
+              tree = git("rev-parse", map_commit + "^{tree}").decode().strip()
+              git("config", "user.name", "Aaris Map Recovery")
+              git("config", "user.email", "map-recovery@users.noreply.github.com")
+              new_commit = git("commit-tree", tree, "-p", original_head,
+                               data=b"Import verified original 16-tile Unity URP Terrain map only; no C# or gameplay\n").decode().strip()
+              git("update-ref", "refs/heads/transfer-map", new_commit)
+              git("lfs", "install", "--local")
+              git("config", "lfs.storage", str(package / "lfs"))
+              git("config", "lfs.concurrenttransfers", "4")
+              git("config", "lfs.transfer.maxretries", "8")
+              print("Uploading the 381 unique map LFS objects to the destination...", flush=True)
+              retry_git("lfs", "push", "--object-id", "origin", "--stdin", data=("\n".join(sorted(objects))+"\n").encode())
+              retry_git("push", "origin", "refs/heads/transfer-map:refs/heads/main")
+              assert git("ls-remote", "origin", "refs/heads/main").decode().split()[0] == new_commit
+          
+              # Fresh isolated storage: verification MUST download from the destination,
+              # not reuse the source cache that was just uploaded.
+              cold_storage = temp / "destination-cold-lfs"
+              assert not cold_storage.exists(), "Cold verification storage must be empty"
+              cold_storage.mkdir()
+              git("config", "lfs.storage", str(cold_storage))
+              print("Cold readback: downloading every map LFS object from the DESTINATION.", flush=True)
+              retry_git("lfs", "fetch", "--include=Assets/TerrainDemoScene_URP/**", "--exclude=", "origin", new_commit)
+              verify_objects(cold_storage, objects)
+              retry_git("fetch", "--no-tags", "origin", "refs/heads/main:refs/remotes/origin/main")
+              assert read_entries("refs/remotes/origin/main") == entries
+              report = {"passed":True, "destination":"https://github.com/Aaris-khan-don/Unity-Game-Aris",
+                        "destination_commit":new_commit, "source_commit":manifest["source_commit"],
+                        "map_files_verified":1315, "tiles_verified":16, "terrain_colliders_verified":16,
+                        "lfs_paths_verified":393, "unique_lfs_objects_verified":381,
+                        "missing":0, "corrupt":0, "csharp_files":0, "source_game_history_imported":False,
+                        "destination_cold_download_verified":True, "excluded_vendor_scripts":manifest["excluded_scripts"]}
+              Path("urp-transfer-verified.json").write_text(json.dumps(report,indent=2)+"\n")
+              Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text("# URP map transfer: VERIFIED\n```json\n"+json.dumps(report,indent=2)+"\n```\n")
+              print(json.dumps(report,indent=2),flush=True)
+          
+          
+          if __name__ == "__main__":
+              main()
+          PY
+      - name: Save completed destination verification report
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: urp-map-transfer-verified
+          path: urp-transfer-verified.json
+          retention-days: 14
+          if-no-files-found: error
