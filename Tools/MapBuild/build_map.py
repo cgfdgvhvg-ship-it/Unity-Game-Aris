@@ -249,12 +249,16 @@ def remove_extra_tiles(t):
 
 def project_settings():
     packages={'com.unity.render-pipelines.universal':'17.3.0','com.unity.visualeffectgraph':'17.3.0',
-              'com.unity.modules.audio':'1.0.0','com.unity.modules.physics':'1.0.0','com.unity.modules.terrain':'1.0.0',
+              'com.unity.modules.imgui':'1.0.0','com.unity.modules.audio':'1.0.0','com.unity.modules.physics':'1.0.0','com.unity.modules.terrain':'1.0.0',
               'com.unity.modules.terrainphysics':'1.0.0','com.unity.modules.particlesystem':'1.0.0','com.unity.modules.ui':'1.0.0','com.unity.modules.jsonserialize':'1.0.0'}
     jsonsave(ROOT/'Packages/manifest.json',{'dependencies':packages})
     folder=ROOT/'ProjectSettings';folder.mkdir(exist_ok=True);(folder/'ProjectVersion.txt').write_text('m_EditorVersion: 6000.3.26f1\n')
     from native_assets import write_yaml
-    write_yaml(folder/'ProjectSettings.asset',[(129,1,'PlayerSettings',{'m_ObjectHideFlags':0,'serializedVersion':27,'companyName':'Aaris','productName':'Aaris Island','m_ActiveColorSpace':1})])
+    write_yaml(folder/'ProjectSettings.asset',[(129,1,'PlayerSettings',{'m_ObjectHideFlags':0,'serializedVersion':27,'companyName':'Aaris','productName':'Aaris Map Explorer','m_ActiveColorSpace':1,'activeInputHandler':0,'bundleVersion':'0.1.0',
+        'defaultInterfaceOrientation':4,'allowedAutorotateToPortrait':0,'allowedAutorotateToPortraitUpsideDown':0,
+        'allowedAutorotateToLandscapeLeft':1,'allowedAutorotateToLandscapeRight':1,
+        'applicationIdentifier':{'Android':'com.aaris.mapexplorer'},'AndroidTargetArchitectures':2,
+        'AndroidMinSdkVersion':26,'AndroidTargetSdkVersion':0,'AndroidUseCustomKeystore':0,'scriptingBackend':{'Android':1}})])
     write_yaml(folder/'GraphicsSettings.asset',[(30,1,'GraphicsSettings',{'m_ObjectHideFlags':0,'serializedVersion':16,
         'm_CustomRenderPipeline':ref(11400000,'4f455263fdaa19b4894b6dbdb822f8d6'),'m_SRPDefaultSettings':{},
         'm_LightsUseLinearIntensity':1,'m_LightsUseColorTemperature':1,'m_DefaultRenderingLayerMask':1,

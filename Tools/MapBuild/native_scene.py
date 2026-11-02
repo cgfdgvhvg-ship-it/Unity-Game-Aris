@@ -2,7 +2,7 @@
 import copy
 import math
 from pathlib import Path
-from native_assets import Flow, ref, vec, quat_y, color, write_yaml, meta
+from native_assets import Flow, ref, vec, quat_y, color, write_yaml, meta, guid
 
 class Scene:
     def __init__(self):
@@ -87,6 +87,12 @@ class Scene:
             'm_CullingMask':{'serializedVersion':2,'m_Bits':4294967295},'m_RenderingPath':-1,'m_TargetTexture':ref(),'m_TargetDisplay':0,
             'm_TargetEye':3,'m_HDR':1,'m_AllowMSAA':1,'m_AllowDynamicResolution':0,'m_ForceIntoRT':0,'m_OcclusionCulling':1,
             'm_StereoConvergence':10,'m_StereoSeparation':.022})
+        self.component(go,gd,114,'MonoBehaviour',{'m_Enabled':1,'m_EditorHideFlags':0,
+            'm_Script':ref(11500000,guid('Assets/AarisWorld/Scripts/AarisMapExplorer.cs'),3),'m_Name':'',
+            'm_EditorClassIdentifier':'Assembly-CSharp::Aaris.MapReview.AarisMapExplorer',
+            'moveSpeed':45,'fastMultiplier':4,'mouseLookSensitivity':.15,'touchLookSensitivity':.10,
+            'terrainClearance':2.5,'mapBoundary':980,'maximumAltitude':1800,'showHelp':1})
+        self.component(go,gd,81,'AudioListener',{'m_Enabled':1})
     def save(self,path,prefab=False):
         objects=list(self.objects)
         if not prefab:
