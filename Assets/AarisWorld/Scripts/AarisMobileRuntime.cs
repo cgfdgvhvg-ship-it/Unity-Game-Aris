@@ -16,6 +16,8 @@ namespace Aaris.MapReview
         [SerializeField] private bool releaseTerrainPaintCpuCopies = true;
         [SerializeField] private int targetFrameRate = 60;
         [SerializeField] private bool adaptDetailsToFrameTime = true;
+        // Emergency GPU pixel-cost fallback; no effect on non-Android or >3.5 GB devices.
+        [SerializeField] private bool allowEmergencyRenderScale = true;
         private readonly float[] frameTimes = new float[180];
         private readonly float[] sortedTimes = new float[180];
         private int frameIndex, frameCount;
@@ -26,6 +28,7 @@ namespace Aaris.MapReview
         private long releasedPaintBytes;
         private UniversalRenderPipelineAsset mobilePipeline;
         private float originalStreamingBudget, originalLodBias, originalShadowDistance;
+        private float originalRenderScale, emergencyRenderScaleFloor;
         private int originalShadowAtlas;
         private bool mobileProfileApplied;
         private string mobileProfile = "baseline";
@@ -160,11 +163,15 @@ namespace Aaris.MapReview
             {
                 originalShadowDistance = mobilePipeline.shadowDistance;
                 originalShadowAtlas = mobilePipeline.mainLightShadowmapResolution;
+                originalRenderScale = mobilePipeline.renderScale;
             }
 
             // Budgets include non-streaming textures. The fixed terrain paint maps already
             // consume a substantial part of this memory: this is not a hard GPU memory cap.
             bool constrained = systemRamMb <= 2304;
+            // Retain full authored scale until sustained p95 pressure reaches tier 2.
+            // Never increase resolution when the authored URP asset already uses a lower scale.
+            emergencyRenderScaleFloor = constrained ? 0.90f : 0.94f;
             QualitySettings.streamingMipmapsMemoryBudget =
                 Mathf.Min(originalStreamingBudget, constrained ? 256f : 320f);
             QualitySettings.lodBias = Mathf.Min(originalLodBias, constrained ? 0.90f : 0.98f);
@@ -267,8 +274,16 @@ namespace Aaris.MapReview
                         terrainDetailDensityCap * densityFactor * lowMemoryDetailMultiplier);
                 }
             if (mobilePipeline != null)
+            {
                 mobilePipeline.shadowDistance = Mathf.Min(originalShadowDistance,
                     profileShadowDistance * shadowFactor);
+                // Avoid lowering texture detail, view horizon or house LOD2 visibility.
+                // Render scale changes only at maximum sustained pressure and reverses
+                // as soon as frame-time recovers; it is a GPU hypothesis, not a benchmark.
+                mobilePipeline.renderScale = allowEmergencyRenderScale && performanceLevel >= 2
+                    ? Mathf.Min(originalRenderScale, emergencyRenderScaleFloor)
+                    : originalRenderScale;
+            }
         }
 
         private void OnLowMemory() { lowMemoryPending = true; }
@@ -286,6 +301,7 @@ namespace Aaris.MapReview
             {
                 mobilePipeline.shadowDistance = originalShadowDistance;
                 mobilePipeline.mainLightShadowmapResolution = originalShadowAtlas;
+                mobilePipeline.renderScale = originalRenderScale;
             }
             if (profiledTerrains != null)
                 for (int i = 0; i < profiledTerrains.Length; i++)
@@ -312,8 +328,10 @@ namespace Aaris.MapReview
         {
             public string reason, utc, version, buildGuid, device, gpu, api, lastError;
             public int systemRamMB, targetFps, warningCount, shadowAtlasResolution, performanceLevel;
+            public bool emergencyRenderScaleActive;
             public string mobileQualityProfile;
             public float streamingBudgetMb, lodBias, shadowDistanceM, terrainDetailDistanceCapM, terrainDetailDensityCap;
+            public float renderScale;
             public float effectiveDetailDistanceM, effectiveDetailDensity, lowMemoryDetailMultiplier;
             public float effectiveTreeBillboardDistanceM, effectiveHeightmapPixelError, effectiveBasemapDistanceM;
             public int effectiveMaxFullLodTrees;
@@ -365,6 +383,9 @@ namespace Aaris.MapReview
                         break;
                     }
             s.shadowDistanceM = mobilePipeline != null ? mobilePipeline.shadowDistance : QualitySettings.shadowDistance;
+            s.renderScale = mobilePipeline != null ? mobilePipeline.renderScale : 1f;
+            s.emergencyRenderScaleActive = mobileProfileApplied && mobilePipeline != null &&
+                mobilePipeline.renderScale < originalRenderScale - 0.001f;
             LatestReport = JsonUtility.ToJson(s);
             if (logPath == null) return;
             try
