@@ -115,7 +115,7 @@ def site_summary(inspection):
     skipped = coverage.get("skipped_scene_objects") or []
     unresolved_prefabs = (inspection.get("unresolved_serialized_prefab_instances") or {}).get("total", 0)
     terrain = inspection.get("terrain_relation") or {}
-    reliable_clearance = bool(
+    complete_saved_index = bool(
         scene_complete and native_complete and not geometry_issues and
         not skipped and not unresolved_prefabs and terrain.get("status") != "unavailable"
     )
@@ -154,14 +154,16 @@ def site_summary(inspection):
             "skipped_scene_count_sampled": len(skipped),
             "unresolved_prefab_sources_global": unresolved_prefabs,
             "native_errors": coverage.get("native_errors", []),
-            "can_assert_no_other_serialized_obstacles": reliable_clearance,
+            "serialized_candidate_coverage_complete": complete_saved_index,
+            "can_assert_no_other_serialized_obstacles": False,
             "clearance_note": (
-                "Saved geometry appears covered inside the requested radius, but Unity physics and rendered pixels remain untested"
-                if reliable_clearance else
+                "Saved indexed candidates are covered inside this radius; this is never proof of free physical space"
+                if complete_saved_index else
                 "Incomplete pages, unknown geometry, unresolved prefabs or native data prohibit a clear-space claim"
             ),
             "scene_index_count": coverage.get("inline_scene_objects_indexed"),
             "nearest_roles_are_page_scoped": True,
+            "free_space_verified_by_physics": False,
             "native_category_counts_are_radius_wide": True,
         },
         "source_fingerprint": inspection.get("source_fingerprint"),
