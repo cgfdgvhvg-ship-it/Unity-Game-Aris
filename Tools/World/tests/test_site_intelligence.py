@@ -67,13 +67,14 @@ class SiteSummaryTests(unittest.TestCase):
     def test_site_reports_semantics_color_direction_and_native_counts(self):
         data = site_summary(observation())
         self.assertEqual(data["scene"]["nearest_by_role_on_page"]["door"]["distance_m"], 2.8)
-        self.assertEqual(data["scene"]["objects_on_page"][0]["direction_world_xz"], "+X+Z")
+        self.assertEqual(data["scene"]["objects_on_page"][0]["direction_world_xz"], "+X")
         surfaces = data["scene"]["objects_on_page"][0]["material_surfaces"]
         self.assertEqual(surfaces[0]["serialized_rgba"][0]["rgba"], [.2, .3, .4, 1])
         self.assertEqual(data["native"]["counts_by_category_in_full_radius"]["tree"], 42)
-        self.assertEqual(data["native"]["instances_on_page"][0]["direction_world_xz"], "+X-Z")
-        self.assertTrue(data["coverage"]["can_assert_no_other_serialized_obstacles"])
-        self.assertIn("not final visible pixels", data["interpretation"]["colors"])
+        self.assertEqual(data["native"]["instances_on_page"][0]["direction_world_xz"], "+X")
+        self.assertFalse(data["coverage"]["can_assert_no_other_serialized_obstacles"])
+        self.assertTrue(data["coverage"]["serialized_candidate_coverage_complete"])
+        self.assertIn("not UV/shader/lighted surface colors", data["interpretation"]["colors"])
 
     def test_truncated_scene_or_missing_geometry_never_means_empty(self):
         item = observation()
@@ -145,8 +146,7 @@ class WatcherTests(unittest.TestCase):
             self.assertEqual(event["files"][0]["event"], "modified")
             self.assertEqual(event["current_site"]["scene"]["objects_on_page"][0]["position_m"], [5, 2, 1])
             self.assertIn("scene:abc:1", event["observation_deltas"][0]["scene_neighbour_distance_changes_m"])
-            self.assertIsNone(watch.check() if False else None)
-
+    
     def test_inventory_detects_created_and_deleted_meta(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
