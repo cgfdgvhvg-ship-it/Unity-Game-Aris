@@ -36,7 +36,7 @@ Material:
     m_Floats:
     - _Metallic: 0.20000000298023224
     - _Smoothness: 0.3999999761581421
-    - _BumpScale: 1
+    - _BumpScale: 0.800000011920929
     - _OcclusionStrength: 1
     - _Cull: 0
     - _Surface: 0

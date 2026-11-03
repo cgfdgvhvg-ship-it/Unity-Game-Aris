@@ -1,0 +1,506 @@
+{
+  "status": "dxc_hlsl_checks_passed",
+  "shader_sha256": "62d63a1e7b5bed0d095f6ad9b1018f26727249e8ef49dd048758103155f29d4b",
+  "urp_version": "17.3.0",
+  "urp_source_commit": "4064d5bb6a1e3748a7cdddc244b89934ad1c3145",
+  "compiler_version": "libdxcompiler.so: 1.9(5512-01b62ad4)(1.9.2609.5)",
+  "hlsl_language_version": 2018,
+  "compilations_passed": 52,
+  "variants": [
+    {
+      "pass": "DepthOnly",
+      "platform": "d3d11",
+      "stage": "vertex",
+      "keywords": [],
+      "status": "compiled"
+    },
+    {
+      "pass": "DepthOnly",
+      "platform": "d3d11",
+      "stage": "fragment",
+      "keywords": [],
+      "status": "compiled"
+    },
+    {
+      "pass": "DepthOnly",
+      "platform": "vulkan_mobile",
+      "stage": "vertex",
+      "keywords": [],
+      "status": "compiled"
+    },
+    {
+      "pass": "DepthOnly",
+      "platform": "vulkan_mobile",
+      "stage": "fragment",
+      "keywords": [],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "vertex",
+      "keywords": [],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "fragment",
+      "keywords": [],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "vertex",
+      "keywords": [
+        "_MAIN_LIGHT_SHADOWS"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "fragment",
+      "keywords": [
+        "_MAIN_LIGHT_SHADOWS"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "vertex",
+      "keywords": [
+        "_MAIN_LIGHT_SHADOWS_CASCADE",
+        "_SHADOWS_SOFT_MEDIUM"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "fragment",
+      "keywords": [
+        "_MAIN_LIGHT_SHADOWS_CASCADE",
+        "_SHADOWS_SOFT_MEDIUM"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "vertex",
+      "keywords": [
+        "FOG_LINEAR"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "fragment",
+      "keywords": [
+        "FOG_LINEAR"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "vertex",
+      "keywords": [
+        "FOG_LINEAR",
+        "_MAIN_LIGHT_SHADOWS"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "fragment",
+      "keywords": [
+        "FOG_LINEAR",
+        "_MAIN_LIGHT_SHADOWS"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "vertex",
+      "keywords": [
+        "FOG_LINEAR",
+        "_MAIN_LIGHT_SHADOWS_CASCADE",
+        "_SHADOWS_SOFT_MEDIUM"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "fragment",
+      "keywords": [
+        "FOG_LINEAR",
+        "_MAIN_LIGHT_SHADOWS_CASCADE",
+        "_SHADOWS_SOFT_MEDIUM"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "vertex",
+      "keywords": [
+        "FOG_EXP"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "fragment",
+      "keywords": [
+        "FOG_EXP"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "vertex",
+      "keywords": [
+        "FOG_EXP",
+        "_MAIN_LIGHT_SHADOWS"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "fragment",
+      "keywords": [
+        "FOG_EXP",
+        "_MAIN_LIGHT_SHADOWS"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "vertex",
+      "keywords": [
+        "FOG_EXP",
+        "_MAIN_LIGHT_SHADOWS_CASCADE",
+        "_SHADOWS_SOFT_MEDIUM"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "fragment",
+      "keywords": [
+        "FOG_EXP",
+        "_MAIN_LIGHT_SHADOWS_CASCADE",
+        "_SHADOWS_SOFT_MEDIUM"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "vertex",
+      "keywords": [
+        "FOG_EXP2"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "fragment",
+      "keywords": [
+        "FOG_EXP2"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "vertex",
+      "keywords": [
+        "FOG_EXP2",
+        "_MAIN_LIGHT_SHADOWS"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "fragment",
+      "keywords": [
+        "FOG_EXP2",
+        "_MAIN_LIGHT_SHADOWS"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "vertex",
+      "keywords": [
+        "FOG_EXP2",
+        "_MAIN_LIGHT_SHADOWS_CASCADE",
+        "_SHADOWS_SOFT_MEDIUM"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "d3d11",
+      "stage": "fragment",
+      "keywords": [
+        "FOG_EXP2",
+        "_MAIN_LIGHT_SHADOWS_CASCADE",
+        "_SHADOWS_SOFT_MEDIUM"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "vertex",
+      "keywords": [],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "fragment",
+      "keywords": [],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "vertex",
+      "keywords": [
+        "_MAIN_LIGHT_SHADOWS"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "fragment",
+      "keywords": [
+        "_MAIN_LIGHT_SHADOWS"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "vertex",
+      "keywords": [
+        "_MAIN_LIGHT_SHADOWS_CASCADE",
+        "_SHADOWS_SOFT_MEDIUM"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "fragment",
+      "keywords": [
+        "_MAIN_LIGHT_SHADOWS_CASCADE",
+        "_SHADOWS_SOFT_MEDIUM"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "vertex",
+      "keywords": [
+        "FOG_LINEAR"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "fragment",
+      "keywords": [
+        "FOG_LINEAR"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "vertex",
+      "keywords": [
+        "FOG_LINEAR",
+        "_MAIN_LIGHT_SHADOWS"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "fragment",
+      "keywords": [
+        "FOG_LINEAR",
+        "_MAIN_LIGHT_SHADOWS"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "vertex",
+      "keywords": [
+        "FOG_LINEAR",
+        "_MAIN_LIGHT_SHADOWS_CASCADE",
+        "_SHADOWS_SOFT_MEDIUM"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "fragment",
+      "keywords": [
+        "FOG_LINEAR",
+        "_MAIN_LIGHT_SHADOWS_CASCADE",
+        "_SHADOWS_SOFT_MEDIUM"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "vertex",
+      "keywords": [
+        "FOG_EXP"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "fragment",
+      "keywords": [
+        "FOG_EXP"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "vertex",
+      "keywords": [
+        "FOG_EXP",
+        "_MAIN_LIGHT_SHADOWS"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "fragment",
+      "keywords": [
+        "FOG_EXP",
+        "_MAIN_LIGHT_SHADOWS"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "vertex",
+      "keywords": [
+        "FOG_EXP",
+        "_MAIN_LIGHT_SHADOWS_CASCADE",
+        "_SHADOWS_SOFT_MEDIUM"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "fragment",
+      "keywords": [
+        "FOG_EXP",
+        "_MAIN_LIGHT_SHADOWS_CASCADE",
+        "_SHADOWS_SOFT_MEDIUM"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "vertex",
+      "keywords": [
+        "FOG_EXP2"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "fragment",
+      "keywords": [
+        "FOG_EXP2"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "vertex",
+      "keywords": [
+        "FOG_EXP2",
+        "_MAIN_LIGHT_SHADOWS"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "fragment",
+      "keywords": [
+        "FOG_EXP2",
+        "_MAIN_LIGHT_SHADOWS"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "vertex",
+      "keywords": [
+        "FOG_EXP2",
+        "_MAIN_LIGHT_SHADOWS_CASCADE",
+        "_SHADOWS_SOFT_MEDIUM"
+      ],
+      "status": "compiled"
+    },
+    {
+      "pass": "ForwardLit",
+      "platform": "vulkan_mobile",
+      "stage": "fragment",
+      "keywords": [
+        "FOG_EXP2",
+        "_MAIN_LIGHT_SHADOWS_CASCADE",
+        "_SHADOWS_SOFT_MEDIUM"
+      ],
+      "status": "compiled"
+    }
+  ],
+  "unity_shaderlab_import_tested": false,
+  "unity_android_build_tested": false,
+  "android_device_tested": false
+}

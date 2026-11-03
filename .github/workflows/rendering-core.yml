@@ -1,0 +1,68 @@
+name: Audit and save core rendering
+on:
+  push:
+    branches: [fix/rendering-core-20261103]
+    paths:
+      - 'Tools/MapBuild/render_review.py'
+      - 'Tools/MapBuild/native_assets.py'
+      - 'Tools/MapBuild/surfaces.py'
+      - 'Tools/Validation/check_render_review.py'
+      - 'Tools/Validation/check_shader_compile.py'
+      - 'Tools/Validation/check_material_import.py'
+      - 'Assets/AarisWorld/Surfaces/CoastalWater.shader'
+      - '.github/workflows/rendering-core.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: aaris-render-core-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  inspect-and-save:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          lfs: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned offline tools
+        run: |
+          python -m pip install -r Tools/MapBuild/requirements.txt
+          python -m pip install tree-sitter==0.26.0 tree-sitter-c-sharp==0.23.5
+      - name: Fetch actual pipeline settings
+        run: |
+          git lfs install --local
+          git lfs pull --include="Assets/TerrainDemoScene_URP/Settings/URP/*.asset"
+      - name: Save source-correct material settings and visible world layers
+        run: python -u Tools/MapBuild/render_review.py --apply
+      - name: Prepare verified official DXC and pinned Unity URP 17.3 headers
+        run: |
+          curl --fail --location --retry 3 https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2609/linux_dxc_2026_09_28.x86_x64.tar.gz -o /tmp/aaris-dxc.tar.gz
+          echo "96faadc7f5c282d2ffda49804beb4c3ee38127bc252b723234e3c5cdf7aa39a1  /tmp/aaris-dxc.tar.gz" | sha256sum --check
+          mkdir -p /tmp/aaris-dxc
+          tar -xzf /tmp/aaris-dxc.tar.gz -C /tmp/aaris-dxc
+          git init /tmp/aaris-urp
+          git -C /tmp/aaris-urp remote add origin https://github.com/Unity-Technologies/Graphics.git
+          git -C /tmp/aaris-urp sparse-checkout init --cone
+          git -C /tmp/aaris-urp sparse-checkout set Packages/com.unity.render-pipelines.core Packages/com.unity.render-pipelines.universal Packages/com.unity.render-pipelines.core-config Packages/com.unity.render-pipelines.universal-config
+          git -C /tmp/aaris-urp fetch --filter=blob:none --depth=1 origin 4064d5bb6a1e3748a7cdddc244b89934ad1c3145
+          GIT_LFS_SKIP_SMUDGE=1 git -C /tmp/aaris-urp checkout --detach FETCH_HEAD
+      - name: Compile water vertex/pixel variants for D3D11 and mobile Vulkan
+        run: python Tools/Validation/check_shader_compile.py --dxc /tmp/aaris-dxc/bin/dxc --urp /tmp/aaris-urp
+      - name: Check saved renderer, materials, shader hash and existing gameplay
+        run: |
+          python Tools/Validation/check_render_review.py
+          python Tools/Validation/check_material_import.py
+          python Tools/Validation/check_explorer.py --native
+          python Tools/Validation/check_world_review.py
+          python Tools/Validation/check_road_markings.py
+      - name: Commit measured reports and saved core assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Assets Docs
+          git diff --cached --quiet || git commit -m "Measure source material semantics and native URP configuration"
+          git push origin HEAD:"${GITHUB_REF_NAME}"

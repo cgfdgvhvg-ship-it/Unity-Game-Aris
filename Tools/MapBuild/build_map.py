@@ -306,5 +306,7 @@ def run():
     from world_review import save_world,save_native
     save_world(ROOT)
     save_native(ROOT)
+    from render_review import save as save_rendering
+    save_rendering(ROOT)
     log('ASSEMBLY COMPLETE',len(sites),'districts',len(buildings),'model instances',len(spawns),'empty vehicle markers')
 if __name__=='__main__':run()

@@ -15,6 +15,13 @@ on:
       - 'Tools/MapBuild/surface_native.py'
       - 'Tools/MapBuild/world_review.py'
       - 'Tools/Validation/check_world_review.py'
+      - 'Tools/Validation/check_render_review.py'
+      - 'Tools/Validation/check_shader_compile.py'
+      - 'Tools/Validation/check_material_import.py'
+      - 'Tools/MapBuild/render_review.py'
+      - 'Tools/MapBuild/native_assets.py'
+      - 'Tools/MapBuild/surfaces.py'
+      - 'Assets/AarisWorld/Surfaces/CoastalWater.shader'
       - '.github/workflows/explorer-checks.yml'
 permissions:
   contents: read
@@ -36,3 +43,7 @@ jobs:
         run: python Tools/Validation/check_road_markings.py
       - name: Check core building prefabs, world proportions and daylight
         run: python Tools/Validation/check_world_review.py
+      - name: Check renderer layer coverage and source-correct materials
+        run: python Tools/Validation/check_render_review.py
+      - name: Check source material semantics and occlusion channel packing
+        run: python Tools/Validation/check_material_import.py

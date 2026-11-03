@@ -1,0 +1,14 @@
+{
+  "status": "core_render_checks_passed",
+  "materials_checked": 182,
+  "visible_scene_layers": [
+    0,
+    8
+  ],
+  "player_layer_visible": true,
+  "water_hlsl_compilations": 52,
+  "render_scale": 1,
+  "unity_shaderlab_import_tested": false,
+  "unity_android_build_tested": false,
+  "android_device_tested": false
+}
