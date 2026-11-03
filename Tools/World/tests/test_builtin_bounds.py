@@ -8,8 +8,10 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from observations import inspect
-from unity_data import BUILTIN_MESH_GUID, SCENE, World, digest
+from unity_data import SCENE, World, digest
 from test_world import fixture
+
+BUILTIN_MESH_GUID = "0000000000000000e000000000000000"
 
 
 class BuiltinBoundsTests(unittest.TestCase):
@@ -73,6 +75,14 @@ class BuiltinBoundsTests(unittest.TestCase):
         self.assertEqual(record["collider_bounds_incomplete"], [])
         np.testing.assert_allclose(record["saved_collider_bounds"]["size_m"], [3, 2, 2], atol=1e-10)
         self.assertIsNone(record["renderer_bounds"])
+
+    def test_builtin_resource_guids_do_not_require_project_metadata(self):
+        w = World(self.root)
+        resource = w.reference({"guid": "0000000000000000f000000000000000", "fileID": 10303})
+        self.assertEqual(resource["status"], "unity_builtin")
+        bounds, reason = w.mesh_aabb({"guid": resource["guid"], "fileID": 10208})
+        self.assertIsNone(bounds)
+        self.assertIn("unity_builtin", reason)
 
     def test_unknown_builtin_and_missing_lfs_remain_explicitly_unavailable(self):
         for file_id, guid, reason in ((99999, BUILTIN_MESH_GUID, "unity_builtin"),
