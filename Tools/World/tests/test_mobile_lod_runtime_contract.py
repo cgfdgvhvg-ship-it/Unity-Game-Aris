@@ -108,6 +108,17 @@ class LowRamWorldSourceContracts(unittest.TestCase):
         self.assertIn("public void RefreshNow() { RefreshNow(true); }", src)
         self.assertIn("if (changedColliders || forceSync) Physics.SyncTransforms();", src)
 
+    def test_authored_disabled_colliders_are_not_resurrected(self):
+        src = (ROOT / "Assets/AarisWorld/Scripts/AarisNearbyColliders.cs").read_text(encoding="utf-8")
+        awake = src.split("private void Awake()", 1)[1].split("private int Cell", 1)[0]
+        self.assertIn("savedEnabled[i] = c.enabled;", awake)
+        self.assertIn("if (!savedEnabled[i]) continue;", awake)
+        # The skip must happen before either spatial indexing or enabled-state gating.
+        self.assertLess(awake.index("if (!savedEnabled[i]) continue;"), awake.index("Matrix4x4 m"))
+        self.assertLess(awake.index("if (!savedEnabled[i]) continue;"), awake.index("indexed[i] = true;"))
+        self.assertIn("if (indexed[i] && obstacles[i] != null) obstacles[i].enabled = false;", src)
+        self.assertIn("obstacles[i].enabled = savedEnabled[i];", src)
+
     def test_collider_manager_recovers_after_reenable(self):
         src = (ROOT / "Assets/AarisWorld/Scripts/AarisNearbyColliders.cs").read_text(encoding="utf-8")
         for fragment in (
