@@ -74,3 +74,16 @@ Read commands write to stdout by default; no background agent, persistent report
 For changes: a fresh branch, meaningful checks and a concrete PR. The automated edit workflow never auto-merges future patches. Follow the current user's merge authorization; do not infer permission to deploy unrelated builds or send messages.
 
 
+
+## Area intelligence and live local reinspection
+
+```bash
+python Tools/World/world.py site --x 350 --z 167.3 --radius 50 --limit 100
+python Tools/World/world.py watch --x 350 --z 167.3 --radius 50 --poll-seconds 2 --quiet-seconds 1
+```
+
+`site` wraps `inspect` with an evidence-scoped AI capsule: terrain/grass, exact saved material RGBA, texture references, available geometry sizes, nearest *paged* semantic objects, all-radius native tree/rock/shrub counts and independent scene/native next offsets. Iterate both offsets. `serialized_candidate_coverage_complete` is an index-completeness hint, **never** proof of free physical space. Source color properties are not final UV/shader/lighted pixel colors. Check `describe` on a building part and use Unity capture for rendered appearance.
+
+`watch` runs in the **foreground only** in a local checkout with the command open. It polls relevant saved core files, re-runs the selected spatial query after changes, and emits JSON Lines with changed paths, available hashes, new site conditions and before/after distances, colors and dimensions. Stop with Ctrl+C; running GitHub search or a one-shot Actions query does not start this watcher. Save stdout explicitly if desired, keeping generated reports outside version control. Changes mid-save are retried, not silently treated as valid. It never edits/commits/merges core assets.
+
+Explicit `observe_after` now **adds to** automatic per-operation and saved-scene material-user observations (up to 32 per transaction; split large edits). Reports distinguish a neighbour entering/leaving a *page* from actual creation/removal. Review `observation_deltas` and `operation_deltas` and never infer a collider or color rendered outcome from serialized data alone.

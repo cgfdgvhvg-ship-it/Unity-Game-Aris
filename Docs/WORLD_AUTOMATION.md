@@ -63,7 +63,7 @@ Geometry-enabled `inspect` also fetches the scene's referenced shape geometry be
 | Names matching Garage, bounds and materials | `scan --search Garage --details --limit 5` |
 | Continue a page | `scan --offset 100 --limit 100` |
 | One object, hierarchy, components, materials | `object --target scene:<scene-guid>:<game-object-fileID>` |
-| One target plus terrain/support/nearby scene and native context | `inspect --target scene:<scene-guid>:<game-object-fileID> --radius 50` |
+| AI-friendly coordinate site capsule with appearance, semantic directions and completeness | `site --x 350 --z 167.3 --radius 50 --limit 100` |\n| One target plus terrain/support/nearby scene and native context | `inspect --target scene:<scene-guid>:<game-object-fileID> --radius 50` |
 | Coordinate neighbourhood | `inspect --x 350 --y 18.4 --z 167.3 --radius 50` |
 | Continue dense scene/native neighbourhood pages | `inspect --x 350 --z 167.3 --radius 60 --scene-offset 100 --native-offset 100 --limit 100` |
 | House/prop dimensions, parts, semantic roles, material slots and dependencies | `describe --target scene:<scene-guid>:<game-object-fileID> --texture-analysis --limit 100` |
@@ -237,3 +237,18 @@ Tests cover parent/world transforms, schema-v2 transaction identities, isolated 
 
 
 
+
+## Live local file change sensing
+
+Run `python Tools/World/world.py site --x 350 --z 167.3 --radius 50` to read a single AI context capsule. The `site` response includes the raw paged `inspection` and a compact `site` view showing terrain/grass, saved colors, material slots, dimensions, world-axis directions, names/semantic confidence, native radius-wide tree/rock counts, and which geometry is still unresolved. Scene object roles/distances and native instance details are *page scoped*; follow both `scene_next_offset` and `native_next_offset`. Semantic labels and AABB overlap are not proof of exact visible shape or physics clearance. Native height and foliage dimensions remain terrain-grid and prototype-envelope estimates.
+
+To re-run a selected neighbourhood whenever its saved source files change **while a terminal process is running**, use:
+
+```bash
+python Tools/World/world.py watch --x 350 --z 167.3 --radius 50 --poll-seconds 2 --quiet-seconds 1
+# optional: --max-events 3 ; use Ctrl+C to stop continuous watching
+```
+
+This is a foreground polling sensor, not a hidden agent or GitHub background service. It prints JSONL: an initial baseline, then `core_files_changed` events with changed file paths, available SHA256 values, before/after neighbour distances, shape/material/tint change identifiers, and the new `current_site`. Saves in progress can be retried. Hashes of files never previously read are marked unavailable; files larger than 128 MiB are not hashed by the watcher. It checks one selected area per process; it does not certify the entire 2km world, compile Unity, run physics, or auto-commit. For a GitHub-hosted one-shot query submit `{"command":"site","x":350,"z":167.3,"radius":50}` to `world-query.yml`; it materializes relevant LFS within the normal 1 GiB cap. A web-only GitHub request does not launch `watch`.
+
+Automatic edit observations and caller `observe_after` observations are merged (bounded to 32 rather than silently dropped); material operations also sample their saved MeshRenderer users. A change of neighbour membership can mean moving across a radius/page boundary or pagination shifts, not object deletion. Exact material property changes are reported by `operation_deltas`; Unity captures are necessary to establish actual pixels or visible stains, and the matching Editor is necessary for final imported asset/collision validation.

@@ -110,6 +110,7 @@ READ_COMMANDS = {
     "scan": "Paged inline scene GameObjects",
     "object": "One stable scene object with hierarchy, bounds, components and materials",
     "inspect": "Target/coordinate neighbourhood, terrain relation, nearby scene/native objects and support evidence",
+    "site": "AI-ready local site capsule: terrain, full-radius native counts, paged scene roles, directional neighbors, saved colors and coverage",
     "describe": "Paged hierarchy parts, evidence-backed semantic roles, dimensions, material slots, texture statistics and dependencies",
     "height": "Native terrain height, gradient, slope and normal",
     "region": "Paged-size native terrain grid sampling",
@@ -131,11 +132,14 @@ def schema():
         "write_operations": OPERATIONS,
         "local_import":{"command":"import-model", "formats":["ZIP with one binary FBX and explicit PBR textures"],
                         "backend":"python", "chooses_location":False, "requires_editor":False},
-        "transaction": {
+        "local_watch": {"command": "watch", "mode": "foreground_json_lines", "polls_saved_core": True,
+                        "automatically_runs": False, "before_after_context": True,
+                        "limitations": "Must remain running on a local checkout; no remote daemon or Unity rendering"},
+    "transaction": {
             "compare_and_swap": "expected_files SHA256",
             "idempotency": "schema v2 transaction_id + idempotency_key",
             "semantic_override": "acknowledgements bind an observation id/hash/reason; integrity failures are never overrideable",
-            "post_edit": "observe_after requests are returned from preview/apply",
+            "post_edit": "explicit observe_after augments (never replaces) automatic per-edit observations",
             "change_report": "Python edits return automatic pre/post observations, exact file hashes and structured deltas",
         },
         "evidence_levels": {

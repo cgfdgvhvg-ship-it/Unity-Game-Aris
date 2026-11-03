@@ -42,6 +42,11 @@ jobs:
         env:
           WORLD_REQUEST: '{"command":"inspect","x":662,"y":23.734358786547034,"z":-650,"native":true,"geometry":true}'
         run: python Tools/World/fetch_assets.py
+      - name: Query AI site capsule on actual native terrain and saved scene
+        run: |
+          python Tools/World/world.py --out "$RUNNER_TEMP/world-site.json" site --x 662 --z -650 --radius 35 --limit 30
+          python -c 'import json, os; from pathlib import Path; d=json.loads((Path(os.environ["RUNNER_TEMP"])/"world-site.json").read_text()); s=d["result"]["site"]; assert d["command"]=="site"; assert s["radius_m"]==35; assert s["coverage"]["free_space_verified_by_physics"] is False; assert "counts_by_category_in_full_radius" in s["native"]'
+          rm -f -- "$RUNNER_TEMP/world-site.json"
       - name: Check saved satellites against native terrain and current neighbours
         run: python Tools/World/check_satellite.py --native
       - name: Remove temporary verification report

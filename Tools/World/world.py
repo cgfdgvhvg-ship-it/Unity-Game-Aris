@@ -20,6 +20,7 @@ from terrain import NativeTerrain
 from capabilities import PROTOCOL_VERSION, repository_inventory, schema as automation_schema
 from observations import inspect as inspect_context, runtime as runtime_context, usages as asset_usages
 from semantics import describe as describe_context
+from site_intelligence import site_summary
 
 ROOT = Path(__file__).resolve().parents[2]
 VERSION = PROTOCOL_VERSION
@@ -217,6 +218,8 @@ READ_COMMANDS = {
     "context": set(), "schema": set(), "scan": {"search", "offset", "limit", "details"}, "object": {"target"},
     "inspect": {"target", "x", "y", "z", "radius", "limit", "scene_offset", "native_offset",
                 "native", "geometry", "appearance", "texture_analysis", "semantics"},
+    "site": {"target", "x", "y", "z", "radius", "limit", "scene_offset", "native_offset",
+             "native", "geometry", "appearance", "texture_analysis", "semantics"},
     "describe": {"target", "offset", "limit", "texture_analysis", "dependency_depth",
                  "override_offset", "override_limit"},
     "height": {"x", "z"}, "region": {"xmin", "zmin", "xmax", "zmax", "step"},
@@ -261,6 +264,9 @@ def dispatch(root, request, remote=False):
         result = inspect_context(w, request)
     elif cmd == "describe":
         result = describe_context(w, request)
+    elif cmd == "site":
+        inspection = inspect_context(w, request)
+        result = {"site": site_summary(inspection), "inspection": inspection}
     elif cmd == "height":
         result = NativeTerrain(w).height(request["x"], request["z"])
     elif cmd == "region":
@@ -318,6 +324,24 @@ def parser():
     s.add_argument("--texture-analysis", action="store_true")
     s.add_argument("--no-semantics", dest="semantics", action="store_false")
     s.set_defaults(native=True, geometry=True, appearance=True, semantics=True)
+    for command in ("site", "watch"):
+        s = subs.add_parser(command, help="AI site report" if command == "site" else "Monitor saved core changes")
+        s.add_argument("--target")
+        for name in ("x", "y", "z", "radius"):
+            s.add_argument("--" + name, type=float)
+        s.add_argument("--limit", type=int, default=100)
+        s.add_argument("--scene-offset", type=int, default=0)
+        s.add_argument("--native-offset", type=int, default=0)
+        s.add_argument("--no-native", dest="native", action="store_false")
+        s.add_argument("--no-geometry", dest="geometry", action="store_false")
+        s.add_argument("--no-appearance", dest="appearance", action="store_false")
+        s.add_argument("--texture-analysis", action="store_true")
+        s.add_argument("--no-semantics", dest="semantics", action="store_false")
+        s.set_defaults(native=True, geometry=True, appearance=True, semantics=True)
+        if command == "watch":
+            s.add_argument("--poll-seconds", type=float, default=2.0)
+            s.add_argument("--quiet-seconds", type=float, default=1.0)
+            s.add_argument("--max-events", type=int, default=0)
     s = subs.add_parser("describe"); s.add_argument("--target", required=True)
     s.add_argument("--offset", type=int, default=0); s.add_argument("--limit", type=int, default=100)
     s.add_argument("--override-offset", type=int, default=0); s.add_argument("--override-limit", type=int, default=100)
@@ -389,6 +413,14 @@ def main():
             result = engine.run(root, req, capture_dir=args.get("capture_dir"))
         elif cmd == "performance":
             result = performance(args["report"])
+        elif cmd == "watch":
+            if out is not None:
+                raise WorldError("watch is a JSONL stream; pipe stdout to a file instead of --out")
+            from site_watcher import run as watch_run
+            poll_seconds = args.pop("poll_seconds")
+            quiet_seconds = args.pop("quiet_seconds")
+            max_events = args.pop("max_events")
+            return watch_run(root, args, poll_seconds, quiet_seconds, max_events)
         elif cmd == "verify":
             w = World(root)
             result = {"result": verify(w, args), "source_fingerprint": w.fingerprint()}

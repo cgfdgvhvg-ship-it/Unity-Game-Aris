@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-from unity_data import SCENE, World, WorldError, digest, documents, safe_path
+from unity_data import SCENE, World, WorldError, digest, documents, safe_path, references
 
 
 class Dumper(yaml.SafeDumper):
@@ -88,10 +88,14 @@ def validate_patch(patch):
         raise WorldError("Unknown patch fields")
 
 
-def observation_requests(patch):
+def observation_requests(patch, world=None):
+    """Always retain automatic change-site probes alongside caller probes.
+
+    An explicit observe_after augments rather than disables automatic validation.
+    Shared material usages are sampled from the saved scene; pagination/limits
+    must not be mistaken for evidence that every other material user was checked.
+    """
     explicit = patch.get("observe_after", [])
-    if explicit:
-        return explicit
     requests = []
     seen = set()
     for op in patch["operations"]:
@@ -117,7 +121,52 @@ def observation_requests(patch):
                 requests.append({"x": xz[0], "z": xz[1], "radius": 35, "limit": 100,
                                  "native": True, "geometry": True, "appearance": True, "semantics": True})
                 seen.add(key)
-    return requests[:32]
+    if world is not None:
+        for op in patch["operations"]:
+            if op.get("op") not in ("set_material_color", "set_material_float"):
+                continue
+            guids = {guid for guid, path in world.guid_paths.items() if path == op.get("path")}
+            if not guids:
+                continue
+            users = set()
+            for component in world.docs.values():
+                if component["kind"] not in ("MeshRenderer", "SkinnedMeshRenderer"):
+                    continue
+                if not any(ref.get("guid") in guids for ref in
+                           references(component["data"].get("m_Materials", []))):
+                    continue
+                go = component["data"].get("m_GameObject", {}).get("fileID")
+                if go in world.gos and go in world.go_transform and ("material_user", go) not in seen:
+                    users.add(go)
+            ordered = sorted(users)
+            budget = min(6, 32 - len(explicit) - len(requests))
+            if ordered and budget < 1:
+                raise WorldError("No remaining observation budget for shared material users; split this edit")
+            # A shared material may be used by hundreds of objects. Sample up
+            # to six users per material to keep the repeated full-map inspection
+            # workload bounded, and keep the full usage count in operation state.
+            # Keep a
+            # deterministic spread of saved fileIDs rather than rejecting
+            # ordinary material edits or pretending the sample is exhaustive.
+            if len(ordered) > budget:
+                ordered = [ordered[(index * len(ordered)) // budget] for index in range(budget)]
+            for go in ordered:
+                requests.append({"target": world.stable_id(go), "radius": 35, "limit": 100,
+                                 "native": True, "geometry": True,
+                                 "appearance": True, "semantics": True})
+                seen.add(("material_user", go))
+    # The requested observations are never suppressed by the automatic probes.
+    # Cap expensive inspection work and disclose this bound to the AI.
+    combined = []
+    keys = set()
+    for item in [*explicit, *requests]:
+        signature = json.dumps(item, sort_keys=True)
+        if signature not in keys:
+            combined.append(item)
+            keys.add(signature)
+    if len(combined) > 32:
+        raise WorldError("More than 32 observations needed; split the edit into smaller transactions")
+    return combined
 
 
 def _operation_state(world, operation, resolved=None):
@@ -178,11 +227,40 @@ def _observation_metrics(row):
              for item in result.get("nearby_scene_objects", [])}
     native = {item["id"]: item.get("distance_m") for item in result.get("nearby_native_instances", [])}
     terrain = result.get("terrain_relation") or {}
+    appearance = {}
+    positions = {}
+    sizes = {}
+    semantics = {}
+    for item in result.get("nearby_scene_objects", []):
+        identifier = item["id"]
+        positions[identifier] = item.get("world_position_m")
+        sizes[identifier] = (item.get("bounds") or {}).get("size_m")
+        semantics[identifier] = (item.get("semantic") or {}).get("primary_role")
+        slots = (item.get("appearance") or {}).get("material_slots", [])
+        appearance[identifier] = [
+            {"node_id": slot.get("node_id"), "slot_index": slot.get("slot_index"),
+             "material_path": (slot.get("material") or {}).get("path"),
+             "color_properties": (slot.get("material") or {}).get("color_properties"),
+             "texture_references": [
+                 (texture.get("reference") or {}).get("path")
+                 for texture in (slot.get("material") or {}).get("textures", [])]}
+            for slot in slots[:48]]
+    native_shape = {
+        item["id"]: {"position_m": item.get("position_m"),
+                      "width_scale": item.get("width_scale"),
+                      "height_scale": item.get("height_scale"),
+                      "color": item.get("color"),
+                      "lightmap_color": item.get("lightmap_color")}
+        for item in result.get("nearby_native_instances", [])
+    }
     return {"status": "available", "target_id": target.get("id"), "target_name": target.get("name"),
             "target_position_m": target.get("world_position_m"), "target_size_m": bounds.get("size_m"),
             "target_semantic": (target.get("semantic") or {}).get("primary_role"),
             "point_minus_ground_m": terrain.get("point_minus_ground_m"),
             "scene_neighbour_distance_m": scene, "native_neighbour_distance_m": native,
+            "scene_neighbour_positions_m": positions, "scene_neighbour_bounds_sizes_m": sizes,
+            "scene_neighbour_semantics": semantics, "scene_neighbour_materials": appearance,
+            "native_neighbour_shapes": native_shape,
             "coverage": result.get("coverage")}
 
 
@@ -209,6 +287,33 @@ def _observation_deltas(before_rows, after_rows):
             "scene_neighbours_removed": sorted(set(before_scene)-set(after_scene)),
             "native_neighbours_added": sorted(set(after_native)-set(before_native)),
             "native_neighbours_removed": sorted(set(before_native)-set(after_native)),
+            "scene_neighbour_distance_changes_m": {
+                key: float(after_scene[key] - before_scene[key])
+                for key in sorted(set(before_scene) & set(after_scene))
+                if before_scene[key] is not None and after_scene[key] is not None
+                and abs(after_scene[key] - before_scene[key]) > 1e-6},
+            "native_neighbour_distance_changes_m": {
+                key: float(after_native[key] - before_native[key])
+                for key in sorted(set(before_native) & set(after_native))
+                if before_native[key] is not None and after_native[key] is not None
+                and abs(after_native[key] - before_native[key]) > 1e-6},
+            "scene_neighbours_with_position_changes": sorted(
+                key for key in (set(before.get("scene_neighbour_positions_m", {})) &
+                                set(after.get("scene_neighbour_positions_m", {})))
+                if before["scene_neighbour_positions_m"][key] != after["scene_neighbour_positions_m"][key]),
+            "scene_neighbours_with_shape_changes": sorted(
+                key for key in (set(before.get("scene_neighbour_bounds_sizes_m", {})) &
+                                set(after.get("scene_neighbour_bounds_sizes_m", {})))
+                if before["scene_neighbour_bounds_sizes_m"][key] != after["scene_neighbour_bounds_sizes_m"][key]),
+            "scene_neighbours_with_material_changes": sorted(
+                key for key in (set(before.get("scene_neighbour_materials", {})) &
+                                set(after.get("scene_neighbour_materials", {})))
+                if before["scene_neighbour_materials"][key] != after["scene_neighbour_materials"][key]),
+            "native_neighbours_with_shape_or_tint_changes": sorted(
+                key for key in (set(before.get("native_neighbour_shapes", {})) &
+                                set(after.get("native_neighbour_shapes", {})))
+                if before["native_neighbour_shapes"][key] != after["native_neighbour_shapes"][key]),
+            "interpretation": "Neighbour added/removed means entered/left the returned query page, not necessarily asset creation/deletion. Pagination, unknown geometry and physics/render limits still apply.",
         })
     return rows
 
@@ -486,7 +591,7 @@ def plan(root, patch):
                 out += yaml.dump({d["kind"]:d["data"]}, Dumper=Dumper, sort_keys=False, allow_unicode=True, width=100000)
         outputs[path] = out
         diffs[path] = "".join(difflib.unified_diff(text.splitlines(True), out.splitlines(True), fromfile=path, tofile=path))
-    observe_after = observation_requests(patch)
+    observe_after = observation_requests(patch, w)
     for resolved in resolved_objects:
         observe_after.append({"target":resolved["id"], "radius":50, "limit":100, "native":True, "geometry":True})
     operation_before = [_operation_state(w, operation) for operation in patch["operations"]]
@@ -503,7 +608,7 @@ def plan(root, patch):
             "operation_before": operation_before,
             "pre_edit_observations": pre_edit_observations,
             "predicted_written_files": sorted(outputs),
-            "note": "Core assets change only on apply --write. Historical Docs/*REPORT.json are not refreshed or treated as current proof."}, outputs
+            "note": "Core assets change only on apply --write. Material users are sampled when >32 probes are needed; operation state reports total serialized usages. Historical Docs/*REPORT.json are not refreshed or treated as current proof."}, outputs
 
 
 def apply_yaml(root, patch, write=False):
