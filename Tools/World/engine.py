@@ -58,7 +58,7 @@ def run(root, request, patch=None, write=False, capture_dir=None):
             shutil.copytree(root/folder, project/folder)
         # YAML edits use the same guarded, identity-preserving Python implementation in the copy.
         if outputs:
-            yaml_kinds = {"set_transform", "set_object_state", "set_material_color", "set_material_float"}
+            yaml_kinds = {"set_transform", "set_object_state", "set_material_color", "set_material_float", "remove_mesh_triangles"}
             yaml_patch = {**patch, "operations": [o for o in patch["operations"] if o["op"] in yaml_kinds]}
             if yaml_patch["operations"]:
                 apply_yaml(project, yaml_patch, True)

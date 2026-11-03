@@ -1,8 +1,12 @@
 import base64
+import json
+import os
 import pathlib
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch as mock_patch
 import numpy as np
 
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]))
@@ -50,6 +54,20 @@ class MeshFaceTests(unittest.TestCase):
     def test_stale_metadata_blocks_geometry_write(self):
         patch=self.patch();(self.root/(self.path+'.meta')).write_text('changed')
         with self.assertRaises(WorldError):apply_yaml(self.root,patch,True)
+    def test_unity_preview_receives_the_already_edited_mesh_in_its_private_project(self):
+        import engine
+        (self.root/'Packages').mkdir();(self.root/'ProjectSettings').mkdir()
+        before=(self.root/self.path).read_bytes()
+        def launch(arguments,**kwargs):
+            project=pathlib.Path(arguments[arguments.index('-projectPath')+1])
+            mesh=documents(project/self.path)[1][0]['data']
+            self.assertEqual([s['indexCount']for s in mesh['m_SubMeshes']],[0,3])
+            pathlib.Path(kwargs['env']['AARIS_WORLD_RESPONSE']).write_text(json.dumps({'status':'ok'}))
+            return SimpleNamespace(wait=lambda timeout:0,poll=lambda:0,pid=1)
+        with mock_patch('engine.capabilities',return_value={'ready':True}),mock_patch.dict(os.environ,{'UNITY_EDITOR_PATH':'/simulated-editor'}),mock_patch('engine.subprocess.Popen',side_effect=launch):
+            result=engine.run(self.root,{'command':'preview'},self.patch())
+        self.assertTrue(result['preview'])
+        self.assertEqual((self.root/self.path).read_bytes(),before)
 
 
 if __name__=='__main__':unittest.main()
