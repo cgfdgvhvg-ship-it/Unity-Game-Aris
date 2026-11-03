@@ -182,9 +182,9 @@ namespace Aaris.WorldAutomation
                 result.note = "Independent deterministic probe bots ran in one isolated editor import. They do not plan routes or simulate combat AI.";
                 return;
             }
-            bool candidates = query.waypoints == null || query.waypoints.Length == 0;
+            bool automaticCandidates = query.waypoints == null || query.waypoints.Length == 0;
             var attempts = new List<Vector3[]>();
-            if (candidates)
+            if (automaticCandidates)
             {
                 var target = Resolve(scene, query.target);
                 var renderers = target.GetComponentsInChildren<Renderer>(true);
@@ -247,9 +247,9 @@ namespace Aaris.WorldAutomation
                         Vector3 move = Vector3.ClampMagnitude(planar, 4.2f*dt);
                         if (move.sqrMagnitude > 0)
                         {
-                            var candidates = Physics.CapsuleCastAll(before+Vector3.up*.28f, before+Vector3.up*1.50f,
+                            var capsuleHits = Physics.CapsuleCastAll(before+Vector3.up*.28f, before+Vector3.up*1.50f,
                                 .28f, move.normalized, move.magnitude+.035f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
-                            foreach (var hit in candidates)
+                            foreach (var hit in capsuleHits)
                             {
                                 string id = Id(hit.collider.gameObject);
                                 if (hit.normal.y > .65f || hits.Count >= 32 || hits.Any(c => c.id == id)) continue;
@@ -268,7 +268,7 @@ namespace Aaris.WorldAutomation
                     routes.Add(new Route { status = status, start = start, target = target, reached = bot.transform.position,
                         steps = steps, remainingMetres = Vector3.Distance(bot.transform.position, target), contacts = hits.ToArray(),
                         groundHeightAtReached = ground, terrainSlopeAtReached = slope, terrainNormalAtReached = normal,
-                        interpretation = candidates ? "Automatic AABB-side-to-center candidate only: center may not be an interior; blocked candidate is not proof of no entrance. Contacts are nearby sweep candidates."
+                        interpretation = automaticCandidates ? "Automatic AABB-side-to-center candidate only: center may not be an interior; blocked candidate is not proof of no entrance. Contacts are nearby sweep candidates."
                             : "Contacts are capsule-sweep candidates near the walking path, not proof of the sole blocker. Result does not prove all entrances are blocked or that visible walls have colliders." });
                     if (status != "tested_route_passed") break;
                   }
