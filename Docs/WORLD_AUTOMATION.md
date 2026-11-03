@@ -84,6 +84,8 @@ The scene is currently a four-tile 2km by 2km world. Each native terrain has a 2
 
 Object bounds are transformed mesh AABBs, including descendants/LODs. Missing LFS meshes produce `bounds_incomplete`, not invented dimensions. Texture files can be queried for image dimensions/format. Serialized `_BaseColor` or `_Color` often is white while the texture supplies the visible wall color. A screenshot from the real URP pipeline is the appropriate evidence for visible colors, lighting and silhouettes.
 
+The source reader also resolves Unity's built-in Cube, Sphere, Capsule, Cylinder, Plane and Quad mesh envelopes using their saved mesh IDs. These shapes need no LFS download. Parent rotation and scale apply to their bounds just as for saved meshes. Unknown built-in IDs remain explicitly unavailable; a missing shape is never silently counted as clear space. Built-in mesh envelopes, including those referenced by MeshColliders, remain AABB estimates rather than physics tests.
+
 ## Edit the actual core files
 
 Use `Tools/World/patch.schema.json` and schema v2. Obtain hashes from current files (for example `sha256sum <path>`), not old reports. Include both each target file and its existing `.meta`:
@@ -224,4 +226,5 @@ python Tools/World/world.py verify --project-checks
 ```
 
 Tests cover parent/world transforms, schema-v2 transaction identities, isolated preview, neighbourhood context, reverse usages, runtime evidence, precise height/slope interpolation, missing/pointer data, ambiguous IDs, stale source/metadata, actual material/transform/state writes, identity preservation, rollback and cleanup scope. CI also checks the actual four-tile scene, spawn markers, C# syntax and workflow boundaries. Existing project checks cover saved bindings/materials/road geometry. A Unity import/compile, engine probes/captures and an Android device pass remain separate necessary evidence for changes that affect those behaviors.
+
 
