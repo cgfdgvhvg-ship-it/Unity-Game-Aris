@@ -139,7 +139,8 @@ def player(scene,root,camera_id,spawn):
     scene.component(go,gd,114,'MonoBehaviour',{'m_Enabled':1,'m_EditorHideFlags':0,'m_Script':ref(11500000,guid(SCRIPT),3),
         'm_Name':'','m_EditorClassIdentifier':'Assembly-CSharp::Aaris.MapReview.AarisThirdPersonPlayer','followCamera':ref(camera_id),
         'leftArm':ref(limbs['LeftArm']),'rightArm':ref(limbs['RightArm']),'leftLeg':ref(limbs['LeftLeg']),'rightLeg':ref(limbs['RightLeg']),
-        'walkSpeed':4.2,'runSpeed':6.2,'jumpHeight':1,'gravity':24,'followDistance':4.2,'pivotHeight':1.45,'lookSensitivity':.12,'seaLevel':SEA})
+        'walkSpeed':4.2,'runSpeed':6.2,'jumpHeight':1,'gravity':24,'followDistance':4.2,'pivotHeight':1.45,'lookSensitivity':.12,
+        'minLookPitch':-70,'maxLookPitch':70,'seaLevel':SEA})
     for c,i,n,d in scene.objects:
         if n=='GameObject' and (d['m_Name']=='AarisPlayer' or d['m_Name'].startswith('AarisPlayer_')):
             d['m_Layer']=8
@@ -163,9 +164,9 @@ def upgrade(root):
     for c,i,n,d in objects:
         if n=='GameObject':d['m_Component']=[r for r in d['m_Component'] if r['component']['fileID'] not in remove]
         if n=='RenderSettings':
-            d.update(m_AmbientMode=1,m_AmbientIntensity=1,m_AmbientSkyColor=color(.45,.58,.72),
-                     m_AmbientEquatorColor=color(.42,.46,.43),m_AmbientGroundColor=color(.22,.24,.20),m_ReflectionIntensity=.65)
-        if n=='Light':d['m_Intensity']=1.2;d['m_Shadows']['m_Strength']=.65
+            d.update(m_AmbientMode=1,m_AmbientIntensity=1,m_AmbientSkyColor=color(.62,.72,.86),
+                     m_AmbientEquatorColor=color(.54,.58,.56),m_AmbientGroundColor=color(.32,.34,.31),m_ReflectionIntensity=.75)
+        if n=='Light':d['m_Intensity']=1.35;d['m_Color']=color(1,.973,.925);d['m_Shadows']['m_Strength']=.55
         if n=='Camera':d['far clip plane']=3500;d['near clip plane']=.15;d['field of view']=60
         if n=='Terrain':d['m_SplatMapDistance']=400
     scene=Scene();scene.objects=objects;scene.next_id=200000
@@ -216,8 +217,8 @@ def upgrade(root):
     old=next(d for c,i,n,d in documents(sky) if n=='Material')
     old.update(m_Shader=ref(106,'0000000000000000f000000000000000',0),m_ShaderKeywords='_SUNDISK_HIGH_QUALITY')
     old['m_SavedProperties']={'serializedVersion':3,'m_TexEnvs':[],'m_Floats':[
-        {'_SunDisk':2},{'_SunSize':.035},{'_SunSizeConvergence':5},{'_AtmosphereThickness':1},{'_Exposure':1.05}],
-        'm_Colors':[{'_SkyTint':color(.50,.55,.60)},{'_GroundColor':color(.35,.36,.32)}]}
+        {'_SunDisk':2},{'_SunSize':.035},{'_SunSizeConvergence':5},{'_AtmosphereThickness':1},{'_Exposure':1.15}],
+        'm_Colors':[{'_SkyTint':color(.50,.50,.50)},{'_GroundColor':color(.45,.47,.45)}]}
     write_yaml(sky,[(21,2100000,'Material',old)])
     for name in ['Asphalt','Concrete','Sand','RoadMark']:
         path=root/'Assets/AarisWorld/Surfaces'/(name+'.png')
@@ -228,7 +229,7 @@ def upgrade(root):
     gs['m_AlwaysIncludedShaders']=[ref(106,'0000000000000000f000000000000000',0)]
     write_yaml(graphics,[(30,1,'GraphicsSettings',gs)])
     settings_path=root/'ProjectSettings/ProjectSettings.asset';settings=documents(settings_path)[0][3]
-    settings['productName']='Aaris Ground Review';settings['bundleVersion']='0.2.1';settings['AndroidBundleVersionCode']=3
+    settings['productName']='Aaris Ground Review';settings['bundleVersion']='0.2.2';settings['AndroidBundleVersionCode']=4
     write_yaml(settings_path,[(129,1,'PlayerSettings',settings)])
     quality={'serializedVersion':3,'name':'Aaris Ground','pixelLightCount':1,'shadows':2,'shadowResolution':2,'shadowProjection':1,
         'shadowCascades':2,'shadowDistance':100,'shadowNearPlaneOffset':3,'shadowCascade2Split':.25,'shadowCascade4Split':vec(.067,.2,.467),

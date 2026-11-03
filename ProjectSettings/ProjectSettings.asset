@@ -8,8 +8,8 @@ PlayerSettings:
   productName: Aaris Ground Review
   m_ActiveColorSpace: 1
   activeInputHandler: 0
-  bundleVersion: 0.2.1
-  AndroidBundleVersionCode: 3
+  bundleVersion: 0.2.2
+  AndroidBundleVersionCode: 4
   defaultInterfaceOrientation: 4
   allowedAutorotateToPortrait: 0
   allowedAutorotateToPortraitUpsideDown: 0
