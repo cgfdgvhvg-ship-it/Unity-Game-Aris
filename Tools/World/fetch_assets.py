@@ -20,7 +20,7 @@ def required(w, request):
     if not isinstance(request, dict) or request.get("command") not in READ_COMMANDS:
         raise WorldError("Only read requests can materialize assets")
     cmd = request["command"]; paths = set()
-    if cmd in ("scan", "height", "region", "instances", "verify") or (cmd == "inspect" and request.get("native", True)):
+    if cmd in ("scan", "height", "region", "instances", "verify") or (cmd in ("inspect", "site") and request.get("native", True)):
         paths.update(t["asset"]["path"] for t in w.terrains() if t["asset"]["path"])
     if cmd == "asset": paths.add(request["path"])
     ids = []
