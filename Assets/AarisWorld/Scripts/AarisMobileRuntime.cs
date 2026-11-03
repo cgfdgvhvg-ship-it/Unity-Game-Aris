@@ -39,7 +39,8 @@ namespace Aaris.MapReview
         private int[] originalFullLodTreeCounts;
         private int observedTargetFps;
         private float terrainDetailDistanceCap, terrainDetailDensityCap;
-        private float profileShadowDistance, lowMemoryDetailMultiplier = 1f;
+        private float profileShadowDistance, profileTreeBillboardDistance, lowMemoryDetailMultiplier = 1f;
+        private int profileMaxFullLodTrees;
         private int performanceLevel, pressureSamples, recoverySamples;
         private float nextPerformanceChangeAt;
         private string lastError = "";
@@ -183,6 +184,8 @@ namespace Aaris.MapReview
             // Constrain expensive near-ground details, not distant tree geometry.
             terrainDetailDistanceCap = constrained ? 55f : 80f;
             terrainDetailDensityCap = constrained ? 0.58f : 0.78f;
+            profileTreeBillboardDistance = constrained ? 100f : 140f;
+            profileMaxFullLodTrees = constrained ? 28 : 44;
             profiledTerrains = terrains != null && terrains.Length > 0 ? terrains : Terrain.activeTerrains;
             originalDetailDistances = new float[profiledTerrains.Length];
             originalDetailDensities = new float[profiledTerrains.Length];
@@ -205,9 +208,9 @@ namespace Aaris.MapReview
                 // Keep the authored tree draw distance and distant skyline intact:
                 // reduce expensive *mesh* trees, not whether far trees exist.
                 terrain.treeBillboardDistance = Mathf.Min(originalTreeBillboardDistances[i],
-                    constrained ? 100f : 140f);
+                    profileTreeBillboardDistance);
                 terrain.treeMaximumFullLODCount = Mathf.Min(originalFullLodTreeCounts[i],
-                    constrained ? 28 : 44);
+                    profileMaxFullLodTrees);
                 terrain.heightmapPixelError = Mathf.Max(originalHeightmapPixelErrors[i],
                     constrained ? 8f : 6f);
                 terrain.basemapDistance = Mathf.Min(originalBasemapDistances[i],
@@ -263,6 +266,10 @@ namespace Aaris.MapReview
             float distanceFactor = performanceLevel == 0 ? 1f : performanceLevel == 1 ? 0.85f : 0.70f;
             float densityFactor = performanceLevel == 0 ? 1f : performanceLevel == 1 ? 0.80f : 0.62f;
             float shadowFactor = performanceLevel == 0 ? 1f : performanceLevel == 1 ? 0.85f : 0.70f;
+            // Fewer nearby 3D tree meshes under sustained pressure. Their distant
+            // terrain-tree draw distance is never changed; billboards remain visible.
+            float treeMeshDistanceFactor = performanceLevel == 0 ? 1f : performanceLevel == 1 ? 0.92f : 0.82f;
+            float treeMeshCountFactor = performanceLevel == 0 ? 1f : performanceLevel == 1 ? 0.86f : 0.72f;
             if (profiledTerrains != null)
                 for (int i = 0; i < profiledTerrains.Length; i++)
                 {
@@ -272,6 +279,12 @@ namespace Aaris.MapReview
                         terrainDetailDistanceCap * distanceFactor * lowMemoryDetailMultiplier);
                     terrain.detailObjectDensity = Mathf.Min(originalDetailDensities[i],
                         terrainDetailDensityCap * densityFactor * lowMemoryDetailMultiplier);
+                    // Tier 0 restores the RAM-class baseline, not a higher authored cost.
+                    // Both limits are clamped to original values and retain billboard/far draw.
+                    terrain.treeBillboardDistance = Mathf.Min(originalTreeBillboardDistances[i],
+                        profileTreeBillboardDistance * treeMeshDistanceFactor);
+                    terrain.treeMaximumFullLODCount = Mathf.Min(originalFullLodTreeCounts[i],
+                        Mathf.Max(1, Mathf.FloorToInt(profileMaxFullLodTrees * treeMeshCountFactor)));
                 }
             if (mobilePipeline != null)
             {
