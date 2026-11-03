@@ -32,8 +32,8 @@ namespace Aaris.MapReview.Editor
         {
             PlayerSettings.companyName = "Aaris";
             PlayerSettings.productName = "Aaris Ground Review";
-            PlayerSettings.bundleVersion = "0.2.2";
-            PlayerSettings.Android.bundleVersionCode = 4;
+            PlayerSettings.bundleVersion = "0.2.3";
+            PlayerSettings.Android.bundleVersionCode = 5;
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
             PlayerSettings.allowedAutorotateToLandscapeLeft = true;
@@ -69,6 +69,11 @@ namespace Aaris.MapReview.Editor
                 throw new BuildFailedException("The review player's reference height must stay 1.78 m.");
             if (LayerMask.NameToLayer("Player") != 8 || player.GetComponentsInChildren<Transform>(true).Any(t => t.gameObject.layer != 8))
                 throw new BuildFailedException("The saved player must use the dedicated Player layer (8) for camera/support queries.");
+            var rendererData = AssetDatabase.LoadMainAssetAtPath("Assets/TerrainDemoScene_URP/Settings/URP/Universal Render Pipeline Asset_Renderer.asset");
+            if (rendererData == null) throw new BuildFailedException("The saved URP renderer is missing; check Git LFS.");
+            var opaqueLayers = new SerializedObject(rendererData).FindProperty("m_OpaqueLayerMask");
+            if (opaqueLayers == null || (opaqueLayers.intValue & (1 << 8)) == 0)
+                throw new BuildFailedException("The URP opaque renderer excludes the saved Player layer.");
             string nativeReport = "Docs/GROUND_REVIEW_REPORT.json";
             if (!File.Exists(nativeReport) || !JsonUtility.FromJson<NativeReport>(File.ReadAllText(nativeReport)).native_assets_materialized)
                 throw new BuildFailedException("Materialize the native forest and building LOD assets before building.");

@@ -245,7 +245,7 @@ def material_asset(path,name,base=(.6,.6,.6,1),metallic=0,smoothness=.3,textures
     data={'serializedVersion':8,'m_ObjectHideFlags':0,'m_CorrespondingSourceObject':ref(),'m_PrefabInstance':ref(),'m_PrefabAsset':ref(),
           'm_Name':name,'m_Shader':ref(4800000,shader or LIT_SHADER,3),'m_Parent':ref(),'m_ModifiedSerializedProperties':0,
           'm_ValidKeywords':keywords,'m_InvalidKeywords':[],'m_LightmapFlags':4,'m_EnableInstancingVariants':1,
-          'm_DoubleSidedGI':1,'m_CustomRenderQueue':3000 if transparent else -1,'stringTagMap':{'RenderType':'Transparent'} if transparent else {},
+          'm_DoubleSidedGI':int(floats['_Cull']==0),'m_CustomRenderQueue':3000 if transparent else -1,'stringTagMap':{'RenderType':'Transparent'} if transparent else {},
           'disabledShaderPasses':[],'m_LockedProperties':'','m_SavedProperties':{'serializedVersion':3,'m_TexEnvs':tex,'m_Ints':[],
           'm_Floats':[{k:v} for k,v in floats.items()],'m_Colors':[{'_BaseColor':color(*base)},{'_Color':color(*base)},{'_EmissionColor':color(0,0,0)}]},'m_BuildTextureStacks':[]}
     write_yaml(path,[(21,2100000,'Material',data)]);meta(path,main_id=2100000)
@@ -267,6 +267,9 @@ def export_model(source,path,template,shared=None,reuse_images=False):
             img=glb.image(source_index).convert('RGBA')
             if kind=='metallic':
                 a=np.asarray(img);dst=np.zeros_like(a);dst[:,:,0]=np.rint(a[:,:,2]*metallic);dst[:,:,3]=np.rint(255-a[:,:,1]*roughness);img=Image.fromarray(dst)
+            elif kind=='occlusion':
+                # glTF stores AO in red; URP Lit samples the green channel.
+                a=np.asarray(img).copy();a[:,:,:3]=a[:,:,0,None];img=Image.fromarray(a)
             filename=path/(f'Image_{source_index:02d}_{kind}'+(f'_{roughness}_{metallic}' if kind=='metallic' else '')+'.png')
             if not (reuse_images and filename.exists()):img.save(filename)
             meta(filename,texture={'normal':kind=='normal','linear':kind in ('normal','metallic','occlusion')})
@@ -290,7 +293,9 @@ def export_model(source,path,template,shared=None,reuse_images=False):
         transparent=material.get('alphaMode')=='BLEND'
         g=material_asset(path/f'Material_{index:02d}.mat',path.name+'_'+name,base=base,
                          metallic=pbr.get('metallicFactor',1),smoothness=smooth,textures=textures,
-                         transparent=transparent,extra={'_AlphaClip':1 if material.get('alphaMode')=='MASK' else 0,'_Cutoff':material.get('alphaCutoff',.5)})
+                         transparent=transparent,extra={'_AlphaClip':1 if material.get('alphaMode')=='MASK' else 0,'_Cutoff':material.get('alphaCutoff',.5),
+                         '_Cull':0 if material.get('doubleSided',False) else 2,'_BumpScale':material.get('normalTexture',{}).get('scale',1),
+                         '_OcclusionStrength':material.get('occlusionTexture',{}).get('strength',1)})
         materials.append(g)
     from native_scene import Scene
     scene=Scene();scene.model(path.name,mesh['guid'],materials,bounds=mesh['bounds'])

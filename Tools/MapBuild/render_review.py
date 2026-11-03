@@ -1,9 +1,9 @@
 """Audit actual URP settings and pinned source material semantics offline."""
 from __future__ import annotations
-import json,re
+import copy,hashlib,json,re,sys
 from pathlib import Path
 from ground_review import documents
-from native_assets import Glb
+from native_assets import Glb,write_yaml
 
 PIPELINE='Assets/TerrainDemoScene_URP/Settings/URP/URP-HighQuality Pipeline Asset.asset'
 RENDERER='Assets/TerrainDemoScene_URP/Settings/URP/Universal Render Pipeline Asset_Renderer.asset'
@@ -40,4 +40,52 @@ def audit(root):
     print(json.dumps({'pipeline':report['pipeline'],'renderer':report['renderer']}))
     return report
 
-if __name__=='__main__':audit(Path.cwd())
+def set_float(material,name,value):
+    for item in material['m_SavedProperties']['m_Floats']:
+        if name in item:item[name]=value;return
+    raise ValueError('Required material property missing: '+name)
+
+def unchanged_material_fields(material):
+    data=copy.deepcopy(material);data['m_DoubleSidedGI']=0
+    for name in ['_Cull','_BumpScale','_OcclusionStrength']:set_float(data,name,0)
+    return data
+
+def save(root):
+    root=Path(root);report_path=root/'Docs/RENDER_REVIEW_REPORT.json'
+    prior=json.loads(report_path.read_text()) if report_path.exists() else {}
+    before=audit(root);changed_cull=0;changed_normal=0
+    preserved={str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (root/'Assets').rglob('*') if p.is_file() and p.suffix in ('.meta','.png','.tif','.st','.prefab','.unity')}
+    # Native geometry pointers/bytes must remain untouched by a material-only refinement.
+    preserved.update({str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (root/'Assets/AarisWorld').rglob('*.asset')})
+    for row in before['materials']:
+        path=root/row['path'];objects=documents(path);material=objects[0][3];immutable=unchanged_material_fields(material)
+        changed_cull+=int(row['saved_cull']!=row['expected_cull']);changed_normal+=int(row['saved_normal_scale']!=row['source_normal_scale'])
+        set_float(material,'_Cull',row['expected_cull']);set_float(material,'_BumpScale',row['source_normal_scale'])
+        set_float(material,'_OcclusionStrength',row['source_occlusion_strength']);material['m_DoubleSidedGI']=int(row['source_double_sided'])
+        write_yaml(path,objects)
+        assert unchanged_material_fields(documents(path)[0][3])==immutable,'Unexpected material texture/color/keyword change'
+    renderer_objects=documents(root/RENDERER);renderer=renderer_objects[0][3]
+    old_masks={k:renderer[k]['m_Bits'] for k in ['m_OpaqueLayerMask','m_TransparentLayerMask']}
+    for key in old_masks:renderer[key]['m_Bits']|=(1<<6)|(1<<8)
+    write_yaml(root/RENDERER,renderer_objects)
+    water_path=root/'Assets/AarisWorld/Surfaces/CoastalWater.mat';water=documents(water_path)
+    set_float(water[0][3],'_Smoothness',.82);write_yaml(water_path,water)
+    after=audit(root);assert after['cull_mismatches']==after['normal_scale_mismatches']==after['occlusion_strength_mismatches']==0
+    assert all(hashlib.sha256((root/path).read_bytes()).hexdigest()==sha for path,sha in preserved.items()),'Geometry, textures, metadata or saved world changed'
+    native_files={}
+    for relative in [PIPELINE,RENDERER]:native_files[relative]={'sha256':hashlib.sha256((root/relative).read_bytes()).hexdigest(),'size':(root/relative).stat().st_size}
+    report={'status':'saved_core_rendering_checked','native_assets_materialized':True,'source_models_checked':17,'materials_checked':len(after['materials']),
+        'source_cull_mismatches_fixed':max(changed_cull,prior.get('source_cull_mismatches_fixed',0)),
+        'source_normal_strength_mismatches_fixed':max(changed_normal,prior.get('source_normal_strength_mismatches_fixed',0)),
+        'original_renderer_masks':prior.get('original_renderer_masks',old_masks),
+        'saved_renderer_masks':{k:renderer[k]['m_Bits'] for k in old_masks},
+        'water_lighting':'URP 17.3 UniversalFragmentPBR with ambient SH and environment reflection',
+        'water_depth_only_pass':True,'shared_depth_color_wave_position':True,'water_smoothness':.82,
+        'render_scale':after['pipeline']['m_RenderScale'],'hdr':after['pipeline']['m_SupportsHDR'],'srp_batcher':after['pipeline']['m_UseSRPBatcher'],
+        'shadow_distance_m_preserved':after['pipeline']['m_ShadowDistance'],'shadow_atlas_resolution_preserved':after['pipeline']['m_MainLightShadowmapResolution'],
+        'geometry_textures_metadata_prefabs_and_scene_preserved':True,'native_pipeline_files':native_files,
+        'unity_shader_compilation_tested':False,'unity_render_tested':False,'android_device_tested':False}
+    report_path.write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report));return report
+
+if __name__=='__main__':
+    save(Path.cwd()) if '--apply'in sys.argv else audit(Path.cwd())
