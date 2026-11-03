@@ -43,7 +43,7 @@ namespace Aaris.MapReview
             previousSimulateMouse = Input.simulateMouseWithTouches;
             Input.simulateMouseWithTouches = false;
             inputConfigured = true;
-            Application.targetFrameRate = 60;
+            // The mobile runtime owns the startup cap; only the player FPS button changes it.
             if (nearbyColliders == null) nearbyColliders = FindFirstObjectByType<AarisNearbyColliders>();
             spawn = transform.position;
             spawnRotation = transform.rotation;
