@@ -10,12 +10,14 @@ import hashlib
 import json
 import math
 import re
+from collections import Counter
 from pathlib import Path
 
 import numpy as np
 
 from terrain import NativeTerrain
 from unity_data import World, WorldError, bounds_json, digest, pointer, safe_path, xyz
+from semantics import classify
 
 
 def _finite(value, name):
@@ -55,8 +57,14 @@ def inspect(w, request):
         raise WorldError("inspect limit must be 1..500")
     include_native = request.get("native", True)
     geometry = request.get("geometry", True)
-    if not isinstance(include_native, bool) or not isinstance(geometry, bool):
-        raise WorldError("native and geometry must be boolean")
+    appearance = request.get("appearance", True)
+    texture_analysis = request.get("texture_analysis", False)
+    include_semantics = request.get("semantics", True)
+    scene_offset, native_offset = request.get("scene_offset", 0), request.get("native_offset", 0)
+    if not all(isinstance(value, bool) for value in (include_native, geometry, appearance, texture_analysis, include_semantics)):
+        raise WorldError("native, geometry, appearance, texture_analysis and semantics must be boolean")
+    if type(scene_offset) is not int or type(native_offset) is not int or scene_offset < 0 or native_offset < 0:
+        raise WorldError("scene_offset and native_offset must be non-negative integers")
 
     target = request.get("target")
     target_go = None
@@ -135,7 +143,7 @@ def inspect(w, request):
                "relative_in_target_axes_m":(target_basis.T @ delta).tolist(),
                "world_axis_scale":np.linalg.norm(w.world_matrix(w.go_transform[go])[:3,:3],axis=0).tolist(),
                "container_only":container_only,
-               "components": [c["kind"] for c in w.components(go)]}
+               "components": [c["kind"] for c in w.components(go)], "_go": go}
         if geometry:
             row["bounds"] = bounds_json(bounds)
             row["bounds_incomplete"] = incomplete
@@ -149,11 +157,22 @@ def inspect(w, request):
         candidates.append(row)
     candidates.sort(key=lambda row: (row.get("distance_to_bounds_m", row["distance_m"]), row["id"]))
     scene_candidate_total = len(candidates)
-    candidates = candidates[:limit]
+    all_candidates = candidates
+    candidates = all_candidates[scene_offset:scene_offset+limit]
 
     target_bounds = None
     if target_go is not None and geometry:
         target_bounds, _ = w.aggregate_bounds(target_go)
+    if target_go is not None:
+        target_slots = w.material_slots(target_go, texture_analysis) if appearance else []
+        if appearance:
+            target_record["appearance"] = {"material_slots": target_slots, "rendered_pixels": False,
+                                           "texture_analysis_requested": texture_analysis}
+        if include_semantics:
+            target_record["semantic"] = classify(target_record.get("name"), target_record.get("components", []),
+                                                  target_bounds, None,
+                                                  [slot["material"].get("name") for slot in target_slots],
+                                                  [slot["material"].get("path") for slot in target_slots])
     supports, overlaps = [], []
     if target_bounds is not None:
         bottom = float(target_bounds[0][1])
@@ -162,7 +181,7 @@ def inspect(w, request):
             supports.append({"kind": "terrain_height_grid", "surface_y_m": ground,
                              "target_bottom_minus_surface_m": bottom-ground,
                              "evidence": "native_decoded_bilinear_not_physics"})
-        for row in candidates:
+        for row in all_candidates:
             bounds = row.pop("_raw_bounds", None)
             if bounds is None:
                 continue
@@ -179,13 +198,37 @@ def inspect(w, request):
                                      "surface_y_m": float(bounds[1][1]), "target_bottom_minus_surface_m": gap,
                                      "evidence": "geometry_estimate_aabb_not_physics"})
     else:
-        for row in candidates:
+        for row in all_candidates:
             row.pop("_raw_bounds", None)
     supports.sort(key=lambda r: abs(r["target_bottom_minus_surface_m"]))
+
+    for row in candidates:
+        go = row.pop("_go")
+        part_bounds = None
+        if row.get("bounds"):
+            part_bounds = [np.asarray(row["bounds"]["min_m"]), np.asarray(row["bounds"]["max_m"])]
+        slots = w.material_slots(go, texture_analysis, descendants=False) if appearance else []
+        if appearance:
+            row["appearance"] = {"material_slots": slots, "rendered_pixels": False,
+                                 "texture_analysis_requested": texture_analysis}
+        if include_semantics:
+            row["semantic"] = classify(row["name"], row["components"], part_bounds, None,
+                                       [slot["material"].get("name") for slot in slots],
+                                       [slot["material"].get("path") for slot in slots])
+    for row in all_candidates:
+        row.pop("_go", None)
+    semantic_nearest = {}
+    for row in candidates:
+        role = (row.get("semantic") or {}).get("primary_role")
+        if role and role != "unknown" and role not in semantic_nearest:
+            semantic_nearest[role] = {"id": row["id"], "name": row["name"],
+                                      "distance_m": row.get("distance_to_bounds_m", row["distance_m"]),
+                                      "evidence_scope": "returned scene page"}
 
     native_rows = []
     native_errors = []
     native_candidate_total = 0
+    native_summary = {"counts_by_category": {}, "scale_ranges": {}, "evidence_scope": "not_requested"}
     if include_native:
         try:
             for row in native.instances():
@@ -199,7 +242,18 @@ def inspect(w, request):
                                         "horizontal_distance_m": float(np.linalg.norm(delta[[0, 2]]))})
             native_rows.sort(key=lambda row: (row["distance_m"], row["id"]))
             native_candidate_total = len(native_rows)
-            native_rows = native_rows[:limit]
+            category_counts = Counter(row.get("category", "unresolved") for row in native_rows)
+            native_summary = {"counts_by_category": dict(category_counts), "scale_ranges": {},
+                              "evidence_scope": "all candidates inside radius before pagination"}
+            for category in sorted(category_counts):
+                rows = [row for row in native_rows if row.get("category") == category]
+                native_summary["scale_ranges"][category] = {
+                    "width_scale_min_max": [min(row["width_scale"] for row in rows), max(row["width_scale"] for row in rows)],
+                    "height_scale_min_max": [min(row["height_scale"] for row in rows), max(row["height_scale"] for row in rows)],
+                    "distance_m_min_max": [min(row["distance_m"] for row in rows), max(row["distance_m"] for row in rows)],
+                    "note": "Instance scales are relative to the prototype; visible metres require decoded prototype geometry",
+                }
+            native_rows = native_rows[native_offset:native_offset+limit]
             profiles = {}
             for row in native_rows:
                 path = row.get("path")
@@ -214,8 +268,19 @@ def inspect(w, request):
                             data=component["data"];tr=prototype.go_transform[data["m_GameObject"]["fileID"]]
                             colliders.append({"kind":component["kind"],"local_radius_m":data.get("m_Radius"),
                                               "local_height_m":data.get("m_Height"),"local_size":data.get("m_Size"),
+                                              "direction_axis":int(data.get("m_Direction",1)),
                                               "prototype_axis_scale":np.linalg.norm(prototype.world_matrix(tr)[:3,:3],axis=0).tolist()})
-                        profiles[path]={"status":"serialized_colliders","colliders":colliders}
+                        renderer_bounds=[]
+                        for root_go, root_transform in prototype.go_transform.items():
+                            if prototype.transforms[root_transform].get("m_Father",{}).get("fileID",0):continue
+                            bounds,_=prototype.aggregate_bounds(root_go)
+                            if bounds is not None:renderer_bounds.append(bounds)
+                        renderer_size=None
+                        if renderer_bounds:
+                            low=np.min([b[0] for b in renderer_bounds],axis=0);high=np.max([b[1] for b in renderer_bounds],axis=0)
+                            renderer_size=(high-low).tolist()
+                        profiles[path]={"status":"serialized_prefab_geometry","colliders":colliders,
+                                        "renderer_size_m":renderer_size}
                     except (WorldError, OSError, KeyError) as error:
                         profiles[path]={"status":"unavailable","reason":str(error)}
                 row["prototype_geometry"]=profiles[path]
@@ -223,6 +288,13 @@ def inspect(w, request):
                     for c in profiles[path].get("colliders",[]) if c.get("local_radius_m") is not None]
                 row["box_collider_size_estimates_m"]=[(xyz(c["local_size"])*np.asarray(c["prototype_axis_scale"])*[row["width_scale"],row["height_scale"],row["width_scale"]]).tolist()
                     for c in profiles[path].get("colliders",[]) if c.get("local_size")]
+                row["collider_height_estimates_m"]=[c["local_height_m"]*c["prototype_axis_scale"][c["direction_axis"]]*
+                    ([row["width_scale"],row["height_scale"],row["width_scale"]][c["direction_axis"]])
+                    for c in profiles[path].get("colliders",[]) if c.get("local_height_m") is not None]
+                row["prototype_renderer_size_m"]=profiles[path].get("renderer_size_m")
+                if profiles[path].get("renderer_size_m"):
+                    row["estimated_renderer_size_m"]=(np.asarray(profiles[path]["renderer_size_m"])*
+                        [row["width_scale"],row["height_scale"],row["width_scale"]]).tolist()
                 row["diameter_evidence"]="saved_collider_envelope; visible trunk thickness is not established"
         except (WorldError, ImportError) as error:
             native_errors.append(str(error))
@@ -240,6 +312,7 @@ def inspect(w, request):
         facts.append({"id": "obs:"+observation_hash[:24], "observation_hash": observation_hash, **payload,
                       "decision": "AI/caller decides whether this overlap is intended; use Unity physics/capture for exact geometry"})
 
+    prefab_instances = w.prefab_instances()
     return {
         "center_world_m": center,
         "radius_m": radius,
@@ -247,6 +320,11 @@ def inspect(w, request):
         "terrain_relation": terrain_relation,
         "nearby_scene_objects": candidates,
         "nearby_native_instances": native_rows,
+        "native_radius_summary": native_summary,
+        "semantic_nearest_on_returned_scene_page": semantic_nearest,
+        "unresolved_serialized_prefab_instances": {"total": len(prefab_instances),
+                                                     "items": prefab_instances[:25],
+                                                     "truncated": len(prefab_instances) > 25},
         "grass_detail_context": _grass_context(native,center,include_native),
         "terrain_under_footprint": _footprint_context(native,target_bounds) if include_native and target_bounds is not None else {"status":"not_requested_or_no_target_bounds"},
         "support_candidates": supports[:25],
@@ -256,10 +334,14 @@ def inspect(w, request):
             "inline_scene_objects_indexed": len(w.gos),
             "scene_candidates_returned": len(candidates),
             "scene_candidates_total": scene_candidate_total,
-            "scene_candidates_truncated": scene_candidate_total>limit,
+            "scene_offset": scene_offset,
+            "scene_next_offset": scene_offset+limit if scene_offset+limit < scene_candidate_total else None,
+            "scene_candidates_truncated": scene_offset+len(candidates)<scene_candidate_total,
             "native_candidates_returned": len(native_rows),
             "native_candidates_total": native_candidate_total,
-            "native_candidates_truncated": native_candidate_total>limit,
+            "native_offset": native_offset,
+            "native_next_offset": native_offset+limit if native_offset+limit < native_candidate_total else None,
+            "native_candidates_truncated": native_offset+len(native_rows)<native_candidate_total,
             "skipped_scene_objects": skipped[:25],
             "scene_shape_bounds_unavailable_count":len(unavailable_geometry),
             "scene_shape_bounds_unavailable_sample":unavailable_geometry[:25],
@@ -269,6 +351,9 @@ def inspect(w, request):
             "render_tested": False,
             "bounds_are_renderer_mesh_aabb": geometry and all(r.get("bounds_source")!="saved_collider_envelope" for r in candidates),
             "bounds_evidence":"See each bounds_source; renderer and saved-collider AABBs are distinct estimates",
+            "semantic_evidence":"Saved labels/materials are exact strings; geometry classifications retain confidence and may remain ambiguous",
+            "appearance_evidence":"Serialized materials and optional source-raster statistics; no final lighting/shader/UV result",
+            "prefab_instance_spatial_coverage":"Serialized source and overrides are listed, but unresolved imported hierarchy is not silently treated as empty space",
         },
         "source_fingerprint": source,
         "decision_owner":"AI/caller; tool reports measurements and never accepts/rejects a design",
@@ -361,3 +446,4 @@ def runtime(root, request):
     return {"total": len(rows), "offset": offset, "items": rows[offset:offset+limit],
             "next_offset": offset+limit if offset+limit < len(rows) else None,
             "evidence": "Static source/config evidence only. Actual load time, FPS, memory and crash behavior require Unity/device measurements."}
+

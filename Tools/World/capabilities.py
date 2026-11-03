@@ -110,6 +110,7 @@ READ_COMMANDS = {
     "scan": "Paged inline scene GameObjects",
     "object": "One stable scene object with hierarchy, bounds, components and materials",
     "inspect": "Target/coordinate neighbourhood, terrain relation, nearby scene/native objects and support evidence",
+    "describe": "Paged hierarchy parts, evidence-backed semantic roles, dimensions, material slots, texture statistics and dependencies",
     "height": "Native terrain height, gradient, slope and normal",
     "region": "Paged-size native terrain grid sampling",
     "instances": "Native terrain tree/rock/shrub records",
@@ -135,6 +136,7 @@ def schema():
             "idempotency": "schema v2 transaction_id + idempotency_key",
             "semantic_override": "acknowledgements bind an observation id/hash/reason; integrity failures are never overrideable",
             "post_edit": "observe_after requests are returned from preview/apply",
+            "change_report": "Python edits return automatic pre/post observations, exact file hashes and structured deltas",
         },
         "evidence_levels": {
             "serialized_exact": "Read directly from current saved core bytes",
@@ -142,6 +144,12 @@ def schema():
             "geometry_estimate": "Bounds/numeric estimate, not a physics or rendered result",
             "unity_engine": "Matching Unity Editor physics/import/render evidence",
             "device_measurement": "Target device telemetry tied to a build GUID",
+        },
+        "semantic_contract": {
+            "authored_labels": "Exact saved names/material paths are high-confidence evidence",
+            "inference": "Geometry-based wall/roof/door-or-window hypotheses retain confidence and evidence",
+            "no_fabrication": "Ambiguous parts remain unknown or combined roles until source/Unity evidence resolves them",
+            "appearance": "Serialized tint plus optional source-raster statistics; final lit color requires Unity capture",
         },
     }
 
@@ -176,3 +184,4 @@ def repository_inventory(root):
         "lfs_pointer_count": len(lfs),
         "lfs_pointer_sample": lfs[:25],
     }
+

@@ -19,6 +19,7 @@ from unity_data import SCENE, World, WorldError, compact, digest, documents, poi
 from terrain import NativeTerrain
 from capabilities import PROTOCOL_VERSION, repository_inventory, schema as automation_schema
 from observations import inspect as inspect_context, runtime as runtime_context, usages as asset_usages
+from semantics import describe as describe_context
 
 ROOT = Path(__file__).resolve().parents[2]
 VERSION = PROTOCOL_VERSION
@@ -50,7 +51,9 @@ def context(w):
             "decision_owner": "AI/caller; tools measure and execute but do not choose map design",
             "coordinates": {"units": "metres", "axes": "Unity world: X right, Y up, Z forward", "terrain_interpolation": "native bilinear grid; Unity physics is a separate command"},
             "scene": w.scene_path, "scene_guid": w.scene_guid, "scene_sha256": digest(w.root/w.scene_path),
-            "saved_game_objects": len(w.gos), "terrains": w.terrains(), "engine": engine.capabilities(w.root),
+            "saved_game_objects": len(w.gos), "serialized_prefab_instances": len(w.prefab_instances()),
+            "unbound_stripped_transforms": len(w.unbound_transform_documents),
+            "terrains": w.terrains(), "engine": engine.capabilities(w.root),
             "python_authoring": {"requires_editor":False,"requires_codespace":False,
                                  "model_import_command":"import-model", "static_placement_operation":"place_static_prefab",
                                  "representation":"saved inline static objects with native mesh/material references",
@@ -77,8 +80,10 @@ def scan(w, request):
     result = {"scene": w.scene_path, "objects": paged,
               "component_counts": dict(Counter(d["kind"] for d in w.docs.values())),
               "terrain": NativeTerrain(w).summary(),
-              "prefab_instances_requiring_engine": sum(d["kind"] == "PrefabInstance" for d in w.docs.values()),
-              "coverage": "Every saved inline GameObject indexed; terrain instances queried separately. Mesh bounds/materials require object or asset. External prefab instances require engine export."}
+              "prefab_instances": w.prefab_instances(),
+              "prefab_instances_requiring_source_or_engine": sum(d["kind"] == "PrefabInstance" for d in w.docs.values()),
+              "unbound_stripped_transform_documents": w.unbound_transform_documents,
+              "coverage": "Every saved inline GameObject is indexed. Serialized prefab sources/overrides are reported separately; exact imported hierarchy still needs its dependency or Unity export."}
     return result
 
 
@@ -210,7 +215,10 @@ def verify(w, request):
 
 READ_COMMANDS = {
     "context": set(), "schema": set(), "scan": {"search", "offset", "limit", "details"}, "object": {"target"},
-    "inspect": {"target", "x", "y", "z", "radius", "limit", "native", "geometry"},
+    "inspect": {"target", "x", "y", "z", "radius", "limit", "scene_offset", "native_offset",
+                "native", "geometry", "appearance", "texture_analysis", "semantics"},
+    "describe": {"target", "offset", "limit", "texture_analysis", "dependency_depth",
+                 "override_offset", "override_limit"},
     "height": {"x", "z"}, "region": {"xmin", "zmin", "xmax", "zmax", "step"},
     "instances": {"category", "xmin", "zmin", "xmax", "zmax", "offset", "limit"},
     "asset": {"path", "file_id", "field", "offset", "limit"}, "usages": {"path"},
@@ -231,7 +239,7 @@ def dispatch(root, request, remote=False):
     for key in ("x", "y", "z", "radius", "xmin", "zmin", "xmax", "zmax", "step"):
         if key in request and (isinstance(request[key], bool) or not isinstance(request[key], (int, float)) or not math.isfinite(request[key])):
             raise WorldError(f"{key} must be a finite number")
-    for key in ("native", "details", "geometry"):
+    for key in ("native", "details", "geometry", "appearance", "texture_analysis", "semantics"):
         if key in request and not isinstance(request[key], bool): raise WorldError(f"{key} must be boolean")
     # Schema discovery is the bootstrap step: it must work in a sparse or
     # partial checkout before the scene and LFS-backed TerrainData are fetched.
@@ -239,7 +247,7 @@ def dispatch(root, request, remote=False):
         return {"schema_version": VERSION, "command": cmd,
                 "generated_utc": datetime.now(timezone.utc).isoformat(),
                 "source_fingerprint": static_fingerprint(root, [
-                    "Tools/World/capabilities.py", "Tools/World/patch.schema.json"
+                    "Tools/World/capabilities.py", "Tools/World/patch.schema.json", "Tools/World/semantics.py"
                 ]),
                 "result": automation_schema()}
     w = World(root)
@@ -251,6 +259,8 @@ def dispatch(root, request, remote=False):
         result = w.object(w.resolve(request["target"]), True)
     elif cmd == "inspect":
         result = inspect_context(w, request)
+    elif cmd == "describe":
+        result = describe_context(w, request)
     elif cmd == "height":
         result = NativeTerrain(w).height(request["x"], request["z"])
     elif cmd == "region":
@@ -302,7 +312,16 @@ def parser():
     for name in ("x", "y", "z", "radius"):
         s.add_argument("--"+name, type=float)
     s.add_argument("--limit", type=int, default=100); s.add_argument("--no-native", dest="native", action="store_false")
-    s.add_argument("--no-geometry", dest="geometry", action="store_false"); s.set_defaults(native=True, geometry=True)
+    s.add_argument("--scene-offset", type=int, default=0); s.add_argument("--native-offset", type=int, default=0)
+    s.add_argument("--no-geometry", dest="geometry", action="store_false")
+    s.add_argument("--no-appearance", dest="appearance", action="store_false")
+    s.add_argument("--texture-analysis", action="store_true")
+    s.add_argument("--no-semantics", dest="semantics", action="store_false")
+    s.set_defaults(native=True, geometry=True, appearance=True, semantics=True)
+    s = subs.add_parser("describe"); s.add_argument("--target", required=True)
+    s.add_argument("--offset", type=int, default=0); s.add_argument("--limit", type=int, default=100)
+    s.add_argument("--override-offset", type=int, default=0); s.add_argument("--override-limit", type=int, default=100)
+    s.add_argument("--texture-analysis", action="store_true"); s.add_argument("--dependency-depth", type=int, default=2)
     s = subs.add_parser("height"); s.add_argument("--x", type=float, required=True); s.add_argument("--z", type=float, required=True)
     s = subs.add_parser("region")
     for name in ("xmin", "zmin", "xmax", "zmax", "step"):
@@ -389,4 +408,5 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
 
