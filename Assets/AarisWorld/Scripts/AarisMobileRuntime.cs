@@ -200,7 +200,7 @@ namespace Aaris.MapReview
             var s = new Sample {
                 reason = reason, utc = DateTime.UtcNow.ToString("O"), version = Application.version, buildGuid = Application.buildGUID,
                 device = SystemInfo.deviceModel, gpu = SystemInfo.graphicsDeviceName, api = SystemInfo.graphicsDeviceType.ToString(),
-                mobileVisualProfile = mobileVisualProfile, textureStreamingBudgetMB = QualitySettings.streamingMipmapsMemoryBudget,
+                mobileVisualProfile = this.mobileVisualProfile, textureStreamingBudgetMB = QualitySettings.streamingMipmapsMemoryBudget,
                 shadowDistanceM = QualitySettings.shadowDistance,
                 systemRamMB = SystemInfo.systemMemorySize, targetFps = Application.targetFrameRate,
                 seconds = Time.unscaledTime, averageFps = total > 0 ? frameCount / total : 0,
