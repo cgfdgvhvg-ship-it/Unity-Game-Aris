@@ -20,8 +20,9 @@ Unity render, Android FPS improvement, or approval of door/window navigation.
   shadow atlas. For 2305-3584 MB: respective caps 320 MB, 0.98, 160 m and
   2048. Higher RAM/unknown-memory devices retain their existing settings.
   Runtime-only overrides restore on component destruction.
-- Low-memory callbacks can trim the streaming mip budget in 32 MB steps
-  no lower than 192 MB. Existing deferred unused-asset cleanup remains.
+- Low-memory callbacks trim the streaming mip budget in 32 MB steps without ever
+  increasing an already smaller budget (minimum protected floor 48 MB where
+  the configured budget allows). Existing deferred unused-asset cleanup remains.
   Diagnostics now record the profile and actual runtime budget/LOD/shadow
   settings; hardware FPS cannot be inferred from those values.
 - `AarisNearbyColliders` now computes disabled Sphere/Capsule collider
