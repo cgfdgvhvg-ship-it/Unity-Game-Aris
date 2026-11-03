@@ -32,8 +32,8 @@ namespace Aaris.MapReview.Editor
         {
             PlayerSettings.companyName = "Aaris";
             PlayerSettings.productName = "Aaris Ground Review";
-            PlayerSettings.bundleVersion = "0.2.0";
-            PlayerSettings.Android.bundleVersionCode = 2;
+            PlayerSettings.bundleVersion = "0.2.1";
+            PlayerSettings.Android.bundleVersionCode = 3;
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
             PlayerSettings.allowedAutorotateToLandscapeLeft = true;
@@ -67,6 +67,8 @@ namespace Aaris.MapReview.Editor
                 throw new BuildFailedException("The saved player must reference the shoulder camera.");
             if (Mathf.Abs(player.GetComponent<CharacterController>().height - 1.78f) > 0.01f)
                 throw new BuildFailedException("The review player's reference height must stay 1.78 m.");
+            if (LayerMask.NameToLayer("Player") != 8 || player.GetComponentsInChildren<Transform>(true).Any(t => t.gameObject.layer != 8))
+                throw new BuildFailedException("The saved player must use the dedicated Player layer (8) for camera/support queries.");
             string nativeReport = "Docs/GROUND_REVIEW_REPORT.json";
             if (!File.Exists(nativeReport) || !JsonUtility.FromJson<NativeReport>(File.ReadAllText(nativeReport)).native_assets_materialized)
                 throw new BuildFailedException("Materialize the native forest and building LOD assets before building.");

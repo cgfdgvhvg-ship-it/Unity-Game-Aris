@@ -15,12 +15,14 @@ namespace Aaris.MapReview
         [SerializeField] private float seaLevel = -38.07552f;
         private CharacterController controller;
         private Terrain[] terrains;
-        private readonly RaycastHit[] cameraHits = new RaycastHit[24];
+        // Layer 8 is reserved for the saved review player in TagManager and its prefab.
+        private const int WorldMask = Physics.DefaultRaycastLayers & ~(1 << 8);
         private Vector3 spawn, cameraVelocity;
+        private Quaternion spawnRotation;
         private Quaternion leftArmRest, rightArmRest, leftLegRest, rightLegRest;
         private float yaw, pitch = 12f, verticalVelocity, gait, lastGrounded = -10f, jumpUntil = -10f;
         private float uiScale = 1f, travelSpeed;
-        private bool running, previousSimulateMouse;
+        private bool running, previousSimulateMouse, inputConfigured;
         private int moveFinger = -1, lookFinger = -1;
         private Vector2 moveInput;
         private Vector3 lastMouse;
@@ -37,8 +39,10 @@ namespace Aaris.MapReview
             if (followCamera == null) { enabled = false; Debug.LogError("Saved player camera is missing."); return; }
             previousSimulateMouse = Input.simulateMouseWithTouches;
             Input.simulateMouseWithTouches = false;
+            inputConfigured = true;
             Application.targetFrameRate = 30;
             spawn = transform.position;
+            spawnRotation = transform.rotation;
             spawn.y = GroundHeight(spawn) + controller.skinWidth + 0.05f;
             controller.enabled = false;
             transform.position = spawn;
@@ -54,7 +58,7 @@ namespace Aaris.MapReview
 
         private void OnDestroy()
         {
-            Input.simulateMouseWithTouches = previousSimulateMouse;
+            if (inputConfigured) Input.simulateMouseWithTouches = previousSimulateMouse;
             if (disc != null) Destroy(disc);
         }
         private void OnApplicationFocus(bool focus) { ClearInput(); lastMouse = Input.mousePosition; }
@@ -149,7 +153,7 @@ namespace Aaris.MapReview
             float speed = running || Input.GetKey(KeyCode.LeftShift) ? runSpeed : walkSpeed;
             Vector3 candidate = transform.position + wish * (speed * dt);
             // Review mode stops at the shoreline; swimming is a separate gameplay system.
-            if (Mathf.Abs(candidate.x) > 975f || Mathf.Abs(candidate.z) > 975f || GroundHeight(candidate) < seaLevel + 0.35f)
+            if (Mathf.Abs(candidate.x) > 975f || Mathf.Abs(candidate.z) > 975f || !SafeFooting(candidate))
                 wish = Vector3.zero;
             if (wish.sqrMagnitude > 0.001f)
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(wish), 1f - Mathf.Exp(-14f * dt));
@@ -184,16 +188,26 @@ namespace Aaris.MapReview
             }
             return ground;
         }
+        private bool SafeFooting(Vector3 position)
+        {
+            if (GroundHeight(position) >= seaLevel + 0.35f) return true;
+            // Terrain may be underwater beneath a solid quay, ramp or bridge.
+            // Query only near the feet so a roof overhead cannot masquerade as support.
+            float rise = controller.stepOffset + 0.1f;
+            if (!Physics.Raycast(position + Vector3.up * rise, Vector3.down, out RaycastHit support,
+                rise + jumpHeight + 0.5f, WorldMask, QueryTriggerInteraction.Ignore)) return false;
+            return support.point.y >= seaLevel + 0.35f
+                && support.normal.y >= Mathf.Cos(controller.slopeLimit * Mathf.Deg2Rad);
+        }
         private Vector3 ObstructionSafe(Vector3 pivot, Vector3 target)
         {
             Vector3 delta = target - pivot;
             float length = delta.magnitude;
             if (length < 0.01f) return target;
-            int count = Physics.SphereCastNonAlloc(pivot, 0.18f, delta / length, cameraHits, length, ~0, QueryTriggerInteraction.Ignore);
-            float allowed = length;
-            for (int i = 0; i < count; i++)
-                if (cameraHits[i].collider != null && !cameraHits[i].collider.transform.IsChildOf(transform))
-                    allowed = Mathf.Min(allowed, Mathf.Max(0.12f, cameraHits[i].distance - 0.08f));
+            // Closest-hit query avoids a full, unordered hit buffer in dense forest.
+            float allowed = Physics.SphereCast(pivot, 0.18f, delta / length, out RaycastHit hit,
+                length, WorldMask, QueryTriggerInteraction.Ignore)
+                ? Mathf.Min(length, Mathf.Max(0.12f, hit.distance - 0.08f)) : length;
             return pivot + delta / length * allowed;
         }
         private void PlaceCamera(bool instant)
@@ -211,9 +225,10 @@ namespace Aaris.MapReview
         private void ResetPlayer()
         {
             controller.enabled = false;
-            transform.position = spawn;
+            transform.SetPositionAndRotation(spawn, spawnRotation);
             controller.enabled = true;
-            verticalVelocity = -2f; yaw = 0f; pitch = 12f;
+            verticalVelocity = -2f; yaw = spawnRotation.eulerAngles.y; pitch = 12f;
+            lastGrounded = -10f; gait = travelSpeed = 0f;
             cameraVelocity = Vector3.zero;
             ClearInput(); PlaceCamera(true);
         }

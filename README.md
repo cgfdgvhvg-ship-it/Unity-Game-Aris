@@ -3,15 +3,16 @@
 A saved 2 km × 2 km Unity URP island with a visible 1.78 m human reference player.
 Open `Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity` in **Unity 6000.3.26f1 / URP 17.3**.
 Clone with Git LFS and fetch the actual assets before opening or building.
+The scene, player prefab, materials, terrain trees and road meshes are already saved in the repository. **No Unity Cloud pre-method, export method or scene-generation command is required.** Open the scene or build the checked-in project normally.
 
 ## Walk and inspect
 
 - **Phone:** left joystick moves, drag the right side to look, WALK toggles running, JUMP jumps, HOME returns to the safe spawn.
 - **Desktop:** WASD/arrows move, right mouse drag looks, Shift runs, Space jumps, F returns home.
 - The saved shoulder view follows the grounded player. The free-flight/overview/altitude controls have been removed.
-- CharacterController handles terrain, steps, slopes, trunk and building collisions. Camera obstruction checks avoid passing through walls and trunks.
+- CharacterController handles terrain, steps, slopes, trunk and building collisions. The saved Player layer excludes the avatar from camera/support queries; closest-hit camera checks avoid a truncated hit list in dense forest.
 - The visible human uses shared Unity primitive meshes and saved outfit materials, with walking limb animation. It is a lightweight scale-reference character, not an imported Free Fire character model.
-- Water remains visual: review movement stops at the shoreline. Combat, bots, loot, swimming and drivable vehicles are separate work.
+- Water remains visual: review movement stops at the shoreline, while solid docks/ramps above water remain walkable. HOME restores spawn position and facing. Combat, bots, loot, swimming and drivable vehicles are separate work.
 
 ## Saved core assets
 
@@ -25,13 +26,15 @@ Buildings retain their original close meshes and have saved middle/far meshes, w
 
 The island still has 13 districts, 59 placed model objects from 17 sources, connected roads, a 240 m runway and 45 empty vehicle markers. Some source models contain multiple structures or closed doors; every building is not guaranteed enterable.
 
+Road paint is clipped at the actual paved mesh triangle boundaries and saved 2 cm above those triangles, rather than following the terrain underneath. Original road meshes and their detail are preserved. `Docs/ROAD_SURFACE_REPORT.json` records the measured separation after saving.
+
 ## Manual APK build
 
 Use **Aaris → Build Android Ground Review APK**, or the existing batch entry point:
 
 `Aaris.MapReview.Editor.AarisExplorerBuild.BuildAndroid`
 
-Output: `Builds/Android/AarisMapExplorer.apk` (kept for existing phone/cloud build scripts; app version 0.2.0, code 2).
+Output: `Builds/Android/AarisMapExplorer.apk` (kept for existing phone/cloud build scripts; app version 0.2.1, code 3).
 
 Target: ARM64 / IL2CPP / Android 8+ / landscape, package `com.aaris.mapexplorer`. The player targets a stable 30 FPS; actual target-device frame time and memory must be measured. Existing Unity 6.3 URP compatibility defines are preserved. No automatic Unity/APK build is added.
 
@@ -41,7 +44,7 @@ The build preprocessor rejects a missing player/camera, wrong player height, pen
 
 `python Tools/Validation/check_explorer.py --native` checks scene references, player and camera bindings, C# syntax, core asset references, LOD levels, terrain checksums and forest road/district clearances.
 
-Native authoring: after fetching the core LFS assets, run `python Tools/MapBuild/ground_native.py`. It saves TerrainData and building LODs, reopens terrain binaries, verifies unchanged heights, regenerates indexes and updates hashes. It is idempotent for the saved planting plan.
+Optional maintainer reproduction only: `python Tools/MapBuild/ground_native.py` saves TerrainData and building LODs, reopens terrain binaries, verifies unchanged heights, regenerates indexes and updates hashes. It is idempotent for the saved planting plan. `python Tools/MapBuild/surface_native.py` reproduces the saved road paint. Neither command runs in the game or is required before a normal Unity build.
 
 `Tools/MapBuild/build_map.py` also invokes ground authoring after the original offline map assembly. Its terrain inputs must be the four original vendor archive tiles, as described in `Tools/MapBuild/README.md`; do not re-sculpt the already edited terrain.
 
