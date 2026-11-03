@@ -1,5 +1,6 @@
 """Verify the authored source migration. Sampled doorway rays are not Unity physics."""
 from __future__ import annotations
+import hashlib
 import json
 from pathlib import Path
 import numpy as np
@@ -33,6 +34,32 @@ def accepts_historical_transition(root,path,original_sha):
     return summary(mesh_data(root/path))['vertex_buffer_sha256']==row['vertex_buffer_sha256']
 
 
+# PR #18's historical protection contract records the exact saved house prefab
+# bytes before PR #19's two reviewed LOD-threshold-only changes. Preserve that
+# stronger byte-for-byte guarantee by reversing exactly these two lines in memory
+# and matching the original protected SHA256. Any other change fails closed.
+RESIDENTIAL_MOBILE_LOD_PREFABS=frozenset(
+    f'Assets/AarisWorld/Models/{name}/{name}.prefab' for name in (
+        'a_frame_cabin','bungalow_house','detached_two_storey_house',
+        'garage_apartment','pitched_roof_cottage','row_three_townhouses',
+        'two_bedroom_garage_house',
+    )
+)
+
+
+def preserved_or_reviewed_lod_only(root,path,expected_sha):
+    source=(Path(root)/path).read_bytes()
+    if hashlib.sha256(source).hexdigest()==expected_sha:return True
+    if path not in RESIDENTIAL_MOBILE_LOD_PREFABS:return False
+    for new,old in (
+        (b'  - screenRelativeHeight: 0.28\n',b'  - screenRelativeHeight: 0.22\n'),
+        (b'  - screenRelativeHeight: 0.095\n',b'  - screenRelativeHeight: 0.07\n'),
+    ):
+        if source.count(new)!=1:return False
+        source=source.replace(new,old,1)
+    return hashlib.sha256(source).hexdigest()==expected_sha
+
+
 def verify(root):
     root=Path(root).resolve();contract=json.loads((root/CONTRACT).read_text());rays=0
     for path,row in contract['meshes'].items():
@@ -42,7 +69,8 @@ def verify(root):
         assert facts['vertex_buffer_sha256']==row['vertex_buffer_sha256'],path+' vertex attributes changed'
         assert facts['triangles_by_submesh']==row['triangles_by_submesh'],path+' material slots changed'
     for path,sha in contract['tree_source_files'].items():assert digest(root/path)==sha,path+' tree source profile changed'
-    for path,sha in contract['preserved_files'].items():assert digest(root/path)==sha,path+' protected source changed'
+    for path,sha in contract['preserved_files'].items():
+        assert preserved_or_reviewed_lod_only(root,path,sha),path+' protected source changed outside reviewed LOD fields'
     for probe in contract['doorway_samples']:
         folder=root/'Assets/AarisWorld/Models'/probe['model']
         for path in sorted(folder.glob('Geometry*.asset')):
