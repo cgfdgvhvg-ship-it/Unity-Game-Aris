@@ -84,11 +84,11 @@ SpeedTreeImporter:
   animateCrossFading: 1
   billboardTransitionCrossFadeWidth: 0.25
   fadeOutWidth: 0.25
-  scaleFactor: 0.2
+  scaleFactor: 0.156
   materialVersion: 3
   materialLocation: 1
   fileIDType: 2
-  userData: 
+  userData: aaris-tree-shape-v1|1.92307692|1.43589744
   assetBundleName: 
   assetBundleVariant: 
 AssetOrigin:
