@@ -3,6 +3,8 @@ using System.Collections;
 using System.IO;
 using UnityEngine;
 using UnityEngine.Profiling;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 namespace Aaris.MapReview
 {
@@ -21,12 +23,20 @@ namespace Aaris.MapReview
         private AsyncOperation unloading;
         private string logPath;
         private long releasedPaintBytes;
+        private UniversalRenderPipelineAsset mobilePipeline;
+        private float originalStreamingBudget, originalLodBias, originalShadowDistance;
+        private int originalShadowAtlas;
+        private bool mobileProfileApplied;
+        private string mobileProfile = "baseline";
         private string lastError = "";
         public static string LatestReport { get; private set; } = "Starting map...";
 
         private void Awake()
         {
             Application.targetFrameRate = targetFrameRate;
+#if UNITY_ANDROID && !UNITY_EDITOR
+            ApplyMobileMemoryProfile();
+#endif
             Application.lowMemory += OnLowMemory;
             Application.logMessageReceived += OnLog;
             try
@@ -87,6 +97,10 @@ namespace Aaris.MapReview
             if (lowMemoryPending)
             {
                 lowMemoryPending = false;
+                // Trim streamed mip cache pressure before optional unused-asset cleanup.
+                if (mobileProfileApplied)
+                    QualitySettings.streamingMipmapsMemoryBudget =
+                        Mathf.Max(192f, QualitySettings.streamingMipmapsMemoryBudget - 32f);
                 Record("low-memory");
                 if (Time.unscaledTime >= unloadAfter && (unloading == null || unloading.isDone))
                 {
@@ -101,10 +115,54 @@ namespace Aaris.MapReview
             }
         }
 
+        // No changes to camera far clipping or render scale: the distant skyline remains visible.
+        // This is a RAM-class budget, NOT a promise of FPS or a device benchmark.
+        private void ApplyMobileMemoryProfile()
+        {
+            int systemRamMb = SystemInfo.systemMemorySize;
+            if (systemRamMb <= 0 || systemRamMb > 3584) return;
+
+            originalStreamingBudget = QualitySettings.streamingMipmapsMemoryBudget;
+            originalLodBias = QualitySettings.lodBias;
+            mobilePipeline = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
+            if (mobilePipeline != null)
+            {
+                originalShadowDistance = mobilePipeline.shadowDistance;
+                originalShadowAtlas = mobilePipeline.mainLightShadowmapResolution;
+            }
+
+            // Budgets include non-streaming textures. The fixed terrain paint maps already
+            // consume a substantial part of this memory: this is not a hard GPU memory cap.
+            bool constrained = systemRamMb <= 2304;
+            QualitySettings.streamingMipmapsMemoryBudget =
+                Mathf.Min(originalStreamingBudget, constrained ? 256f : 320f);
+            QualitySettings.lodBias = Mathf.Min(originalLodBias, constrained ? 0.90f : 0.98f);
+            if (mobilePipeline != null)
+            {
+                mobilePipeline.shadowDistance = Mathf.Min(originalShadowDistance, constrained ? 90f : 160f);
+                mobilePipeline.mainLightShadowmapResolution = Mathf.Min(originalShadowAtlas, 2048);
+            }
+            mobileProfile = constrained ? "ram-2gb" : "ram-3gb";
+            mobileProfileApplied = true;
+        }
+
         private void OnLowMemory() { lowMemoryPending = true; }
         private void OnApplicationPause(bool paused) { if (paused) Record("pause"); }
         private void OnApplicationQuit() { Record("quit"); }
-        private void OnDestroy() { Application.lowMemory -= OnLowMemory; Application.logMessageReceived -= OnLog; }
+        private void OnDestroy()
+        {
+            Application.lowMemory -= OnLowMemory;
+            Application.logMessageReceived -= OnLog;
+            // Runtime-only changes must not leak into the next scene or Editor session.
+            if (!mobileProfileApplied) return;
+            QualitySettings.streamingMipmapsMemoryBudget = originalStreamingBudget;
+            QualitySettings.lodBias = originalLodBias;
+            if (mobilePipeline != null)
+            {
+                mobilePipeline.shadowDistance = originalShadowDistance;
+                mobilePipeline.mainLightShadowmapResolution = originalShadowAtlas;
+            }
+        }
         private void OnLog(string message, string stackTrace, LogType type)
         {
             if (type != LogType.Error && type != LogType.Exception && type != LogType.Assert) return;
@@ -116,7 +174,9 @@ namespace Aaris.MapReview
         private sealed class Sample
         {
             public string reason, utc, version, buildGuid, device, gpu, api, lastError;
-            public int systemRamMB, targetFps, warningCount;
+            public int systemRamMB, targetFps, warningCount, shadowAtlasResolution;
+            public string mobileQualityProfile;
+            public float streamingBudgetMb, lodBias, shadowDistanceM;
             public float seconds, averageFps, p95FrameMs;
             public long unityAllocatedBytes, unityReservedBytes, managedBytes, androidPssKB;
             public ulong textureBytes, desiredTextureBytes;
@@ -133,6 +193,10 @@ namespace Aaris.MapReview
                 reason = reason, utc = DateTime.UtcNow.ToString("O"), version = Application.version, buildGuid = Application.buildGUID,
                 device = SystemInfo.deviceModel, gpu = SystemInfo.graphicsDeviceName, api = SystemInfo.graphicsDeviceType.ToString(),
                 systemRamMB = SystemInfo.systemMemorySize, targetFps = Application.targetFrameRate,
+                mobileQualityProfile = mobileProfile,
+                streamingBudgetMb = QualitySettings.streamingMipmapsMemoryBudget, lodBias = QualitySettings.lodBias,
+                shadowDistanceM = mobilePipeline != null ? mobilePipeline.shadowDistance : QualitySettings.shadowDistance,
+                shadowAtlasResolution = mobilePipeline != null ? mobilePipeline.mainLightShadowmapResolution : 0,
                 seconds = Time.unscaledTime, averageFps = total > 0 ? frameCount / total : 0,
                 p95FrameMs = frameCount > 0 ? sortedTimes[Mathf.Clamp(Mathf.CeilToInt(frameCount * .95f) - 1, 0, frameCount - 1)] * 1000 : 0,
                 unityAllocatedBytes = Profiler.GetTotalAllocatedMemoryLong(), unityReservedBytes = Profiler.GetTotalReservedMemoryLong(),
