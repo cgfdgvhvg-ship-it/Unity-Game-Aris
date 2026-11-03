@@ -191,5 +191,6 @@
     }
   },
   "non_readable_generated_mesh_count": 248,
-  "terrain_detail_maps_prototypes_and_alpha_textures_preserved": true
+  "terrain_detail_maps_prototypes_and_alpha_textures_preserved": true,
+  "world_scale_integrated": true
 }

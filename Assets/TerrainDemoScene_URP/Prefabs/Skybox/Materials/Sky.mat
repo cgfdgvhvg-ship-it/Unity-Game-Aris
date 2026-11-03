@@ -2,7 +2,7 @@
 %TAG !u! tag:unity3d.com,2011:
 --- !u!21 &2100000
 Material:
-  serializedVersion: 6
+  serializedVersion: 8
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -24,8 +24,15 @@ Material:
     - _SunSize: 0.035
     - _SunSizeConvergence: 5
     - _AtmosphereThickness: 1
-    - _Exposure: 1.05
+    - _Exposure: 1.15
     m_Colors:
-    - _SkyTint: {r: 0.5, g: 0.55, b: 0.6, a: 1.0}
-    - _GroundColor: {r: 0.35, g: 0.36, b: 0.32, a: 1.0}
+    - _SkyTint: {r: 0.5, g: 0.5, b: 0.5, a: 1.0}
+    - _GroundColor: {r: 0.45, g: 0.47, b: 0.45, a: 1.0}
+    m_Ints: []
   m_BuildTextureStacks: []
+  m_ValidKeywords:
+  - _SUNDISK_HIGH_QUALITY
+  m_InvalidKeywords: []
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_LockedProperties: ''

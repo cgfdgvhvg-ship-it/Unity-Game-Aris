@@ -1808,3 +1808,5 @@ MonoBehaviour:
   pivotHeight: 1.45
   lookSensitivity: 0.12
   seaLevel: -38.07552
+  minLookPitch: -70
+  maxLookPitch: 70

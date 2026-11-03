@@ -30,9 +30,11 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0.0, z: 0, w: 1.0}
   m_LocalPosition: {x: 0.0, y: 0.0, z: 0.0}
-  m_LocalScale: {x: 1.0, y: 1.0, z: 1.0}
+  m_LocalScale: {x: 1.105, y: 1.105, z: 1.105}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 10015}
+  - {fileID: 10027}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0.0, y: 0.0, z: 0.0}
 --- !u!33 &10010
@@ -124,6 +126,206 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: fef57e694d7e5a17a5221a9746e5b8ce, type: 2}
+--- !u!1 &10014
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 10015}
+  - component: {fileID: 10024}
+  - component: {fileID: 10025}
+  m_Layer: 0
+  m_Name: two_bedroom_garage_house_LOD1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 12
+  m_IsActive: 1
+--- !u!4 &10015
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 10014}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0.0, z: 0, w: 1.0}
+  m_LocalPosition: {x: 0.0, y: 0.0, z: 0.0}
+  m_LocalScale: {x: 1.0, y: 1.0, z: 1.0}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 10001}
+  m_LocalEulerAnglesHint: {x: 0.0, y: 0.0, z: 0.0}
+--- !u!33 &10024
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 10014}
+  m_Mesh: {fileID: 4300000, guid: a173c76ec1215177aad4f6cb3827e258, type: 2}
+--- !u!23 &10025
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 10014}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 2cb2dcdd1ce75195b8d09f196d9858a9, type: 2}
+  - {fileID: 2100000, guid: 111ffa434bb7574b879f16efc560cd15, type: 2}
+  - {fileID: 2100000, guid: 15ab8e84e58655d3bc89b77a2c5de3d7, type: 2}
+  - {fileID: 2100000, guid: 5b6889f8f9f25f44839e4fb632cbe948, type: 2}
+  - {fileID: 2100000, guid: f0e5b9cb5f33551983350544314ee308, type: 2}
+  - {fileID: 2100000, guid: 56e278f611ab547b8ac18aaf78f72f65, type: 2}
+  - {fileID: 2100000, guid: 1b8827865886554fa0b11226f5832b04, type: 2}
+  - {fileID: 2100000, guid: f8e0494363115bc4ab2e9756daea0822, type: 2}
+  - {fileID: 2100000, guid: e1b9f347ca265e02aff9e71a5a2b00b0, type: 2}
+  - {fileID: 2100000, guid: a4f4b11af22c5e18aa5fcfbbdfde7657, type: 2}
+  - {fileID: 2100000, guid: 07131248c04f5533ac5d5175dc487929, type: 2}
+  - {fileID: 2100000, guid: 4cf2ccf0039154439b6f2ef7bc644a0b, type: 2}
+  - {fileID: 2100000, guid: 3436c8e1867e547ab1a74d15f8c50708, type: 2}
+  - {fileID: 2100000, guid: 5d7ff34cdd8c5bf9882be8273843abce, type: 2}
+  - {fileID: 2100000, guid: 09a1c7e327cd5d3f8799afd773f66607, type: 2}
+  - {fileID: 2100000, guid: e03664161ea155479b5b046535cef981, type: 2}
+  - {fileID: 2100000, guid: 60452d3aeefd568ab222bd416c9cbb76, type: 2}
+  - {fileID: 2100000, guid: b384c8a7907c54f0a11d564e655ab7cf, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 2
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &10026
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 10027}
+  - component: {fileID: 10036}
+  - component: {fileID: 10037}
+  m_Layer: 0
+  m_Name: two_bedroom_garage_house_LOD2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 12
+  m_IsActive: 1
+--- !u!4 &10027
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 10026}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0.0, z: 0, w: 1.0}
+  m_LocalPosition: {x: 0.0, y: 0.0, z: 0.0}
+  m_LocalScale: {x: 1.0, y: 1.0, z: 1.0}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 10001}
+  m_LocalEulerAnglesHint: {x: 0.0, y: 0.0, z: 0.0}
+--- !u!33 &10036
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 10026}
+  m_Mesh: {fileID: 4300000, guid: ccf90c823ce25d1b830d072fd0abe412, type: 2}
+--- !u!23 &10037
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 10026}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 2cb2dcdd1ce75195b8d09f196d9858a9, type: 2}
+  - {fileID: 2100000, guid: 111ffa434bb7574b879f16efc560cd15, type: 2}
+  - {fileID: 2100000, guid: 15ab8e84e58655d3bc89b77a2c5de3d7, type: 2}
+  - {fileID: 2100000, guid: 5b6889f8f9f25f44839e4fb632cbe948, type: 2}
+  - {fileID: 2100000, guid: f0e5b9cb5f33551983350544314ee308, type: 2}
+  - {fileID: 2100000, guid: 56e278f611ab547b8ac18aaf78f72f65, type: 2}
+  - {fileID: 2100000, guid: 1b8827865886554fa0b11226f5832b04, type: 2}
+  - {fileID: 2100000, guid: f8e0494363115bc4ab2e9756daea0822, type: 2}
+  - {fileID: 2100000, guid: e1b9f347ca265e02aff9e71a5a2b00b0, type: 2}
+  - {fileID: 2100000, guid: a4f4b11af22c5e18aa5fcfbbdfde7657, type: 2}
+  - {fileID: 2100000, guid: 07131248c04f5533ac5d5175dc487929, type: 2}
+  - {fileID: 2100000, guid: 4cf2ccf0039154439b6f2ef7bc644a0b, type: 2}
+  - {fileID: 2100000, guid: 3436c8e1867e547ab1a74d15f8c50708, type: 2}
+  - {fileID: 2100000, guid: 5d7ff34cdd8c5bf9882be8273843abce, type: 2}
+  - {fileID: 2100000, guid: 09a1c7e327cd5d3f8799afd773f66607, type: 2}
+  - {fileID: 2100000, guid: e03664161ea155479b5b046535cef981, type: 2}
+  - {fileID: 2100000, guid: 60452d3aeefd568ab222bd416c9cbb76, type: 2}
+  - {fileID: 2100000, guid: b384c8a7907c54f0a11d564e655ab7cf, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 2
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
 --- !u!205 &10013
 LODGroup:
   m_ObjectHideFlags: 0
@@ -138,8 +340,16 @@ LODGroup:
   m_AnimateCrossFading: 1
   m_LastLODIsBillboard: 0
   m_LODs:
-  - screenRelativeHeight: 0.012
-    fadeTransitionWidth: 0.15
+  - screenRelativeHeight: 0.22
+    fadeTransitionWidth: 0.12
     renderers:
     - renderer: {fileID: 10011}
+  - screenRelativeHeight: 0.07
+    fadeTransitionWidth: 0.12
+    renderers:
+    - renderer: {fileID: 10025}
+  - screenRelativeHeight: 0.0025
+    fadeTransitionWidth: 0.12
+    renderers:
+    - renderer: {fileID: 10037}
   m_Enabled: 1

@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "native_assets_materialized": true,
+  "human_height_m": 1.78,
+  "residential_scale_target": 1.12,
+  "residential_scales": {
+    "a_frame_cabin": 1.12,
+    "bungalow_house": 1.12,
+    "detached_two_storey_house": 1.12,
+    "garage_apartment": 1.12,
+    "pitched_roof_cottage": 1.12,
+    "row_three_townhouses": 1.12,
+    "two_bedroom_garage_house": 1.105
+  },
+  "residential_instances_scaled": 47,
+  "complete_three_lod_prefabs": 17,
+  "clearances": {
+    "minimum_building_gap_m": 21.50093478679662,
+    "minimum_foundation_to_road_edge_m": 1.3847999572753906,
+    "minimum_building_to_vehicle_corridor_m": 0.26237498998636966
+  },
+  "daylight": {
+    "sun_elevation_degrees": 50,
+    "sun_intensity": 1.35,
+    "shadow_strength": 0.55,
+    "sky_exposure": 1.15,
+    "maximum_upward_look_degrees": 70
+  },
+  "graphics_resolution_reduced": false,
+  "unity_editor_compilation_tested": false,
+  "unity_render_tested": false,
+  "android_device_tested": false,
+  "cypress_instances_enlarged": 679,
+  "cypress_factor": 1.12,
+  "cypress_instances_by_tile": {
+    "1_1": 93,
+    "1_2": 256,
+    "2_1": 185,
+    "2_2": 145
+  },
+  "terrain_heights_details_prototypes_and_alpha_preserved": true,
+  "total_tree_count": 1939,
+  "scaled_foundations_flat_ground_verified": true,
+  "all_original_close_meshes_preserved": true,
+  "original_close_mesh_hashes": {
+    "Assets/AarisWorld/Models/TownHall/Geometry.asset": "0d36fe01a59794b772e938f1f047c58c27f0a4543ce1d6000499c9dda16cf5b6",
+    "Assets/AarisWorld/Models/row_three_townhouses/Geometry.asset": "1c486df1337f2ecbd32cd22d275812483a34b7ae16fd67048d7bb76dda98989f",
+    "Assets/AarisWorld/Models/Harbour/Geometry.asset": "c9798871b04e5b22452c5fa5f0852313e671c7eb126474181a80cf3db3774904",
+    "Assets/AarisWorld/Models/watchtower/Geometry.asset": "4b4469bc1c27c0b1c12da5b2d4951fe650cbb9b70eaa2c4df2602f84ab8eb607",
+    "Assets/AarisWorld/Models/garage_apartment/Geometry.asset": "28169eef2c2e949421faf622392b3b3be4ef62b63a0710b694e102239bd8491a",
+    "Assets/AarisWorld/Models/a_frame_cabin/Geometry.asset": "18865b2d469b18f79be6e2fbd9c75abdfffbe023071f197ad3981a28b0aa6a77",
+    "Assets/AarisWorld/Models/bungalow_house/Geometry.asset": "69e3cc1a186cd6046fddff75249e3fb5b017abd84309f72048110187badef3a4",
+    "Assets/AarisWorld/Models/ParcelDepot/Geometry.asset": "7f8dcb7bf8b2d356418482aa34faee302b71fbd1cff065a8623d6901a65c1239",
+    "Assets/AarisWorld/Models/two_bedroom_garage_house/Geometry.asset": "7afaaa59bcdd448d6123765fac553c67a3fc38d6d0834ed82f66a0e2d7bb1671",
+    "Assets/AarisWorld/Models/warehouse_loading_dock/Geometry.asset": "4f63307542cb61039480a8080f87f139834fe2663b7a0bed5c645a43cdea4720",
+    "Assets/AarisWorld/Models/lighthouse/Geometry.asset": "d5c75be4440485d6545bfa55005ba0432a85e399c43068b2e59e9c3e2259743f",
+    "Assets/AarisWorld/Models/pitched_roof_cottage/Geometry.asset": "2e27c173d89ddb1522facbecb2acb56370ba6fa643820c8bd11abca71c7f05e5",
+    "Assets/AarisWorld/Models/Airfield/Geometry.asset": "107790eb87bca519995a08d55dcc8d7d7f47b357b4a15aef20399bb7621702aa",
+    "Assets/AarisWorld/Models/HanokVillage/Geometry.asset": "fce351a5f3f596082edc640d8abeb7d44ff59a7d4709efc5f2b945a2da50db42",
+    "Assets/AarisWorld/Models/CanalTown/Geometry.asset": "a8e49328da6a931eed3313cd7514e2580c6eee0ded82c3b6a4c563e67cbdb0ec",
+    "Assets/AarisWorld/Models/detached_two_storey_house/Geometry.asset": "48df2537b24e9db7a1a053b3768779e0dc977e0570484e9cab627dcf592387a9",
+    "Assets/AarisWorld/Models/observatory_dome/Geometry.asset": "5244b19a79776da91bc51d19a5872ba6787c0714736c8028ae0ab9e200b0f094"
+  }
+}
