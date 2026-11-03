@@ -107,6 +107,11 @@ class WorldTests(unittest.TestCase):
         self.assertIn("terrain_instance_move",contract["write_operations"]);self.assertIn("instantiate_prefab",contract["write_operations"])
         patch=self.transform_patch_v2();patch["operations"][0].pop("id")
         with self.assertRaises(WorldError):plan(self.root,patch)
+    def test_schema_bootstraps_before_scene_or_lfs_assets_are_fetched(self):
+        empty=self.root/"sparse";empty.mkdir()
+        result=dispatch(empty,{"command":"schema"})
+        self.assertEqual(result["result"]["protocol_version"],2)
+        self.assertEqual(result["source_fingerprint"]["files"][0][1],"missing")
     def test_reverse_usage_and_runtime_evidence_are_explicitly_limited(self):
         use=self.root/"Assets/Use.prefab";use.write_text("%YAML 1.1\nmaterial: {fileID: 2100000, guid: "+"2"*32+", type: 2}\n")
         script=self.root/"Assets/Load.cs";script.write_text("class Load { void Update() { UnityEngine.SceneManagement.SceneManager.LoadScene(\"Map\"); } }\n")

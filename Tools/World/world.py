@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -21,6 +22,17 @@ from observations import inspect as inspect_context, runtime as runtime_context,
 
 ROOT = Path(__file__).resolve().parents[2]
 VERSION = PROTOCOL_VERSION
+
+
+def static_fingerprint(root, paths):
+    """Fingerprint tool contracts that must be readable before the map is fetched."""
+    rows = []
+    root = Path(root).resolve()
+    for path in paths:
+        source = root / path
+        rows.append([path, digest(source) if source.is_file() else "missing"])
+    encoded = json.dumps(rows, separators=(",", ":")).encode()
+    return {"sha256": hashlib.sha256(encoded).hexdigest(), "files": rows}
 
 
 def page(rows, offset=0, limit=100):
@@ -217,11 +229,18 @@ def dispatch(root, request, remote=False):
             raise WorldError(f"{key} must be a finite number")
     for key in ("native", "details", "geometry"):
         if key in request and not isinstance(request[key], bool): raise WorldError(f"{key} must be boolean")
+    # Schema discovery is the bootstrap step: it must work in a sparse or
+    # partial checkout before the scene and LFS-backed TerrainData are fetched.
+    if cmd == "schema":
+        return {"schema_version": VERSION, "command": cmd,
+                "generated_utc": datetime.now(timezone.utc).isoformat(),
+                "source_fingerprint": static_fingerprint(root, [
+                    "Tools/World/capabilities.py", "Tools/World/patch.schema.json"
+                ]),
+                "result": automation_schema()}
     w = World(root)
     if cmd == "context":
         result = context(w)
-    elif cmd == "schema":
-        result = automation_schema()
     elif cmd == "scan":
         result = scan(w, request)
     elif cmd == "object":
