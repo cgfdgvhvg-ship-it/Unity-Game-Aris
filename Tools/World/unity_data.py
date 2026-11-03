@@ -23,7 +23,19 @@ class UnityLoader(getattr(yaml, "CSafeLoader", yaml.SafeLoader)):
 
 
 LOADER = UnityLoader
-BUILTINS = {"0000000000000000e000000000000000", "0000000000000000f0000000000000000"}
+BUILTIN_MESH_GUID = "0000000000000000e000000000000000"
+BUILTINS = {BUILTIN_MESH_GUID, "0000000000000000f000000000000000"}
+# Unity's default primitive mesh envelopes in local metres. These are source
+# AABBs, not collision/contact measurements. Unknown built-ins stay unavailable.
+# https://docs.unity3d.com/6000.0/Documentation/Manual/PrimitiveObjects.html
+BUILTIN_MESH_EXTENTS = {
+    10202: (.5, .5, .5),  # Cube
+    10206: (.5, 1., .5),  # Cylinder
+    10207: (.5, .5, .5),  # Sphere
+    10208: (.5, 1., .5),  # Capsule
+    10209: (5., 0., 5.),  # Plane (XZ)
+    10210: (.5, .5, 0.),  # Quad (XY)
+}
 
 
 class WorldError(ValueError):
@@ -245,6 +257,20 @@ class World:
                              for row in props.get("m_TexEnvs", [])],
                 "appearance_note": "Serialized material values, not the final lit pixel color. Use Unity capture for appearance."}
 
+    def mesh_aabb(self, ref):
+        """Resolve a saved mesh or a known Unity primitive without inventing bounds."""
+        info = self.reference(ref)
+        if info["status"] == "unity_builtin" and info["guid"] == BUILTIN_MESH_GUID:
+            extent = BUILTIN_MESH_EXTENTS.get(ref["fileID"])
+            if extent is not None:
+                return {"m_Center": {}, "m_Extent": dict(zip("xyz", extent))}, None
+        if info["status"] == "read":
+            mesh = next((r["data"] for r in self.asset_docs(info["path"])["docs"]
+                         if r["kind"] == "Mesh" and r["file_id"] == ref["fileID"]), None)
+            if mesh and mesh.get("m_LocalAABB"):
+                return mesh["m_LocalAABB"], None
+        return None, "mesh_bounds_unresolved:"+str(info["status"])+":"+str(info["path"])+":"+str(ref.get("fileID"))
+
     def own_bounds(self, go):
         if go not in self.go_transform:
             return [], ["missing_transform"]
@@ -254,19 +280,11 @@ class World:
             d = c["data"]
             if c["kind"] == "MeshFilter":
                 ref = d.get("m_Mesh", {})
-                info = self.reference(ref)
-                if info["status"] == "read":
-                    mesh = next((r["data"] for r in self.asset_docs(info["path"])["docs"]
-                                 if r["kind"] == "Mesh" and r["file_id"] == ref["fileID"]), None)
-                    aabb = mesh.get("m_LocalAABB") if mesh else None
-                    if aabb:
-                        found.append(bounds_transform(aabb["m_Center"], aabb["m_Extent"], m))
-                    else:
-                        missing.append("mesh_bounds_unresolved:" + str(info["path"]))
-                elif info["status"] == "unity_builtin" and ref["fileID"] == 10202:
-                    found.append(bounds_transform({}, {"x": .5, "y": .5, "z": .5}, m))
+                aabb, reason = self.mesh_aabb(ref)
+                if aabb is not None:
+                    found.append(bounds_transform(aabb["m_Center"], aabb["m_Extent"], m))
                 else:
-                    missing.append("mesh:" + info["status"] + ":" + str(info["path"]))
+                    missing.append(reason)
         return found, missing
 
     def aggregate_bounds(self, go):
@@ -309,11 +327,11 @@ class World:
                         axis=int(d.get("m_Direction",1));ext[axis]=max(ext[axis],float(d["m_Height"])/2)
                     found.append(bounds_transform(d.get("m_Center",{}),dict(zip("xyz",ext)),m))
                 elif kind=="MeshCollider":
-                    ref=d.get("m_Mesh",{});info=self.reference(ref)
-                    mesh=next((r["data"] for r in self.asset_docs(info["path"])["docs"] if r["kind"]=="Mesh" and r["file_id"]==ref["fileID"]),None) if info["status"]=="read" else None
-                    if mesh and mesh.get("m_LocalAABB"):
-                        b=mesh["m_LocalAABB"];found.append(bounds_transform(b["m_Center"],b["m_Extent"],m))
-                    else:missing.append("mesh_collider_geometry_unavailable:"+str(info.get("path")))
+                    b, reason = self.mesh_aabb(d.get("m_Mesh", {}))
+                    if b is not None:
+                        found.append(bounds_transform(b["m_Center"], b["m_Extent"], m))
+                    else:
+                        missing.append("mesh_collider_geometry_unavailable:"+reason)
         bounds=[np.min([v[0] for v in found],axis=0),np.max([v[1] for v in found],axis=0)] if found else None
         self._collider_bounds[go]=(bounds,sorted(set(missing)))
         return self._collider_bounds[go]
@@ -375,3 +393,4 @@ class World:
             p = self.root / path
             rows.append([path, digest(p) if p.is_file() else "missing"])
         return {"sha256": hashlib.sha256(json.dumps(rows, separators=(",", ":")).encode()).hexdigest(), "files": rows}
+

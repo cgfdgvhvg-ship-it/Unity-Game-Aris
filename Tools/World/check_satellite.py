@@ -66,7 +66,11 @@ def check(root, native=False):
             assert len(samples) == 9
             gaps = [v for sample in samples for v in sample["bounds_bottom_minus_ground_m"]]
             assert max(map(abs, gaps)) < .02, (name, gaps)
-            assert facts["coverage"]["scene_shape_bounds_unavailable_count"] == 0, "Fetch all referenced scene geometry before claiming complete neighbourhood coverage"
+            assert facts["coverage"]["scene_shape_bounds_unavailable_count"] == 0, (
+                "Scene geometry is incomplete; fetch missing LFS assets or resolve unsupported shapes",
+                facts["coverage"]["scene_shape_bounds_unavailable_count"],
+                facts["coverage"]["scene_shape_bounds_unavailable_sample"],
+            )
             item.update(terrain_sample_max_gap_m=max(map(abs, gaps)),
                         scene_neighbours=len(facts["nearby_scene_objects"]),
                         native_neighbours=len(facts["nearby_native_instances"]),
@@ -84,3 +88,4 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument("--native", action="store_true")
     check(ROOT, parser.parse_args().native)
+
