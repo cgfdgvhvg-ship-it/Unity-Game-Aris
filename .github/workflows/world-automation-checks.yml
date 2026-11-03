@@ -30,3 +30,12 @@ jobs:
       - run: python -m unittest discover -s Tools/World/tests -v
       - run: python Tools/World/check_contracts.py
       - run: python Tools/World/world.py --out "$RUNNER_TEMP/world-verify.json" verify
+      - name: Fetch actual four native terrains for reader integration test
+        env:
+          WORLD_REQUEST: '{"command":"verify","native":true}'
+        run: python Tools/World/fetch_assets.py
+      - name: Decode actual LFS binary assets and verify seams without writing source
+        run: python Tools/World/native_smoke.py
+      - name: Remove temporary verification report
+        if: always()
+        run: rm -f -- "$RUNNER_TEMP/world-verify.json"
