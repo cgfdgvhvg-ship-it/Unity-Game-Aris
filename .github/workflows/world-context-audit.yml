@@ -2,8 +2,18 @@ name: Read-only world context audit
 on:
   pull_request:
     paths:
-      - 'Tools/World/audit_context.py'
+      - 'Tools/World/**'
       - '.github/workflows/world-context-audit.yml'
+      - 'Assets/TerrainDemoScene_URP/**'
+      - 'Assets/WorldImports/**'
+      - 'AGENTS.md'
+      - 'Docs/WORLD_AUTOMATION.md'
+  push:
+    branches: [main]
+    paths:
+      - 'Tools/World/**'
+      - 'Assets/TerrainDemoScene_URP/**'
+      - 'Assets/WorldImports/**'
 permissions:
   contents: read
 jobs:
@@ -24,3 +34,4 @@ jobs:
         run: python Tools/World/fetch_assets.py
       - name: Inspect seeded random points and preview move and color edits in temporary copies
         run: python Tools/World/audit_context.py
+

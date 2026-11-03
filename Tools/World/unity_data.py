@@ -5,6 +5,7 @@ import hashlib
 import json
 import math
 import re
+from collections import Counter, deque
 from pathlib import Path
 
 import numpy as np
@@ -129,6 +130,28 @@ def compact(v, depth=0):
     return v
 
 
+def references(value):
+    """Yield serialized Unity object references without guessing their role."""
+    if isinstance(value, dict):
+        if "fileID" in value and ("guid" in value or set(value) <= {"fileID", "guid", "type"}):
+            yield value
+        for item in value.values():
+            yield from references(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from references(item)
+
+
+def _rgba(value):
+    if not isinstance(value, dict):
+        return None
+    keys = ("r", "g", "b", "a")
+    if not all(k in value for k in keys[:3]):
+        return None
+    result = [float(value.get(k, 1 if k == "a" else 0)) for k in keys]
+    return result if all(math.isfinite(v) for v in result) else None
+
+
 class World:
     def __init__(self, root, scene=SCENE):
         self.root = Path(root).resolve()
@@ -150,8 +173,15 @@ class World:
         if not m:
             raise WorldError("Scene .meta GUID is required for stable object IDs")
         self.scene_guid = m[1]
-        self.gos = {i: d["data"] for i, d in self.docs.items() if d["kind"] == "GameObject"}
-        self.transforms = {i: d["data"] for i, d in self.docs.items() if d["kind"] in ("Transform", "RectTransform")}
+        self.gos = {i: d["data"] for i, d in self.docs.items()
+                    if d["kind"] == "GameObject" and not d["stripped"] and "m_Name" in d["data"]}
+        raw_transforms = {i: d["data"] for i, d in self.docs.items() if d["kind"] in ("Transform", "RectTransform")}
+        # Stripped imported-prefab Transform documents intentionally omit
+        # m_GameObject. Keep them visible as unresolved prefab evidence instead
+        # of crashing the entire saved-scene index.
+        self.transforms = {i: d for i, d in raw_transforms.items()
+                           if d.get("m_GameObject", {}).get("fileID") in self.gos}
+        self.unbound_transform_documents = sorted(set(raw_transforms) - set(self.transforms))
         self.go_transform = {d["m_GameObject"]["fileID"]: i for i, d in self.transforms.items()}
         self.children = {i: [] for i in self.gos}
         for t in self.transforms.values():
@@ -242,7 +272,50 @@ class World:
         a = self.asset_docs(path)
         return {**result, "status": a["status"]}
 
-    def material(self, ref):
+    def texture(self, ref, analyze=False):
+        """Return source-texture facts; optional pixels remain non-render evidence."""
+        info = self.reference(ref)
+        result = dict(info)
+        path = info.get("path")
+        if not path:
+            return result
+        p = safe_path(self.root, path)
+        if not p.is_file():
+            return {**result, "status": "missing_file"}
+        if pointer(p):
+            return {**result, "status": "lfs_pointer", "download": f"git lfs pull --include='{path}'"}
+        if p.suffix.lower() not in (".png", ".jpg", ".jpeg", ".tga", ".tif", ".tiff", ".bmp"):
+            return {**result, "status": "source_pixels_require_importer_or_unity"}
+        try:
+            from PIL import Image
+            with Image.open(p) as image:
+                result.update(status="source_image", width=image.width, height=image.height,
+                              mode=image.mode, format=image.format, sha256=digest(p))
+                if analyze:
+                    image.thumbnail((96, 96), Image.Resampling.LANCZOS)
+                    pixels = np.asarray(image.convert("RGBA"), dtype=np.float64)
+                    opaque = pixels[..., 3] > 0
+                    rgb = pixels[..., :3][opaque] if np.any(opaque) else pixels[..., :3].reshape(-1, 3)
+                    if len(rgb):
+                        quantized = (np.clip(rgb, 0, 255).astype(np.uint8) // 32) * 32 + 16
+                        counts = Counter(map(tuple, quantized.tolist()))
+                        swatches = [{"srgb8": list(color), "fraction": count/len(rgb)}
+                                    for color, count in counts.most_common(5)]
+                        result["source_color_statistics"] = {
+                            "sample_pixels": int(len(rgb)),
+                            "mean_srgb8": rgb.mean(axis=0).tolist(),
+                            "median_srgb8": np.median(rgb, axis=0).tolist(),
+                            "stddev_srgb8": rgb.std(axis=0).tolist(),
+                            "p10_srgb8": np.percentile(rgb, 10, axis=0).tolist(),
+                            "p90_srgb8": np.percentile(rgb, 90, axis=0).tolist(),
+                            "dominant_quantized_swatches": swatches,
+                            "evidence": "bounded source-raster sample; importer color space, UVs, shader, lighting and weather are not applied",
+                        }
+        except (OSError, ValueError, ImportError) as error:
+            result.update(status="source_image_unavailable", reason=str(error))
+        return result
+
+    def material(self, ref, texture_analysis=False):
         info = self.reference(ref)
         if info["status"] != "read":
             return info
@@ -251,11 +324,214 @@ class World:
         if d is None:
             return {**info, "status": "material_file_id_unresolved"}
         props = d.get("m_SavedProperties", {})
+        colors = props.get("m_Colors", [])
+        color_summary = []
+        for row in colors:
+            for name, value in row.items():
+                color_summary.append({"property": name, "rgba": _rgba(value), "serialized": value})
+        textures = []
+        for row in props.get("m_TexEnvs", []):
+            for name, value in row.items():
+                texture_ref = value.get("m_Texture", {})
+                textures.append({"property": name, "scale": value.get("m_Scale"), "offset": value.get("m_Offset"),
+                                 "reference": self.reference(texture_ref),
+                                 "source": self.texture(texture_ref, texture_analysis)})
+        base = next((r["rgba"] for r in color_summary if r["property"] in ("_BaseColor", "_Color") and r["rgba"]), None)
+        base_texture = next((r for r in textures if r["property"] in ("_BaseMap", "_MainTex")), None)
+        estimate = None
+        stats = (base_texture or {}).get("source", {}).get("source_color_statistics")
+        if base and stats:
+            estimate = [base[i] * stats["mean_srgb8"][i] / 255.0 for i in range(3)] + [base[3]]
         return {**info, "name": d.get("m_Name"), "shader": self.reference(d.get("m_Shader", {})),
-                "colors_serialized": props.get("m_Colors", []), "floats": props.get("m_Floats", []),
-                "textures": [{k: {**v, "reference": self.reference(v.get("m_Texture", {}))} for k, v in row.items()}
-                             for row in props.get("m_TexEnvs", [])],
-                "appearance_note": "Serialized material values, not the final lit pixel color. Use Unity capture for appearance."}
+                "colors_serialized": colors, "color_properties": color_summary,
+                "floats": props.get("m_Floats", []), "textures": textures,
+                "base_color_times_source_mean_estimate": estimate,
+                "appearance_evidence": {
+                    "serialized_material": True,
+                    "source_texture_pixels_analyzed": bool(stats),
+                    "rendered_pixels": False,
+                },
+                "appearance_note": "Serialized tint and optional source-raster statistics are not final lit pixels. Use Unity capture for final appearance."}
+
+    def material_slots(self, go, texture_analysis=False, descendants=True):
+        """Bind each material slot to the exact renderer/mesh part using it."""
+        slots = []
+        for node in self.descendants(go) if descendants else (go,):
+            components = self.components(node)
+            mesh_ref = None
+            for component in components:
+                if component["kind"] == "MeshFilter":
+                    mesh_ref = component["data"].get("m_Mesh", {})
+                elif component["kind"] == "SkinnedMeshRenderer":
+                    mesh_ref = component["data"].get("m_Mesh", mesh_ref or {})
+            for component in components:
+                if component["kind"] not in ("MeshRenderer", "SkinnedMeshRenderer"):
+                    continue
+                for index, ref in enumerate(component["data"].get("m_Materials", [])):
+                    slots.append({
+                        "node_id": self.stable_id(node), "node_name": self.gos[node].get("m_Name"),
+                        "renderer_file_id": component["file_id"], "renderer_kind": component["kind"],
+                        "slot_index": index, "mesh": self.reference(mesh_ref or {}),
+                        "material": self.material(ref, texture_analysis),
+                        "evidence": "serialized renderer material slot; exact submesh coverage requires mesh/importer or Unity export",
+                    })
+        return slots
+
+    def dependency_graph(self, roots, max_depth=2, max_nodes=256):
+        """Traverse current serialized GUID dependencies with bounded coverage."""
+        if type(max_depth) is not int or not 0 <= max_depth <= 8:
+            raise WorldError("dependency depth must be 0..8")
+        roots = list(dict.fromkeys(str(path) for path in roots if path))
+        queue = deque((path, 0) for path in roots)
+        nodes, edges, seen, truncated = [], [], set(), False
+        while queue:
+            path, depth = queue.popleft()
+            if path in seen:
+                continue
+            if len(seen) >= max_nodes:
+                truncated = True
+                break
+            seen.add(path)
+            info = self.asset_docs(path)
+            node = {"path": path, "status": info["status"], "depth": depth}
+            p = safe_path(self.root, path)
+            if p.is_file() and not pointer(p):
+                node.update(sha256=digest(p), bytes=p.stat().st_size)
+            nodes.append(node)
+            if depth >= max_depth or info["status"] != "read":
+                continue
+            for doc in info["docs"]:
+                for ref in references(doc["data"]):
+                    target = self.guid_paths.get(str(ref.get("guid", "")))
+                    if not target:
+                        continue
+                    edges.append({"from": path, "to": target, "source_file_id": doc["file_id"],
+                                  "target_file_id": ref.get("fileID")})
+                    if target not in seen:
+                        queue.append((target, depth+1))
+        return {"roots": roots, "nodes": nodes, "edges": edges,
+                "max_depth": max_depth, "max_nodes": max_nodes, "truncated": truncated,
+                "coverage": "Current serialized GUID references. Importer-generated and code-loaded dependencies require Unity AssetDatabase/runtime evidence."}
+
+    def prefab_source(self, path, texture_analysis=False):
+        """Resolve YAML prefabs fully and FBX source geometry conservatively."""
+        info = self.asset_docs(path)
+        if info["status"] != "read":
+            if Path(path).suffix.lower() != ".fbx" or info["status"] != "binary_requires_decoder":
+                return {"path": path, "status": info["status"]}
+        if Path(path).suffix.lower() == ".prefab" and info["status"] == "read":
+            try:
+                source = World(self.root, path)
+                self.read_files.update(source.read_files)
+                roots = []
+                for go, transform in source.go_transform.items():
+                    if not source.transforms[transform].get("m_Father", {}).get("fileID"):
+                        roots.append(source.object(go, True))
+                return {"path": path, "status": "yaml_prefab_resolved", "root_objects": roots,
+                        "inline_game_objects": len(source.gos), "unbound_stripped_transforms": source.unbound_transform_documents,
+                        "evidence": "saved prefab YAML; nested/imported dependencies retain their own status"}
+            except (WorldError, OSError, KeyError) as error:
+                return {"path": path, "status": "yaml_prefab_unavailable", "reason": str(error)}
+        if Path(path).suffix.lower() == ".fbx":
+            p = safe_path(self.root, path)
+            if not p.is_file() or pointer(p):
+                return {"path": path, "status": "lfs_pointer_or_missing"}
+            try:
+                importer = None
+                meta_path = Path(str(p)+".meta")
+                if meta_path.is_file():
+                    meta_data = yaml.safe_load(meta_path.read_text(errors="replace")) or {}
+                    model = meta_data.get("ModelImporter", {})
+                    meshes = model.get("meshes", {}) if isinstance(model, dict) else {}
+                    materials = model.get("materials", {}) if isinstance(model, dict) else {}
+                    importer = {"global_scale": meshes.get("globalScale"),
+                                "use_file_scale": meshes.get("useFileScale"),
+                                "material_import_mode": materials.get("materialImportMode") if isinstance(materials, dict) else None}
+                import assimp_py as assimp
+                flags = (assimp.Process_Triangulate | assimp.Process_PreTransformVertices |
+                         assimp.Process_JoinIdenticalVertices | assimp.Process_GenSmoothNormals)
+                scene = assimp.import_file(str(p), flags)
+                meshes, lows, highs = [], [], []
+                for index, mesh in enumerate(scene.meshes):
+                    vertices = np.asarray(mesh.vertices, dtype=float).reshape(-1, 3)
+                    if not len(vertices):
+                        continue
+                    low, high = vertices.min(axis=0), vertices.max(axis=0)
+                    lows.append(low); highs.append(high)
+                    meshes.append({"index": index, "name": getattr(mesh, "name", None),
+                                   "vertices": int(len(vertices)), "faces": int(getattr(mesh, "num_faces", 0)),
+                                   "source_aabb_units": {"min": low.tolist(), "max": high.tolist(),
+                                                         "size": (high-low).tolist()},
+                                   "material_index": getattr(mesh, "material_index", None)})
+                combined = None if not lows else {"min": np.min(lows, axis=0).tolist(),
+                                                  "max": np.max(highs, axis=0).tolist(),
+                                                  "size": (np.max(highs, axis=0)-np.min(lows, axis=0)).tolist()}
+                return {"path": path, "status": "fbx_source_decoded", "meshes": meshes,
+                        "mesh_count": len(meshes), "material_count": int(getattr(scene, "num_materials", 0)),
+                        "combined_source_aabb_units": combined, "unity_model_importer": importer,
+                        "evidence": "Assimp source model after hierarchy pre-transform; Unity ModelImporter scale, mesh splitting, materials and final bounds are not applied"}
+            except (ImportError, RuntimeError, ValueError, OSError) as error:
+                return {"path": path, "status": "fbx_source_unavailable", "reason": str(error)}
+        return {"path": path, "status": info["status"]}
+
+    def prefab_instances(self, resolve_source=False, texture_analysis=False, override_offset=0, override_limit=100):
+        """Expose imported/nested prefab evidence without fabricating inline GameObjects."""
+        if type(override_offset) is not int or type(override_limit) is not int or override_offset < 0 or not 1 <= override_limit <= 500:
+            raise WorldError("Prefab override offset >=0 and limit 1..500 required")
+        result = []
+        for doc in self.docs.values():
+            if doc["kind"] != "PrefabInstance":
+                continue
+            data = doc["data"]
+            modification = data.get("m_Modification", {})
+            source = self.reference(data.get("m_SourcePrefab", {}))
+            overrides = []
+            transform_fields = {}
+            for row in modification.get("m_Modifications", []):
+                target_ref = row.get("target", {})
+                prop = row.get("propertyPath")
+                target_id = target_ref.get("fileID")
+                if isinstance(prop, str) and target_id and re.fullmatch(r"m_Local(Position|Rotation|Scale)\.[xyzw]", prop):
+                    try:
+                        transform_fields.setdefault(target_id, {})[prop] = float(row.get("value"))
+                    except (TypeError, ValueError):
+                        pass
+                overrides.append({"target": self.reference(row.get("target", {})),
+                                  "property_path": row.get("propertyPath"), "value": row.get("value"),
+                                  "object_reference": self.reference(row.get("objectReference", {}))})
+            transform_summary = None
+            if transform_fields:
+                target_id, fields = max(transform_fields.items(), key=lambda item: len(item[1]))
+                local = {"m_LocalPosition": {}, "m_LocalRotation": {"w": 1}, "m_LocalScale": {"x": 1, "y": 1, "z": 1}}
+                for prop, value in fields.items():
+                    group, axis = prop.rsplit(".", 1)
+                    local[group][axis] = value
+                try:
+                    local_matrix = matrix(local)
+                    parent_id = modification.get("m_TransformParent", {}).get("fileID", 0)
+                    world_matrix = self.world_matrix(parent_id) @ local_matrix if parent_id in self.transforms else local_matrix
+                    transform_summary = {"source_transform_file_id": target_id, "serialized_overrides": fields,
+                                         "world_position_m": world_matrix[:3, 3].tolist(),
+                                         "world_axis_scale": np.linalg.norm(world_matrix[:3, :3], axis=0).tolist(),
+                                         "evidence": "composed serialized root-like transform overrides; exact nested transform identity requires Unity GlobalObjectId export"}
+                except (WorldError, ValueError, KeyError) as error:
+                    transform_summary = {"status": "unavailable", "reason": str(error), "serialized_overrides": fields}
+            row = {
+                "id": f"prefab-instance:{self.scene_guid}:{doc['file_id']}",
+                "prefab_instance_file_id": doc["file_id"], "source": source,
+                "transform_parent_file_id": modification.get("m_TransformParent", {}).get("fileID", 0),
+                "override_count": len(overrides),
+                "overrides": {"total": len(overrides), "offset": override_offset,
+                              "items": overrides[override_offset:override_offset+override_limit],
+                              "next_offset": override_offset+override_limit if override_offset+override_limit < len(overrides) else None},
+                "status": "serialized_instance_evidence",
+                "exact_hierarchy_geometry": "requires source dependency decoding or Unity export",
+                "instance_transform": transform_summary,
+            }
+            if resolve_source and source.get("path"):
+                row["source_details"] = self.prefab_source(source["path"], texture_analysis)
+            result.append(row)
+        return result
 
     def mesh_aabb(self, ref):
         """Resolve a saved mesh or a known Unity primitive without inventing bounds."""
@@ -355,16 +631,14 @@ class World:
                           child_ids=[self.stable_id(i) for i in self.children[go]],
                           serialized_components=[{"file_id": c["file_id"], "kind": c["kind"], "data": compact(c["data"])} for c in comps],
                           materials=[])
+            slots = self.material_slots(go)
             materials = {}
-            for node in self.descendants(go):
-                for c in self.components(node):
-                    if c["kind"] not in ("MeshRenderer", "SkinnedMeshRenderer"):
-                        continue
-                    for ref in c["data"].get("m_Materials", []):
-                        key = (ref.get("guid"), ref.get("fileID"))
-                        if key not in materials:
-                            materials[key] = self.material(ref)
+            for slot in slots:
+                material = slot["material"]
+                key = (material.get("guid"), material.get("file_id"))
+                materials.setdefault(key, material)
             result["materials"] = list(materials.values())
+            result["material_slots"] = slots
             collider_bounds, collider_unknown = self.aggregate_collider_bounds(go)
             result["saved_collider_bounds"] = bounds_json(collider_bounds)
             result["collider_bounds_incomplete"] = collider_unknown
@@ -393,4 +667,5 @@ class World:
             p = self.root / path
             rows.append([path, digest(p) if p.is_file() else "missing"])
         return {"sha256": hashlib.sha256(json.dumps(rows, separators=(",", ":")).encode()).hexdigest(), "files": rows}
+
 

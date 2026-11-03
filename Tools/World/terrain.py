@@ -10,6 +10,18 @@ import numpy as np
 from unity_data import WorldError, digest, pointer, safe_path
 
 
+def color_record(value):
+    """Preserve native TreeInstance tint bytes/floats and add a normalized view."""
+    if not isinstance(value, dict) or not all(k in value for k in ("r", "g", "b")):
+        return {"status": "unavailable"}
+    raw = [float(value.get(k, 1 if k == "a" else 0)) for k in ("r", "g", "b", "a")]
+    if not all(math.isfinite(v) for v in raw):
+        return {"status": "invalid_non_finite", "serialized": value}
+    divisor = 255.0 if max(raw) > 1.0 else 1.0
+    return {"status": "decoded", "serialized": value, "normalized_rgba": [v/divisor for v in raw],
+            "encoding": "color32_0_255" if divisor == 255 else "float_0_1"}
+
+
 def interpolate(h, origin, spacing, x, z):
     fx, fz = (x-origin[0])/spacing[0], (z-origin[2])/spacing[1]
     rows, cols = h.shape
@@ -89,7 +101,10 @@ class NativeTerrain:
                                              tile["origin_m"][1]+v["y"]*scale["y"],
                                              tile["origin_m"][2]+v["z"]*(n-1)*scale["z"]],
                               "yaw_degrees": math.degrees(inst["rotation"]), "width_scale": inst["widthScale"],
-                              "height_scale": inst["heightScale"]})
+                              "height_scale": inst["heightScale"],
+                              "color": color_record(inst.get("color")),
+                              "lightmap_color": color_record(inst.get("lightmapColor")),
+                              "appearance_evidence": "native TerrainData TreeInstance tint; prototype texture/shader/lighting not applied"})
         textures = []
         for o in env.objects:
             if o.type.name == "Texture2D":
@@ -208,4 +223,5 @@ class NativeTerrain:
                 if pairs:
                     out.append({"tiles": [a["id"], b["id"]], "max_delta_m": float(np.max(np.abs(pairs[0]-pairs[1])))})
         return out
+
 

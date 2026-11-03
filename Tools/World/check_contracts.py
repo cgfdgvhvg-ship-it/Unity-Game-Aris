@@ -21,6 +21,7 @@ assert len(w.terrains())==4
 assert len([d for d in w.gos.values() if re.fullmatch(r'VehicleSpawnPoint_\d{2}',d.get('m_Name',''))])==45
 contract=automation_schema()
 assert contract['protocol_version']==2
+assert 'describe' in contract['read_commands']
 for operation in ('set_transform','place_static_prefab','terrain_instance_move','terrain_instance_add','instantiate_prefab','duplicate_object','delete_object'):
     assert operation in contract['write_operations'], operation+' missing from machine contract'
 bridge=(root/'Assets/AarisWorld/Editor/WorldBridge.cs').read_text()
@@ -36,4 +37,5 @@ for f in ('world-query.yml','world-engine-query.yml','world-core-edit.yml','worl
             if 'uses' in s: assert len(s['uses'].split('@')[-1])==40, 'Pin actions to reviewed commits'
 assert 'buildGuid = Application.buildGUID' in (root/'Assets/AarisWorld/Scripts/AarisMobileRuntime.cs').read_text()
 print('Real scene: four terrains and 45 spawn markers; C# syntax and workflow request boundaries passed. Unity import/physics not executed.')
+
 

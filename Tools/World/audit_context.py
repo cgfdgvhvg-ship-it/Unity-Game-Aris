@@ -8,6 +8,7 @@ import numpy as np
 
 from observations import inspect, usages, runtime
 from patching import plan, preview_yaml
+from semantics import describe
 from terrain import NativeTerrain
 from unity_data import World, digest
 from world import ROOT, asset
@@ -21,7 +22,7 @@ def material_summary(record):
 def brief(facts):
     coverage = facts["coverage"]
     scene_keys = ("id", "name", "world_position_m", "relative_in_target_axes_m", "distance_m", "distance_to_bounds_m", "bounds", "bounds_source", "container_only", "components")
-    native_keys = ("id", "category", "path", "position_m", "relative_in_target_axes_m", "distance_m", "yaw_degrees", "width_scale", "height_scale", "collider_diameter_estimates_m", "diameter_evidence")
+    native_keys = ("id", "category", "path", "position_m", "relative_in_target_axes_m", "distance_m", "yaw_degrees", "width_scale", "height_scale", "color", "lightmap_color", "estimated_renderer_size_m", "collider_diameter_estimates_m", "diameter_evidence")
     scene = [r for r in facts["nearby_scene_objects"] if not r["container_only"]]
     native = facts["nearby_native_instances"]
     return {"center_world_m": facts["center_world_m"], "radius_m": facts["radius_m"],
@@ -84,7 +85,18 @@ def run(root):
     chosen_house = rng.choice(houses)
     house = w.object(chosen_house, True)
     house_facts = inspect(w, {"target": house["id"], "radius": 60, "limit": 100})
+    house_description = describe(w, {"target": house["id"], "offset": 0, "limit": 100,
+                                     "texture_analysis": False, "dependency_depth": 2})
     queries.append({"label": "seeded_random_house", "name": house["name"], **brief(house_facts)})
+    page_probe = inspect(w, {"target": house["id"], "radius": 60, "limit": 25,
+                             "scene_offset": 0, "native_offset": 0})
+    native_next = page_probe["coverage"]["native_next_offset"]
+    next_native_ids = []
+    if native_next is not None:
+        next_page = inspect(w, {"target": house["id"], "radius": 60, "limit": 25,
+                                "scene_offset": 0, "native_offset": native_next})
+        next_native_ids = [row["id"] for row in next_page["nearby_native_instances"]]
+        assert not set(next_native_ids) & {row["id"] for row in page_probe["nearby_native_instances"]}
     # Explicit vertical probes at one random map coordinate, not invented surfaces.
     point = queries[0]["center_world_m"]
     for delta in (5, -2):
@@ -124,6 +136,15 @@ def run(root):
     shared = usages(w, {"path": color_path})
     report = {"seed": 20261103, "queries": queries,
               "native_counts": dict(Counter(r["category"] for r in instances)),
+              "native_tint_fields_present": all("color" in row and "lightmap_color" in row for row in instances),
+              "house_description": {"target": house_description["target"],
+                                    "part_roles": dict(Counter(row["semantic"]["primary_role"] for row in house_description["parts"]["items"])),
+                                    "parts": house_description["parts"]["total"],
+                                    "material_slots": house_description["appearance"]["material_slot_count"],
+                                    "dependency_nodes": len(house_description["dependencies"]["nodes"])},
+              "pagination_probe": {"first_native_ids": [row["id"] for row in page_probe["nearby_native_instances"]],
+                                   "native_next_offset": native_next, "next_native_ids": next_native_ids,
+                                   "native_total": page_probe["coverage"]["native_candidates_total"]},
               "raw_native_instance_sample": raw_native["value"], "prefab_sample": prefab, "meta_sample": meta,
               "move_preview": {"target": house["name"], "would_change_files": list(move_plan["diffs"]),
                                "before_position_m": house["world_position_m"], "after_position_m": moved_facts["target"]["world_position_m"],
@@ -139,6 +160,8 @@ def run(root):
               "core_files_hashed": len(before), "core_bytes_unchanged": before == core_hashes(root),
               "unity_render_or_physics_executed": False}
     assert report["core_bytes_unchanged"], "Audit altered original project files"
+    assert report["native_tint_fields_present"], "Native high-level records omitted saved tint fields"
+    assert house_description["coverage"]["parts_complete"] or house_description["parts"]["next_offset"] is not None
     np.testing.assert_allclose(moved_facts["target"]["world_position_m"], move_position, atol=1e-9)
     assert any(row.get("_BaseColor") == dict(zip("rgba", requested)) for row in after_color)
     print(json.dumps(report, separators=(",", ":")))
@@ -146,3 +169,4 @@ def run(root):
 
 if __name__ == "__main__":
     run(ROOT)
+

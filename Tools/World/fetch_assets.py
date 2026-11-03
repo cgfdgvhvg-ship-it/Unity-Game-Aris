@@ -24,7 +24,8 @@ def required(w, request):
         paths.update(t["asset"]["path"] for t in w.terrains() if t["asset"]["path"])
     if cmd == "asset": paths.add(request["path"])
     ids = []
-    if cmd == "object": ids = [w.resolve(request["target"])]
+    if cmd in ("object", "describe") and not str(request.get("target", "")).startswith("prefab-instance:"):
+        ids = [w.resolve(request["target"])]
     if cmd == "inspect" and request.get("geometry", True):
         # Until meshes are available, a distant pivot cannot exclude a large
         # building whose bounds reach this neighbourhood. Fetch the scene's
@@ -43,6 +44,22 @@ def required(w, request):
                     for ref in refs(c["data"]):
                         path = w.guid_paths.get(str(ref.get("guid")))
                         if path: paths.add(path)
+    if cmd == "inspect" and request.get("geometry", True):
+        # Stripped PrefabInstance documents are not inline GameObjects. Their
+        # source must still be materialized so they are never counted as empty.
+        paths.update(row["source"]["path"] for row in w.prefab_instances() if row["source"].get("path"))
+    if cmd == "describe" and str(request.get("target", "")).startswith("prefab-instance:"):
+        matches = [row for row in w.prefab_instances() if row["id"] == request["target"]]
+        paths.update(row["source"]["path"] for row in matches if row["source"].get("path"))
+    # YAML materials/prefabs are already ordinary Git files. Walk their bounded
+    # serialized closure; include source texture pixels only when explicitly
+    # requested, avoiding an accidental whole-project texture download.
+    depth = request.get("dependency_depth", 2) if cmd == "describe" else 1
+    graph = w.dependency_graph(sorted(paths), depth)
+    for node in graph["nodes"]:
+        suffix = Path(node["path"]).suffix.lower()
+        if suffix not in (".png", ".jpg", ".jpeg", ".tga", ".tif", ".tiff", ".bmp") or request.get("texture_analysis"):
+            paths.add(node["path"])
     return sorted(paths)
 
 
@@ -67,4 +84,5 @@ def main():
 
 
 if __name__=="__main__": main()
+
 

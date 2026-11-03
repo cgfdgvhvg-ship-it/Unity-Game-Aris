@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import difflib
+import hashlib
 import json
 import math
 import os
@@ -99,7 +100,7 @@ def observation_requests(patch):
             key = ("target", target)
             if key not in seen:
                 requests.append({"target": target, "radius": 35, "limit": 100,
-                                 "native": False, "geometry": True})
+                                 "native": True, "geometry": True, "appearance": True, "semantics": True})
                 seen.add(key)
         position = op.get("world_position")
         xz = op.get("world_xz") or op.get("center_xz")
@@ -107,15 +108,109 @@ def observation_requests(patch):
             key = ("point", *map(float, position))
             if key not in seen:
                 requests.append({"x": position[0], "y": position[1], "z": position[2],
-                                 "radius": 35, "limit": 100, "native": False, "geometry": True})
+                                 "radius": 35, "limit": 100, "native": True, "geometry": True,
+                                 "appearance": True, "semantics": True})
                 seen.add(key)
         elif xz:
             key = ("xz", *map(float, xz))
             if key not in seen:
                 requests.append({"x": xz[0], "z": xz[1], "radius": 35, "limit": 100,
-                                 "native": False, "geometry": True})
+                                 "native": True, "geometry": True, "appearance": True, "semantics": True})
                 seen.add(key)
     return requests[:32]
+
+
+def _operation_state(world, operation, resolved=None):
+    """Small exact state capsule used for automatic before/after edit evidence."""
+    kind = operation.get("op")
+    operation_id = operation.get("id", kind)
+    try:
+        if kind in ("set_transform", "set_object_state", "duplicate_object", "delete_object"):
+            go = world.resolve(operation["target"])
+            return {"operation_id": operation_id, "status": "available", "state": world.object(go, True)}
+        if kind in ("set_material_color", "set_material_float"):
+            docs = world.asset_docs(operation["path"])
+            if docs.get("status") != "read":
+                return {"operation_id": operation_id, "status": "unavailable", "reason": docs.get("status")}
+            doc = next((d for d in docs["docs"] if d["file_id"] == operation["file_id"] and d["kind"] == "Material"), None)
+            if doc is None:
+                raise WorldError("Material state fileID is unavailable")
+            collection = "m_Colors" if kind == "set_material_color" else "m_Floats"
+            rows = doc["data"].get("m_SavedProperties", {}).get(collection, [])
+            matches = [row[operation["property"]] for row in rows if operation["property"] in row]
+            from observations import usages
+            usage_report = usages(world, {"path": operation["path"]})
+            return {"operation_id": operation_id, "status": "available", "state": {
+                "path": operation["path"], "file_id": operation["file_id"], "property": operation["property"],
+                "value": matches[0] if len(matches) == 1 else {"status": "not_exactly_one", "matches": len(matches)},
+                "shared_usages": usage_report["text_serialized_usages"],
+                "total_reference_occurrences": usage_report["total_reference_occurrences"]}}
+        if kind == "place_static_prefab" and resolved:
+            go = world.resolve(resolved["id"])
+            return {"operation_id": operation_id, "status": "available", "state": world.object(go, True)}
+        if kind and kind.startswith("terrain_instance_") and operation.get("target"):
+            from terrain import NativeTerrain
+            return {"operation_id": operation_id, "status": "available",
+                    "state": NativeTerrain(world).find_instance(operation["target"])}
+    except (WorldError, ImportError, OSError, KeyError) as error:
+        return {"operation_id": operation_id, "status": "unavailable", "reason": str(error)}
+    return {"operation_id": operation_id, "status": "not_applicable_before_or_requires_unity"}
+
+
+def _collect_observations(world, requests):
+    from observations import inspect
+    rows = []
+    for request in requests:
+        try:
+            rows.append({"request": request, "result": inspect(world, request)})
+        except (WorldError, ImportError, OSError, KeyError) as error:
+            rows.append({"request": request, "status": "unavailable", "reason": str(error)})
+    return rows
+
+
+def _observation_metrics(row):
+    result = row.get("result")
+    if not isinstance(result, dict):
+        return {"status": row.get("status", "unavailable"), "reason": row.get("reason")}
+    target = result.get("target") or {}
+    bounds = target.get("renderer_bounds") or target.get("bounds") or {}
+    scene = {item["id"]: item.get("distance_to_bounds_m", item.get("distance_m"))
+             for item in result.get("nearby_scene_objects", [])}
+    native = {item["id"]: item.get("distance_m") for item in result.get("nearby_native_instances", [])}
+    terrain = result.get("terrain_relation") or {}
+    return {"status": "available", "target_id": target.get("id"), "target_name": target.get("name"),
+            "target_position_m": target.get("world_position_m"), "target_size_m": bounds.get("size_m"),
+            "target_semantic": (target.get("semantic") or {}).get("primary_role"),
+            "point_minus_ground_m": terrain.get("point_minus_ground_m"),
+            "scene_neighbour_distance_m": scene, "native_neighbour_distance_m": native,
+            "coverage": result.get("coverage")}
+
+
+def _vector_delta(before, after):
+    if (isinstance(before, list) and isinstance(after, list) and len(before) == len(after)
+            and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in before+after)):
+        return [float(b)-float(a) for a, b in zip(before, after)]
+    return None
+
+
+def _observation_deltas(before_rows, after_rows):
+    rows = []
+    for index in range(max(len(before_rows), len(after_rows))):
+        before = _observation_metrics(before_rows[index]) if index < len(before_rows) else {"status": "missing"}
+        after = _observation_metrics(after_rows[index]) if index < len(after_rows) else {"status": "missing"}
+        before_scene, after_scene = before.get("scene_neighbour_distance_m", {}), after.get("scene_neighbour_distance_m", {})
+        before_native, after_native = before.get("native_neighbour_distance_m", {}), after.get("native_neighbour_distance_m", {})
+        rows.append({
+            "request": after_rows[index].get("request") if index < len(after_rows) else before_rows[index].get("request"),
+            "before": before, "after": after,
+            "target_position_delta_m": _vector_delta(before.get("target_position_m"), after.get("target_position_m")),
+            "target_size_delta_m": _vector_delta(before.get("target_size_m"), after.get("target_size_m")),
+            "scene_neighbours_added": sorted(set(after_scene)-set(before_scene)),
+            "scene_neighbours_removed": sorted(set(before_scene)-set(after_scene)),
+            "native_neighbours_added": sorted(set(after_native)-set(before_native)),
+            "native_neighbours_removed": sorted(set(before_native)-set(after_native)),
+        })
+    return rows
 
 
 def plan(root, patch):
@@ -394,6 +489,8 @@ def plan(root, patch):
     observe_after = observation_requests(patch)
     for resolved in resolved_objects:
         observe_after.append({"target":resolved["id"], "radius":50, "limit":100, "native":True, "geometry":True})
+    operation_before = [_operation_state(w, operation) for operation in patch["operations"]]
+    pre_edit_observations = _collect_observations(w, observe_after)
     return {"schema_version": version, "protocol_version": 2,
             "transaction_id": patch.get("transaction_id"), "idempotency_key": patch.get("idempotency_key"),
             "backend": "unity" if engine_ops else "python_yaml", "dry_run": True,
@@ -403,6 +500,9 @@ def plan(root, patch):
             "resolved_objects": resolved_objects,
             "added_scene_file_ids": [d["file_id"] for d in additions],
             "observe_after": observe_after, "acknowledgements": patch.get("acknowledgements", []),
+            "operation_before": operation_before,
+            "pre_edit_observations": pre_edit_observations,
+            "predicted_written_files": sorted(outputs),
             "note": "Core assets change only on apply --write. Historical Docs/*REPORT.json are not refreshed or treated as current proof."}, outputs
 
 
@@ -436,19 +536,26 @@ def apply_yaml(root, patch, write=False):
             world = World(root)
             for t in world.transforms:
                 world.world_matrix(t)
-            from observations import inspect
-            observed = []
-            for request in report["observe_after"]:
-                try:
-                    observed.append({"request": request, "result": inspect(world, request)})
-                except (WorldError, ImportError, OSError) as error:
-                    observed.append({"request": request, "status": "unavailable", "reason": str(error)})
+            observed = _collect_observations(world, report["observe_after"])
+            resolved_by_operation = {row["operation_id"]: row for row in report["resolved_objects"]}
+            operation_after = [_operation_state(world, operation, resolved_by_operation.get(operation.get("id")))
+                               for operation in patch["operations"]]
         except BaseException:
             for path, data in originals.items():
                 atomic_write(root/path, data)
             raise
+    file_changes = {path: {"before_sha256": hashlib.sha256(data).hexdigest(),
+                           "after_sha256": digest(root/path), "bytes_before": len(data),
+                           "bytes_after": (root/path).stat().st_size}
+                    for path, data in originals.items()}
+    operation_deltas = [{"operation_id": after.get("operation_id"), "before": before, "after": after,
+                         "changed": before.get("state") != after.get("state")}
+                        for before, after in zip(report["operation_before"], operation_after)]
     return {**report, "dry_run": False, "written_files": {p: digest(root/p) for p in outputs},
+            "written_file_changes": file_changes,
             "post_edit_observations": observed,
+            "observation_deltas": _observation_deltas(report["pre_edit_observations"], observed),
+            "operation_after": operation_after, "operation_deltas": operation_deltas,
             "verification": "Saved YAML identities and finite world transforms checked. Neighbourhood measurements are for AI judgment; physics, rendering and device measurements are not part of this Python authoring result."}
 
 
@@ -491,4 +598,5 @@ def atomic_write(path, data):
         os.replace(tmp, path)
     finally:
         Path(tmp).unlink(missing_ok=True)
+
 
