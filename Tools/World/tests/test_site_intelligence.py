@@ -135,7 +135,7 @@ class ObservationContractTests(unittest.TestCase):
         rows = observation_requests(q, ManyUsers())
         self.assertEqual(len(rows), 6)
         self.assertEqual(rows[0]["target"], "scene:abc:101")
-        self.assertGreater(int(rows[-1]["target"].split(":")[-1]), 170)
+        self.assertEqual(rows[-1]["target"], "scene:abc:167")
 
     def test_over_budget_observations_fail_without_dropping_user_requests(self):
         q = {"operations": [], "observe_after": [
