@@ -244,6 +244,7 @@ def _observation_metrics(row):
         slots = (item.get("appearance") or {}).get("material_slots", [])
         appearance[identifier] = [
             {"node_id": slot.get("node_id"), "slot_index": slot.get("slot_index"),
+             "submesh_geometry": slot.get("submesh_geometry"),
              "material_path": (slot.get("material") or {}).get("path"),
              "color_properties": (slot.get("material") or {}).get("color_properties"),
              "texture_references": [

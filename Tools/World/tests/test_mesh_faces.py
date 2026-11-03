@@ -11,9 +11,9 @@ import numpy as np
 
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]))
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[2]/'MapBuild'))
-from test_world import fixture
+from test_world import fixture,GUID
 from native_assets import mesh_asset
-from unity_data import documents, digest, WorldError
+from unity_data import documents, digest, WorldError,SCENE,World
 from mesh_faces import arrays, remove_triangles
 from patching import preview_yaml, apply_yaml
 
@@ -68,6 +68,24 @@ class MeshFaceTests(unittest.TestCase):
             result=engine.run(self.root,{'command':'preview'},self.patch())
         self.assertTrue(result['preview'])
         self.assertEqual((self.root/self.path).read_bytes(),before)
+    def test_ai_description_marks_removed_faces_empty_without_losing_material_slots(self):
+        import re
+        from semantics import describe
+        guid=re.search(r'(?m)^guid: ([a-f0-9]+)$',(self.root/(self.path+'.meta')).read_text())[1]
+        scene=self.root/SCENE
+        text=scene.read_text().replace('  - component: {fileID: 301}\n','  - component: {fileID: 301}\n  - component: {fileID: 302}\n  - component: {fileID: 303}\n')
+        text+='--- !u!33 &302\nMeshFilter:\n  m_GameObject: {fileID: 300}\n  m_Mesh: {fileID: 4300000, guid: '+guid+', type: 2}\n'
+        text+='--- !u!23 &303\nMeshRenderer:\n  m_GameObject: {fileID: 300}\n  m_Materials:\n'
+        text+=('  - {fileID: 2100000, guid: '+'2'*32+', type: 2}\n')*2
+        scene.write_text(text)
+        apply_yaml(self.root,self.patch(),True)
+        report=describe(World(self.root),{'target':f'scene:{GUID}:300'})
+        slots=report['appearance']['slots']
+        self.assertEqual(len(slots),2)
+        self.assertEqual(slots[0]['submesh_geometry']['status'],'empty')
+        self.assertEqual(slots[1]['submesh_geometry']['triangle_count'],1)
+        self.assertEqual(report['appearance']['empty_saved_material_slots'],1)
+        self.assertEqual(sum(report['appearance']['surface_part_role_counts'].values()),1)
 
 
 if __name__=='__main__':unittest.main()
