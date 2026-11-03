@@ -40,6 +40,8 @@ namespace Aaris.MapReview
         private int observedTargetFps;
         private float terrainDetailDistanceCap, terrainDetailDensityCap;
         private float profileShadowDistance, profileTreeBillboardDistance, lowMemoryDetailMultiplier = 1f;
+        // Memory warnings keep 3D-tree draw cost capped even if FPS recovers later.
+        private float lowMemoryTreeMeshMultiplier = 1f;
         private int profileMaxFullLodTrees;
         private int performanceLevel, pressureSamples, recoverySamples;
         private float nextPerformanceChangeAt;
@@ -133,6 +135,7 @@ namespace Aaris.MapReview
                         Mathf.Min(currentBudget, Mathf.Max(48f, currentBudget - 32f));
                     // Keep low-memory reductions in effect even when frame-time quality later recovers.
                     lowMemoryDetailMultiplier = Mathf.Min(lowMemoryDetailMultiplier, 0.75f);
+                    lowMemoryTreeMeshMultiplier = Mathf.Min(lowMemoryTreeMeshMultiplier, 0.80f);
                     performanceLevel = Mathf.Max(performanceLevel, 1);
                     ApplyAdaptiveDetailBudget();
                 }
@@ -283,9 +286,9 @@ namespace Aaris.MapReview
                     // Tier 0 restores the RAM-class baseline, not a higher authored cost.
                     // Both limits are clamped to original values and retain billboard/far draw.
                     terrain.treeBillboardDistance = Mathf.Min(originalTreeBillboardDistances[i],
-                        profileTreeBillboardDistance * treeMeshDistanceFactor);
+                        profileTreeBillboardDistance * treeMeshDistanceFactor * lowMemoryTreeMeshMultiplier);
                     terrain.treeMaximumFullLODCount = Mathf.Min(originalFullLodTreeCounts[i],
-                        Mathf.Max(1, Mathf.FloorToInt(profileMaxFullLodTrees * treeMeshCountFactor)));
+                        Mathf.Max(1, Mathf.FloorToInt(profileMaxFullLodTrees * treeMeshCountFactor * lowMemoryTreeMeshMultiplier)));
                 }
             if (mobilePipeline != null)
             {
@@ -346,7 +349,7 @@ namespace Aaris.MapReview
             public string mobileQualityProfile;
             public float streamingBudgetMb, lodBias, shadowDistanceM, terrainDetailDistanceCapM, terrainDetailDensityCap;
             public float renderScale;
-            public float effectiveDetailDistanceM, effectiveDetailDensity, lowMemoryDetailMultiplier;
+            public float effectiveDetailDistanceM, effectiveDetailDensity, lowMemoryDetailMultiplier, lowMemoryTreeMeshMultiplier;
             public float effectiveTreeBillboardDistanceM, effectiveHeightmapPixelError, effectiveBasemapDistanceM;
             public int effectiveMaxFullLodTrees;
             public float seconds, averageFps, p95FrameMs;
@@ -384,6 +387,7 @@ namespace Aaris.MapReview
             if (reason == "sample") TuneForFrameTime(s.p95FrameMs);
             s.performanceLevel = performanceLevel;
             s.lowMemoryDetailMultiplier = lowMemoryDetailMultiplier;
+            s.lowMemoryTreeMeshMultiplier = lowMemoryTreeMeshMultiplier;
             if (profiledTerrains != null)
                 foreach (Terrain terrain in profiledTerrains)
                     if (terrain != null)
