@@ -13,6 +13,8 @@ on:
       - 'Tools/Validation/check_mobile_review.py'
       - 'Assets/AarisWorld/Props/**'
       - 'Docs/MOBILE_REVIEW_REPORT.json'
+      - 'Docs/ROCK_CLUSTER_ADDITIONS_20261103.json'
+      - 'Tools/Validation/check_rock_clusters.py'
       - 'Tools/Validation/check_road_markings.py'
       - 'Tools/MapBuild/road_markings.py'
       - 'Tools/MapBuild/surface_native.py'
@@ -52,3 +54,5 @@ jobs:
         run: python Tools/Validation/check_material_import.py
       - name: Check mobile saved bindings, props and preserved visual settings
         run: python Tools/Validation/check_mobile_review.py
+      - name: Verify saved companion rocks, LODs, positions and gated colliders
+        run: python Tools/Validation/check_rock_clusters.py
