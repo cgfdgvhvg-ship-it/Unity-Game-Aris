@@ -43,6 +43,13 @@ namespace Aaris.MapReview
         // Memory warnings keep 3D-tree draw cost capped even if FPS recovers later.
         private float lowMemoryTreeMeshMultiplier = 1f;
         private int profileMaxFullLodTrees;
+        // For low-memory GPU pressure, suppress three-LOD static-prop crossfades
+        // without changing the authored LOD thresholds, distant silhouette or tree assets.
+        [SerializeField] private bool suppressStaticLodCrossFadeUnderPressure = true;
+        private LODGroup[] staticLodGroups;
+        private LODFadeMode[] originalStaticFadeModes;
+        private bool[] originalStaticAnimateCrossFading;
+        private bool staticLodCrossFadeSuppressed;
         private int performanceLevel, pressureSamples, recoverySamples;
         private float nextPerformanceChangeAt;
         private string lastError = "";
@@ -222,7 +229,50 @@ namespace Aaris.MapReview
             }
             profileShadowDistance = mobilePipeline != null ? mobilePipeline.shadowDistance : 0f;
             mobileProfile = constrained ? "ram-2gb" : "ram-3gb";
+            CaptureStaticLodFadeBaseline();
             mobileProfileApplied = true;
+        }
+
+        // Save original LODGroup presentation settings on the active scene, not on
+        // source prefabs or native TerrainData. SpeedTree has four LODs and is excluded.
+        private void CaptureStaticLodFadeBaseline()
+        {
+            LODGroup[] groups = UnityEngine.Object.FindObjectsByType<LODGroup>(FindObjectsSortMode.None);
+            int count = 0;
+            foreach (LODGroup group in groups)
+                if (group != null && group.enabled && group.lodCount == 3 &&
+                    group.fadeMode == LODFadeMode.CrossFade) count++;
+            staticLodGroups = new LODGroup[count];
+            originalStaticFadeModes = new LODFadeMode[count];
+            originalStaticAnimateCrossFading = new bool[count];
+            int index = 0;
+            foreach (LODGroup group in groups)
+            {
+                if (group == null || !group.enabled || group.lodCount != 3 ||
+                    group.fadeMode != LODFadeMode.CrossFade) continue;
+                staticLodGroups[index] = group;
+                originalStaticFadeModes[index] = group.fadeMode;
+                originalStaticAnimateCrossFading[index] = group.animateCrossFading;
+                index++;
+            }
+        }
+
+        // Unity URP advises disabling costly alpha-tested crossfades on low-end
+        // devices. Do this only at sustained maximum pressure and reverse on recovery.
+        // Exact meshes, LOD boundaries and far-distance visibility stay unchanged.
+        private void SetStaticLodCrossFadeSuppressed(bool suppress)
+        {
+            if (staticLodGroups == null || staticLodCrossFadeSuppressed == suppress) return;
+            for (int i = 0; i < staticLodGroups.Length; i++)
+            {
+                LODGroup group = staticLodGroups[i];
+                if (group == null) continue;
+                LODFadeMode mode = suppress ? LODFadeMode.None : originalStaticFadeModes[i];
+                bool animate = !suppress && originalStaticAnimateCrossFading[i];
+                if (group.fadeMode != mode) group.fadeMode = mode;
+                if (group.animateCrossFading != animate) group.animateCrossFading = animate;
+            }
+            staticLodCrossFadeSuppressed = suppress;
         }
 
         // Grass is reduced first; distant trees, buildings, camera far plane and textures
@@ -270,8 +320,9 @@ namespace Aaris.MapReview
             float distanceFactor = performanceLevel == 0 ? 1f : performanceLevel == 1 ? 0.85f : 0.70f;
             float densityFactor = performanceLevel == 0 ? 1f : performanceLevel == 1 ? 0.80f : 0.62f;
             float shadowFactor = performanceLevel == 0 ? 1f : performanceLevel == 1 ? 0.85f : 0.70f;
-            // Fewer nearby 3D tree meshes under sustained pressure. Their distant
-            // terrain-tree draw distance is never changed; billboards remain visible.
+            // Legacy Terrain tree controls: per Unity, SpeedTree mesh/billboard
+            // transitions instead use the source prefab's LODGroup. Do not claim
+            // these Terrain limits alone optimize the SpeedTree forest.
             float treeMeshDistanceFactor = performanceLevel == 0 ? 1f : performanceLevel == 1 ? 0.92f : 0.82f;
             float treeMeshCountFactor = performanceLevel == 0 ? 1f : performanceLevel == 1 ? 0.86f : 0.72f;
             if (profiledTerrains != null)
@@ -290,6 +341,8 @@ namespace Aaris.MapReview
                     terrain.treeMaximumFullLODCount = Mathf.Min(originalFullLodTreeCounts[i],
                         Mathf.Max(1, Mathf.FloorToInt(profileMaxFullLodTrees * treeMeshCountFactor * lowMemoryTreeMeshMultiplier)));
                 }
+            SetStaticLodCrossFadeSuppressed(suppressStaticLodCrossFadeUnderPressure &&
+                performanceLevel >= 2);
             if (mobilePipeline != null)
             {
                 mobilePipeline.shadowDistance = Mathf.Min(originalShadowDistance,
@@ -312,6 +365,7 @@ namespace Aaris.MapReview
             Application.logMessageReceived -= OnLog;
             // Runtime-only changes must not leak into the next scene or Editor session.
             if (!mobileProfileApplied) return;
+            SetStaticLodCrossFadeSuppressed(false);
             QualitySettings.streamingMipmapsMemoryBudget = originalStreamingBudget;
             QualitySettings.lodBias = originalLodBias;
             if (mobilePipeline != null)
@@ -345,7 +399,8 @@ namespace Aaris.MapReview
         {
             public string reason, utc, version, buildGuid, device, gpu, api, lastError;
             public int systemRamMB, targetFps, warningCount, shadowAtlasResolution, performanceLevel;
-            public bool emergencyRenderScaleActive;
+            public bool emergencyRenderScaleActive, staticLodCrossFadeSuppressed;
+            public int staticLodCrossFadeGroupCount;
             public string mobileQualityProfile;
             public float streamingBudgetMb, lodBias, shadowDistanceM, terrainDetailDistanceCapM, terrainDetailDensityCap;
             public float renderScale;
@@ -386,6 +441,8 @@ namespace Aaris.MapReview
 #endif
             if (reason == "sample") TuneForFrameTime(s.p95FrameMs);
             s.performanceLevel = performanceLevel;
+            s.staticLodCrossFadeSuppressed = staticLodCrossFadeSuppressed;
+            s.staticLodCrossFadeGroupCount = staticLodGroups != null ? staticLodGroups.Length : 0;
             s.lowMemoryDetailMultiplier = lowMemoryDetailMultiplier;
             s.lowMemoryTreeMeshMultiplier = lowMemoryTreeMeshMultiplier;
             if (profiledTerrains != null)
