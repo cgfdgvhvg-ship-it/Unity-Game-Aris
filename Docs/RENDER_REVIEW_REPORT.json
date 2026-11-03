@@ -1,0 +1,39 @@
+{
+  "status": "saved_core_rendering_checked",
+  "native_assets_materialized": true,
+  "source_models_checked": 17,
+  "materials_checked": 182,
+  "source_cull_mismatches_fixed": 59,
+  "source_normal_strength_mismatches_fixed": 13,
+  "original_renderer_masks": {
+    "m_OpaqueLayerMask": 55,
+    "m_TransparentLayerMask": 55
+  },
+  "saved_renderer_masks": {
+    "m_OpaqueLayerMask": 375,
+    "m_TransparentLayerMask": 375
+  },
+  "water_lighting": "URP 17.3 UniversalFragmentPBR with ambient SH and environment reflection",
+  "water_depth_only_pass": true,
+  "shared_depth_color_wave_position": true,
+  "water_smoothness": 0.82,
+  "render_scale": 1,
+  "hdr": 1,
+  "srp_batcher": 1,
+  "shadow_distance_m_preserved": 1000,
+  "shadow_atlas_resolution_preserved": 4096,
+  "geometry_textures_metadata_prefabs_and_scene_preserved": true,
+  "native_pipeline_files": {
+    "Assets/TerrainDemoScene_URP/Settings/URP/URP-HighQuality Pipeline Asset.asset": {
+      "sha256": "b8e9925c44089bdebeab41b2213f541a748e429c26a099e9d735d70b1448ff47",
+      "size": 4357
+    },
+    "Assets/TerrainDemoScene_URP/Settings/URP/Universal Render Pipeline Asset_Renderer.asset": {
+      "sha256": "61a77eae0ae4af64add0bd7e93b6c0aaf92b7b795d31ac778889bec62c2b316f",
+      "size": 2214
+    }
+  },
+  "unity_shader_compilation_tested": false,
+  "unity_render_tested": false,
+  "android_device_tested": false
+}

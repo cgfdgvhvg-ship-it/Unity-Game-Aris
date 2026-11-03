@@ -26,7 +26,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _Metallic: 0.0
-    - _Smoothness: 0.3
+    - _Smoothness: 0.82
     - _BumpScale: 1
     - _OcclusionStrength: 1
     - _Cull: 0
