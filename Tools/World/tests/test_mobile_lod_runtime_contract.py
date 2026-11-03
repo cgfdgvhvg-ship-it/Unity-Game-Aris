@@ -108,16 +108,38 @@ class LowRamWorldSourceContracts(unittest.TestCase):
         self.assertIn("public void RefreshNow() { RefreshNow(true); }", src)
         self.assertIn("if (changedColliders || forceSync) Physics.SyncTransforms();", src)
 
-    def test_authored_disabled_colliders_are_not_resurrected(self):
+    def test_saved_disabled_buildings_are_proximity_gated_and_state_writes_are_conditional(self):
+        # The saved scene intentionally leaves many building MeshColliders off until
+        # the player approaches. These MUST be indexed and enabled when nearby.
         src = (ROOT / "Assets/AarisWorld/Scripts/AarisNearbyColliders.cs").read_text(encoding="utf-8")
         awake = src.split("private void Awake()", 1)[1].split("private int Cell", 1)[0]
         self.assertIn("savedEnabled[i] = c.enabled;", awake)
-        self.assertIn("if (!savedEnabled[i]) continue;", awake)
-        # The skip must happen before either spatial indexing or enabled-state gating.
-        self.assertLess(awake.index("if (!savedEnabled[i]) continue;"), awake.index("Matrix4x4 m"))
-        self.assertLess(awake.index("if (!savedEnabled[i]) continue;"), awake.index("indexed[i] = true;"))
-        self.assertIn("if (indexed[i] && obstacles[i] != null) obstacles[i].enabled = false;", src)
+        self.assertNotIn("if (!savedEnabled[i]) continue;", awake)
+        self.assertIn("indexed[i] = true;", awake)
+        self.assertIn("if (c.enabled) c.enabled = false;", awake)
+        self.assertIn("if (!c.enabled) { c.enabled = true; changedColliders = true; }", src)
+        self.assertIn("if (indexed[i] && obstacles[i] != null && obstacles[i].enabled)", src)
+        self.assertIn("if (obstacles[i] != null && obstacles[i].enabled != savedEnabled[i])", src)
         self.assertIn("obstacles[i].enabled = savedEnabled[i];", src)
+
+    def test_real_scene_has_intentionally_disabled_registry_buildings(self):
+        scene = (ROOT / "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity").read_text(encoding="utf-8")
+        meta = (ROOT / "Assets/AarisWorld/Scripts/AarisNearbyColliders.cs.meta").read_text(encoding="utf-8")
+        guid = re.search(r"^guid: ([0-9a-f]{32})$", meta, re.M).group(1)
+        docs = re.split(r"(?=^--- !u!)", scene, flags=re.M)
+        registry = next(d for d in docs if "guid: " + guid in d)
+        ids = re.findall(r"^  - \\{fileID: (\\d+)\\}$",
+                         re.search(r"(?m)^  obstacles:\\n((?:  - \\{fileID: \\d+\\}\\n)+)", registry).group(1),
+                         re.M)
+        scene_colliders = {
+            match.group(1): d
+            for d in docs
+            if (match := re.match(r"^--- !u!(?:64|65) &(\\d+)\\n", d))
+        }
+        self.assertGreater(len(ids), 200)
+        self.assertTrue(all(i in scene_colliders for i in ids))
+        disabled = [i for i in ids if re.search(r"(?m)^  m_Enabled: 0$", scene_colliders[i])]
+        self.assertGreater(len(disabled), 0, "Building collision would disappear if these were skipped")
 
     def test_collider_manager_recovers_after_reenable(self):
         src = (ROOT / "Assets/AarisWorld/Scripts/AarisNearbyColliders.cs").read_text(encoding="utf-8")
@@ -127,7 +149,7 @@ class LowRamWorldSourceContracts(unittest.TestCase):
             "active.Clear();",
             "nextActive.Clear();",
             "if (c is TerrainCollider || c is CharacterController)",
-            "if (indexed[i] && obstacles[i] != null) obstacles[i].enabled = false;",
+            "if (indexed[i] && obstacles[i] != null && obstacles[i].enabled)",
         ):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, src)
