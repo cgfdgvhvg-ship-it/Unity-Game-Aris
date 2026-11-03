@@ -14,6 +14,7 @@ namespace Aaris.MapReview
         [SerializeField] private float lookSensitivity = 0.12f;
         [SerializeField] private float minLookPitch = -70f, maxLookPitch = 70f;
         [SerializeField] private float seaLevel = -38.07552f;
+        [SerializeField] private AarisNearbyColliders nearbyColliders;
         private CharacterController controller;
         private Terrain[] terrains;
         // Layer 8 is reserved for the saved review player in TagManager and its prefab.
@@ -27,7 +28,8 @@ namespace Aaris.MapReview
         private int moveFinger = -1, lookFinger = -1;
         private Vector2 moveInput;
         private Vector3 lastMouse;
-        private Rect jumpButton, runButton, homeButton;
+        private Rect jumpButton, runButton, homeButton, reportButton, fpsButton;
+        private float reportCopiedUntil;
         private Vector2 stickCenter;
         private GUIStyle buttonStyle, labelStyle;
         private Texture2D disc;
@@ -41,7 +43,8 @@ namespace Aaris.MapReview
             previousSimulateMouse = Input.simulateMouseWithTouches;
             Input.simulateMouseWithTouches = false;
             inputConfigured = true;
-            Application.targetFrameRate = 30;
+            Application.targetFrameRate = 60;
+            if (nearbyColliders == null) nearbyColliders = FindFirstObjectByType<AarisNearbyColliders>();
             spawn = transform.position;
             spawnRotation = transform.rotation;
             spawn.y = GroundHeight(spawn) + controller.skinWidth + 0.05f;
@@ -78,14 +81,23 @@ namespace Aaris.MapReview
             jumpButton = new Rect(right - 76f, bottom - 78f, 76f, 72f);
             runButton = new Rect(right - 162f, bottom - 78f, 76f, 72f);
             homeButton = new Rect(left, top, 92f, 36f);
+            reportButton = new Rect(right - 100f, top, 100f, 36f);
+            fpsButton = new Rect(right - 212f, top, 100f, 36f);
         }
         private Vector2 ToGUI(Vector2 p) => new Vector2(p.x / uiScale, (Screen.height - p.y) / uiScale);
-        private bool OverButton(Vector2 p) => jumpButton.Contains(p) || runButton.Contains(p) || homeButton.Contains(p);
+        private bool OverButton(Vector2 p) => jumpButton.Contains(p) || runButton.Contains(p) || homeButton.Contains(p)
+            || reportButton.Contains(p) || fpsButton.Contains(p);
         private void PressButton(Vector2 p)
         {
             if (jumpButton.Contains(p)) jumpUntil = Time.unscaledTime + 0.15f;
             else if (runButton.Contains(p)) running = !running;
             else if (homeButton.Contains(p)) ResetPlayer();
+            else if (reportButton.Contains(p))
+            {
+                GUIUtility.systemCopyBuffer = AarisMobileRuntime.LatestReport;
+                reportCopiedUntil = Time.unscaledTime + 2;
+            }
+            else if (fpsButton.Contains(p)) Application.targetFrameRate = Application.targetFrameRate == 60 ? 30 : 60;
         }
         private void Look(Vector2 delta)
         {
@@ -227,6 +239,7 @@ namespace Aaris.MapReview
         {
             controller.enabled = false;
             transform.SetPositionAndRotation(spawn, spawnRotation);
+            if (nearbyColliders != null) nearbyColliders.RefreshNow();
             controller.enabled = true;
             verticalVelocity = -2f; yaw = spawnRotation.eulerAngles.y; pitch = 12f;
             lastGrounded = -10f; gait = travelSpeed = 0f;
@@ -258,6 +271,8 @@ namespace Aaris.MapReview
             GUI.Box(jumpButton, "JUMP", buttonStyle);
             GUI.Box(runButton, running ? "RUN: ON" : "WALK", buttonStyle);
             GUI.Box(homeButton, "HOME", buttonStyle);
+            GUI.Box(reportButton, Time.unscaledTime < reportCopiedUntil ? "COPIED" : "REPORT", buttonStyle);
+            GUI.Box(fpsButton, Application.targetFrameRate == 60 ? "60 FPS" : "30 FPS", buttonStyle);
             GUI.Label(new Rect(homeButton.xMax + 12f, homeButton.y, 420f, 44f),
                 "Move: left stick  |  Look: drag right  |  Human height: 1.78 m", labelStyle);
             GUI.matrix = matrix; GUI.color = oldColor;

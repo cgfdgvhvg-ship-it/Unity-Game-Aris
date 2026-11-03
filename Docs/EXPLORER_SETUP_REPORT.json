@@ -8,8 +8,10 @@
   "planned_new_trees": 1100,
   "native_assets_materialized": true,
   "csharp_syntax_checked": [
-    "Assets/AarisWorld/Editor/AarisExplorerBuild.cs",
-    "Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs"
+    "Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs",
+    "Assets/AarisWorld/Scripts/AarisNearbyColliders.cs",
+    "Assets/AarisWorld/Scripts/AarisMobileRuntime.cs",
+    "Assets/AarisWorld/Editor/AarisExplorerBuild.cs"
   ],
   "unity_editor_compilation_tested": false,
   "unity_runtime_input_tested": false,
