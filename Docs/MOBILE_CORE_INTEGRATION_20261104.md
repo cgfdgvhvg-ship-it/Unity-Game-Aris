@@ -13,6 +13,35 @@ From PR #17, this branch adopts:
 - Three-LOD source prefab transition thresholds 0.28 / 0.095 / 0.0025 (formerly 0.22 / 0.07 / 0.0025) for seven existing residential prefabs and RockCover. Original meshes, references, GUIDs, transforms, material slots, cross-fades, and nonconvex collider bindings remain unchanged.
 - Source-only unit tests guarding saved LOD thresholds and the runtime/collider contracts. The PR #17 test that assumes independently scaled tree-root transforms is deliberately omitted, since PR #18 uses source-level geometric warping instead.
 
+## Added sustained-frame-pressure adaptive profile
+
+The Unity runtime now uses the actual 180-frame p95 unscaled frame-time samples, not
+a manufacturer-name or guessed GPU performance table. On Android devices in the
+existing <=3584 MB memory tiers only, after 15 s of startup and a full sample
+window, two consecutive 3-second p95 observations above 130% of the frame budget
+lower one near-detail tier; four observations below 108% may restore one tier.
+A 12-second cooldown and at most two downgrade tiers prevent rapid oscillation.
+Level 1 scales the **already-capped** near grass view to 85% and density to 80%;
+level 2 scales them to 70% and 62%, respectively. Main directional shadow
+distance can step to 85%/70% of the existing RAM-class cap. It does not decrease
+the camera far plane, native terrain tree distance, meshes, authored textures,
+house LOD2 visibility or native TerrainData. It does not claim to detect GPU
+versus CPU bottlenecks.
+
+On low-memory events the previous streaming budget trim still applies; a sticky
+75% near-detail multiplier prevents subsequent recovery samples from undoing
+memory-relief reductions. LatestReport JSONL now records performanceLevel,
+lowMemoryDetailMultiplier, effectiveDetailDistanceM and effectiveDetailDensity.
+The adaptive control is a serialized opt-out (`adaptDetailsToFrameTime`), and
+non-Android/Editor sessions retain authored quality. Scene/controller destruction
+restores all saved runtime settings. Profile transitions can rebuild Unity terrain
+detail patches; confirm the transition cost using a real device profiler.
+
+The collision registry now differentiates routine 0.25-second grid polling from
+explicit `RefreshNow()` after a teleport or geometry movement: only the explicit
+refresh forces `Physics.SyncTransforms()` with an unchanged active collider set.
+This follows Unity's transform-sync guidance without syncing every idle poll.
+
 ## Visual/gameplay review gate
 
 1. Import with Unity 6000.3.26f1 and URP 17.3, compile C#, check SpeedTree wind/LOD/billboards, tree trunk/base/crown shapes and correct collider envelope at player scale.
