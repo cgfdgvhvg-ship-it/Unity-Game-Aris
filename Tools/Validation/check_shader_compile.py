@@ -28,7 +28,8 @@ def compile_shader(dxc,urp):
                     for stage,profile in [('vertex','vs_6_0'),('fragment','ps_6_0')]:
                         defines=[api,'UNITY_COMPILER_HLSL','UNITY_VERSION=600030','SHADER_TARGET=35','SHADER_STAGE_'+stage.upper(),*flags]
                         if platform=='vulkan_mobile':defines+=['SHADER_API_MOBILE','UNITY_HARDWARE_TIER3']
-                        output=work/'compiled.bin';cmd=[str(dxc),'-E',entries[stage],'-T',profile,'-HV','2021','-I',str(urp),'-Fo',str(output)]
+                        # URP 17.3 uses legacy vector conditional expressions: HLSL 2018.
+                        output=work/'compiled.bin';cmd=[str(dxc),'-E',entries[stage],'-T',profile,'-HV','2018','-I',str(urp),'-Fo',str(output)]
                         if platform=='vulkan_mobile':cmd+=['-spirv','-fspv-target-env=vulkan1.1','-fvk-use-dx-layout']
                         for define in defines:cmd+=['-D',define]
                         done=subprocess.run([*cmd,str(path)],capture_output=True,text=True)
@@ -37,7 +38,8 @@ def compile_shader(dxc,urp):
                         results.append({'pass':'DepthOnly' if number==0 else 'ForwardLit','platform':platform,'stage':stage,'keywords':list(flags),'status':'compiled'})
     report={'status':'dxc_hlsl_checks_passed','shader_sha256':hashlib.sha256(SHADER.read_bytes()).hexdigest(),'urp_version':package['version'],
         'urp_source_commit':source_commit,'compiler_version':subprocess.check_output([str(dxc),'--version'],text=True).strip(),
-        'compilations_passed':len(results),'variants':results,'unity_shaderlab_import_tested':False,'unity_android_build_tested':False,'android_device_tested':False}
+        'hlsl_language_version':2018,'compilations_passed':len(results),'variants':results,
+        'unity_shaderlab_import_tested':False,'unity_android_build_tested':False,'android_device_tested':False}
     Path('Docs/WATER_HLSL_CHECKS.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps({k:v for k,v in report.items() if k!='variants'}));return report
 
 if __name__=='__main__':
