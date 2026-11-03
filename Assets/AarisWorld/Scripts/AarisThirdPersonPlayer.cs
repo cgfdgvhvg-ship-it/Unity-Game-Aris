@@ -12,6 +12,7 @@ namespace Aaris.MapReview
         [SerializeField] private float jumpHeight = 1.0f, gravity = 24f;
         [SerializeField] private float followDistance = 4.2f, pivotHeight = 1.45f;
         [SerializeField] private float lookSensitivity = 0.12f;
+        [SerializeField] private float minLookPitch = -70f, maxLookPitch = 70f;
         [SerializeField] private float seaLevel = -38.07552f;
         private CharacterController controller;
         private Terrain[] terrains;
@@ -89,7 +90,7 @@ namespace Aaris.MapReview
         private void Look(Vector2 delta)
         {
             yaw += delta.x * lookSensitivity / uiScale;
-            pitch = Mathf.Clamp(pitch - delta.y * lookSensitivity / uiScale, -18f, 65f);
+            pitch = Mathf.Clamp(pitch - delta.y * lookSensitivity / uiScale, minLookPitch, maxLookPitch);
         }
         private void ReadInput()
         {

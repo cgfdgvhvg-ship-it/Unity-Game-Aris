@@ -10,6 +10,8 @@ The scene, player prefab, materials, terrain trees and road meshes are already s
 - **Phone:** left joystick moves, drag the right side to look, WALK toggles running, JUMP jumps, HOME returns to the safe spawn.
 - **Desktop:** WASD/arrows move, right mouse drag looks, Shift runs, Space jumps, F returns home.
 - The saved shoulder view follows the grounded player. The free-flight/overview/altitude controls have been removed.
+- Start in the flat western side of ValleySettlement, facing nearby houses. The saved spawn is checked against full-resolution terrain and native tree/rock obstacles, so residential scale is visible immediately rather than first viewing homes from roughly 176 m away.
+- Right-side look reaches 70 degrees upward, so the saved sun at 50 degrees elevation is reachable. The previous 18-degree upward limit could never show that sun.
 - CharacterController handles terrain, steps, slopes, trunk and building collisions. The saved Player layer excludes the avatar from camera/support queries; closest-hit camera checks avoid a truncated hit list in dense forest.
 - The visible human uses shared Unity primitive meshes and saved outfit materials, with walking limb animation. It is a lightweight scale-reference character, not an imported Free Fire character model.
 - Water remains visual: review movement stops at the shoreline, while solid docks/ramps above water remain walkable. HOME restores spawn position and facing. Combat, bots, loot, swimming and drivable vehicles are separate work.
@@ -18,11 +20,17 @@ The scene, player prefab, materials, terrain trees and road meshes are already s
 
 The daylight sky uses the built-in procedural sky shader with a visible sun disk, a linked directional light and explicit ambient colors. No runtime lighting repair component is used. Asphalt, concrete, sand and marking PNG metadata use TextureImporter, retaining their original GUIDs.
 
+Daylight uses sky exposure 1.15, neutral sky tint, sun intensity 1.35, shadow strength 0.55 and brighter sky/equator/ground ambient colors. Modern Unity material keywords are saved explicitly. These settings preserve shade and texture detail; their final appearance still needs a Unity render/device check.
+
 Buildings retain their original close meshes and have saved middle/far meshes, with consistent material slots. Only the high-detail mesh has a static collider. Generated native meshes do not retain unused CPU-readable copies. The Android build selects ETC2 texture compression; global texture mipmap limit and render scale are not reduced.
+
+All 17 reusable building prefabs now contain the same three LOD levels as the scene. The 47 residential placements and their prefabs are uniformly enlarged by 10.5–12% per model type, while the player remains 1.78 m tall. Saved foundation meshes expand with them, and original close mesh geometry is shared. Road edges, vehicle corridors, building separation and full-resolution flat ground are checked before committing the new proportions. Large industrial/tower kits retain their original scale.
 
 `Docs/FOREST_PLANTING_PLAN.json` describes 1,100 additional source-tree placements, mostly in the sparse eastern half. Native authoring checks full-resolution slopes and shoreline, reserves district pads and road corridors, and writes accepted instances directly into the four TerrainData files. Shared SpeedTree prefabs, textures and existing LODs are reused. No runtime forest spawner is added. Terrain heights are unchanged.
 
 **The materialized totals, rejected candidates and actual building LOD triangle counts are in `Docs/GROUND_REVIEW_REPORT.json`.** `Docs/TERRAIN_INDEX.json` and per-tile instance exports reflect the saved native terrain bytes.
+
+Cypress instances are a further 12% taller and wider in native TerrainData; already tall conifers/pines retain their scale. `Docs/CYPRESS_SCALE_TARGETS.json` stores absolute targets so repeated authoring cannot compound their size. Counts, positions, terrain heights, grass/detail data and terrain alpha textures are preserved. `Docs/WORLD_REVIEW_REPORT.json` records actual scales, clearances and daylight settings.
 
 The island still has 13 districts, 59 placed model objects from 17 sources, connected roads, a 240 m runway and 45 empty vehicle markers. Some source models contain multiple structures or closed doors; every building is not guaranteed enterable.
 
@@ -34,7 +42,7 @@ Use **Aaris → Build Android Ground Review APK**, or the existing batch entry p
 
 `Aaris.MapReview.Editor.AarisExplorerBuild.BuildAndroid`
 
-Output: `Builds/Android/AarisMapExplorer.apk` (kept for existing phone/cloud build scripts; app version 0.2.1, code 3).
+Output: `Builds/Android/AarisMapExplorer.apk` (kept for existing phone/cloud build scripts; app version 0.2.2, code 4).
 
 Target: ARM64 / IL2CPP / Android 8+ / landscape, package `com.aaris.mapexplorer`. The player targets a stable 30 FPS; actual target-device frame time and memory must be measured. Existing Unity 6.3 URP compatibility defines are preserved. No automatic Unity/APK build is added.
 
@@ -45,6 +53,8 @@ The build preprocessor rejects a missing player/camera, wrong player height, pen
 `python Tools/Validation/check_explorer.py --native` checks scene references, player and camera bindings, C# syntax, core asset references, LOD levels, terrain checksums and forest road/district clearances.
 
 Optional maintainer reproduction only: `python Tools/MapBuild/ground_native.py` saves TerrainData and building LODs, reopens terrain binaries, verifies unchanged heights, regenerates indexes and updates hashes. It is idempotent for the saved planting plan. `python Tools/MapBuild/surface_native.py` reproduces the saved road paint. Neither command runs in the game or is required before a normal Unity build.
+
+`python Tools/MapBuild/world_review.py` reproduces the saved proportions, complete prefabs, cypress scale and daylight. `python Tools/Validation/check_world_review.py --native` verifies those saved outputs. This authoring command is also optional for maintainers; the outputs are committed, and normal builds do not generate them.
 
 `Tools/MapBuild/build_map.py` also invokes ground authoring after the original offline map assembly. Its terrain inputs must be the four original vendor archive tiles, as described in `Tools/MapBuild/README.md`; do not re-sculpt the already edited terrain.
 

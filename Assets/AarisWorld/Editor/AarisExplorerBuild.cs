@@ -32,8 +32,8 @@ namespace Aaris.MapReview.Editor
         {
             PlayerSettings.companyName = "Aaris";
             PlayerSettings.productName = "Aaris Ground Review";
-            PlayerSettings.bundleVersion = "0.2.1";
-            PlayerSettings.Android.bundleVersionCode = 3;
+            PlayerSettings.bundleVersion = "0.2.2";
+            PlayerSettings.Android.bundleVersionCode = 4;
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
             PlayerSettings.allowedAutorotateToLandscapeLeft = true;
@@ -74,6 +74,17 @@ namespace Aaris.MapReview.Editor
                 throw new BuildFailedException("Materialize the native forest and building LOD assets before building.");
             if (RenderSettings.skybox == null || RenderSettings.skybox.shader.name != "Skybox/Procedural")
                 throw new BuildFailedException("The saved daylight sky material is missing or uses the wrong shader.");
+            string worldReport = "Docs/WORLD_REVIEW_REPORT.json";
+            if (!File.Exists(worldReport) || !JsonUtility.FromJson<NativeReport>(File.ReadAllText(worldReport)).native_assets_materialized)
+                throw new BuildFailedException("Saved world proportion assets are missing. Check out the complete current project and its Git LFS assets.");
+            if (RenderSettings.sun == null || RenderSettings.sun.intensity < 1.3f || Camera.main == null || Camera.main.clearFlags != CameraClearFlags.Skybox)
+                throw new BuildFailedException("The saved daylight sun and skybox camera must be present.");
+            foreach (string asset in AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/AarisWorld/Models" }))
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(asset));
+                if (prefab == null || prefab.GetComponent<LODGroup>() == null || prefab.GetComponent<LODGroup>().GetLODs().Length != 3)
+                    throw new BuildFailedException("A saved building prefab is missing its three integrated LODs.");
+            }
             foreach (string texture in new[] { "Asphalt", "Concrete", "Sand", "RoadMark" })
                 if (!(AssetImporter.GetAtPath("Assets/AarisWorld/Surfaces/" + texture + ".png") is TextureImporter))
                     throw new BuildFailedException("A surface PNG has the wrong importer: " + texture);

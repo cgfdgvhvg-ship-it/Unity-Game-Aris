@@ -30,9 +30,11 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0.0, z: 0, w: 1.0}
   m_LocalPosition: {x: 0.0, y: 0.0, z: 0.0}
-  m_LocalScale: {x: 1.0, y: 1.0, z: 1.0}
+  m_LocalScale: {x: 1.12, y: 1.12, z: 1.12}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 10015}
+  - {fileID: 10027}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0.0, y: 0.0, z: 0.0}
 --- !u!33 &10010
@@ -114,6 +116,186 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: eced1a74ce2a5766a4a24d7edd053ad2, type: 2}
+--- !u!1 &10014
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 10015}
+  - component: {fileID: 10024}
+  - component: {fileID: 10025}
+  m_Layer: 0
+  m_Name: pitched_roof_cottage_LOD1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 12
+  m_IsActive: 1
+--- !u!4 &10015
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 10014}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0.0, z: 0, w: 1.0}
+  m_LocalPosition: {x: 0.0, y: 0.0, z: 0.0}
+  m_LocalScale: {x: 1.0, y: 1.0, z: 1.0}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 10001}
+  m_LocalEulerAnglesHint: {x: 0.0, y: 0.0, z: 0.0}
+--- !u!33 &10024
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 10014}
+  m_Mesh: {fileID: 4300000, guid: abc8ad990edd52dbad042bf9e784530a, type: 2}
+--- !u!23 &10025
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 10014}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: fb73fa3c1b43555980a4f2c6e4c55fb5, type: 2}
+  - {fileID: 2100000, guid: 48620d1e2b465eea99619280ceab2e99, type: 2}
+  - {fileID: 2100000, guid: ea90446993d45ca7bef942d456bc1601, type: 2}
+  - {fileID: 2100000, guid: 374cf398637d59d7ae96336571c9b608, type: 2}
+  - {fileID: 2100000, guid: 5e72048d9ca25a82ac00fc0bc5f82946, type: 2}
+  - {fileID: 2100000, guid: 47444ba0d5545ed18fb04fd5275c4899, type: 2}
+  - {fileID: 2100000, guid: b10a863f87005c79854667209b9a85c0, type: 2}
+  - {fileID: 2100000, guid: d57571122c0a5631ae6db8d8fc961dc2, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 2
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &10026
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 10027}
+  - component: {fileID: 10036}
+  - component: {fileID: 10037}
+  m_Layer: 0
+  m_Name: pitched_roof_cottage_LOD2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 12
+  m_IsActive: 1
+--- !u!4 &10027
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 10026}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0.0, z: 0, w: 1.0}
+  m_LocalPosition: {x: 0.0, y: 0.0, z: 0.0}
+  m_LocalScale: {x: 1.0, y: 1.0, z: 1.0}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 10001}
+  m_LocalEulerAnglesHint: {x: 0.0, y: 0.0, z: 0.0}
+--- !u!33 &10036
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 10026}
+  m_Mesh: {fileID: 4300000, guid: 3221f3806ad65574b89ce94401dc631c, type: 2}
+--- !u!23 &10037
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 10026}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: fb73fa3c1b43555980a4f2c6e4c55fb5, type: 2}
+  - {fileID: 2100000, guid: 48620d1e2b465eea99619280ceab2e99, type: 2}
+  - {fileID: 2100000, guid: ea90446993d45ca7bef942d456bc1601, type: 2}
+  - {fileID: 2100000, guid: 374cf398637d59d7ae96336571c9b608, type: 2}
+  - {fileID: 2100000, guid: 5e72048d9ca25a82ac00fc0bc5f82946, type: 2}
+  - {fileID: 2100000, guid: 47444ba0d5545ed18fb04fd5275c4899, type: 2}
+  - {fileID: 2100000, guid: b10a863f87005c79854667209b9a85c0, type: 2}
+  - {fileID: 2100000, guid: d57571122c0a5631ae6db8d8fc961dc2, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 2
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
 --- !u!205 &10013
 LODGroup:
   m_ObjectHideFlags: 0
@@ -128,8 +310,16 @@ LODGroup:
   m_AnimateCrossFading: 1
   m_LastLODIsBillboard: 0
   m_LODs:
-  - screenRelativeHeight: 0.012
-    fadeTransitionWidth: 0.15
+  - screenRelativeHeight: 0.22
+    fadeTransitionWidth: 0.12
     renderers:
     - renderer: {fileID: 10011}
+  - screenRelativeHeight: 0.07
+    fadeTransitionWidth: 0.12
+    renderers:
+    - renderer: {fileID: 10025}
+  - screenRelativeHeight: 0.0025
+    fadeTransitionWidth: 0.12
+    renderers:
+    - renderer: {fileID: 10037}
   m_Enabled: 1

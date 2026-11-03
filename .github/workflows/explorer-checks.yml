@@ -13,6 +13,8 @@ on:
       - 'Tools/Validation/check_road_markings.py'
       - 'Tools/MapBuild/road_markings.py'
       - 'Tools/MapBuild/surface_native.py'
+      - 'Tools/MapBuild/world_review.py'
+      - 'Tools/Validation/check_world_review.py'
       - '.github/workflows/explorer-checks.yml'
 permissions:
   contents: read
@@ -32,3 +34,5 @@ jobs:
         run: python Tools/Validation/check_explorer.py
       - name: Check painted road geometry across paved triangle boundaries
         run: python Tools/Validation/check_road_markings.py
+      - name: Check core building prefabs, world proportions and daylight
+        run: python Tools/Validation/check_world_review.py

@@ -303,5 +303,8 @@ def run():
     from ground_native import materialize
     upgrade(ROOT)
     materialize(ROOT)
+    from world_review import save_world,save_native
+    save_world(ROOT)
+    save_native(ROOT)
     log('ASSEMBLY COMPLETE',len(sites),'districts',len(buildings),'model instances',len(spawns),'empty vehicle markers')
 if __name__=='__main__':run()
