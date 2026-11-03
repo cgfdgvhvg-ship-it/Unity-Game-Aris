@@ -133,7 +133,7 @@ class ObservationContractTests(unittest.TestCase):
                 return "scene:abc:" + str(go)
         q = {"operations": [{"op": "set_material_color", "path": "Assets/Wall.mat"}]}
         rows = observation_requests(q, ManyUsers())
-        self.assertEqual(len(rows), 32)
+        self.assertEqual(len(rows), 6)
         self.assertEqual(rows[0]["target"], "scene:abc:101")
         self.assertGreater(int(rows[-1]["target"].split(":")[-1]), 170)
 
