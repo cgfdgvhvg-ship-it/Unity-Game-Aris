@@ -13,7 +13,8 @@ namespace Aaris.MapReview
         [SerializeField] private Terrain[] terrains;
         [SerializeField] private bool releaseTerrainPaintCpuCopies = true;
         [SerializeField] private int targetFrameRate = 60;
-        [SerializeField] private bool adaptiveAndroidVisualBudget = true;
+        // Non-serialized so older saved scenes always receive the Android safeguard.
+        private bool adaptiveAndroidVisualBudget = true;
         private string mobileVisualProfile = "authored";
         private bool emergencyBudgetApplied;
         private readonly float[] frameTimes = new float[180];
