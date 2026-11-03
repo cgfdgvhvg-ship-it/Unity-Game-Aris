@@ -24,6 +24,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: python -m pip install PyYAML==6.0.3 tree-sitter==0.26.0 tree-sitter-c-sharp==0.23.5
-      - name: Check C# syntax, saved camera binding and unchanged terrain pointers
+      - run: python -m pip install numpy==2.3.5 Pillow==12.3.0 PyYAML==6.0.3 tree-sitter==0.26.0 tree-sitter-c-sharp==0.23.5
+      - name: Check C# syntax, saved ground player and native terrain pointers
         run: python Tools/Validation/check_explorer.py

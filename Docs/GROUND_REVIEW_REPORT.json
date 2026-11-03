@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "native_assets_materialized": false,
+  "unity_editor_import_tested": false,
+  "android_playtest_passed": false,
+  "player_height_m": 1.78,
+  "spawn_m": [
+    -650.0,
+    5.65553600000001,
+    -190.0
+  ],
+  "follow_distance_m": 4.2,
+  "free_flight_camera_removed": true,
+  "planned_new_trees": 1100,
+  "new_trees_by_tile": {
+    "1_1": 80,
+    "1_2": 80,
+    "2_1": 520,
+    "2_2": 420
+  },
+  "native_terrain_heights_unchanged": true,
+  "source_tree_models_reused": true,
+  "tree_clearance_road_m": 17,
+  "tree_clearance_district_m": 18,
+  "target_frame_rate": 30,
+  "render_scale_or_texture_resolution_reduced": false
+}

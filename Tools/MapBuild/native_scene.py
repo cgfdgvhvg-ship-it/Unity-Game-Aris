@@ -76,7 +76,7 @@ class Scene:
             'm_BounceIntensity':1,'m_ColorTemperature':5800,'m_UseColorTemperature':0,'m_BoundingSphereOverride':Flow(x=0,y=0,z=0,w=0),
             'm_UseBoundingSphereOverride':0,'m_UseViewFrustumForShadowCasterCull':1,'m_ShadowRadius':0,'m_ShadowAngle':0})
         rs['m_Sun']=ref(light)
-        go,tr,gd=self.object('Main Camera',position=(350,300,-420),static=False)
+        go,tr,gd=self.object('Main Camera',position=(-649.7,8,-194.1),static=False)
         gd['m_TagString']='MainCamera'
         self.transforms[tr]['m_LocalRotation']=Flow(x=.23,y=-.13,z=.031,w=.964)
         self.component(go,gd,20,'Camera',{'m_Enabled':1,'serializedVersion':2,'m_ClearFlags':1,'m_BackGroundColor':color(.4,.65,.8),
@@ -87,11 +87,6 @@ class Scene:
             'm_CullingMask':{'serializedVersion':2,'m_Bits':4294967295},'m_RenderingPath':-1,'m_TargetTexture':ref(),'m_TargetDisplay':0,
             'm_TargetEye':3,'m_HDR':1,'m_AllowMSAA':1,'m_AllowDynamicResolution':0,'m_ForceIntoRT':0,'m_OcclusionCulling':1,
             'm_StereoConvergence':10,'m_StereoSeparation':.022})
-        self.component(go,gd,114,'MonoBehaviour',{'m_Enabled':1,'m_EditorHideFlags':0,
-            'm_Script':ref(11500000,guid('Assets/AarisWorld/Scripts/AarisMapExplorer.cs'),3),'m_Name':'',
-            'm_EditorClassIdentifier':'Assembly-CSharp::Aaris.MapReview.AarisMapExplorer',
-            'moveSpeed':45,'fastMultiplier':4,'mouseLookSensitivity':.15,'touchLookSensitivity':.10,
-            'terrainClearance':2.5,'mapBoundary':980,'maximumAltitude':1800,'showHelp':1})
         self.component(go,gd,81,'AudioListener',{'m_Enabled':1})
     def save(self,path,prefab=False):
         objects=list(self.objects)
