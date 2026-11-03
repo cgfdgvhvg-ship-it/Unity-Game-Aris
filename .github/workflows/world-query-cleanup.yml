@@ -1,0 +1,20 @@
+name: Expire AI world queries
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: write
+jobs:
+  expire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Delete expired completed queries and their logs/artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python Tools/World/retention.py --delete-expired

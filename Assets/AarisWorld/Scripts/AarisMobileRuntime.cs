@@ -115,7 +115,7 @@ namespace Aaris.MapReview
         [Serializable]
         private sealed class Sample
         {
-            public string reason, utc, version, device, gpu, api, lastError;
+            public string reason, utc, version, buildGuid, device, gpu, api, lastError;
             public int systemRamMB, targetFps, warningCount;
             public float seconds, averageFps, p95FrameMs;
             public long unityAllocatedBytes, unityReservedBytes, managedBytes, androidPssKB;
@@ -130,7 +130,7 @@ namespace Aaris.MapReview
             for (int i = 0; i < frameCount; i++) { total += frameTimes[i]; sortedTimes[i] = frameTimes[i]; }
             Array.Sort(sortedTimes, 0, frameCount);
             var s = new Sample {
-                reason = reason, utc = DateTime.UtcNow.ToString("O"), version = Application.version,
+                reason = reason, utc = DateTime.UtcNow.ToString("O"), version = Application.version, buildGuid = Application.buildGUID,
                 device = SystemInfo.deviceModel, gpu = SystemInfo.graphicsDeviceName, api = SystemInfo.graphicsDeviceType.ToString(),
                 systemRamMB = SystemInfo.systemMemorySize, targetFps = Application.targetFrameRate,
                 seconds = Time.unscaledTime, averageFps = total > 0 ? frameCount / total : 0,

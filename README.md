@@ -71,3 +71,7 @@ Optional maintainer reproduction only: `python Tools/MapBuild/ground_native.py` 
 **Offline validation is not a Unity Editor compile, render or Android playtest.** These remain explicitly untested in the reports until performed. The former near-tree termination still requires a device crash log and a repeatable device test before it can be called resolved.
 
 Original vendor terrain assets retain their existing Unity Asset Store licence requirements. Model provenance and licences remain in `Tools/MapBuild/model_sources.json` and `URP-TERRAIN-PROVENANCE.md`. Historical TRANSFER reports describe the initial import; current terrain hashes are in `Docs/MAP_BUILD_REPORT.json`.
+# AI map inspection and core edits
+
+Start with `python Tools/World/world.py context` after installing `Tools/World/requirements.txt`. The toolkit reads native terrain height/slope/instances, saved scene objects, materials and asset fields, and provides guarded core edits plus verification. See [the automation guide](Docs/WORLD_AUTOMATION.md) and [AI working instructions](AGENTS.md). On-demand GitHub query workflows have expiring reports; Unity physics/captures/native writes require a separately configured licensed editor runner. Installing the toolkit does not change the map layout or graphic quality.
+
