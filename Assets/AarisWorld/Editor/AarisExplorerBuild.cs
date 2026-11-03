@@ -22,7 +22,7 @@ namespace Aaris.MapReview.Editor
             Configure();
             EditorUserBuildSettings.buildAppBundle = false;
             EditorUserBuildSettings.androidBuildSubtarget = MobileTextureSubtarget.ETC2;
-            Build("Builds/Android/AarisGroundReview.apk", BuildTarget.Android);
+            Build("Builds/Android/AarisMapExplorer.apk", BuildTarget.Android);
         }
 
         [MenuItem("Aaris/Build Web Map Explorer")]
@@ -33,6 +33,7 @@ namespace Aaris.MapReview.Editor
             PlayerSettings.companyName = "Aaris";
             PlayerSettings.productName = "Aaris Ground Review";
             PlayerSettings.bundleVersion = "0.2.0";
+            PlayerSettings.Android.bundleVersionCode = 2;
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
             PlayerSettings.allowedAutorotateToLandscapeLeft = true;

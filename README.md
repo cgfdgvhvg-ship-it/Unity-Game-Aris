@@ -31,7 +31,7 @@ Use **Aaris → Build Android Ground Review APK**, or the existing batch entry p
 
 `Aaris.MapReview.Editor.AarisExplorerBuild.BuildAndroid`
 
-Output: `Builds/Android/AarisGroundReview.apk`.
+Output: `Builds/Android/AarisMapExplorer.apk` (kept for existing phone/cloud build scripts; app version 0.2.0, code 2).
 
 Target: ARM64 / IL2CPP / Android 8+ / landscape, package `com.aaris.mapexplorer`. The player targets a stable 30 FPS; actual target-device frame time and memory must be measured. Existing Unity 6.3 URP compatibility defines are preserved. No automatic Unity/APK build is added.
 

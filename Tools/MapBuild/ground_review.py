@@ -222,7 +222,7 @@ def upgrade(root):
     gs['m_AlwaysIncludedShaders']=[ref(106,'0000000000000000f000000000000000',0)]
     write_yaml(graphics,[(30,1,'GraphicsSettings',gs)])
     settings_path=root/'ProjectSettings/ProjectSettings.asset';settings=documents(settings_path)[0][3]
-    settings['productName']='Aaris Ground Review';settings['bundleVersion']='0.2.0'
+    settings['productName']='Aaris Ground Review';settings['bundleVersion']='0.2.0';settings['AndroidBundleVersionCode']=2
     write_yaml(settings_path,[(129,1,'PlayerSettings',settings)])
     quality={'serializedVersion':3,'name':'Aaris Ground','pixelLightCount':1,'shadows':2,'shadowResolution':2,'shadowProjection':1,
         'shadowCascades':2,'shadowDistance':100,'shadowNearPlaneOffset':3,'shadowCascade2Split':.25,'shadowCascade4Split':vec(.067,.2,.467),
