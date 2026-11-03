@@ -118,6 +118,25 @@ class ObservationContractTests(unittest.TestCase):
                               "rgba": [1, 0, 0, 1]}]}
         self.assertEqual(observation_requests(q, FakeWorld())[0]["target"], "scene:abc:101")
 
+    def test_shared_material_large_usage_is_sampled_not_rejected(self):
+        class ManyUsers:
+            guid_paths = {"f" * 32: "Assets/Wall.mat"}
+            docs = {
+                i: {"kind": "MeshRenderer", "data": {
+                    "m_GameObject": {"fileID": i},
+                    "m_Materials": [{"fileID": 2100000, "guid": "f" * 32, "type": 2}]}}
+                for i in range(101, 181)
+            }
+            gos = {i: {"m_Name": "Wall"} for i in range(101, 181)}
+            go_transform = {i: i + 1000 for i in range(101, 181)}
+            def stable_id(self, go):
+                return "scene:abc:" + str(go)
+        q = {"operations": [{"op": "set_material_color", "path": "Assets/Wall.mat"}]}
+        rows = observation_requests(q, ManyUsers())
+        self.assertEqual(len(rows), 32)
+        self.assertEqual(rows[0]["target"], "scene:abc:101")
+        self.assertGreater(int(rows[-1]["target"].split(":")[-1]), 170)
+
     def test_over_budget_observations_fail_without_dropping_user_requests(self):
         q = {"operations": [], "observe_after": [
             {"x": i, "z": 0, "radius": 1} for i in range(33)]}
