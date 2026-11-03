@@ -63,9 +63,20 @@ def run(root):
         chosen = rng.choice([r for r in instances if r["category"] == category])
         facts = inspect(w, {"target": chosen["id"], "radius": 60, "limit": 100})
         row = {"label": "seeded_random_"+category, "target": chosen, **brief(facts)}
-        prototype = World(root, chosen["path"])
-        prototype_root = next(go for go in prototype.gos if not prototype.transforms[prototype.go_transform[go]].get("m_Father", {}).get("fileID"))
-        row["prototype_materials"] = material_summary(prototype.object(prototype_root, True))
+        try:
+            prototype = World(root, chosen["path"])
+            prototype_root = next(go for go in prototype.gos if not prototype.transforms[prototype.go_transform[go]].get("m_Father", {}).get("fileID"))
+            row["prototype_materials"] = material_summary(prototype.object(prototype_root, True))
+        except (ValueError, KeyError, OSError, StopIteration) as error:
+            # A prefab variant can contain stripped transforms rather than a
+            # complete inline hierarchy. Preserve this reader limitation as
+            # audit evidence instead of inventing colors or halting all queries.
+            row["prototype_materials_status"] = "unavailable"
+            row["prototype_reader_error"] = type(error).__name__+": "+str(error)
+            source = w.asset_docs(chosen["path"])
+            row["prototype_document_counts"] = dict(Counter(d["kind"] for d in source.get("docs", [])))
+            row["prototype_sources"] = [w.reference(d["data"].get("m_SourcePrefab", {}))
+                                        for d in source.get("docs", []) if d["kind"] == "PrefabInstance"]
         queries.append(row)
     houses = [go for go, row in w.gos.items() if "house" in row.get("m_Name", "").lower()
               and "foundation" not in row["m_Name"].lower() and not row["m_Name"].startswith("ReviewLOD_")
