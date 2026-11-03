@@ -62,6 +62,46 @@ class LowRamWorldSourceContracts(unittest.TestCase):
         self.assertNotIn("farClipPlane =", src)
         self.assertNotIn("treeDistance =", src)
 
+    def test_mobile_distant_tree_lods_keep_visibility_and_restore_every_value(self):
+        src = (ROOT / "Assets/AarisWorld/Scripts/AarisMobileRuntime.cs").read_text(encoding="utf-8")
+        for fragment in (
+            "originalTreeBillboardDistances",
+            "originalFullLodTreeCounts",
+            "originalHeightmapPixelErrors",
+            "originalBasemapDistances",
+            "constrained ? 100f : 140f",
+            "constrained ? 28 : 44",
+            "constrained ? 8f : 6f",
+            "constrained ? 400f : 550f",
+            "terrain.treeBillboardDistance = originalTreeBillboardDistances[i];",
+            "terrain.treeMaximumFullLODCount = originalFullLodTreeCounts[i];",
+            "terrain.heightmapPixelError = originalHeightmapPixelErrors[i];",
+            "terrain.basemapDistance = originalBasemapDistances[i];",
+            "effectiveTreeBillboardDistanceM",
+            "effectiveMaxFullLodTrees",
+            "effectiveHeightmapPixelError",
+            "effectiveBasemapDistanceM",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, src)
+        self.assertNotIn("treeDistance =", src)
+        self.assertNotIn("farClipPlane =", src)
+
+    def test_fps_switch_resets_samples_and_uses_actual_cap(self):
+        src = (ROOT / "Assets/AarisWorld/Scripts/AarisMobileRuntime.cs").read_text(encoding="utf-8")
+        player = (ROOT / "Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs").read_text(encoding="utf-8")
+        self.assertIn("Application.targetFrameRate == 60 ? 30 : 60", player)
+        for fragment in (
+            "observedTargetFps = Application.targetFrameRate;",
+            "int cap = Application.targetFrameRate > 0 ? Application.targetFrameRate : targetFrameRate;",
+            "if (cap != observedTargetFps)",
+            "Array.Clear(frameTimes, 0, frameTimes.Length);",
+            "frameIndex = frameCount = pressureSamples = recoverySamples = 0;",
+            "1000f / Mathf.Clamp(observedTargetFps, 30, 120)",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, src)
+
     def test_explicit_collider_refresh_keeps_physics_queries_current(self):
         src = (ROOT / "Assets/AarisWorld/Scripts/AarisNearbyColliders.cs").read_text(encoding="utf-8")
         self.assertIn("nextCheck) RefreshNow(false);", src)
