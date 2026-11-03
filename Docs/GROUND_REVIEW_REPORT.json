@@ -102,92 +102,94 @@
     "2_1": 519,
     "2_2": 428
   },
-  "cpu_readable_mesh_copies_removed": 34,
+  "cpu_readable_mesh_copies_removed": 214,
   "building_lod_triangles": {
     "TownHall": {
       "lod0_triangles": 63558,
-      "lod1_triangles": 41564,
-      "lod2_triangles": 17447
+      "lod1_triangles": 17925,
+      "lod2_triangles": 4431
     },
     "a_frame_cabin": {
       "lod0_triangles": 11000,
-      "lod1_triangles": 4025,
-      "lod2_triangles": 3055
+      "lod1_triangles": 2862,
+      "lod2_triangles": 986
     },
     "bungalow_house": {
       "lod0_triangles": 14796,
-      "lod1_triangles": 6281,
-      "lod2_triangles": 4025
+      "lod1_triangles": 4318,
+      "lod2_triangles": 1661
     },
     "detached_two_storey_house": {
       "lod0_triangles": 12646,
-      "lod1_triangles": 5495,
-      "lod2_triangles": 4232
+      "lod1_triangles": 4619,
+      "lod2_triangles": 1945
     },
     "garage_apartment": {
       "lod0_triangles": 14760,
-      "lod1_triangles": 5569,
-      "lod2_triangles": 3813
+      "lod1_triangles": 4167,
+      "lod2_triangles": 1843
     },
     "pitched_roof_cottage": {
       "lod0_triangles": 14716,
-      "lod1_triangles": 5875,
-      "lod2_triangles": 3953
+      "lod1_triangles": 4428,
+      "lod2_triangles": 1622
     },
     "row_three_townhouses": {
       "lod0_triangles": 14484,
-      "lod1_triangles": 6590,
-      "lod2_triangles": 4771
+      "lod1_triangles": 5914,
+      "lod2_triangles": 2358
     },
     "two_bedroom_garage_house": {
       "lod0_triangles": 3060,
-      "lod1_triangles": 2696,
-      "lod2_triangles": 1700
+      "lod1_triangles": 2056,
+      "lod2_triangles": 1548
     },
     "observatory_dome": {
       "lod0_triangles": 10704,
-      "lod1_triangles": 10576,
-      "lod2_triangles": 10190
+      "lod1_triangles": 10357,
+      "lod2_triangles": 9855
     },
     "warehouse_loading_dock": {
       "lod0_triangles": 1440,
-      "lod1_triangles": 1440,
-      "lod2_triangles": 1426
+      "lod1_triangles": 1426,
+      "lod2_triangles": 1423
     },
     "lighthouse": {
       "lod0_triangles": 8456,
-      "lod1_triangles": 5957,
-      "lod2_triangles": 3903
+      "lod1_triangles": 3796,
+      "lod2_triangles": 1408
     },
     "watchtower": {
       "lod0_triangles": 2970,
-      "lod1_triangles": 2362,
-      "lod2_triangles": 1338
+      "lod1_triangles": 2002,
+      "lod2_triangles": 684
     },
     "Airfield": {
       "lod0_triangles": 315612,
-      "lod1_triangles": 255326,
-      "lod2_triangles": 226024
+      "lod1_triangles": 224159,
+      "lod2_triangles": 143261
     },
     "HanokVillage": {
       "lod0_triangles": 191570,
-      "lod1_triangles": 106696,
-      "lod2_triangles": 83546
+      "lod1_triangles": 89423,
+      "lod2_triangles": 55215
     },
     "CanalTown": {
       "lod0_triangles": 275178,
-      "lod1_triangles": 259462,
-      "lod2_triangles": 254121
+      "lod1_triangles": 257511,
+      "lod2_triangles": 125672
     },
     "ParcelDepot": {
       "lod0_triangles": 20352,
-      "lod1_triangles": 8620,
-      "lod2_triangles": 5313
+      "lod1_triangles": 6632,
+      "lod2_triangles": 2916
     },
     "Harbour": {
       "lod0_triangles": 31012,
-      "lod1_triangles": 24170,
-      "lod2_triangles": 22952
+      "lod1_triangles": 23527,
+      "lod2_triangles": 2714
     }
-  }
+  },
+  "non_readable_generated_mesh_count": 248,
+  "terrain_detail_maps_prototypes_and_alpha_textures_preserved": true
 }
