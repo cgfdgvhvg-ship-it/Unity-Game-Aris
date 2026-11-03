@@ -5,10 +5,11 @@ PlayerSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 27
   companyName: Aaris
-  productName: Aaris Map Explorer
+  productName: Aaris Ground Review
   m_ActiveColorSpace: 1
   activeInputHandler: 0
-  bundleVersion: 0.1.0
+  bundleVersion: 0.2.0
+  AndroidBundleVersionCode: 2
   defaultInterfaceOrientation: 4
   allowedAutorotateToPortrait: 0
   allowedAutorotateToPortraitUpsideDown: 0

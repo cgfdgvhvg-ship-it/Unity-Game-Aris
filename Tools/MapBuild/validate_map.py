@@ -98,7 +98,7 @@ def validate(t,sites,roads,buildings,spawns,models):
             'Some source packs contain exterior shells or authored closed doors. No promise that every building is enterable.',
             'The ocean is visual only; swim, damage, map boundary and vehicle gameplay systems are not included.',
             'Roads are graded using an 8% planning target; final measured slopes and maximum appear above after intersections and flat district transitions.',
-            'LOD currently performs distance culling, not independently authored lower-poly building meshes. Profile on the intended device.']}
+            'Ground-review LOD meshes and target-device performance require verification after native authoring.']}
 
 def structural():
     """Check generated Mesh buffers, local scene references and native asset GUIDs."""

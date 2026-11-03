@@ -1,24 +1,17 @@
 {
   "status": "passed",
-  "unity_editor_compilation_tested": false,
-  "unity_runtime_input_tested": false,
-  "saved_camera_controller_bound": true,
-  "audio_listener_count_on_camera": 1,
+  "saved_ground_player_bound": true,
+  "free_flight_camera_removed": true,
   "terrain_count": 4,
   "vehicle_marker_count": 45,
+  "building_lod_levels": 3,
+  "planned_new_trees": 1100,
+  "native_assets_materialized": true,
   "csharp_syntax_checked": [
     "Assets/AarisWorld/Editor/AarisExplorerBuild.cs",
-    "Assets/AarisWorld/Scripts/AarisMapExplorer.cs"
+    "Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs"
   ],
-  "map_terrain_bytes_unchanged": true,
-  "urp_compatibility_define_targets": [
-    "Android",
-    "Standalone",
-    "WebGL"
-  ],
-  "android": "ARM64 / IL2CPP / landscape / Android 8+",
-  "controls": {
-    "desktop": "WASD/arrows; Q/E height; Shift fast; right-drag look; middle-drag pan; wheel zoom; F home; O overview",
-    "touch": "Hold movement buttons; drag to look; pinch or +/- zoom; Up/Down altitude; Home/Overview/Speed buttons"
-  }
+  "unity_editor_compilation_tested": false,
+  "unity_runtime_input_tested": false,
+  "android_device_tested": false
 }

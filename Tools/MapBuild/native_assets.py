@@ -66,7 +66,7 @@ def write_yaml(path, objects):
 def meta(path, kind='NativeFormatImporter', main_id=0, texture=None):
     p=Path(path)
     data={'fileFormatVersion':2,'guid':guid(p.as_posix())}
-    if texture:
+    if texture is not None:
         imp={'internalIDToNameTable':[], 'externalObjects':{}, 'serializedVersion':12,
              'mipmaps':{'mipMapMode':0,'enableMipMap':1,'sRGBTexture':0 if texture.get('linear') else 1,
                         'linearTexture':0,'fadeOut':0,'borderMipMap':0,'mipMapsPreserveCoverage':0,'alphaTestReferenceValue':0.5,'mipMapFadeDistanceStart':1,'mipMapFadeDistanceEnd':3},
@@ -117,7 +117,7 @@ def mesh_asset(path, pos, normal, uv, indices, template, name=None, tangent=None
     block=yaml.dump({'m_SubMeshes':subs},Dumper=Dumper,sort_keys=False,width=1000)
     block='\n'.join('  '+line for line in block.rstrip().splitlines())+'\n'
     text=re.sub(r'(?ms)^  m_SubMeshes:.*?(?=^  m_Shapes:)',block,text)
-    text=re.sub(r'(?m)^  m_IsReadable:.*$', '  m_IsReadable: 1',text)
+    text=re.sub(r'(?m)^  m_IsReadable:.*$', '  m_IsReadable: 0',text)
     text=re.sub(r'(?m)^  m_IndexFormat:.*$', '  m_IndexFormat: 1',text)
     text=re.sub(r'(?m)^  m_IndexBuffer:.*$', '  m_IndexBuffer: '+indices.tobytes().hex(),text)
     channels=[]

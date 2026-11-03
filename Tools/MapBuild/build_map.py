@@ -309,5 +309,10 @@ def run():
     text='\n'.join(line for line in text.splitlines() if not any(p.replace(' ','[[:space:]]') in line or p in line for p in removed))+'\n'
     text+='\n# Generated native map meshes and extracted textures\nAssets/AarisWorld/**/*.asset filter=lfs diff=lfs merge=lfs -text\nAssets/AarisWorld/**/*.png filter=lfs diff=lfs merge=lfs -text\n'
     attributes.write_text(text)
+    # Author saved native assets only; no runtime map/lighting bootstrapper is added.
+    from ground_review import upgrade
+    from ground_native import materialize
+    upgrade(ROOT)
+    materialize(ROOT)
     log('ASSEMBLY COMPLETE',len(sites),'districts',len(buildings),'model instances',len(spawns),'empty vehicle markers')
 if __name__=='__main__':run()

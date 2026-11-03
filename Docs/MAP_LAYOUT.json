@@ -6830,7 +6830,7 @@
         800,
         1000
       ],
-      "remaining_terrain_instances": 1625,
+      "remaining_terrain_instances": 1704,
       "removed_terrain_instances": 400,
       "cleared_detail_patches": 2308
     },
@@ -6846,7 +6846,7 @@
         800,
         1000
       ],
-      "remaining_terrain_instances": 3986,
+      "remaining_terrain_instances": 4065,
       "removed_terrain_instances": 1317,
       "cleared_detail_patches": 1798
     },
@@ -6862,7 +6862,7 @@
         800,
         1000
       ],
-      "remaining_terrain_instances": 388,
+      "remaining_terrain_instances": 907,
       "removed_terrain_instances": 325,
       "cleared_detail_patches": 2514
     },
@@ -6878,10 +6878,15 @@
         800,
         1000
       ],
-      "remaining_terrain_instances": 426,
+      "remaining_terrain_instances": 832,
       "removed_terrain_instances": 22,
       "cleared_detail_patches": 2393
     }
   ],
-  "vehicle_phase": "Empty markers only. Vehicle prefabs/physics intentionally deferred."
+  "vehicle_phase": "Empty markers only. Vehicle prefabs/physics intentionally deferred.",
+  "ground_review": {
+    "new_native_tree_count": 1083,
+    "saved_forest_plan": "Docs/FOREST_PLANTING_PLAN.json",
+    "building_lod_levels": 3
+  }
 }

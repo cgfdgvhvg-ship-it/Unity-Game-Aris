@@ -1,56 +1,97 @@
-"""Syntax, saved camera binding and project setup checks. No Unity runtime claim."""
-import ast,hashlib,json,re
+"""Validate saved ground gameplay, forest clearances and references; not a playtest."""
+import ast,hashlib,json,re,sys
 from pathlib import Path
+import numpy as np
 import yaml
 from tree_sitter import Language,Parser
 import tree_sitter_c_sharp
 ROOT=Path.cwd()
-def docs(text):
-    for chunk in re.split(r'(?m)^--- !u!',text)[1:]:
-        head,body=chunk.split('\n',1);data=yaml.load(body,Loader=yaml.CSafeLoader);name=next(iter(data));yield int(head.split()[0]),int(head.split('&')[1].split()[0]),name,data[name]
+sys.path.insert(0,str(ROOT/'Tools/MapBuild'))
+from ground_review import documents,segment_distance
 
-def check():
-    scene=ROOT/'Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity';objects=list(docs(scene.read_text()));byid={i:(c,n,d) for c,i,n,d in objects}
-    assert len(byid)==len(objects),'Duplicate Unity scene object IDs'
-    go=next(i for c,i,n,d in objects if c==1 and d['m_Name']=='Main Camera');gd=byid[go][2]
-    components=[byid[e['component']['fileID']] for e in gd['m_Component']]
-    script=ROOT/'Assets/AarisWorld/Scripts/AarisMapExplorer.cs';script_guid=yaml.safe_load(Path(str(script)+'.meta').read_text())['guid']
-    explorer=[d for c,n,d in components if c==114 and d['m_Script']['guid']==script_guid]
-    assert len(explorer)==1 and explorer[0]['m_Enabled']==1
-    assert sum(c==20 for c,n,d in components)==sum(c==81 for c,n,d in components)==1
+def refs(value):
+    if isinstance(value,dict):
+        if 'fileID'in value:yield value
+        for v in value.values():yield from refs(v)
+    elif isinstance(value,list):
+        for v in value:yield from refs(v)
+
+def check(require_native=False):
+    objects=documents(ROOT/'Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity');byid={i:(c,n,d) for c,i,n,d in objects}
+    assert len(byid)==len(objects),'Duplicate saved object ID'
+    for c,i,n,d in objects:
+        for r in refs(d):
+            if r['fileID'] and not r.get('guid'):assert r['fileID'] in byid,(n,i,'Missing local reference',r)
+    players=[(i,d) for c,i,n,d in objects if n=='GameObject' and d['m_Name']=='AarisPlayer'];assert len(players)==1
+    player_go,player=players[0];components=[byid[r['component']['fileID']] for r in player['m_Component']]
+    controller=next(d for c,n,d in components if c==143);assert controller['m_Height']==1.78 and controller['m_Radius']>.2
+    script=ROOT/'Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs';script_guid=yaml.safe_load(Path(str(script)+'.meta').read_text())['guid']
+    logic=next(d for c,n,d in components if c==114);assert logic['m_Script']['guid']==script_guid
+    camera_id=logic['followCamera']['fileID'];assert byid[camera_id][0]==20
+    assert sum(c==20 for c,i,n,d in objects)==sum(c==81 for c,i,n,d in objects)==1
+    camera_go=byid[camera_id][2]['m_GameObject']['fileID']
+    assert not any(c==114 and d.get('m_GameObject',{}).get('fileID')==camera_go for c,i,n,d in objects),'Flying camera controller remains'
+    assert 3<logic['followDistance']<6 and 3<logic['walkSpeed']<logic['runSpeed']<8
+    for limb in ['leftArm','rightArm','leftLeg','rightLeg']:assert byid[logic[limb]['fileID']][0]==4
+    assert all(d['m_StaticEditorFlags']==0 for c,i,n,d in objects if n=='GameObject' and d['m_Name'].startswith('AarisPlayer'))
+    transforms={i:d for c,i,n,d in objects if n=='Transform'}
+    for i,t in transforms.items():
+        for child in t['m_Children']:assert transforms[child['fileID']]['m_Father']['fileID']==i,'Transform parent/child mismatch'
+    scene_roots=next(d['m_Roots'] for c,i,n,d in objects if n=='SceneRoots')
+    assert {r['fileID'] for r in scene_roots}=={i for i,t in transforms.items() if t['m_Father']['fileID']==0}
     assert sum(c==218 for c,i,n,d in objects)==4
     assert sum(c==1 and bool(re.fullmatch('VehicleSpawnPoint_[0-9]+',d['m_Name'])) for c,i,n,d in objects)==45
-    assert explorer[0]['terrainClearance']>0 and explorer[0]['maximumAltitude']>=1780
-    settings=next(d for c,i,n,d in docs(Path('ProjectSettings/ProjectSettings.asset').read_text()) if n=='PlayerSettings')
+    lods=[d for c,i,n,d in objects if n=='LODGroup'];assert len(lods)==59 and all(len(d['m_LODs'])==3 for d in lods)
+    assert all([l['screenRelativeHeight'] for l in d['m_LODs']]==[.22,.07,.0025] for d in lods)
+    sky=next(d for c,i,n,d in documents(ROOT/'Assets/TerrainDemoScene_URP/Prefabs/Skybox/Materials/Sky.mat') if n=='Material')
+    assert sky['m_Shader']['fileID']==106 and sky['m_ShaderKeywords']=='_SUNDISK_HIGH_QUALITY'
+    sun=next(d for c,i,n,d in objects if n=='Light');assert sun['m_Enabled'] and 1<=sun['m_Intensity']<=1.5
+    settings=documents(ROOT/'ProjectSettings/ProjectSettings.asset')[0][3]
     assert settings['activeInputHandler']==0 and settings['AndroidTargetArchitectures']==2 and settings['scriptingBackend']['Android']==1
-    # Unity 6.3 rejects the imported vendor renderer's compatibility mode unless
-    # its opt-in is present before compiling the selected player target.
-    compatibility_targets=('Android','Standalone','WebGL')
-    defines=settings.get('scriptingDefineSymbols',{})
-    for target in compatibility_targets:
-        assert 'URP_COMPATIBILITY_MODE' in defines.get(target,'').split(';'),target+' lost its URP compatibility opt-in'
-    generator=ast.parse(Path('Tools/MapBuild/build_map.py').read_text())
-    project_settings=next(n for n in generator.body if isinstance(n,ast.FunctionDef) and n.name=='project_settings')
-    generated_defines=[]
-    for node in ast.walk(project_settings):
-        if isinstance(node,ast.Dict):
-            generated_defines.extend(ast.literal_eval(v) for k,v in zip(node.keys,node.values) if isinstance(k,ast.Constant) and k.value=='scriptingDefineSymbols')
-    assert len(generated_defines)==1 and generated_defines[0]==defines,'Rebuilding the map must preserve committed URP defines'
-    deps=json.loads(Path('Packages/manifest.json').read_text())['dependencies'];assert deps['com.unity.modules.imgui']=='1.0.0'
+    for target in ['Android','Standalone','WebGL']:assert 'URP_COMPATIBILITY_MODE' in settings['scriptingDefineSymbols'][target].split(';')
+    quality=documents(ROOT/'ProjectSettings/QualitySettings.asset')[0][3]['m_QualitySettings'][0]
+    assert quality['globalTextureMipmapLimit']==0 and quality['streamingMipmapsActive']==1 and quality['lodBias']==1
+    for name in ['Asphalt','Concrete','Sand','RoadMark']:
+        assert 'TextureImporter'in yaml.safe_load((ROOT/f'Assets/AarisWorld/Surfaces/{name}.png.meta').read_text())
+    layout=json.loads((ROOT/'Docs/MAP_LAYOUT.json').read_text())
+    plan=json.loads((ROOT/'Docs/FOREST_PLANTING_PLAN.json').read_text())['placements'];assert len(plan)==1100
+    assert {p['tile'] for p in plan}=={'1_1','1_2','2_1','2_2'}
+    pts=np.array([p['position_xz_m'] for p in plan]);segments=np.array([[p[::2],q[::2]] for r in layout['roads'] for p,q in zip(r['points'],r['points'][1:])])
+    for chunk in np.array_split(pts,12):assert segment_distance(chunk,segments).min()>16.99
+    for s in layout['districts']:
+        assert not np.any((np.abs(pts[:,0]-s['x'])<s['width']/2+17.99)&(np.abs(pts[:,1]-s['z'])<s['depth']/2+17.99)),s['name']
     parser=Parser(Language(tree_sitter_c_sharp.language()));syntax=[]
-    for p in Path('Assets/AarisWorld').rglob('*.cs'):
-        tree=parser.parse(p.read_bytes());assert not tree.root_node.has_error,'C# syntax error in '+str(p);syntax.append(str(p))
-    # Existing TerrainData pointer hashes or materialized bytes must match the saved map report.
-    report=json.loads(Path('Docs/MAP_BUILD_REPORT.json').read_text())
-    for path,expected in report['terrain_files'].items():
-        raw=Path(path).read_bytes()
-        if raw.startswith(b'version https://git-lfs'):
-            assert ('oid sha256:'+expected['sha256']).encode() in raw
+    for path in (ROOT/'Assets/AarisWorld').rglob('*.cs'):
+        assert not parser.parse(path.read_bytes()).root_node.has_error,'C# syntax error '+str(path)
+        syntax.append(path.relative_to(ROOT).as_posix())
+    for path in [ROOT/'Tools/MapBuild/ground_review.py',ROOT/'Tools/MapBuild/ground_native.py']:ast.parse(path.read_text())
+    report=json.loads((ROOT/'Docs/GROUND_REVIEW_REPORT.json').read_text())
+    if require_native:assert report['native_assets_materialized'],'Native assets are still pending'
+    map_report=json.loads((ROOT/'Docs/MAP_BUILD_REPORT.json').read_text())
+    for path,expected in map_report['terrain_files'].items():
+        if not (ROOT/path).exists():assert not require_native,'Terrain file missing';continue
+        raw=(ROOT/path).read_bytes()
+        if raw.startswith(b'version https://git-lfs'):assert ('oid sha256:'+expected['sha256']).encode() in raw
         else:assert hashlib.sha256(raw).hexdigest()==expected['sha256']
-    data={'status':'passed','unity_editor_compilation_tested':False,'unity_runtime_input_tested':False,
-          'saved_camera_controller_bound':True,'audio_listener_count_on_camera':1,'terrain_count':4,'vehicle_marker_count':45,
-          'csharp_syntax_checked':syntax,'map_terrain_bytes_unchanged':True,'urp_compatibility_define_targets':list(compatibility_targets),'android':'ARM64 / IL2CPP / landscape / Android 8+',
-          'controls':{'desktop':'WASD/arrows; Q/E height; Shift fast; right-drag look; middle-drag pan; wheel zoom; F home; O overview',
-                      'touch':'Hold movement buttons; drag to look; pinch or +/- zoom; Up/Down altitude; Home/Overview/Speed buttons'}}
-    Path('Docs/EXPLORER_SETUP_REPORT.json').write_text(json.dumps(data,indent=2)+'\n');print(json.dumps(data))
-if __name__=='__main__':check()
+    if (ROOT/'TRANSFER-MANIFEST.json').exists():
+        guids={yaml.safe_load(p.read_text())['guid'] for p in (ROOT/'Assets').rglob('*.meta')}
+        for c,i,n,d in objects:
+            for r in refs(d):
+                g=r.get('guid')
+                if g and not g.startswith('0000000000000000'):assert g in guids,(n,'Unresolved asset GUID',g)
+    if report['native_assets_materialized']:
+        index=json.loads((ROOT/'Docs/TERRAIN_INDEX.json').read_text())
+        total=sum(t['terrain_instances'].get('tree',0) for t in index['tiles'])
+        assert total==report['total_tree_count']==856+report['accepted_new_trees']
+        assert report['accepted_new_trees']>=900
+        for name,counts in report['building_lod_triangles'].items():
+            assert counts['lod2_triangles']<=counts['lod0_triangles']
+            for level in [1,2]:assert (ROOT/f'Assets/AarisWorld/Models/{name}/Geometry_LOD{level}.asset.meta').exists()
+    result={'status':'passed','saved_ground_player_bound':True,'free_flight_camera_removed':True,'terrain_count':4,
+        'vehicle_marker_count':45,'building_lod_levels':3,'planned_new_trees':1100,
+        'native_assets_materialized':report['native_assets_materialized'],'csharp_syntax_checked':syntax,
+        'unity_editor_compilation_tested':False,'unity_runtime_input_tested':False,'android_device_tested':False}
+    (ROOT/'Docs/EXPLORER_SETUP_REPORT.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result))
+    return result
+
+if __name__=='__main__':check('--native'in sys.argv)

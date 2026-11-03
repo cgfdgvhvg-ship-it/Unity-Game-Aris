@@ -1,0 +1,195 @@
+{
+  "schema_version": 1,
+  "native_assets_materialized": true,
+  "unity_editor_import_tested": false,
+  "android_playtest_passed": false,
+  "player_height_m": 1.78,
+  "spawn_m": [
+    -650.0,
+    5.65553600000001,
+    -190.0
+  ],
+  "follow_distance_m": 4.2,
+  "free_flight_camera_removed": true,
+  "planned_new_trees": 1100,
+  "new_trees_by_tile": {
+    "1_1": 79,
+    "1_2": 79,
+    "2_1": 519,
+    "2_2": 406
+  },
+  "native_terrain_heights_unchanged": true,
+  "source_tree_models_reused": true,
+  "tree_clearance_road_m": 17,
+  "tree_clearance_district_m": 18,
+  "target_frame_rate": 30,
+  "render_scale_or_texture_resolution_reduced": false,
+  "accepted_new_trees": 1083,
+  "rejected_new_trees": [
+    {
+      "id": "ground_1_1_0022",
+      "reason": "native shoreline/slope"
+    },
+    {
+      "id": "ground_1_2_0016",
+      "reason": "native shoreline/slope"
+    },
+    {
+      "id": "ground_2_1_0400",
+      "reason": "native shoreline/slope"
+    },
+    {
+      "id": "ground_2_2_0041",
+      "reason": "native shoreline/slope"
+    },
+    {
+      "id": "ground_2_2_0059",
+      "reason": "native shoreline/slope"
+    },
+    {
+      "id": "ground_2_2_0061",
+      "reason": "native shoreline/slope"
+    },
+    {
+      "id": "ground_2_2_0082",
+      "reason": "native shoreline/slope"
+    },
+    {
+      "id": "ground_2_2_0095",
+      "reason": "native shoreline/slope"
+    },
+    {
+      "id": "ground_2_2_0189",
+      "reason": "native shoreline/slope"
+    },
+    {
+      "id": "ground_2_2_0257",
+      "reason": "native shoreline/slope"
+    },
+    {
+      "id": "ground_2_2_0268",
+      "reason": "native shoreline/slope"
+    },
+    {
+      "id": "ground_2_2_0278",
+      "reason": "native shoreline/slope"
+    },
+    {
+      "id": "ground_2_2_0286",
+      "reason": "native shoreline/slope"
+    },
+    {
+      "id": "ground_2_2_0322",
+      "reason": "native shoreline/slope"
+    },
+    {
+      "id": "ground_2_2_0333",
+      "reason": "native shoreline/slope"
+    },
+    {
+      "id": "ground_2_2_0336",
+      "reason": "native shoreline/slope"
+    },
+    {
+      "id": "ground_2_2_0362",
+      "reason": "native shoreline/slope"
+    }
+  ],
+  "total_tree_count": 1939,
+  "total_trees_by_tile": {
+    "1_1": 374,
+    "1_2": 618,
+    "2_1": 519,
+    "2_2": 428
+  },
+  "cpu_readable_mesh_copies_removed": 214,
+  "building_lod_triangles": {
+    "TownHall": {
+      "lod0_triangles": 63558,
+      "lod1_triangles": 17925,
+      "lod2_triangles": 4431
+    },
+    "a_frame_cabin": {
+      "lod0_triangles": 11000,
+      "lod1_triangles": 2862,
+      "lod2_triangles": 986
+    },
+    "bungalow_house": {
+      "lod0_triangles": 14796,
+      "lod1_triangles": 4318,
+      "lod2_triangles": 1661
+    },
+    "detached_two_storey_house": {
+      "lod0_triangles": 12646,
+      "lod1_triangles": 4619,
+      "lod2_triangles": 1945
+    },
+    "garage_apartment": {
+      "lod0_triangles": 14760,
+      "lod1_triangles": 4167,
+      "lod2_triangles": 1843
+    },
+    "pitched_roof_cottage": {
+      "lod0_triangles": 14716,
+      "lod1_triangles": 4428,
+      "lod2_triangles": 1622
+    },
+    "row_three_townhouses": {
+      "lod0_triangles": 14484,
+      "lod1_triangles": 5914,
+      "lod2_triangles": 2358
+    },
+    "two_bedroom_garage_house": {
+      "lod0_triangles": 3060,
+      "lod1_triangles": 2056,
+      "lod2_triangles": 1548
+    },
+    "observatory_dome": {
+      "lod0_triangles": 10704,
+      "lod1_triangles": 10357,
+      "lod2_triangles": 9855
+    },
+    "warehouse_loading_dock": {
+      "lod0_triangles": 1440,
+      "lod1_triangles": 1426,
+      "lod2_triangles": 1423
+    },
+    "lighthouse": {
+      "lod0_triangles": 8456,
+      "lod1_triangles": 3796,
+      "lod2_triangles": 1408
+    },
+    "watchtower": {
+      "lod0_triangles": 2970,
+      "lod1_triangles": 2002,
+      "lod2_triangles": 684
+    },
+    "Airfield": {
+      "lod0_triangles": 315612,
+      "lod1_triangles": 224159,
+      "lod2_triangles": 143261
+    },
+    "HanokVillage": {
+      "lod0_triangles": 191570,
+      "lod1_triangles": 89423,
+      "lod2_triangles": 55215
+    },
+    "CanalTown": {
+      "lod0_triangles": 275178,
+      "lod1_triangles": 257511,
+      "lod2_triangles": 125672
+    },
+    "ParcelDepot": {
+      "lod0_triangles": 20352,
+      "lod1_triangles": 6632,
+      "lod2_triangles": 2916
+    },
+    "Harbour": {
+      "lod0_triangles": 31012,
+      "lod1_triangles": 23527,
+      "lod2_triangles": 2714
+    }
+  },
+  "non_readable_generated_mesh_count": 248,
+  "terrain_detail_maps_prototypes_and_alpha_textures_preserved": true
+}

@@ -16,11 +16,12 @@ namespace Aaris.MapReview.Editor
 
         public void OnPreprocessBuild(BuildReport report) { Configure(); ValidateSavedScene(); }
 
-        [MenuItem("Aaris/Build Android Map Explorer APK")]
+        [MenuItem("Aaris/Build Android Ground Review APK")]
         public static void BuildAndroid()
         {
             Configure();
             EditorUserBuildSettings.buildAppBundle = false;
+            EditorUserBuildSettings.androidBuildSubtarget = MobileTextureSubtarget.ETC2;
             Build("Builds/Android/AarisMapExplorer.apk", BuildTarget.Android);
         }
 
@@ -30,7 +31,9 @@ namespace Aaris.MapReview.Editor
         public static void Configure()
         {
             PlayerSettings.companyName = "Aaris";
-            PlayerSettings.productName = "Aaris Map Explorer";
+            PlayerSettings.productName = "Aaris Ground Review";
+            PlayerSettings.bundleVersion = "0.2.0";
+            PlayerSettings.Android.bundleVersionCode = 2;
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
             PlayerSettings.allowedAutorotateToLandscapeLeft = true;
@@ -56,9 +59,25 @@ namespace Aaris.MapReview.Editor
         public static void ValidateSavedScene()
         {
             var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
-            var camera = UnityEngine.Object.FindFirstObjectByType<AarisMapExplorer>();
-            if (camera == null || !camera.enabled || camera.GetComponent<Camera>() == null)
-                throw new BuildFailedException("The saved review scene must have an enabled AarisMapExplorer camera.");
+            var player = UnityEngine.Object.FindFirstObjectByType<AarisThirdPersonPlayer>();
+            if (player == null || !player.enabled || player.GetComponent<CharacterController>() == null)
+                throw new BuildFailedException("The saved scene must contain the grounded third-person player.");
+            var binding = new SerializedObject(player).FindProperty("followCamera");
+            if (binding == null || binding.objectReferenceValue == null)
+                throw new BuildFailedException("The saved player must reference the shoulder camera.");
+            if (Mathf.Abs(player.GetComponent<CharacterController>().height - 1.78f) > 0.01f)
+                throw new BuildFailedException("The review player's reference height must stay 1.78 m.");
+            string nativeReport = "Docs/GROUND_REVIEW_REPORT.json";
+            if (!File.Exists(nativeReport) || !JsonUtility.FromJson<NativeReport>(File.ReadAllText(nativeReport)).native_assets_materialized)
+                throw new BuildFailedException("Materialize the native forest and building LOD assets before building.");
+            if (RenderSettings.skybox == null || RenderSettings.skybox.shader.name != "Skybox/Procedural")
+                throw new BuildFailedException("The saved daylight sky material is missing or uses the wrong shader.");
+            foreach (string texture in new[] { "Asphalt", "Concrete", "Sand", "RoadMark" })
+                if (!(AssetImporter.GetAtPath("Assets/AarisWorld/Surfaces/" + texture + ".png") is TextureImporter))
+                    throw new BuildFailedException("A surface PNG has the wrong importer: " + texture);
+            foreach (LODGroup lod in UnityEngine.Object.FindObjectsByType<LODGroup>(FindObjectsSortMode.None))
+                if (!lod.name.StartsWith("AarisPlayer", StringComparison.Ordinal) && lod.GetLODs().Length < 3)
+                    throw new BuildFailedException("Building is missing its saved near/middle/far LODs: " + lod.name);
             var terrains = UnityEngine.Object.FindObjectsByType<Terrain>(FindObjectsSortMode.None);
             if (terrains.Length != 4 || terrains.Any(t => t.terrainData == null))
                 throw new BuildFailedException("Expected the four saved 1km TerrainData tiles; check Git LFS downloads.");
@@ -70,8 +89,11 @@ namespace Aaris.MapReview.Editor
                 foreach (var transform in root.GetComponentsInChildren<Transform>(true))
                     if (GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(transform.gameObject) != 0)
                         throw new BuildFailedException("Missing script on " + transform.name);
-            Debug.Log("Aaris explorer verified: camera, four terrains, 45 markers, no missing scene scripts.");
+            Debug.Log("Aaris ground review verified: human player, daylight, saved forest/LODs, four terrains, 45 markers.");
         }
+
+        [Serializable]
+        private sealed class NativeReport { public bool native_assets_materialized; }
 
         private static void Build(string path, BuildTarget target)
         {

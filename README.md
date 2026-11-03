@@ -1,125 +1,50 @@
-# Aaris Island — 2 km × 2 km Unity URP environment
+# Aaris Island — grounded Android map review
 
-A saved, native Unity scene covering **4,000,000 m²**, assembled from the original
-four central vendor Terrain tiles **1_1, 1_2, 2_1, 2_2**. The other twelve full
-Terrain tiles and obsolete proxy Terrain assets are removed from the current
-checkout. Their earlier versions remain in Git history.
+A saved 2 km × 2 km Unity URP island with a visible 1.78 m human reference player.
+Open `Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity` in **Unity 6000.3.26f1 / URP 17.3**.
+Clone with Git LFS and fetch the actual assets before opening or building.
 
-Open **`Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity`** in
-**Unity 6000.3.26f1**, with **URP 17.3**. No map builder, pre-export menu action,
-glTF importer or runtime generation script is required. Native scene objects,
-TerrainData, Mesh assets, materials, static colliders and empty spawn points are
-already saved. Package Manager restores the declared URP/VFX dependencies.
+## Walk and inspect
 
-Clone with **Git LFS** and run `git lfs pull`. GitHub ZIP source downloads may
-contain LFS pointers instead of the original meshes and textures.
+- **Phone:** left joystick moves, drag the right side to look, WALK toggles running, JUMP jumps, HOME returns to the safe spawn.
+- **Desktop:** WASD/arrows move, right mouse drag looks, Shift runs, Space jumps, F returns home.
+- The saved shoulder view follows the grounded player. The free-flight/overview/altitude controls have been removed.
+- CharacterController handles terrain, steps, slopes, trunk and building collisions. Camera obstruction checks avoid passing through walls and trunks.
+- The visible human uses shared Unity primitive meshes and saved outfit materials, with walking limb animation. It is a lightweight scale-reference character, not an imported Free Fire character model.
+- Water remains visual: review movement stops at the shoreline. Combat, bots, loot, swimming and drivable vehicles are separate work.
 
-## Unity 6.3 renderer compatibility
+## Saved core assets
 
-The imported vendor renderer currently uses URP Compatibility Mode. Unity 6.3
-rejects a player build without the `URP_COMPATIBILITY_MODE` scripting define.
-The project commits this define for Android, Standalone and WebGL, and the map
-assembler preserves it when recreating ProjectSettings. No Cloud-only override
-is required for this opt-in.
+The daylight sky uses the built-in procedural sky shader with a visible sun disk, a linked directional light and explicit ambient colors. No runtime lighting repair component is used. Asphalt, concrete, sand and marking PNG metadata use TextureImporter, retaining their original GUIDs.
 
-This keeps the existing renderer available for the map preview; it does not
-migrate the renderer to Render Graph. Keep the pinned Unity 6000.3 editor until
-that migration is done. Existing six-part source downloads were packaged from
-commit `1d5e5f6`, before this correction; the small compatibility patch supplied
-with that release updates them without re-downloading the map assets.
+Buildings retain their original close meshes and have saved middle/far meshes, with consistent material slots. Only the high-detail mesh has a static collider. Generated native meshes do not retain unused CPU-readable copies. The Android build selects ETC2 texture compression; global texture mipmap limit and render scale are not reduced.
 
-## Map explorer controls
+`Docs/FOREST_PLANTING_PLAN.json` describes 1,100 additional source-tree placements, mostly in the sparse eastern half. Native authoring checks full-resolution slopes and shoreline, reserves district pads and road corridors, and writes accepted instances directly into the four TerrainData files. Shared SpeedTree prefabs, textures and existing LODs are reused. No runtime forest spawner is added. Terrain heights are unchanged.
 
-The saved Main Camera now has `AarisMapExplorer` and an AudioListener. Open the
-scene and press Play, or install the Android preview APK when its cloud build
-is available.
+**The materialized totals, rejected candidates and actual building LOD triangle counts are in `Docs/GROUND_REVIEW_REPORT.json`.** `Docs/TERRAIN_INDEX.json` and per-tile instance exports reflect the saved native terrain bytes.
 
-- Phone/tablet: hold the arrow buttons to move, drag empty space to look,
-  pinch or use + / - to zoom, and use Up / Down to change altitude.
-- Desktop: WASD / arrow keys move; Q / E change altitude; hold Shift for faster
-  travel; right-drag looks; middle-drag pans; mouse wheel zooms.
-- Home / F restores the starting view. Overview / O shows the whole island.
-  Speed switches between normal and fast travel; Help / H toggles hints.
+The island still has 13 districts, 59 placed model objects from 17 sources, connected roads, a 240 m runway and 45 empty vehicle markers. Some source models contain multiple structures or closed doors; every building is not guaranteed enterable.
 
-The camera stays inside the 2km Terrain boundary and above terrain/ocean level.
-It is a flying review camera; it does not provide a player character or vehicles.
-Android preview settings target ARM64, IL2CPP, Android 8+ and landscape, with
-the standard debug signing key. No store release or custom keystore is configured.
+## Manual APK build
 
-Cloud builds use the repository root and saved scene; no terrain pre-export
-method is needed. `Aaris.MapReview.Editor.AarisExplorerBuild.BuildAndroid` is also
-available for a batchmode/manual Editor build. The build preprocessor checks the
-camera, all four TerrainData references and all 45 spawn markers before building.
+Use **Aaris → Build Android Ground Review APK**, or the existing batch entry point:
 
-## Layout
+`Aaris.MapReview.Editor.AarisExplorerBuild.BuildAndroid`
 
-![Measured terrain and placement plan — not a Unity render](Docs/MAP_LAYOUT_2KM.png)
+Output: `Builds/Android/AarisMapExplorer.apk` (kept for existing phone/cloud build scripts; app version 0.2.0, code 2).
 
-Thirteen districts include Clock Tower Town, Highland Observatory, Eastern Port,
-Southern Airfield, Freight District, Canal Market, Old Village, Lakeside Hamlet,
-Valley Settlement, Northern Ridge Town, Coastal Hamlet, Southeast Lighthouse
-and Forest Lookout. They contain 59 placed instances of 17 unique model sources.
-The original seven supplied GLBs included one duplicate, so six unique sources
-were combined with the eleven additional buildings.
+Target: ARM64 / IL2CPP / Android 8+ / landscape, package `com.aaris.mapexplorer`. The player targets a stable 30 FPS; actual target-device frame time and memory must be measured. Existing Unity 6.3 URP compatibility defines are preserved. No automatic Unity/APK build is added.
 
-The original interior landform and surviving trees, rocks, grass and terrain
-textures are retained outside edited footprints. A shared, quantized height grid
-keeps all four tile seams identical. A rounded coastal falloff sinks every outer
-Terrain edge below the ocean, including all four corners. The ocean is a native
-URP water surface with subtle animated waves. There are no additional terrain
-skirts pretending to be playable map area.
+The build preprocessor rejects a missing player/camera, wrong player height, pending native assets, wrong surface importers, missing building LODs, missing terrain data or missing scene scripts.
 
-Connected district streets and a 240 m small-aircraft runway are saved as native
-meshes over graded Terrain. Foundations are level, buildings use their actual
-static mesh colliders, glTF PBR textures are converted for URP Lit, and source
-vehicle/character/weapon nodes from the starter scenes are excluded. Some source
-buildings are exterior shells or have authored closed doors; interiors and all
-entrances still need an Editor/playtest review.
+## Verification and reproduction
 
-## Vehicle phase
+`python Tools/Validation/check_explorer.py --native` checks scene references, player and camera bindings, C# syntax, core asset references, LOD levels, terrain checksums and forest road/district clearances.
 
-`Aaris_Island_2km/VehicleSpawns` contains **45 empty GameObjects** named
-`VehicleSpawnPoint_01`, etc. No drivable vehicle models or physics scripts are
-added. Each marker is at the Terrain contact surface, with local **+Z** facing a
-clear exit to the connecting street. Full 6 m × 12 m bays and exit corridors are
-reserved outside building bounds and cleared of terrain trees/rocks/shrubs.
+Native authoring: after fetching the core LFS assets, run `python Tools/MapBuild/ground_native.py`. It saves TerrainData and building LODs, reopens terrain binaries, verifies unchanged heights, regenerates indexes and updates hashes. It is idempotent for the saved planting plan.
 
-Later vehicle prefabs must use an appropriate wheel/contact offset from this
-**ground anchor**; a chassis-centred prefab pivot should not be placed directly
-at marker y without that offset.
+`Tools/MapBuild/build_map.py` also invokes ground authoring after the original offline map assembly. Its terrain inputs must be the four original vendor archive tiles, as described in `Tools/MapBuild/README.md`; do not re-sculpt the already edited terrain.
 
-## Verification and editable map data
+**Offline validation is not a Unity Editor compile, render or Android playtest.** These remain explicitly untested in the reports until performed. The former near-tree termination still requires a device crash log and a repeatable device test before it can be called resolved.
 
-- [`Docs/MAP_LAYOUT.json`](Docs/MAP_LAYOUT.json): world coordinates, all districts,
-  model placements, roads, vehicle bays, source URLs/hashes and tile removals.
-- [`Docs/MAP_BUILD_REPORT.json`](Docs/MAP_BUILD_REPORT.json): exact tile dimensions,
-  seam comparison, shoreline, foundation, spawn and road-grade assertions.
-- [`Docs/NATIVE_TERRAIN_VERIFICATION.json`](Docs/NATIVE_TERRAIN_VERIFICATION.json):
-  saved TerrainData reopened; source alpha textures, prototypes and external
-  references compared with original bytes.
-- [`Docs/TERRAIN_INDEX.json`](Docs/TERRAIN_INDEX.json): searchable per-tile tree,
-  rock and shrub coordinates, sampled height CSVs and grass-density patches.
-- [`Docs/MAP_STRUCTURE_REPORT.json`](Docs/MAP_STRUCTURE_REPORT.json): native Mesh
-  buffers, scene references and asset GUID checks.
-- [`Tools/MapBuild/`](Tools/MapBuild/): deterministic, build-time-only assembly
-  source, pinned model provenance and reproduction instructions.
-
-**Validation here is offline. Unity Editor import, shader compilation, visual
-inspection, lighting, physics simulation, navigation and a target-device build
-have not been performed.** The reports explicitly mark these as untested.
-Current building LODs provide distance culling; lower-poly LOD meshes, lighting
-bakes and device-specific performance tuning remain separate work. Water has no
-swimming, damage or map-boundary gameplay. This is environment source, not a
-complete battle-royale game.
-
-## Source and licensing
-
-The original Unity Terrain URP vendor assets remain private and require the
-appropriate Unity Asset Store licence. See `URP-TERRAIN-PROVENANCE.md`. Newly
-included building sources and their CC0 provenance are recorded individually in
-`Tools/MapBuild/model_sources.json` and the layout report. Keep the repository
-private; the new model licences do not change the vendor terrain licence.
-
-`TRANSFER-MANIFEST.json` and `TRANSFER-VERIFIED.json` are **historical records of
-the original vendor import**, not checksums of this edited island. Current edited
-Terrain checksums are recorded in `Docs/MAP_BUILD_REPORT.json`.
+Original vendor terrain assets retain their existing Unity Asset Store licence requirements. Model provenance and licences remain in `Tools/MapBuild/model_sources.json` and `URP-TERRAIN-PROVENANCE.md`. Historical TRANSFER reports describe the initial import; current terrain hashes are in `Docs/MAP_BUILD_REPORT.json`.
