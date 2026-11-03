@@ -32,12 +32,36 @@ class AdaptiveTreeMeshPressureContracts(unittest.TestCase):
             "treeMeshDistanceFactor = performanceLevel == 0 ? 1f : performanceLevel == 1 ? 0.92f : 0.82f;",
             "treeMeshCountFactor = performanceLevel == 0 ? 1f : performanceLevel == 1 ? 0.86f : 0.72f;",
             "profileTreeBillboardDistance * treeMeshDistanceFactor",
-            "Mathf.Max(1, Mathf.FloorToInt(profileMaxFullLodTrees * treeMeshCountFactor))",
+            "Mathf.Max(1, Mathf.FloorToInt(profileMaxFullLodTrees * treeMeshCountFactor * lowMemoryTreeMeshMultiplier))",
             "terrain.treeBillboardDistance = originalTreeBillboardDistances[i];",
             "terrain.treeMaximumFullLODCount = originalFullLodTreeCounts[i];",
         ):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, s)
+
+
+    def test_low_memory_mesh_cap_survives_quality_recovery(self):
+        s = self.src
+        for fragment in (
+            "lowMemoryTreeMeshMultiplier = 1f;",
+            "lowMemoryTreeMeshMultiplier = Mathf.Min(lowMemoryTreeMeshMultiplier, 0.80f);",
+            "profileTreeBillboardDistance * treeMeshDistanceFactor * lowMemoryTreeMeshMultiplier",
+            "profileMaxFullLodTrees * treeMeshCountFactor * lowMemoryTreeMeshMultiplier",
+            "s.lowMemoryTreeMeshMultiplier = lowMemoryTreeMeshMultiplier;",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, s)
+        # After a low-memory warning, even at pressure level 0, the
+        # tree mesh caps remain lower than the original RAM-class baseline.
+        for baseline_distance, baseline_count in ((100, 28), (140, 44)):
+            self.assertLess(baseline_distance * .80, baseline_distance)
+            self.assertLess(math.floor(baseline_count * .80), baseline_count)
+
+    def test_player_does_not_override_runtime_startup_fps_cap(self):
+        player = (ROOT / "Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs").read_text(encoding="utf-8")
+        self.assertIn("Application.targetFrameRate = targetFrameRate;", self.src)
+        self.assertNotIn("Application.targetFrameRate = 60;", player)
+        self.assertIn("Application.targetFrameRate == 60 ? 30 : 60", player)
 
     def test_distant_visibility_and_readout_are_retained(self):
         s = self.src
