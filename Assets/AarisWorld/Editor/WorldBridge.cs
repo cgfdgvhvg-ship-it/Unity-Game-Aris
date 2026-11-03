@@ -13,11 +13,43 @@ using UnityEngine.Rendering.Universal;
 namespace Aaris.WorldAutomation
 {
     [Serializable] public sealed class Brush { public float x, z, radius, delta; }
+    [Serializable] public sealed class ProbeSpec
+    {
+        public string id, target;
+        public Vector3[] waypoints;
+        public int maxSteps = 4000;
+    }
+    [Serializable] public sealed class TerrainEdit
+    {
+        public string id, action, target, terrainGuid;
+        public int originalIndex = -1, prototypeIndex = -1, expectedPrototypeIndex = -1;
+        public float worldX, worldZ, widthScale, heightScale, yawDegrees;
+        public Vector3 expectedWorldPosition;
+        public float expectedWidthScale, expectedHeightScale, expectedYawDegrees;
+    }
+    [Serializable] public sealed class SceneEdit
+    {
+        public string id, action, target, prefabPath, parent, name;
+        public bool hasWorldPosition, hasWorldRotation, hasLocalScale;
+        public Vector3 worldPosition, worldRotationEuler, localScale;
+    }
+    [Serializable] public sealed class ObservationRequest
+    {
+        public string target;
+        public bool hasPoint, hasY;
+        public Vector3 point;
+        public float radius = 35;
+        public int limit = 100;
+    }
     [Serializable] public sealed class Query
     {
         public string command, scene, target, capturePath;
         public Vector3[] waypoints;
+        public ProbeSpec[] probes;
         public Brush[] brushes;
+        public TerrainEdit[] terrainEdits;
+        public SceneEdit[] sceneEdits;
+        public ObservationRequest[] observations;
         public int maxSteps = 4000;
         public Vector3 cameraPosition, cameraTarget;
     }
@@ -35,7 +67,7 @@ namespace Aaris.WorldAutomation
     }
     [Serializable] public sealed class Route
     {
-        public string status, interpretation;
+        public string probeId, status, interpretation;
         public Vector3 start, target, reached;
         public int steps;
         public float remainingMetres;
@@ -43,11 +75,25 @@ namespace Aaris.WorldAutomation
         public Vector3 terrainNormalAtReached;
         public Contact[] contacts;
     }
+    [Serializable] public sealed class Observation
+    {
+        public string target, supportId, supportName, interpretation;
+        public Vector3 center, supportPoint, terrainNormal;
+        public float radius, terrainHeight, terrainSlope, pointMinusTerrain, supportGap;
+        public bool terrainFound, supportFound;
+        public Contact[] nearbyColliders;
+    }
+    [Serializable] public sealed class IdentityChange
+    {
+        public string operationId, beforeId, afterId;
+    }
     [Serializable] public sealed class Response
     {
         public string status = "ok", command, error, unityVersion, note;
         public Entry[] objects;
         public Route[] routes;
+        public Observation[] observations;
+        public IdentityChange[] identityChanges;
         public string[] changedAssets;
         public bool sceneSaved, temporaryBotDestroyed;
     }
@@ -84,11 +130,17 @@ namespace Aaris.WorldAutomation
                 result.command = query.command;
                 Scene scene = EditorSceneManager.OpenScene(query.scene, OpenSceneMode.Single);
                 if (query.command == "export") result.objects = Export(scene);
+                else if (query.command == "observe") result.observations = Observe(scene, query.observations);
                 else if (query.command == "probe") Probe(scene, query, result);
                 else if (query.command == "capture") Capture(scene, query, result);
-                else if (query.command == "apply") Apply(scene, query, result);
+                else if (query.command == "apply" || query.command == "preview")
+                {
+                    Apply(scene, query, result);
+                    result.observations = Observe(scene, query.observations);
+                }
                 else throw new InvalidOperationException("Unsupported engine command");
-                result.note = "Editor physics/render evidence is separate from Android performance. Original checkout is isolated by the Python launcher.";
+                string evidenceNote = "Editor physics/render evidence is separate from Android performance. Original checkout is isolated by the Python launcher.";
+                result.note = string.IsNullOrEmpty(result.note) ? evidenceNote : result.note + " " + evidenceNote;
             }
             catch (Exception e) { result.status = "error"; result.error = e.ToString(); }
             if (!string.IsNullOrEmpty(responsePath)) File.WriteAllText(responsePath, JsonUtility.ToJson(result, true));
@@ -110,6 +162,26 @@ namespace Aaris.WorldAutomation
 
         private static void Probe(Scene scene, Query query, Response result)
         {
+            if (query.probes != null && query.probes.Length > 0)
+            {
+                if (query.probes.Length > 32) throw new InvalidOperationException("At most 32 independent probe bots are allowed per request");
+                if (query.probes.Any(p => string.IsNullOrEmpty(p.id)) || query.probes.Select(p => p.id).Distinct().Count() != query.probes.Length)
+                    throw new InvalidOperationException("Every probe bot needs a unique non-empty id");
+                var combined = new List<Route>();
+                foreach (var spec in query.probes)
+                {
+                    var one = new Query { command = "probe", scene = query.scene, target = spec.target,
+                        waypoints = spec.waypoints, maxSteps = spec.maxSteps > 0 ? spec.maxSteps : query.maxSteps };
+                    var oneResult = new Response();
+                    Probe(scene, one, oneResult);
+                    foreach (var route in oneResult.routes ?? Array.Empty<Route>()) route.probeId = spec.id;
+                    combined.AddRange(oneResult.routes ?? Array.Empty<Route>());
+                }
+                result.routes = combined.ToArray();
+                result.temporaryBotDestroyed = true;
+                result.note = "Independent deterministic probe bots ran in one isolated editor import. They do not plan routes or simulate combat AI.";
+                return;
+            }
             bool candidates = query.waypoints == null || query.waypoints.Length == 0;
             var attempts = new List<Vector3[]>();
             if (candidates)
@@ -216,6 +288,88 @@ namespace Aaris.WorldAutomation
         private static bool Finite(Vector3 v)
         { return !(float.IsNaN(v.x) || float.IsInfinity(v.x) || float.IsNaN(v.y) || float.IsInfinity(v.y) || float.IsNaN(v.z) || float.IsInfinity(v.z)); }
 
+        private static Observation[] Observe(Scene scene, ObservationRequest[] requests)
+        {
+            if (requests == null || requests.Length == 0) return Array.Empty<Observation>();
+            if (requests.Length > 32) throw new InvalidOperationException("At most 32 observation requests are allowed");
+            var temporarilyEnabled = new List<Collider>();
+            try
+            {
+                foreach (var root in scene.GetRootGameObjects())
+                    foreach (var collider in root.GetComponentsInChildren<Collider>(true))
+                        if (!(collider is CharacterController) && !collider.enabled)
+                        { collider.enabled = true; temporarilyEnabled.Add(collider); }
+                Physics.SyncTransforms();
+                var output = new List<Observation>();
+                foreach (var request in requests)
+                {
+                    if (!(request.radius > 0 && request.radius <= 500) || request.limit < 1 || request.limit > 500)
+                        throw new InvalidOperationException("Observation radius must be 0..500 and limit 1..500");
+                    GameObject target = null;
+                    Vector3 center;
+                    Bounds targetBounds = new Bounds();
+                    bool hasBounds = false;
+                    if (!string.IsNullOrEmpty(request.target))
+                    {
+                        target = Resolve(scene, request.target);
+                        center = target.transform.position;
+                        var renderers = target.GetComponentsInChildren<Renderer>(true);
+                        if (renderers.Length > 0)
+                        {
+                            targetBounds = renderers[0].bounds;
+                            foreach (var renderer in renderers.Skip(1)) targetBounds.Encapsulate(renderer.bounds);
+                            hasBounds = true;
+                        }
+                    }
+                    else if (request.hasPoint && Finite(request.point)) center = request.point;
+                    else throw new InvalidOperationException("Observation requires a stable target or finite point");
+
+                    float slope = 0; Vector3 normal = Vector3.up; float ground = 0; bool groundFound = false;
+                    try
+                    {
+                        ground = Ground(scene, center, out slope, out normal); groundFound = true;
+                        if (request.hasPoint && !request.hasY) center.y = ground;
+                    }
+                    catch (InvalidOperationException) { }
+
+                    float bottom = hasBounds ? targetBounds.min.y : center.y;
+                    Vector3 rayOrigin = new Vector3(center.x, bottom + .20f, center.z);
+                    var rayHits = Physics.RaycastAll(rayOrigin, Vector3.down, 5000, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)
+                        .OrderBy(hit => hit.distance).ToArray();
+                    RaycastHit? support = null;
+                    foreach (var hit in rayHits)
+                    {
+                        if (target != null && hit.collider.transform.IsChildOf(target.transform)) continue;
+                        support = hit; break;
+                    }
+
+                    var contacts = Physics.OverlapSphere(center, request.radius, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide)
+                        .Where(c => target == null || !c.transform.IsChildOf(target.transform))
+                        .GroupBy(c => Id(c.gameObject)).Select(group => group.First())
+                        .OrderBy(c => Vector3.Distance(center, c.ClosestPoint(center))).Take(request.limit)
+                        .Select(c => new Contact { id = Id(c.gameObject), name = c.name, point = c.ClosestPoint(center),
+                            normal = Vector3.zero, boundsCenter = c.bounds.center, boundsSize = c.bounds.size }).ToArray();
+                    var observation = new Observation { target = request.target, center = center, radius = request.radius,
+                        terrainFound = groundFound, terrainHeight = ground, terrainSlope = slope, terrainNormal = normal,
+                        pointMinusTerrain = groundFound ? center.y-ground : 0, nearbyColliders = contacts,
+                        interpretation = "Exact active collider/terrain evidence in the isolated matching Unity Editor. The AI/caller decides whether the measured relationship is intended." };
+                    if (support.HasValue)
+                    {
+                        var hit = support.Value; observation.supportFound = true;
+                        observation.supportId = Id(hit.collider.gameObject); observation.supportName = hit.collider.name;
+                        observation.supportPoint = hit.point; observation.supportGap = bottom-hit.point.y;
+                    }
+                    output.Add(observation);
+                }
+                return output.ToArray();
+            }
+            finally
+            {
+                foreach (var collider in temporarilyEnabled) if (collider != null) collider.enabled = false;
+                Physics.SyncTransforms();
+            }
+        }
+
         private static float Ground(Scene scene, Vector3 point)
         { float slope; Vector3 normal; return Ground(scene, point, out slope, out normal); }
 
@@ -234,10 +388,137 @@ namespace Aaris.WorldAutomation
             throw new InvalidOperationException("Candidate lies outside saved terrain; choose explicit waypoints");
         }
 
+        private static string TerrainGuid(Terrain terrain)
+        { return AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(terrain.terrainData)); }
+
+        private static Vector3 TreeWorldPosition(Terrain terrain, TreeInstance instance)
+        {
+            Vector3 origin = terrain.transform.position, size = terrain.terrainData.size;
+            return new Vector3(origin.x+instance.position.x*size.x, origin.y+instance.position.y*size.y,
+                origin.z+instance.position.z*size.z);
+        }
+
+        private static void ValidateTreePrecondition(Terrain terrain, TerrainEdit edit, TreeInstance instance)
+        {
+            Vector3 actual = TreeWorldPosition(terrain, instance);
+            if (edit.expectedPrototypeIndex != instance.prototypeIndex || Vector3.Distance(actual, edit.expectedWorldPosition) > .05f
+                || Mathf.Abs(instance.widthScale-edit.expectedWidthScale) > .0001f
+                || Mathf.Abs(instance.heightScale-edit.expectedHeightScale) > .0001f
+                || Mathf.Abs(Mathf.DeltaAngle(instance.rotation*Mathf.Rad2Deg, edit.expectedYawDegrees)) > .02f)
+                throw new InvalidOperationException("Native terrain instance changed since inspection: " + edit.target);
+        }
+
+        private static void ApplyTerrainInstances(Terrain[] terrains, TerrainEdit[] edits,
+            HashSet<string> changed, List<IdentityChange> identities)
+        {
+            if (edits == null || edits.Length == 0) return;
+            foreach (var group in edits.GroupBy(edit => edit.terrainGuid))
+            {
+                Terrain terrain = terrains.SingleOrDefault(t => TerrainGuid(t) == group.Key);
+                if (terrain == null) throw new InvalidOperationException("Terrain GUID not present in the saved scene: " + group.Key);
+                if (terrain.transform.rotation != Quaternion.identity || terrain.transform.lossyScale != Vector3.one)
+                    throw new InvalidOperationException("Terrain must be unrotated with unit scale");
+                TerrainData data = terrain.terrainData; Vector3 origin = terrain.transform.position, size = data.size;
+                TreeInstance[] original = data.treeInstances;
+                var modified = original.ToArray(); var removed = new HashSet<int>();
+                var additions = new List<KeyValuePair<TerrainEdit, TreeInstance>>();
+                foreach (var edit in group)
+                {
+                    if (edit.action == "add")
+                    {
+                        if (edit.prototypeIndex < 0 || edit.prototypeIndex >= data.treePrototypes.Length)
+                            throw new InvalidOperationException("Native prototype index is outside the terrain table");
+                        float nx=(edit.worldX-origin.x)/size.x, nz=(edit.worldZ-origin.z)/size.z;
+                        if (nx < 0 || nx > 1 || nz < 0 || nz > 1) throw new InvalidOperationException("Native add lies outside selected terrain");
+                        var instance = new TreeInstance { prototypeIndex=edit.prototypeIndex,
+                            position=new Vector3(nx, data.GetInterpolatedHeight(nx,nz)/size.y, nz),
+                            widthScale=edit.widthScale, heightScale=edit.heightScale,
+                            rotation=edit.yawDegrees*Mathf.Deg2Rad, color=Color.white, lightmapColor=Color.white };
+                        additions.Add(new KeyValuePair<TerrainEdit, TreeInstance>(edit, instance));
+                        continue;
+                    }
+                    int index = edit.originalIndex;
+                    if (index < 0 || index >= original.Length || edit.target != "terrain:"+group.Key+":"+index)
+                        throw new InvalidOperationException("Invalid original native instance identity: " + edit.target);
+                    ValidateTreePrecondition(terrain, edit, original[index]);
+                    if (removed.Contains(index)) throw new InvalidOperationException("The same native instance was removed twice");
+                    TreeInstance current = modified[index];
+                    if (edit.action == "remove") removed.Add(index);
+                    else if (edit.action == "move")
+                    {
+                        float nx=(edit.worldX-origin.x)/size.x, nz=(edit.worldZ-origin.z)/size.z;
+                        if (nx < 0 || nx > 1 || nz < 0 || nz > 1) throw new InvalidOperationException("Native move crosses its TerrainData tile");
+                        current.position=new Vector3(nx, data.GetInterpolatedHeight(nx,nz)/size.y, nz); modified[index]=current;
+                    }
+                    else if (edit.action == "scale")
+                    { current.widthScale=edit.widthScale; current.heightScale=edit.heightScale; modified[index]=current; }
+                    else if (edit.action == "rotate")
+                    { current.rotation=edit.yawDegrees*Mathf.Deg2Rad; modified[index]=current; }
+                    else throw new InvalidOperationException("Unsupported native instance action: " + edit.action);
+                }
+                var rebuilt = new List<TreeInstance>(); var newIndex = new Dictionary<int,int>();
+                for (int i=0;i<modified.Length;i++) if (!removed.Contains(i))
+                { newIndex[i]=rebuilt.Count; rebuilt.Add(modified[i]); }
+                foreach (var addition in additions) rebuilt.Add(addition.Value);
+                data.SetTreeInstances(rebuilt.ToArray(), true); EditorUtility.SetDirty(data);
+                changed.Add(AssetDatabase.GetAssetPath(data));
+                foreach (var edit in group.Where(e => e.action != "add"))
+                    identities.Add(new IdentityChange { operationId=edit.id, beforeId=edit.target,
+                        afterId=removed.Contains(edit.originalIndex) ? null : "terrain:"+group.Key+":"+newIndex[edit.originalIndex] });
+                for (int i=0;i<additions.Count;i++)
+                    identities.Add(new IdentityChange { operationId=additions[i].Key.id, beforeId=null,
+                        afterId="terrain:"+group.Key+":"+(rebuilt.Count-additions.Count+i) });
+            }
+        }
+
+        private static void ApplySceneEdits(Scene scene, SceneEdit[] edits, HashSet<string> changed,
+            List<IdentityChange> identities)
+        {
+            if (edits == null || edits.Length == 0) return;
+            var created = new List<KeyValuePair<SceneEdit, GameObject>>();
+            foreach (var edit in edits)
+            {
+                if (edit.action == "delete")
+                {
+                    GameObject target = Resolve(scene, edit.target);
+                    UnityEngine.Object.DestroyImmediate(target);
+                    identities.Add(new IdentityChange { operationId=edit.id, beforeId=edit.target, afterId=null });
+                    continue;
+                }
+                GameObject go;
+                if (edit.action == "instantiate")
+                {
+                    GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(edit.prefabPath);
+                    if (prefab == null) throw new InvalidOperationException("Prefab failed to import: " + edit.prefabPath);
+                    go = PrefabUtility.InstantiatePrefab(prefab, scene) as GameObject;
+                    if (go == null) throw new InvalidOperationException("Prefab instantiation failed");
+                }
+                else if (edit.action == "duplicate")
+                {
+                    GameObject source = Resolve(scene, edit.target);
+                    go = UnityEngine.Object.Instantiate(source);
+                    SceneManager.MoveGameObjectToScene(go, scene);
+                }
+                else throw new InvalidOperationException("Unsupported scene edit action: " + edit.action);
+                if (!string.IsNullOrEmpty(edit.parent)) go.transform.SetParent(Resolve(scene, edit.parent).transform, true);
+                if (edit.hasWorldPosition) go.transform.position=edit.worldPosition;
+                if (edit.hasWorldRotation) go.transform.rotation=Quaternion.Euler(edit.worldRotationEuler);
+                if (edit.hasLocalScale) go.transform.localScale=edit.localScale;
+                if (!string.IsNullOrEmpty(edit.name)) go.name=edit.name;
+                created.Add(new KeyValuePair<SceneEdit, GameObject>(edit, go));
+            }
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(scene)) throw new InvalidOperationException("Unity failed to save the authored map scene");
+            changed.Add(scene.path);
+            foreach (var pair in created)
+                identities.Add(new IdentityChange { operationId=pair.Key.id,
+                    beforeId=pair.Key.action == "duplicate" ? pair.Key.target : null, afterId=Id(pair.Value) });
+        }
+
         private static void Apply(Scene scene, Query query, Response result)
         {
             if (query.brushes == null) query.brushes = Array.Empty<Brush>();
-            var changed = new HashSet<string>();
+            var changed = new HashSet<string>(); var identities = new List<IdentityChange>();
             var terrains = scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<Terrain>(true)).ToArray();
             foreach (var brush in query.brushes)
             {
@@ -269,8 +550,11 @@ namespace Aaris.WorldAutomation
                 }
                 if (touched == 0) throw new InvalidOperationException("Brush lies outside the saved terrain");
             }
+            ApplyTerrainInstances(terrains, query.terrainEdits, changed, identities);
+            ApplySceneEdits(scene, query.sceneEdits, changed, identities);
             AssetDatabase.SaveAssets(); result.changedAssets = changed.OrderBy(x => x).ToArray();
-            result.sceneSaved = false;
+            result.identityChanges = identities.ToArray();
+            result.sceneSaved = query.sceneEdits != null && query.sceneEdits.Length > 0;
         }
 
         private static void Capture(Scene scene, Query query, Response result)
@@ -302,3 +586,4 @@ namespace Aaris.WorldAutomation
         }
     }
 }
+

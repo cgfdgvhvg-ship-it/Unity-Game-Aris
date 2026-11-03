@@ -20,11 +20,13 @@ def required(w, request):
     if not isinstance(request, dict) or request.get("command") not in READ_COMMANDS:
         raise WorldError("Only read requests can materialize assets")
     cmd = request["command"]; paths = set()
-    if cmd in ("context", "scan", "height", "region", "instances", "verify"):
+    if cmd in ("scan", "height", "region", "instances", "verify") or (cmd == "inspect" and request.get("native", True)):
         paths.update(t["asset"]["path"] for t in w.terrains() if t["asset"]["path"])
     if cmd == "asset": paths.add(request["path"])
     ids = []
     if cmd == "object": ids = [w.resolve(request["target"])]
+    if cmd == "inspect" and request.get("target") and not str(request["target"]).startswith("terrain:"):
+        ids = [w.resolve(request["target"])]
     if cmd == "scan" and request.get("details"):
         ids = page([i for i,d in w.gos.items() if str(request.get("search", "")).casefold() in d.get("m_Name", "").casefold()],
                    request.get("offset", 0), request.get("limit",100))["items"]
@@ -61,3 +63,4 @@ def main():
 
 
 if __name__=="__main__": main()
+

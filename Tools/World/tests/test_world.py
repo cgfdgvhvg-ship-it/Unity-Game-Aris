@@ -13,10 +13,12 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from unity_data import SCENE, World, WorldError, digest, pointer, safe_path
 from terrain import NativeTerrain, interpolate
-from patching import apply_yaml, plan, atomic_write
+from patching import apply_yaml, plan, preview_yaml, atomic_write
 from retention import expired
 from world import dispatch, performance
 from fetch_assets import required
+from capabilities import schema as automation_schema
+from observations import inspect, runtime, usages
 
 GUID = "1"*32
 MAT = "Assets/Test.mat"
@@ -47,6 +49,12 @@ class WorldTests(unittest.TestCase):
         return {"schema_version":1,"reason":"Move the test house along its parent-local X axis",
                 "expected_files":{p:digest(self.root/p) for p in (SCENE,SCENE+".meta")},
                 "operations":[{"op":"set_transform","target":f"scene:{GUID}:200","local_position":[2,2,3]}]}
+    def transform_patch_v2(self):
+        return {"schema_version":2,"transaction_id":"tx:test:0001","idempotency_key":"idem:test:0001",
+                "reason":"Move the selected object in world space and return its neighbourhood",
+                "expected_files":{p:digest(self.root/p) for p in (SCENE,SCENE+".meta")},
+                "operations":[{"id":"move-house","op":"set_transform","target":f"scene:{GUID}:200",
+                               "world_position":[11,2,26]}]}
     def test_hierarchy_world_coordinates_and_unit_forward(self):
         w = World(self.root); r = w.object(200)
         np.testing.assert_allclose(r["world_position_m"],[9,2,28],atol=1e-10)
@@ -76,6 +84,34 @@ class WorldTests(unittest.TestCase):
              "operations":[{"op":"set_material_color","path":MAT,"file_id":2100000,"property":"_BaseColor","rgba":[.4,.5,.6,1]}]}
         apply_yaml(self.root,p,True)
         self.assertEqual(World(self.root).asset_docs(MAT)["docs"][0]["data"]["m_SavedProperties"]["m_Colors"][0]["_BaseColor"]["g"],.5)
+    def test_v2_world_position_is_resolved_through_parent_and_state_is_typed(self):
+        patch=self.transform_patch_v2();apply_yaml(self.root,patch,True)
+        np.testing.assert_allclose(World(self.root).object(200)["world_position_m"],[11,2,26],atol=1e-10)
+        state={"schema_version":2,"transaction_id":"tx:test:0002","idempotency_key":"idem:test:0002",
+               "reason":"Rename only the selected saved object","expected_files":{p:digest(self.root/p) for p in (SCENE,SCENE+".meta")},
+               "operations":[{"id":"rename-house","op":"set_object_state","target":f"scene:{GUID}:200","name":"RoofCover"}]}
+        apply_yaml(self.root,state,True);self.assertEqual(World(self.root).object(200)["name"],"RoofCover")
+    def test_preview_is_isolated_and_returns_post_edit_context(self):
+        before=digest(self.root/SCENE);result=preview_yaml(self.root,self.transform_patch_v2())
+        self.assertEqual(digest(self.root/SCENE),before);self.assertTrue(result["preview"]);self.assertTrue(result["dry_run"])
+        self.assertTrue(result["post_edit_observations"])
+        np.testing.assert_allclose(result["post_edit_observations"][0]["result"]["target"]["world_position_m"],[11,2,26])
+    def test_context_capsule_reports_neighbours_without_making_a_design_decision(self):
+        w=World(self.root);result=inspect(w,{"target":f"scene:{GUID}:200","radius":50,"limit":20,"native":False,"geometry":False})
+        self.assertEqual(result["target"]["name"],"House")
+        self.assertGreaterEqual(len(result["nearby_scene_objects"]),1)
+        self.assertNotIn("placement_valid",result)
+        self.assertFalse(result["coverage"]["physics_tested"])
+    def test_schema_v2_requires_ids_and_exposes_native_and_prefab_operations(self):
+        contract=automation_schema();self.assertEqual(contract["protocol_version"],2)
+        self.assertIn("terrain_instance_move",contract["write_operations"]);self.assertIn("instantiate_prefab",contract["write_operations"])
+        patch=self.transform_patch_v2();patch["operations"][0].pop("id")
+        with self.assertRaises(WorldError):plan(self.root,patch)
+    def test_reverse_usage_and_runtime_evidence_are_explicitly_limited(self):
+        use=self.root/"Assets/Use.prefab";use.write_text("%YAML 1.1\nmaterial: {fileID: 2100000, guid: "+"2"*32+", type: 2}\n")
+        script=self.root/"Assets/Load.cs";script.write_text("class Load { void Update() { UnityEngine.SceneManagement.SceneManager.LoadScene(\"Map\"); } }\n")
+        result=usages(World(self.root),{"path":MAT});self.assertEqual(result["text_serialized_usages"][0]["path"],"Assets/Use.prefab")
+        evidence=runtime(self.root,{"search":"LoadScene","offset":0,"limit":10});self.assertEqual(evidence["total"],1)
     def test_rollback_when_post_write_validation_fails(self):
         p = self.transform_patch(); original = (self.root/SCENE).read_bytes()
         real = World.world_matrix
@@ -136,3 +172,4 @@ class RetentionTests(unittest.TestCase):
 
 
 if __name__=="__main__": unittest.main()
+

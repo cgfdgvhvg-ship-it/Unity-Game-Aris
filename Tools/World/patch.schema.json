@@ -1,32 +1,97 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Aaris core patch v1",
+  "title": "Aaris AI core transaction",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "reason", "expected_files", "operations"],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {"enum": [1, 2]},
+    "transaction_id": {"type": "string", "pattern": "^[A-Za-z0-9._:-]{8,128}$"},
+    "idempotency_key": {"type": "string", "pattern": "^[A-Za-z0-9._:-]{8,128}$"},
     "reason": {"type": "string", "minLength": 1},
     "expected_files": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "string", "pattern": "^[a-f0-9]{64}$"}},
+    "observe_after": {"type": "array", "maxItems": 32, "items": {"type": "object"}},
+    "acknowledgements": {"type": "array", "maxItems": 100, "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["observation_id", "observation_hash", "reason"],
+      "properties": {
+        "observation_id": {"type": "string", "minLength": 1},
+        "observation_hash": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    }},
     "operations": {"type": "array", "minItems": 1, "maxItems": 100, "items": {"oneOf": [
-      {"type": "object", "additionalProperties": false, "required": ["op", "target"], "properties": {
-        "op": {"const": "set_transform"}, "target": {"type": "string", "pattern": "^scene:[a-f0-9]{32}:-?[0-9]+$"},
-        "local_position": {"$ref": "#/$defs/vec3"},
-        "local_rotation_xyzw": {"$ref": "#/$defs/vec4"},
-        "local_scale": {"$ref": "#/$defs/vec3"}
-      }, "anyOf": [{"required": ["local_position"]}, {"required": ["local_rotation_xyzw"]}, {"required": ["local_scale"]}]},
-      {"type": "object", "additionalProperties": false, "required": ["op", "path", "file_id", "property", "rgba"], "properties": {
-        "op": {"const": "set_material_color"}, "path": {"type": "string", "pattern": "^Assets/.*\\.mat$"},
-        "file_id": {"type": "integer"}, "property": {"type": "string", "minLength": 1}, "rgba": {"$ref": "#/$defs/vec4"}
-      }},
-      {"type": "object", "additionalProperties": false, "required": ["op", "center_xz", "radius_m", "delta_m"], "properties": {
-        "op": {"const": "terrain_brush"}, "center_xz": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}},
-        "radius_m": {"type": "number", "exclusiveMinimum": 0, "maximum": 100}, "delta_m": {"type": "number", "minimum": -20, "maximum": 20}
-      }}
+      {"$ref": "#/$defs/setTransform"}, {"$ref": "#/$defs/setObjectState"},
+      {"$ref": "#/$defs/setMaterialColor"}, {"$ref": "#/$defs/setMaterialFloat"},
+      {"$ref": "#/$defs/terrainBrush"}, {"$ref": "#/$defs/terrainInstanceMove"},
+      {"$ref": "#/$defs/terrainInstanceScale"}, {"$ref": "#/$defs/terrainInstanceRotate"},
+      {"$ref": "#/$defs/terrainInstanceRemove"}, {"$ref": "#/$defs/terrainInstanceAdd"},
+      {"$ref": "#/$defs/instantiatePrefab"}, {"$ref": "#/$defs/duplicateObject"},
+      {"$ref": "#/$defs/deleteObject"}
     ]}}
   },
+  "allOf": [{
+    "if": {"properties": {"schema_version": {"const": 2}}},
+    "then": {"required": ["transaction_id", "idempotency_key"]}
+  }],
   "$defs": {
+    "opId": {"type": "string", "pattern": "^[A-Za-z0-9._:-]{1,96}$"},
+    "stableTarget": {"type": "string", "minLength": 1},
+    "vec2": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}},
     "vec3": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "number"}},
-    "vec4": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "number"}}
+    "vec4": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "number"}},
+    "setTransform": {"type": "object", "additionalProperties": false, "required": ["op", "target"], "properties": {
+      "id": {"$ref": "#/$defs/opId"}, "op": {"const": "set_transform"}, "target": {"$ref": "#/$defs/stableTarget"},
+      "world_position": {"$ref": "#/$defs/vec3"}, "local_position": {"$ref": "#/$defs/vec3"},
+      "local_rotation_xyzw": {"$ref": "#/$defs/vec4"}, "local_scale": {"$ref": "#/$defs/vec3"}
+    }, "anyOf": [{"required": ["world_position"]}, {"required": ["local_position"]}, {"required": ["local_rotation_xyzw"]}, {"required": ["local_scale"]}]},
+    "setObjectState": {"type": "object", "additionalProperties": false, "required": ["op", "target"], "properties": {
+      "id": {"$ref": "#/$defs/opId"}, "op": {"const": "set_object_state"}, "target": {"$ref": "#/$defs/stableTarget"},
+      "active": {"type": "boolean"}, "name": {"type": "string", "minLength": 1, "maxLength": 128}
+    }, "anyOf": [{"required": ["active"]}, {"required": ["name"]}]},
+    "setMaterialColor": {"type": "object", "additionalProperties": false, "required": ["op", "path", "file_id", "property", "rgba"], "properties": {
+      "id": {"$ref": "#/$defs/opId"}, "op": {"const": "set_material_color"}, "path": {"type": "string", "pattern": "^Assets/.*\\.mat$"},
+      "file_id": {"type": "integer"}, "property": {"type": "string", "minLength": 1}, "rgba": {"$ref": "#/$defs/vec4"}
+    }},
+    "setMaterialFloat": {"type": "object", "additionalProperties": false, "required": ["op", "path", "file_id", "property", "value"], "properties": {
+      "id": {"$ref": "#/$defs/opId"}, "op": {"const": "set_material_float"}, "path": {"type": "string", "pattern": "^Assets/.*\\.mat$"},
+      "file_id": {"type": "integer"}, "property": {"type": "string", "minLength": 1}, "value": {"type": "number"}
+    }},
+    "terrainBrush": {"type": "object", "additionalProperties": false, "required": ["op", "center_xz", "radius_m", "delta_m"], "properties": {
+      "id": {"$ref": "#/$defs/opId"}, "op": {"const": "terrain_brush"}, "center_xz": {"$ref": "#/$defs/vec2"},
+      "radius_m": {"type": "number", "exclusiveMinimum": 0, "maximum": 100}, "delta_m": {"type": "number", "minimum": -20, "maximum": 20}
+    }},
+    "terrainInstanceMove": {"type": "object", "additionalProperties": false, "required": ["op", "target", "world_xz"], "properties": {
+      "id": {"$ref": "#/$defs/opId"}, "op": {"const": "terrain_instance_move"}, "target": {"type": "string", "pattern": "^terrain:[a-f0-9]{32}:[0-9]+$"}, "world_xz": {"$ref": "#/$defs/vec2"}
+    }},
+    "terrainInstanceScale": {"type": "object", "additionalProperties": false, "required": ["op", "target", "width_scale", "height_scale"], "properties": {
+      "id": {"$ref": "#/$defs/opId"}, "op": {"const": "terrain_instance_scale"}, "target": {"type": "string", "pattern": "^terrain:[a-f0-9]{32}:[0-9]+$"},
+      "width_scale": {"type": "number", "exclusiveMinimum": 0, "maximum": 100}, "height_scale": {"type": "number", "exclusiveMinimum": 0, "maximum": 100}
+    }},
+    "terrainInstanceRotate": {"type": "object", "additionalProperties": false, "required": ["op", "target", "yaw_degrees"], "properties": {
+      "id": {"$ref": "#/$defs/opId"}, "op": {"const": "terrain_instance_rotate"}, "target": {"type": "string", "pattern": "^terrain:[a-f0-9]{32}:[0-9]+$"}, "yaw_degrees": {"type": "number"}
+    }},
+    "terrainInstanceRemove": {"type": "object", "additionalProperties": false, "required": ["op", "target"], "properties": {
+      "id": {"$ref": "#/$defs/opId"}, "op": {"const": "terrain_instance_remove"}, "target": {"type": "string", "pattern": "^terrain:[a-f0-9]{32}:[0-9]+$"}
+    }},
+    "terrainInstanceAdd": {"type": "object", "additionalProperties": false, "required": ["op", "terrain", "prototype_index", "world_xz", "width_scale", "height_scale", "yaw_degrees"], "properties": {
+      "id": {"$ref": "#/$defs/opId"}, "op": {"const": "terrain_instance_add"}, "terrain": {"type": "string", "minLength": 1},
+      "prototype_index": {"type": "integer", "minimum": 0}, "world_xz": {"$ref": "#/$defs/vec2"},
+      "width_scale": {"type": "number", "exclusiveMinimum": 0, "maximum": 100}, "height_scale": {"type": "number", "exclusiveMinimum": 0, "maximum": 100}, "yaw_degrees": {"type": "number"}
+    }},
+    "instantiatePrefab": {"type": "object", "additionalProperties": false, "required": ["op", "prefab_path", "world_position"], "properties": {
+      "id": {"$ref": "#/$defs/opId"}, "op": {"const": "instantiate_prefab"}, "prefab_path": {"type": "string", "pattern": "^Assets/.*\\.prefab$"},
+      "world_position": {"$ref": "#/$defs/vec3"}, "world_rotation_euler": {"$ref": "#/$defs/vec3"}, "local_scale": {"$ref": "#/$defs/vec3"},
+      "parent": {"$ref": "#/$defs/stableTarget"}, "name": {"type": "string", "minLength": 1, "maxLength": 128}
+    }},
+    "duplicateObject": {"type": "object", "additionalProperties": false, "required": ["op", "target"], "properties": {
+      "id": {"$ref": "#/$defs/opId"}, "op": {"const": "duplicate_object"}, "target": {"$ref": "#/$defs/stableTarget"},
+      "world_position": {"$ref": "#/$defs/vec3"}, "world_rotation_euler": {"$ref": "#/$defs/vec3"}, "local_scale": {"$ref": "#/$defs/vec3"},
+      "name": {"type": "string", "minLength": 1, "maxLength": 128}
+    }},
+    "deleteObject": {"type": "object", "additionalProperties": false, "required": ["op", "target"], "properties": {
+      "id": {"$ref": "#/$defs/opId"}, "op": {"const": "delete_object"}, "target": {"$ref": "#/$defs/stableTarget"}
+    }}
   }
 }
+
