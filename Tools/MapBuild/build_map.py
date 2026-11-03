@@ -187,23 +187,12 @@ def scene_build(t,sites,roads,buildings,spawns,models,template,terrain_template,
     for k,road in enumerate(roads):
         p=geom/f'Road_{k:02d}.asset';m=surfaces.ribbon(p,road['points'],road['width'],t.h,template)
         world.model(road['name'],m['guid'],[mats['Asphalt']],parent=roadsroot,lod=False,collider=False)
-        # Dashed center line. Every other 5m segment along the routed centerline.
-        points=np.asarray(road['points']);distance=np.r_[0,np.cumsum(np.linalg.norm(np.diff(points[:,[0,2]],axis=0),axis=1))]
-        markings=[]
-        for dist in np.arange(5,distance[-1]-5,15):
-            ab=[]
-            for d0 in [dist,dist+5]:ab.append([np.interp(d0,distance,points[:,a]) for a in [0,1,2]])
-            markings.append(ab)
-        if markings:
-            # Combine short road marking ribbons into one mesh per road.
-            pp=[];ii=[]
-            for ab in markings:
-                ab=np.asarray(ab);delta=ab[1,[0,2]]-ab[0,[0,2]];delta/=max(np.linalg.norm(delta),1e-9);side=np.array([-delta[1],delta[0]])*.07
-                q=np.array([ab[0,[0,2]]+side,ab[1,[0,2]]+side,ab[1,[0,2]]-side,ab[0,[0,2]]-side]);start=len(pp);pp.extend(q);ii.extend(np.array([0,1,2,0,2,3])+start)
-            pp=np.asarray(pp);yy=sample(t.h,pp[:,0],pp[:,1])+.045
-            # Ensure upward winding regardless of road direction.
-            q=np.asarray(ii).reshape(-1,3);p3=np.column_stack((pp[:,0],yy,pp[:,1]));bad=np.cross(p3[q[:,1]]-p3[q[:,0]],p3[q[:,2]]-p3[q[:,0]])[:,1]<0;q[bad]=q[bad][:,[0,2,1]]
-            m=surfaces.surface(geom/f'RoadMark_{k:02d}.asset',pp,q,yy,template)
+        # Split paint at actual paved triangles; terrain heights alone cause buried paint.
+        from road_markings import read_mesh,project_markings,paint_quads
+        if list(paint_quads(road['points'])):
+            paved,paved_tri,_=read_mesh(p)
+            paint,paint_tri,_=project_markings(paved,paved_tri,road['points'])
+            m=surfaces.surface(geom/f'RoadMark_{k:02d}.asset',paint[:,[0,2]],paint_tri,paint[:,1],template)
             world.model(road['name']+'_Markings',m['guid'],[mats['RoadMark']],parent=roadsroot,lod=False,collider=False)
     _,groundroot,_=world.object('FoundationsAndAprons',parent=root)
     for k,b in enumerate(buildings):

@@ -140,6 +140,12 @@ def player(scene,root,camera_id,spawn):
         'm_Name':'','m_EditorClassIdentifier':'Assembly-CSharp::Aaris.MapReview.AarisThirdPersonPlayer','followCamera':ref(camera_id),
         'leftArm':ref(limbs['LeftArm']),'rightArm':ref(limbs['RightArm']),'leftLeg':ref(limbs['LeftLeg']),'rightLeg':ref(limbs['RightLeg']),
         'walkSpeed':4.2,'runSpeed':6.2,'jumpHeight':1,'gravity':24,'followDistance':4.2,'pivotHeight':1.45,'lookSensitivity':.12,'seaLevel':SEA})
+    for c,i,n,d in scene.objects:
+        if n=='GameObject' and (d['m_Name']=='AarisPlayer' or d['m_Name'].startswith('AarisPlayer_')):
+            d['m_Layer']=8
+    tags_path=root/'ProjectSettings/TagManager.asset';tags=documents(tags_path)[0][3]
+    assert tags['layers'][8] in ('',None,'Player'),'Layer 8 is already in use'
+    tags['layers'][8]='Player';write_yaml(tags_path,[(78,1,'TagManager',tags)])
     return tr
 
 def upgrade(root):
@@ -222,7 +228,7 @@ def upgrade(root):
     gs['m_AlwaysIncludedShaders']=[ref(106,'0000000000000000f000000000000000',0)]
     write_yaml(graphics,[(30,1,'GraphicsSettings',gs)])
     settings_path=root/'ProjectSettings/ProjectSettings.asset';settings=documents(settings_path)[0][3]
-    settings['productName']='Aaris Ground Review';settings['bundleVersion']='0.2.0';settings['AndroidBundleVersionCode']=2
+    settings['productName']='Aaris Ground Review';settings['bundleVersion']='0.2.1';settings['AndroidBundleVersionCode']=3
     write_yaml(settings_path,[(129,1,'PlayerSettings',settings)])
     quality={'serializedVersion':3,'name':'Aaris Ground','pixelLightCount':1,'shadows':2,'shadowResolution':2,'shadowProjection':1,
         'shadowCascades':2,'shadowDistance':100,'shadowNearPlaneOffset':3,'shadowCascade2Split':.25,'shadowCascade4Split':vec(.067,.2,.467),

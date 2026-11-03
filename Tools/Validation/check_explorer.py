@@ -24,6 +24,11 @@ def check(require_native=False):
             if r['fileID'] and not r.get('guid'):assert r['fileID'] in byid,(n,i,'Missing local reference',r)
     players=[(i,d) for c,i,n,d in objects if n=='GameObject' and d['m_Name']=='AarisPlayer'];assert len(players)==1
     player_go,player=players[0];components=[byid[r['component']['fileID']] for r in player['m_Component']]
+    tags=documents(ROOT/'ProjectSettings/TagManager.asset')[0][3]
+    assert tags['layers'][8]=='Player'
+    assert all(d['m_Layer']==8 for c,i,n,d in objects if n=='GameObject' and (d['m_Name']=='AarisPlayer' or d['m_Name'].startswith('AarisPlayer_')))
+    prefab=documents(ROOT/'Assets/AarisWorld/Player/AarisPlayer.prefab')
+    assert all(d['m_Layer']==8 for c,i,n,d in prefab if n=='GameObject')
     controller=next(d for c,n,d in components if c==143);assert controller['m_Height']==1.78 and controller['m_Radius']>.2
     script=ROOT/'Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs';script_guid=yaml.safe_load(Path(str(script)+'.meta').read_text())['guid']
     logic=next(d for c,n,d in components if c==114);assert logic['m_Script']['guid']==script_guid
@@ -67,6 +72,12 @@ def check(require_native=False):
     for path in [ROOT/'Tools/MapBuild/ground_review.py',ROOT/'Tools/MapBuild/ground_native.py']:ast.parse(path.read_text())
     report=json.loads((ROOT/'Docs/GROUND_REVIEW_REPORT.json').read_text())
     if require_native:assert report['native_assets_materialized'],'Native assets are still pending'
+    surface_report=ROOT/'Docs/ROAD_SURFACE_REPORT.json'
+    if surface_report.exists():
+        roads=json.loads(surface_report.read_text())
+        assert roads['road_meshes_unchanged'] and roads['paint_meshes_saved']==len(layout['roads'])
+        for r in roads['roads']:
+            assert .0198<r['saved_min_gap_m']<=r['saved_max_gap_m']<.0202
     map_report=json.loads((ROOT/'Docs/MAP_BUILD_REPORT.json').read_text())
     for path,expected in map_report['terrain_files'].items():
         if not (ROOT/path).exists():assert not require_native,'Terrain file missing';continue
