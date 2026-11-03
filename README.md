@@ -1,5 +1,7 @@
 # Aaris Island — grounded Android map review
 
+Android **0.3.0 / code 6** adds bounded building physics, a read-only terrain CPU-memory pass and local crash diagnostics, plus 4 climbable towers, 6 original static wreck props and 24 Poly Haven rock props. Existing terrain, lighting, texture resolution and close meshes are preserved. The reported Android crash is **not yet device-verified as fixed**. [Changes, limitations and phone testing](Docs/MOBILE_REVIEW.md).
+
 A saved 2 km × 2 km Unity URP island with a visible 1.78 m human reference player.
 Open `Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity` in **Unity 6000.3.26f1 / URP 17.3**.
 Clone with Git LFS and fetch the actual assets before opening or building.
@@ -48,9 +50,9 @@ Use **Aaris → Build Android Ground Review APK**, or the existing batch entry p
 
 `Aaris.MapReview.Editor.AarisExplorerBuild.BuildAndroid`
 
-Output: `Builds/Android/AarisMapExplorer.apk` (kept for existing phone/cloud build scripts; app version 0.2.3, code 5).
+Output: `Builds/Android/AarisMapExplorer.apk` (kept for existing phone/cloud build scripts; app version 0.3.0, code 6).
 
-Target: ARM64 / IL2CPP / Android 8+ / landscape, package `com.aaris.mapexplorer`. The player targets a stable 30 FPS; actual target-device frame time and memory must be measured. Existing Unity 6.3 URP compatibility defines are preserved. No automatic Unity/APK build is added.
+Target: ARM64 / IL2CPP / Android 8+ / landscape, package `com.aaris.mapexplorer`. The player targets 60 FPS (with a 30/60 frame-pacing toggle); actual target-device frame time and memory must be measured. Existing Unity 6.3 URP compatibility defines are preserved. No automatic Unity/APK build is added.
 
 The build preprocessor rejects a missing player/camera, wrong player height, pending native assets, wrong surface importers, missing building LODs, missing terrain data or missing scene scripts.
 

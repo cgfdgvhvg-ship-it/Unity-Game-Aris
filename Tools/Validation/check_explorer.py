@@ -46,7 +46,11 @@ def check(require_native=False):
     assert {r['fileID'] for r in scene_roots}=={i for i,t in transforms.items() if t['m_Father']['fileID']==0}
     assert sum(c==218 for c,i,n,d in objects)==4
     assert sum(c==1 and bool(re.fullmatch('VehicleSpawnPoint_[0-9]+',d['m_Name'])) for c,i,n,d in objects)==45
-    lods=[d for c,i,n,d in objects if n=='LODGroup'];assert len(lods)==59 and all(len(d['m_LODs'])==3 for d in lods)
+    layout=json.loads((ROOT/'Docs/MAP_LAYOUT.json').read_text())
+    building_names={b['name'] for b in layout['buildings']}
+    names={i:d['m_Name'] for c,i,n,d in objects if n=='GameObject'}
+    lods=[d for c,i,n,d in objects if n=='LODGroup' and names[d['m_GameObject']['fileID']] in building_names]
+    assert len(lods)==59 and all(len(d['m_LODs'])==3 for d in lods)
     assert all([l['screenRelativeHeight'] for l in d['m_LODs']]==[.22,.07,.0025] for d in lods)
     sky=next(d for c,i,n,d in documents(ROOT/'Assets/TerrainDemoScene_URP/Prefabs/Skybox/Materials/Sky.mat') if n=='Material')
     assert sky['m_Shader']['fileID']==106 and sky['m_ShaderKeywords']=='_SUNDISK_HIGH_QUALITY'

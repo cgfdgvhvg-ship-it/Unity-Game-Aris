@@ -4,3 +4,4 @@ Pillow==12.3.0
 scipy==1.17.0
 PyYAML==6.0.3
 matplotlib==3.10.8
+trimesh==5.2.0

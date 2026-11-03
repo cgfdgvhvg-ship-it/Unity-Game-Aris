@@ -1,0 +1,664 @@
+{
+  "source_commit": "ae68166e65473f8b5c8181dcc1fd4b79b9a9d679",
+  "terrain_files_unchanged": true,
+  "lighting_and_existing_visual_assets_unchanged": true,
+  "existing_world_size_m": [
+    2000,
+    2000
+  ],
+  "terrain_cpu_paint_bytes_eligible_for_release": 178956960,
+  "cpu_paint_release": "Android-only, read-only APK, one original mip chain per frame; Editor files unchanged. Requires device verification.",
+  "residential_static_batch_flags_cleared": 188,
+  "distant_building_colliders_disabled_at_start": 57,
+  "nearby_static_collider_count": 260,
+  "nearby_activation_distance_m": 55,
+  "native_terrain_and_tree_colliders_preserved": true,
+  "target_fps": 60,
+  "fps_target_is_not_measured_fps": true,
+  "graphics_api": "OpenGLES3",
+  "texture_compression": "ETC2",
+  "placements": [
+    {
+      "name": "FreightDistrict_ClimbableTower",
+      "kind": "tower",
+      "position_m": [
+        468.0,
+        -1.0718427638405643,
+        -227.0
+      ],
+      "yaw": 0,
+      "aabb_xz_m": [
+        464.6,
+        -231.5,
+        471.4,
+        -222.5
+      ],
+      "standing_height_m": 12,
+      "overall_height_m": 13.1,
+      "stair_width_m": 1.7,
+      "riser_m": 0.16666666666666666,
+      "tread_m": 0.3333333333333333,
+      "ramp_slope_degrees": 26.56505117707799,
+      "stairwell_open": true
+    },
+    {
+      "name": "SouthernAirfield_ClimbableTower",
+      "kind": "tower",
+      "position_m": [
+        38.0,
+        24.955136421900733,
+        -502.0
+      ],
+      "yaw": 0,
+      "aabb_xz_m": [
+        34.6,
+        -506.5,
+        41.4,
+        -497.5
+      ],
+      "standing_height_m": 12,
+      "overall_height_m": 13.1,
+      "stair_width_m": 1.7,
+      "riser_m": 0.16666666666666666,
+      "tread_m": 0.3333333333333333,
+      "ramp_slope_degrees": 26.56505117707799,
+      "stairwell_open": true
+    },
+    {
+      "name": "NorthernRidgeTown_ClimbableTower",
+      "kind": "tower",
+      "position_m": [
+        218.0,
+        -30.834401513764263,
+        583.0
+      ],
+      "yaw": 0,
+      "aabb_xz_m": [
+        214.6,
+        578.5,
+        221.4,
+        587.5
+      ],
+      "standing_height_m": 12,
+      "overall_height_m": 13.1,
+      "stair_width_m": 1.7,
+      "riser_m": 0.16666666666666666,
+      "tread_m": 0.3333333333333333,
+      "ramp_slope_degrees": 26.56505117707799,
+      "stairwell_open": true
+    },
+    {
+      "name": "ValleySettlement_ClimbableTower",
+      "kind": "tower",
+      "position_m": [
+        -497.0,
+        15.408655313434679,
+        -277.0
+      ],
+      "yaw": 0,
+      "aabb_xz_m": [
+        -500.4,
+        -281.5,
+        -493.6,
+        -272.5
+      ],
+      "standing_height_m": 12,
+      "overall_height_m": 13.1,
+      "stair_width_m": 1.7,
+      "riser_m": 0.16666666666666666,
+      "tread_m": 0.3333333333333333,
+      "ramp_slope_degrees": 26.56505117707799,
+      "stairwell_open": true
+    },
+    {
+      "name": "FreightDistrict_StaticWreck",
+      "kind": "static_wreck",
+      "position_m": [
+        468.0,
+        -1.0718427638405643,
+        -215.0
+      ],
+      "yaw": 17,
+      "aabb_xz_m": [
+        465.5,
+        -217.5,
+        470.5,
+        -212.5
+      ]
+    },
+    {
+      "name": "EasternPort_StaticWreck",
+      "kind": "static_wreck",
+      "position_m": [
+        783.0,
+        -31.07855704083501,
+        278.0
+      ],
+      "yaw": 17,
+      "aabb_xz_m": [
+        780.5,
+        275.5,
+        785.5,
+        280.5
+      ]
+    },
+    {
+      "name": "SouthernAirfield_StaticWreck",
+      "kind": "static_wreck",
+      "position_m": [
+        38.0,
+        24.955136421900733,
+        -490.0
+      ],
+      "yaw": 17,
+      "aabb_xz_m": [
+        35.5,
+        -492.5,
+        40.5,
+        -487.5
+      ]
+    },
+    {
+      "name": "ClockTowerTown_StaticWreck",
+      "kind": "static_wreck",
+      "position_m": [
+        263.0,
+        -11.936763718488663,
+        143.0
+      ],
+      "yaw": 17,
+      "aabb_xz_m": [
+        260.5,
+        140.5,
+        265.5,
+        145.5
+      ]
+    },
+    {
+      "name": "OldVillage_StaticWreck",
+      "kind": "static_wreck",
+      "position_m": [
+        -612.0,
+        1.7115302447659104,
+        -652.0
+      ],
+      "yaw": 17,
+      "aabb_xz_m": [
+        -614.5,
+        -654.5,
+        -609.5,
+        -649.5
+      ]
+    },
+    {
+      "name": "CoastalHamlet_StaticWreck",
+      "kind": "static_wreck",
+      "position_m": [
+        583.0,
+        -18.21156076420681,
+        588.0
+      ],
+      "yaw": 17,
+      "aabb_xz_m": [
+        580.5,
+        585.5,
+        585.5,
+        590.5
+      ]
+    },
+    {
+      "name": "RockCover_10",
+      "kind": "rock_cover",
+      "position_m": [
+        -226.34510480549932,
+        -33.600099967561626,
+        805.6572820365466
+      ],
+      "yaw": 336.869586010668,
+      "aabb_xz_m": [
+        -228.34510480549932,
+        803.6572820365466,
+        -224.34510480549932,
+        807.6572820365466
+      ]
+    },
+    {
+      "name": "RockCover_11",
+      "kind": "rock_cover",
+      "position_m": [
+        -69.2883419811302,
+        -31.027648171885485,
+        795.6552345561913
+      ],
+      "yaw": 242.17890251200808,
+      "aabb_xz_m": [
+        -71.2883419811302,
+        793.6552345561913,
+        -67.2883419811302,
+        797.6552345561913
+      ]
+    },
+    {
+      "name": "RockCover_12",
+      "kind": "rock_cover",
+      "position_m": [
+        -442.9800645913499,
+        9.812837953733105,
+        -100.44377191327692
+      ],
+      "yaw": 145.4758404534615,
+      "aabb_xz_m": [
+        -444.9800645913499,
+        -102.44377191327692,
+        -440.9800645913499,
+        -98.44377191327692
+      ]
+    },
+    {
+      "name": "RockCover_13",
+      "kind": "rock_cover",
+      "position_m": [
+        -184.42990442042503,
+        4.716388547668144,
+        -838.3575210271547
+      ],
+      "yaw": 159.34773861141633,
+      "aabb_xz_m": [
+        -186.42990442042503,
+        -840.3575210271547,
+        -182.42990442042503,
+        -836.3575210271547
+      ]
+    },
+    {
+      "name": "RockCover_14",
+      "kind": "rock_cover",
+      "position_m": [
+        373.55642297051304,
+        -23.113540400056177,
+        476.0262108435095
+      ],
+      "yaw": 242.5425209188131,
+      "aabb_xz_m": [
+        371.55642297051304,
+        474.0262108435095,
+        375.55642297051304,
+        478.0262108435095
+      ]
+    },
+    {
+      "name": "RockCover_15",
+      "kind": "rock_cover",
+      "position_m": [
+        401.5407632418717,
+        -26.878320267317772,
+        782.4884914170802
+      ],
+      "yaw": 89.05325804222007,
+      "aabb_xz_m": [
+        399.5407632418717,
+        780.4884914170802,
+        403.5407632418717,
+        784.4884914170802
+      ]
+    },
+    {
+      "name": "RockCover_16",
+      "kind": "rock_cover",
+      "position_m": [
+        824.5896212871742,
+        -30.536115241547613,
+        447.4733007803245
+      ],
+      "yaw": 41.72328858168666,
+      "aabb_xz_m": [
+        822.5896212871742,
+        445.4733007803245,
+        826.5896212871742,
+        449.4733007803245
+      ]
+    },
+    {
+      "name": "RockCover_17",
+      "kind": "rock_cover",
+      "position_m": [
+        656.4782866656005,
+        11.43023958536776,
+        -441.001886255243
+      ],
+      "yaw": 340.16742728343775,
+      "aabb_xz_m": [
+        654.4782866656005,
+        -443.001886255243,
+        658.4782866656005,
+        -439.001886255243
+      ]
+    },
+    {
+      "name": "RockCover_18",
+      "kind": "rock_cover",
+      "position_m": [
+        -306.2233482229242,
+        -21.366795683184538,
+        119.2463278072612
+      ],
+      "yaw": 52.83879297592771,
+      "aabb_xz_m": [
+        -308.2233482229242,
+        117.2463278072612,
+        -304.2233482229242,
+        121.2463278072612
+      ]
+    },
+    {
+      "name": "RockCover_19",
+      "kind": "rock_cover",
+      "position_m": [
+        -840.8937010287775,
+        -18.37962786704382,
+        -422.3978467628099
+      ],
+      "yaw": 2.64340042195764,
+      "aabb_xz_m": [
+        -842.8937010287775,
+        -424.3978467628099,
+        -838.8937010287775,
+        -420.3978467628099
+      ]
+    },
+    {
+      "name": "RockCover_20",
+      "kind": "rock_cover",
+      "position_m": [
+        702.7099003338883,
+        -19.916421280671763,
+        791.4611993520252
+      ],
+      "yaw": 187.3221657296313,
+      "aabb_xz_m": [
+        700.7099003338883,
+        789.4611993520252,
+        704.7099003338883,
+        793.4611993520252
+      ]
+    },
+    {
+      "name": "RockCover_21",
+      "kind": "rock_cover",
+      "position_m": [
+        269.64033995082536,
+        -11.645540877332298,
+        112.35807640787982
+      ],
+      "yaw": 187.70158362534983,
+      "aabb_xz_m": [
+        267.64033995082536,
+        110.35807640787982,
+        271.64033995082536,
+        114.35807640787982
+      ]
+    },
+    {
+      "name": "RockCover_22",
+      "kind": "rock_cover",
+      "position_m": [
+        -466.3774737418096,
+        -22.243556125389137,
+        288.23131959623765
+      ],
+      "yaw": 1.258044994158607,
+      "aabb_xz_m": [
+        -468.3774737418096,
+        286.23131959623765,
+        -464.3774737418096,
+        290.23131959623765
+      ]
+    },
+    {
+      "name": "RockCover_23",
+      "kind": "rock_cover",
+      "position_m": [
+        -138.01008343351498,
+        -26.28924866687028,
+        202.264538346662
+      ],
+      "yaw": 320.4011890685484,
+      "aabb_xz_m": [
+        -140.01008343351498,
+        200.264538346662,
+        -136.01008343351498,
+        204.264538346662
+      ]
+    },
+    {
+      "name": "RockCover_24",
+      "kind": "rock_cover",
+      "position_m": [
+        555.6254677890879,
+        -15.386137769059221,
+        399.4520970785095
+      ],
+      "yaw": 340.55403014805677,
+      "aabb_xz_m": [
+        553.6254677890879,
+        397.4520970785095,
+        557.6254677890879,
+        401.4520970785095
+      ]
+    },
+    {
+      "name": "RockCover_25",
+      "kind": "rock_cover",
+      "position_m": [
+        122.1706352480453,
+        31.657416200498044,
+        -731.0434074945026
+      ],
+      "yaw": 97.85801854959506,
+      "aabb_xz_m": [
+        120.1706352480453,
+        -733.0434074945026,
+        124.1706352480453,
+        -729.0434074945026
+      ]
+    },
+    {
+      "name": "RockCover_26",
+      "kind": "rock_cover",
+      "position_m": [
+        -835.0283342755087,
+        -16.753508127011212,
+        -468.3785042366518
+      ],
+      "yaw": 184.4040318828342,
+      "aabb_xz_m": [
+        -837.0283342755087,
+        -470.3785042366518,
+        -833.0283342755087,
+        -466.3785042366518
+      ]
+    },
+    {
+      "name": "RockCover_27",
+      "kind": "rock_cover",
+      "position_m": [
+        -555.9281500178981,
+        24.39635134821039,
+        -352.7854599266935
+      ],
+      "yaw": 264.5116160893217,
+      "aabb_xz_m": [
+        -557.9281500178981,
+        -354.7854599266935,
+        -553.9281500178981,
+        -350.7854599266935
+      ]
+    },
+    {
+      "name": "RockCover_28",
+      "kind": "rock_cover",
+      "position_m": [
+        159.47025996811908,
+        9.181174053800534,
+        -207.65475143990466
+      ],
+      "yaw": 210.7847412894459,
+      "aabb_xz_m": [
+        157.47025996811908,
+        -209.65475143990466,
+        161.47025996811908,
+        -205.65475143990466
+      ]
+    },
+    {
+      "name": "RockCover_29",
+      "kind": "rock_cover",
+      "position_m": [
+        373.65799880838586,
+        -26.45198084213612,
+        522.3587328487802
+      ],
+      "yaw": 196.63232438122225,
+      "aabb_xz_m": [
+        371.65799880838586,
+        520.3587328487802,
+        375.65799880838586,
+        524.3587328487802
+      ]
+    },
+    {
+      "name": "RockCover_30",
+      "kind": "rock_cover",
+      "position_m": [
+        -291.8287225706134,
+        -12.528173367912105,
+        -90.6926449666231
+      ],
+      "yaw": 239.80884238079085,
+      "aabb_xz_m": [
+        -293.8287225706134,
+        -92.6926449666231,
+        -289.8287225706134,
+        -88.6926449666231
+      ]
+    },
+    {
+      "name": "RockCover_31",
+      "kind": "rock_cover",
+      "position_m": [
+        -355.53691775159047,
+        15.28865531343468,
+        -158.53283359964894
+      ],
+      "yaw": 0.3148340301299779,
+      "aabb_xz_m": [
+        -357.53691775159047,
+        -160.53283359964894,
+        -353.53691775159047,
+        -156.53283359964894
+      ]
+    },
+    {
+      "name": "RockCover_32",
+      "kind": "rock_cover",
+      "position_m": [
+        444.5011415043234,
+        49.454748952360156,
+        -807.0089219834406
+      ],
+      "yaw": 195.0509748229936,
+      "aabb_xz_m": [
+        442.5011415043234,
+        -809.0089219834406,
+        446.5011415043234,
+        -805.0089219834406
+      ]
+    },
+    {
+      "name": "RockCover_33",
+      "kind": "rock_cover",
+      "position_m": [
+        -44.162044390284905,
+        -14.977428260698675,
+        59.37079304929637
+      ],
+      "yaw": 272.9703544377061,
+      "aabb_xz_m": [
+        -46.162044390284905,
+        57.37079304929637,
+        -42.162044390284905,
+        61.37079304929637
+      ]
+    }
+  ],
+  "models": {
+    "ClimbableTower": {
+      "triangles": [
+        1500,
+        1180,
+        696
+      ],
+      "reusable_prefab": "Assets/AarisWorld/Props/ClimbableTower/ClimbableTower.prefab"
+    },
+    "StaticWreck": {
+      "triangles": [
+        422,
+        332,
+        142
+      ],
+      "reusable_prefab": "Assets/AarisWorld/Props/StaticWreck/StaticWreck.prefab"
+    },
+    "RockCover": {
+      "triangles": [
+        12416,
+        5580,
+        1621
+      ],
+      "reusable_prefab": "Assets/AarisWorld/Props/RockCover/RockCover.prefab"
+    }
+  },
+  "new_asset_sources": [
+    {
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/rock_09/rock_09_diff_1k.jpg",
+      "download_sha256": "afb7ae5ae82238d304aba589391ac6bc87f7cf1dbfe50980c21f762cfdd87efd",
+      "asset": "Assets/AarisWorld/Props/Shared/rock_09_Base.jpg"
+    },
+    {
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/rock_09/rock_09_nor_gl_1k.jpg",
+      "download_sha256": "2195b5c7da3a23af2a5f93dbb20f38bc069028509b106397bc8d2aee0bc55729",
+      "asset": "Assets/AarisWorld/Props/Shared/rock_09_Normal.jpg"
+    },
+    {
+      "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/rock_09/rock_09_arm_1k.jpg",
+      "download_sha256": "594e2cec49e6bb40bd9bab2649e37dcc261079456cf4d6f680f56770c19db5ea",
+      "asset": "Assets/AarisWorld/Props/Shared/rock_09_ARM.png"
+    },
+    {
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusty_metal_02/rusty_metal_02_diff_1k.jpg",
+      "download_sha256": "adaf094391518b6afe787a123942110aa88ef521c844f970b124420f5ed5d3d9",
+      "asset": "Assets/AarisWorld/Props/Shared/rusty_metal_02_Base.jpg"
+    },
+    {
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusty_metal_02/rusty_metal_02_nor_gl_1k.jpg",
+      "download_sha256": "995197a62cac6fbb000e6e6591a3330a3b77ef069c4ac58f505b586b9bdbd97b",
+      "asset": "Assets/AarisWorld/Props/Shared/rusty_metal_02_Normal.jpg"
+    },
+    {
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusty_metal_02/rusty_metal_02_arm_1k.jpg",
+      "download_sha256": "2982943ffe3273a65bf788b77fc0c7a4fd8227824386d065d13a8c8c0e07db10",
+      "asset": "Assets/AarisWorld/Props/Shared/rusty_metal_02_ARM.png"
+    }
+  ],
+  "licenses": {
+    "rock_09": "CC0-1.0, Poly Haven / Jenelle van Heerden",
+    "rusty_metal_02": "CC0-1.0, Poly Haven / Rob Tuytel",
+    "ClimbableTower": "Original project geometry",
+    "StaticWreck": "Original project geometry; decorative only"
+  },
+  "unity_editor_compiled": false,
+  "unity_render_tested": false,
+  "android_device_tested": false,
+  "crash_root_cause_confirmed": false,
+  "collision_spatial_cell_size_m": 250,
+  "full_terrain_asset_streaming_enabled": false
+}

@@ -6,6 +6,7 @@ using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Aaris.MapReview.Editor
 {
@@ -32,8 +33,8 @@ namespace Aaris.MapReview.Editor
         {
             PlayerSettings.companyName = "Aaris";
             PlayerSettings.productName = "Aaris Ground Review";
-            PlayerSettings.bundleVersion = "0.2.3";
-            PlayerSettings.Android.bundleVersionCode = 5;
+            PlayerSettings.bundleVersion = "0.3.0";
+            PlayerSettings.Android.bundleVersionCode = 6;
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
             PlayerSettings.allowedAutorotateToLandscapeLeft = true;
@@ -44,6 +45,11 @@ namespace Aaris.MapReview.Editor
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
             PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
+            // A reproducible GLES3 renderer/ETC2 pair avoids silently selecting a different
+            // mobile graphics driver on each phone. HDR and render scale remain unchanged.
+            PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.Android, false);
+            PlayerSettings.SetGraphicsAPIs(BuildTarget.Android, new[] { GraphicsDeviceType.OpenGLES3 });
+            EditorUserBuildSettings.androidBuildSubtarget = MobileTextureSubtarget.ETC2;
             PlayerSettings.SetScriptingBackend(UnityEditor.Build.NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
             // The review UI uses the built-in Input API; no Input Actions asset is required.
             UnityEngine.Object[] settings = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/ProjectSettings.asset");
@@ -62,6 +68,8 @@ namespace Aaris.MapReview.Editor
             var player = UnityEngine.Object.FindFirstObjectByType<AarisThirdPersonPlayer>();
             if (player == null || !player.enabled || player.GetComponent<CharacterController>() == null)
                 throw new BuildFailedException("The saved scene must contain the grounded third-person player.");
+            if (UnityEngine.Object.FindFirstObjectByType<AarisMobileRuntime>() == null || UnityEngine.Object.FindFirstObjectByType<AarisNearbyColliders>() == null)
+                throw new BuildFailedException("The saved scene must include mobile memory diagnostics and bounded building physics.");
             var binding = new SerializedObject(player).FindProperty("followCamera");
             if (binding == null || binding.objectReferenceValue == null)
                 throw new BuildFailedException("The saved player must reference the shoulder camera.");
