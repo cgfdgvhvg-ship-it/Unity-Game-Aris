@@ -1,6 +1,7 @@
 import copy
 import json
 import math
+import re
 import sys
 import tempfile
 import unittest
@@ -96,6 +97,39 @@ class WorldTests(unittest.TestCase):
         self.assertEqual(digest(self.root/SCENE),before);self.assertTrue(result["preview"]);self.assertTrue(result["dry_run"])
         self.assertTrue(result["post_edit_observations"])
         np.testing.assert_allclose(result["post_edit_observations"][0]["result"]["target"]["world_position_m"],[11,2,26])
+    def test_parent_and_child_world_edits_use_final_hierarchy_in_both_orders(self):
+        for reverse in (False, True):
+            with self.subTest(reverse=reverse), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp); fixture(root)
+                patch = self.transform_patch_v2()
+                patch["expected_files"] = {p:digest(root/p) for p in (SCENE,SCENE+".meta")}
+                parent = {"id":"parent", "op":"set_transform", "target":f"scene:{GUID}:100",
+                          "world_position":[10,0,30], "local_scale":[3,2,4],
+                          "local_rotation_xyzw":[0,0,0,1]}
+                patch["operations"].append(parent)
+                if reverse: patch["operations"].reverse()
+                result = apply_yaml(root, patch, True)
+                np.testing.assert_allclose(World(root).object(200)["world_position_m"],[11,2,26],atol=1e-8)
+                self.assertFalse(result["dry_run"])
+    def test_conflicting_world_and_local_writes_in_separate_operations_are_rejected(self):
+        patch = self.transform_patch_v2()
+        patch["operations"].append({"id":"conflict", "op":"set_transform",
+                                    "target":f"scene:{GUID}:200", "local_position":[0,0,0]})
+        original = (self.root/SCENE).read_bytes()
+        with self.assertRaisesRegex(WorldError,"Conflicting transform"):
+            apply_yaml(self.root,patch,True)
+        self.assertEqual((self.root/SCENE).read_bytes(),original)
+    def test_finite_but_wrong_written_position_is_rolled_back(self):
+        patch = self.transform_patch_v2(); original = (self.root/SCENE).read_bytes()
+        def wrong_write(path, data):
+            if Path(path) == self.root/SCENE and data != original:
+                data = re.sub(rb"(?s)(--- !u!4 &201\n.*?m_LocalPosition: \{x: )([^,]+)",
+                              lambda m:m[1]+str(float(m[2])+1).encode(),data,count=1)
+            atomic_write(path,data)
+        with mock_patch('patching.atomic_write',side_effect=wrong_write):
+            with self.assertRaisesRegex(WorldError,"Postcondition failed"):
+                apply_yaml(self.root,patch,True)
+        self.assertEqual((self.root/SCENE).read_bytes(),original)
     def test_context_capsule_reports_neighbours_without_making_a_design_decision(self):
         w=World(self.root);result=inspect(w,{"target":f"scene:{GUID}:200","radius":50,"limit":20,"native":False,"geometry":False})
         self.assertEqual(result["target"]["name"],"House")

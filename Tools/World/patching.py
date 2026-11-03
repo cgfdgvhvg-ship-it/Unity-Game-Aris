@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-from unity_data import SCENE, World, WorldError, digest, documents, safe_path, references
+from unity_data import SCENE, World, WorldError, digest, documents, safe_path, references, matrix
 
 
 class Dumper(yaml.SafeDumper):
@@ -318,6 +318,52 @@ def _observation_deltas(before_rows, after_rows):
     return rows
 
 
+def _resolve_final_positions(world, docs, requested):
+    """Resolve explicit world positions through the final parent graph, in any op order."""
+    resolved = {}
+    def visit(transform, trail):
+        if transform in resolved:
+            return resolved[transform]
+        if transform in trail or transform not in world.transforms:
+            raise WorldError("Unresolved or cyclic planned transform parent")
+        data = docs[transform]["data"]
+        parent = data.get("m_Father", {}).get("fileID", 0)
+        parent_matrix = visit(parent, trail | {transform}) if parent else np.eye(4)
+        if transform in requested:
+            try:
+                local = np.linalg.solve(parent_matrix, np.r_[requested[transform], 1.0])
+            except np.linalg.LinAlgError as error:
+                raise WorldError("Final parent matrix cannot resolve world position") from error
+            if not np.isfinite(local).all() or abs(local[3]) < 1e-9:
+                raise WorldError("Final parent matrix produced an invalid local position")
+            data["m_LocalPosition"] = dict(zip("xyz", map(float, local[:3] / local[3])))
+        resolved[transform] = parent_matrix @ matrix(data)
+        return resolved[transform]
+    for transform in requested:
+        visit(transform, set())
+
+
+def _verify_transform_postconditions(world, patch):
+    """A finite, parseable file is insufficient: verify the caller's actual intent."""
+    for operation in patch["operations"]:
+        if operation["op"] != "set_transform":
+            continue
+        go = world.resolve(operation["target"])
+        transform = world.go_transform[go]
+        data = world.transforms[transform]
+        checks = []
+        if "world_position" in operation:
+            checks.append(("world_position", world.world_matrix(transform)[:3, 3], operation["world_position"]))
+        for field, prop, axes in (("local_position", "m_LocalPosition", "xyz"),
+                                  ("local_scale", "m_LocalScale", "xyz"),
+                                  ("local_rotation_xyzw", "m_LocalRotation", "xyzw")):
+            if field in operation:
+                checks.append((field, [data[prop][axis] for axis in axes], operation[field]))
+        for field, actual, expected in checks:
+            if not np.allclose(actual, expected, rtol=0, atol=1e-5):
+                raise WorldError(f"Postcondition failed: {operation['target']} {field}; expected {expected}, got {list(actual)}")
+
+
 def plan(root, patch):
     validate_patch(patch)
     root = Path(root).resolve()
@@ -328,6 +374,7 @@ def plan(root, patch):
             raise WorldError(f"Stale patch: {path}. Re-inspect the current core file before editing.")
     changes, edits, impacts, engine_ops = {}, {}, [], []
     additions, resolved_objects = [], []
+    world_positions, transform_fields = {}, set()
     reserved_ids = set(w.docs)
     version = patch["schema_version"]
 
@@ -363,18 +410,19 @@ def plan(root, patch):
             doc = docs[transform]
             if doc["stripped"] or doc["data"].get("m_PrefabInstance", {}).get("fileID"):
                 raise WorldError("Prefab instances need Unity edits; inline saved objects only")
+            for field in ("world_position", "local_position", "local_rotation_xyzw", "local_scale"):
+                if field not in op:
+                    continue
+                key = (transform, "position" if field.endswith("position") else field)
+                if key in transform_fields:
+                    raise WorldError("Conflicting transform field writes; use one final value per transaction")
+                transform_fields.add(key)
             fields = {"local_position": ("m_LocalPosition", 3, "xyz"),
                       "local_rotation_xyzw": ("m_LocalRotation", 4, "xyzw"),
                       "local_scale": ("m_LocalScale", 3, "xyz")}
             count = 0
             if "world_position" in op:
-                world_position = np.asarray(vector(op["world_position"], 3, "world_position") + [1.0])
-                parent = doc["data"].get("m_Father", {}).get("fileID", 0)
-                local = np.linalg.inv(w.world_matrix(parent)) @ world_position if parent else world_position
-                if not np.isfinite(local).all() or abs(local[3]) < 1e-9:
-                    raise WorldError("Parent matrix cannot resolve the requested world position")
-                local = local[:3] / local[3]
-                doc["data"]["m_LocalPosition"] = dict(zip("xyz", map(float, local)))
+                world_positions[transform] = vector(op["world_position"], 3, "world_position")
                 count += 1
             for key, (prop, size, axes) in fields.items():
                 if key in op:
@@ -577,6 +625,8 @@ def plan(root, patch):
             raise WorldError(f"Unsupported operation {kind!r}; no generic byte or arbitrary serialized-field writes")
     if additions and engine_ops:
         raise WorldError("Use a separate Python transaction for inline static placement; do not mix engine operations")
+    if world_positions:
+        _resolve_final_positions(w, changes[SCENE][1], world_positions)
     outputs, diffs = {}, {}
     for path, ids in edits.items():
         text, docs = changes[path]
@@ -641,6 +691,7 @@ def apply_yaml(root, patch, write=False):
             world = World(root)
             for t in world.transforms:
                 world.world_matrix(t)
+            _verify_transform_postconditions(world, patch)
             observed = _collect_observations(world, report["observe_after"])
             resolved_by_operation = {row["operation_id"]: row for row in report["resolved_objects"]}
             operation_after = [_operation_state(world, operation, resolved_by_operation.get(operation.get("id")))
