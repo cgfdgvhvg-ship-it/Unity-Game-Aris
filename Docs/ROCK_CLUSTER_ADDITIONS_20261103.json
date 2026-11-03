@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "change": "saved-2026-11-03-rock-clusters",
+  "scene": "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity",
+  "source_scene_blob_sha": "3d6c34890f1452889f0101e3bc242e5a389d3309",
+  "asset": "Assets/AarisWorld/Props/RockCover/RockCover.prefab",
+  "original_authored_rocks": 24,
+  "new_authored_rocks": 8,
+  "expected_total_rocks": 32,
+  "collider_gate": "AarisNearbyColliders.obstacles",
+  "terrain_data_modified": false,
+  "placement_method": "Copied existing serialized RockCover hierarchy, remapped Unity fileIDs, applied varied yaw/uniform scale, and positioned each companion near a pre-existing terrain-supported stone. Small Y adjustments use nearby legacy height-sample estimates; these are not Unity physics observations.",
+  "verification_status": {
+    "structural_yaml_references": "checked before commit",
+    "unity_editor_import": "pending",
+    "android_performance": "pending",
+    "native_terrain_ground_contact": "pending"
+  },
+  "placements": [
+    {
+      "name": "RockCover_34",
+      "anchor": "RockCover_10",
+      "position_m": [
+        -231.345105,
+        -33.7201,
+        802.657282
+      ],
+      "yaw_degrees": 61,
+      "uniform_scale": 0.72,
+      "game_object_file_id": 500000,
+      "transform_file_id": 500001,
+      "box_collider_file_id": 500015,
+      "area": "northwestern forest fringe"
+    },
+    {
+      "name": "RockCover_35",
+      "anchor": "RockCover_13",
+      "position_m": [
+        -188.429904,
+        4.786389,
+        -837.357521
+      ],
+      "yaw_degrees": 193,
+      "uniform_scale": 0.78,
+      "game_object_file_id": 500016,
+      "transform_file_id": 500017,
+      "box_collider_file_id": 500031,
+      "area": "southwestern ridge"
+    },
+    {
+      "name": "RockCover_36",
+      "anchor": "RockCover_17",
+      "position_m": [
+        659.478287,
+        11.32024,
+        -446.001886
+      ],
+      "yaw_degrees": 128,
+      "uniform_scale": 0.63,
+      "game_object_file_id": 500032,
+      "transform_file_id": 500033,
+      "box_collider_file_id": 500047,
+      "area": "eastern highland slope"
+    },
+    {
+      "name": "RockCover_37",
+      "anchor": "RockCover_20",
+      "position_m": [
+        703.7099,
+        -19.956421,
+        795.461199
+      ],
+      "yaw_degrees": 279,
+      "uniform_scale": 0.67,
+      "game_object_file_id": 500048,
+      "transform_file_id": 500049,
+      "box_collider_file_id": 500063,
+      "area": "northeastern woodland"
+    },
+    {
+      "name": "RockCover_38",
+      "anchor": "RockCover_24",
+      "position_m": [
+        559.625468,
+        -15.446138,
+        400.452097
+      ],
+      "yaw_degrees": 44,
+      "uniform_scale": 0.8,
+      "game_object_file_id": 500064,
+      "transform_file_id": 500065,
+      "box_collider_file_id": 500079,
+      "area": "eastern inland clearing"
+    },
+    {
+      "name": "RockCover_39",
+      "anchor": "RockCover_28",
+      "position_m": [
+        155.47026,
+        9.111174,
+        -206.654751
+      ],
+      "yaw_degrees": 317,
+      "uniform_scale": 0.7,
+      "game_object_file_id": 500080,
+      "transform_file_id": 500081,
+      "box_collider_file_id": 500095,
+      "area": "southern forest edge"
+    },
+    {
+      "name": "RockCover_40",
+      "anchor": "RockCover_32",
+      "position_m": [
+        445.501142,
+        49.404749,
+        -803.008922
+      ],
+      "yaw_degrees": 151,
+      "uniform_scale": 0.76,
+      "game_object_file_id": 500096,
+      "transform_file_id": 500097,
+      "box_collider_file_id": 500111,
+      "area": "southern hill trail"
+    },
+    {
+      "name": "RockCover_41",
+      "anchor": "RockCover_33",
+      "position_m": [
+        -43.162044,
+        -15.107428,
+        63.370793
+      ],
+      "yaw_degrees": 208,
+      "uniform_scale": 0.66,
+      "game_object_file_id": 500112,
+      "transform_file_id": 500113,
+      "box_collider_file_id": 500127,
+      "area": "western valley woodland"
+    }
+  ]
+}
