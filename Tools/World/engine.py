@@ -36,14 +36,21 @@ def run(root, request, patch=None, write=False, capture_dir=None):
     if not cap["ready"]:
         raise WorldError("Unity engine is unavailable or LFS checkout is incomplete: " + json.dumps(cap))
     action = request.get("command")
-    if action not in ("export", "probe", "capture", "apply"):
+    if action not in ("export", "observe", "probe", "capture", "preview", "apply"):
         raise WorldError("Unsupported Unity command")
     patch_report, outputs = (plan(root, patch) if patch else (None, {}))
     if action == "apply" and (not patch or not write):
         raise WorldError("Unity apply requires a validated patch and --write")
+    if action == "preview" and not patch:
+        raise WorldError("Unity preview requires a validated patch")
     allowed = set(outputs)
-    if patch_report and patch_report["native_operations"]:
-        allowed.update(t["asset"]["path"] for t in World(root).terrains())
+    if patch_report:
+        unity_ops = patch_report["unity_operations"]
+        if any(o["op"] == "terrain_brush" for o in unity_ops):
+            allowed.update(t["asset"]["path"] for t in World(root).terrains())
+        allowed.update(o["terrain_path"] for o in unity_ops if o["op"].startswith("terrain_instance_"))
+        if any(o["op"] in ("instantiate_prefab", "duplicate_object", "delete_object") for o in unity_ops):
+            allowed.add(SCENE)
     with tempfile.TemporaryDirectory(prefix="aaris-unity-", dir=os.environ.get("AARIS_WORLD_TEMP")) as temp:
         temp = Path(temp)
         project = temp/"project"
@@ -51,13 +58,19 @@ def run(root, request, patch=None, write=False, capture_dir=None):
             shutil.copytree(root/folder, project/folder)
         # YAML edits use the same guarded, identity-preserving Python implementation in the copy.
         if outputs:
-            yaml_patch = {**patch, "operations": [o for o in patch["operations"] if o["op"] != "terrain_brush"]}
+            yaml_kinds = {"set_transform", "set_object_state", "set_material_color", "set_material_float"}
+            yaml_patch = {**patch, "operations": [o for o in patch["operations"] if o["op"] in yaml_kinds]}
             if yaml_patch["operations"]:
                 apply_yaml(project, yaml_patch, True)
         req = {**request, "scene": SCENE}
         if patch_report:
             req["brushes"] = [{"x": o["center_xz"][0], "z": o["center_xz"][1],
                               "radius": o["radius_m"], "delta": o["delta_m"]} for o in patch_report["native_operations"]]
+            req["terrainEdits"] = [_terrain_edit(o) for o in patch_report["unity_operations"]
+                                   if o["op"].startswith("terrain_instance_")]
+            req["sceneEdits"] = [_scene_edit(o) for o in patch_report["unity_operations"]
+                                 if o["op"] in ("instantiate_prefab", "duplicate_object", "delete_object")]
+            req["observations"] = [_observation_request(o) for o in patch_report["observe_after"]]
         req_path, response = temp/"request.json", temp/"response.json"
         req["capturePath"] = str(temp/"capture.png")
         req_path.write_text(json.dumps(req))
@@ -107,6 +120,19 @@ def run(root, request, patch=None, write=False, capture_dir=None):
                 raise
             result["written_files"] = {p: digest(root/p) for p in sorted(allowed)}
             result["historical_layout_reports"] = "May be stale. Regenerate/review before merge; this tool does not forge authoring reports."
+            from observations import inspect
+            post = World(root)
+            result["serialized_post_edit_observations"] = []
+            for observation in patch_report["observe_after"]:
+                try:
+                    result["serialized_post_edit_observations"].append({"request": observation, "result": inspect(post, observation)})
+                except (WorldError, ImportError, OSError) as error:
+                    result["serialized_post_edit_observations"].append({"request": observation, "status": "unavailable", "reason": str(error)})
+        elif action == "preview":
+            result["preview"] = True
+            result["dry_run"] = True
+            result["written_files"] = {}
+            result["note"] = "Unity changed only the disposable project. Review observations before applying the same current-hash transaction."
         if action == "capture":
             if not capture_dir:
                 raise WorldError("Capture requires an explicit output directory")
@@ -119,3 +145,40 @@ def run(root, request, patch=None, write=False, capture_dir=None):
         source.terrains()
         result["source_fingerprint"] = source.fingerprint()
         return result
+
+
+def _vec3(values):
+    if values is None:
+        return None
+    return {"x": values[0], "y": values[1], "z": values[2]}
+
+
+def _terrain_edit(op):
+    expected = op.get("expected", {})
+    position = expected.get("position_m", [0, 0, 0])
+    xz = op.get("world_xz", [0, 0])
+    return {"id": op.get("id", ""), "action": op["op"].removeprefix("terrain_instance_"),
+            "target": op.get("target", ""), "terrainGuid": op.get("terrain_guid", ""),
+            "originalIndex": op.get("original_index", -1), "prototypeIndex": op.get("prototype_index", -1),
+            "worldX": xz[0], "worldZ": xz[1], "widthScale": op.get("width_scale", 0),
+            "heightScale": op.get("height_scale", 0), "yawDegrees": op.get("yaw_degrees", 0),
+            "expectedPrototypeIndex": expected.get("prototype_index", -1),
+            "expectedWorldPosition": _vec3(position), "expectedWidthScale": expected.get("width_scale", 0),
+            "expectedHeightScale": expected.get("height_scale", 0), "expectedYawDegrees": expected.get("yaw_degrees", 0)}
+
+
+def _scene_edit(op):
+    return {"id": op.get("id", ""), "action": op["op"].removesuffix("_object").removesuffix("_prefab"),
+            "target": op.get("target", ""), "prefabPath": op.get("prefab_path", ""),
+            "parent": op.get("parent", ""), "name": op.get("name", ""),
+            "hasWorldPosition": "world_position" in op, "worldPosition": _vec3(op.get("world_position")),
+            "hasWorldRotation": "world_rotation_euler" in op, "worldRotationEuler": _vec3(op.get("world_rotation_euler")),
+            "hasLocalScale": "local_scale" in op, "localScale": _vec3(op.get("local_scale"))}
+
+
+def _observation_request(request):
+    return {"target": request.get("target", ""), "hasPoint": "x" in request and "z" in request,
+            "hasY": "y" in request,
+            "point": {"x": request.get("x", 0), "y": request.get("y", 0), "z": request.get("z", 0)},
+            "radius": request.get("radius", 35), "limit": request.get("limit", 100)}
+

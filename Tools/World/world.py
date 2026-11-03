@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -16,9 +17,22 @@ from pathlib import Path
 
 from unity_data import SCENE, World, WorldError, compact, digest, documents, pointer, safe_path
 from terrain import NativeTerrain
+from capabilities import PROTOCOL_VERSION, repository_inventory, schema as automation_schema
+from observations import inspect as inspect_context, runtime as runtime_context, usages as asset_usages
 
 ROOT = Path(__file__).resolve().parents[2]
-VERSION = 1
+VERSION = PROTOCOL_VERSION
+
+
+def static_fingerprint(root, paths):
+    """Fingerprint tool contracts that must be readable before the map is fetched."""
+    rows = []
+    root = Path(root).resolve()
+    for path in paths:
+        source = root / path
+        rows.append([path, digest(source) if source.is_file() else "missing"])
+    encoded = json.dumps(rows, separators=(",", ":")).encode()
+    return {"sha256": hashlib.sha256(encoded).hexdigest(), "files": rows}
 
 
 def page(rows, offset=0, limit=100):
@@ -30,13 +44,19 @@ def page(rows, offset=0, limit=100):
 
 def context(w):
     import engine
-    return {"entrypoint": "python Tools/World/world.py", "guide": "Docs/WORLD_AUTOMATION.md", "agent_instructions": "AGENTS.md",
+    contract = automation_schema()
+    return {"entrypoint": "python Tools/World/world.py", "protocol_version": VERSION,
+            "guide": "Docs/WORLD_AUTOMATION.md", "agent_instructions": "AGENTS.md",
+            "decision_owner": "AI/caller; tools measure and execute but do not choose map design",
             "coordinates": {"units": "metres", "axes": "Unity world: X right, Y up, Z forward", "terrain_interpolation": "native bilinear grid; Unity physics is a separate command"},
             "scene": w.scene_path, "scene_guid": w.scene_guid, "scene_sha256": digest(w.root/w.scene_path),
             "saved_game_objects": len(w.gos), "terrains": w.terrains(), "engine": engine.capabilities(w.root),
-            "read_commands": ["scan", "object", "height", "region", "instances", "asset", "verify", "performance"],
-            "write_commands": ["plan --patch change.json", "apply --patch change.json --write", "apply --patch change.json --backend unity --write"],
-            "engine_commands": ["engine --request route.json", "engine --request export.json", "engine --request capture.json --capture-dir <temporary-dir>"],
+            "repository": repository_inventory(w.root),
+            "read_commands": contract["read_commands"], "write_operations": contract["write_operations"],
+            "write_commands": ["plan --patch change.json", "preview --patch change.json --backend auto",
+                               "apply --patch change.json --backend auto --write"],
+            "engine_commands": ["engine --request observe.json", "engine --request route.json",
+                                "engine --request export.json", "engine --request capture.json --capture-dir <temporary-dir>"],
             "limits": ["No source inspection can measure real phone FPS or prove crash freedom.",
                        "Missing LFS objects are reported, never treated as empty geometry.",
                        "Material colors are serialized properties, not a rendered screenshot.",
@@ -185,10 +205,12 @@ def verify(w, request):
 
 
 READ_COMMANDS = {
-    "context": set(), "scan": {"search", "offset", "limit", "details"}, "object": {"target"},
+    "context": set(), "schema": set(), "scan": {"search", "offset", "limit", "details"}, "object": {"target"},
+    "inspect": {"target", "x", "y", "z", "radius", "limit", "native", "geometry"},
     "height": {"x", "z"}, "region": {"xmin", "zmin", "xmax", "zmax", "step"},
     "instances": {"category", "xmin", "zmin", "xmax", "zmax", "offset", "limit"},
-    "asset": {"path", "file_id", "field", "offset", "limit"}, "verify": {"native"}
+    "asset": {"path", "file_id", "field", "offset", "limit"}, "usages": {"path"},
+    "runtime": {"search", "offset", "limit"}, "verify": {"native"}
 }
 
 
@@ -202,11 +224,20 @@ def dispatch(root, request, remote=False):
         path = request.get("path", "")
         if not path.startswith(("Assets/", "Packages/", "ProjectSettings/")):
             raise WorldError("Remote asset requests are limited to project core files")
-    for key in ("x", "z", "xmin", "zmin", "xmax", "zmax", "step"):
+    for key in ("x", "y", "z", "radius", "xmin", "zmin", "xmax", "zmax", "step"):
         if key in request and (isinstance(request[key], bool) or not isinstance(request[key], (int, float)) or not math.isfinite(request[key])):
             raise WorldError(f"{key} must be a finite number")
-    for key in ("native", "details"):
+    for key in ("native", "details", "geometry"):
         if key in request and not isinstance(request[key], bool): raise WorldError(f"{key} must be boolean")
+    # Schema discovery is the bootstrap step: it must work in a sparse or
+    # partial checkout before the scene and LFS-backed TerrainData are fetched.
+    if cmd == "schema":
+        return {"schema_version": VERSION, "command": cmd,
+                "generated_utc": datetime.now(timezone.utc).isoformat(),
+                "source_fingerprint": static_fingerprint(root, [
+                    "Tools/World/capabilities.py", "Tools/World/patch.schema.json"
+                ]),
+                "result": automation_schema()}
     w = World(root)
     if cmd == "context":
         result = context(w)
@@ -214,6 +245,8 @@ def dispatch(root, request, remote=False):
         result = scan(w, request)
     elif cmd == "object":
         result = w.object(w.resolve(request["target"]), True)
+    elif cmd == "inspect":
+        result = inspect_context(w, request)
     elif cmd == "height":
         result = NativeTerrain(w).height(request["x"], request["z"])
     elif cmd == "region":
@@ -232,6 +265,10 @@ def dispatch(root, request, remote=False):
         result = page(rows, request.get("offset", 0), request.get("limit", 100))
     elif cmd == "asset":
         result = asset(w, request)
+    elif cmd == "usages":
+        result = asset_usages(w, request)
+    elif cmd == "runtime":
+        result = runtime_context(w.root, request)
     elif cmd == "verify":
         result = verify(w, request)
     return {"schema_version": VERSION, "command": cmd, "generated_utc": datetime.now(timezone.utc).isoformat(),
@@ -244,10 +281,16 @@ def parser():
     p.add_argument("--out", type=Path, help="Explicit persistent report path; default stdout leaves no report file")
     subs = p.add_subparsers(dest="command", required=True)
     subs.add_parser("context")
+    subs.add_parser("schema")
     s = subs.add_parser("scan")
     s.add_argument("--search", default=""); s.add_argument("--offset", type=int, default=0); s.add_argument("--limit", type=int, default=100)
     s.add_argument("--details", action="store_true")
     s = subs.add_parser("object"); s.add_argument("--target", required=True)
+    s = subs.add_parser("inspect"); s.add_argument("--target")
+    for name in ("x", "y", "z", "radius"):
+        s.add_argument("--"+name, type=float)
+    s.add_argument("--limit", type=int, default=100); s.add_argument("--no-native", dest="native", action="store_false")
+    s.add_argument("--no-geometry", dest="geometry", action="store_false"); s.set_defaults(native=True, geometry=True)
     s = subs.add_parser("height"); s.add_argument("--x", type=float, required=True); s.add_argument("--z", type=float, required=True)
     s = subs.add_parser("region")
     for name in ("xmin", "zmin", "xmax", "zmax", "step"):
@@ -259,11 +302,15 @@ def parser():
     s.add_argument("--offset", type=int, default=0); s.add_argument("--limit", type=int, default=100)
     s = subs.add_parser("asset"); s.add_argument("--path", required=True); s.add_argument("--file-id", type=int)
     s.add_argument("--field", default=""); s.add_argument("--offset", type=int, default=0); s.add_argument("--limit", type=int, default=100)
+    s = subs.add_parser("usages"); s.add_argument("--path", required=True)
+    s = subs.add_parser("runtime"); s.add_argument("--search", default=""); s.add_argument("--offset", type=int, default=0); s.add_argument("--limit", type=int, default=100)
     s = subs.add_parser("verify"); s.add_argument("--native", action="store_true"); s.add_argument("--project-checks", action="store_true")
-    for name in ("plan", "apply"):
+    for name in ("plan", "preview", "apply"):
         s = subs.add_parser(name); s.add_argument("--patch", required=True, type=Path)
+        if name in ("preview", "apply"):
+            s.add_argument("--backend", choices=["auto", "python", "unity"], default="auto")
         if name == "apply":
-            s.add_argument("--write", action="store_true"); s.add_argument("--backend", choices=["python", "unity"], default="python")
+            s.add_argument("--write", action="store_true")
     s = subs.add_parser("engine"); s.add_argument("--request", type=Path, required=True); s.add_argument("--capture-dir", type=Path)
     s = subs.add_parser("performance"); s.add_argument("--report", type=Path, required=True)
     s = subs.add_parser("request"); s.add_argument("--json-env", default="WORLD_REQUEST")
@@ -280,16 +327,25 @@ def main():
             if len(raw.encode()) > 32768:
                 raise WorldError("Request JSON exceeds 32KiB")
             result = dispatch(root, json.loads(raw), True)
-        elif cmd in ("plan", "apply"):
-            from patching import load_patch, plan, apply_yaml
+        elif cmd in ("plan", "preview", "apply"):
+            from patching import load_patch, plan, apply_yaml, preview_yaml
             patch = load_patch(args["patch"])
             if cmd == "plan":
                 result = plan(root, patch)[0]
-            elif args["backend"] == "unity":
-                import engine
-                result = engine.run(root, {"command": "apply"}, patch, args["write"]) if args["write"] else plan(root, patch)[0]
             else:
-                result = apply_yaml(root, patch, args["write"])
+                report = plan(root, patch)[0]
+                selected = args["backend"]
+                if selected == "auto": selected = "unity" if report["backend"] == "unity" else "python"
+                if selected == "python" and report["backend"] == "unity":
+                    raise WorldError("Patch contains Unity-native operations; use --backend auto or unity")
+                if cmd == "preview" and selected == "python":
+                    result = preview_yaml(root, patch)
+                elif cmd == "apply" and selected == "python":
+                    result = apply_yaml(root, patch, args["write"])
+                else:
+                    import engine
+                    action = "preview" if cmd == "preview" else "apply"
+                    result = engine.run(root, {"command": action}, patch, cmd == "apply" and args.get("write", False))
         elif cmd == "engine":
             import engine
             req = json.loads(args["request"].read_text())
@@ -317,3 +373,4 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+

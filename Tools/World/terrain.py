@@ -40,6 +40,9 @@ class NativeTerrain:
         if not path or not (self.world.root / path).is_file():
             raise WorldError(f"TerrainData missing: {path}; fetch the original LFS asset and .meta")
         p = safe_path(self.world.root, path)
+        self.world.read_files.add(path)
+        if (self.world.root / (path + ".meta")).is_file():
+            self.world.read_files.add(path + ".meta")
         if pointer(p):
             raise WorldError(f"LFS pointer is not TerrainData. Run git lfs pull --include='{path}'")
         import UnityPy
@@ -62,16 +65,20 @@ class NativeTerrain:
             guid = "".join(s[a+1]+s[a] for a in range(0, 32, 2))
             externals[i] = {"guid": guid, "path": self.world.guid_paths.get(guid)}
         prototypes = []
-        for proto in db["m_TreePrototypes"]:
+        for prototype_index, proto in enumerate(db["m_TreePrototypes"]):
             ref = proto["prefab"]
             ext = externals.get(ref["m_FileID"], {})
             path_name = ext.get("path") or ""
             category = "tree" if "/Trees/" in path_name else "rock" if "/Rocks/" in path_name else "shrub" if path_name else "unresolved"
-            prototypes.append({**ext, "file_id": ref["m_PathID"], "category": category})
+            prototypes.append({**ext, "file_id": ref["m_PathID"], "category": category,
+                               "prototype_index": prototype_index})
         instances = []
         for k, inst in enumerate(db["m_TreeInstances"]):
             v = inst["position"]
-            instances.append({"id": f"terrain:{tile['asset']['guid']}:{k}", **prototypes[inst["index"]],
+            instances.append({"id": f"terrain:{tile['asset']['guid']}:{k}",
+                              "instance_index": k, "terrain_id": tile["id"],
+                              "terrain_path": path, "terrain_guid": tile["asset"]["guid"],
+                              **prototypes[inst["index"]],
                               "position_m": [tile["origin_m"][0]+v["x"]*(n-1)*scale["x"],
                                              tile["origin_m"][1]+v["y"]*scale["y"],
                                              tile["origin_m"][2]+v["z"]*(n-1)*scale["z"]],
@@ -85,6 +92,7 @@ class NativeTerrain:
                                  "mip_count": t["m_MipCount"], "readable": t["m_IsReadable"],
                                  "image_bytes": len(t.get("image data", b""))})
         result = {"heights": h, "spacing": (scale["x"], scale["z"]), "instances": instances,
+                  "prototypes": prototypes,
                   "size_m": [(n-1)*scale["x"], scale["y"], (n-1)*scale["z"]], "resolution": n,
                   "version": obj.assets_file.unity_version, "sha256": digest(p), "textures": textures,
                   "detail_prototypes": db["m_DetailPrototypes"], "native_name": data["m_Name"]}
@@ -92,6 +100,19 @@ class NativeTerrain:
         del raw, data, db, env, obj
         gc.collect()
         return result
+
+    def instances(self):
+        """Yield every native TerrainData instance from the current core bytes."""
+        for tile in self.tiles:
+            yield from self.load(tile)["instances"]
+
+    def find_instance(self, target):
+        if not isinstance(target, str) or not target.startswith("terrain:"):
+            raise WorldError("Native target must be terrain:<terrain-guid>:<original-index>")
+        matches = [row for row in self.instances() if row["id"] == target]
+        if len(matches) != 1:
+            raise WorldError(f"Expected one native terrain instance; found {len(matches)}")
+        return matches[0]
 
     def height(self, x, z):
         matches = []
@@ -157,3 +178,4 @@ class NativeTerrain:
                 if pairs:
                     out.append({"tiles": [a["id"], b["id"]], "max_delta_m": float(np.max(np.abs(pairs[0]-pairs[1])))})
         return out
+

@@ -12,6 +12,7 @@ cd Unity-Game-Aris
 python -m venv .venv
 . .venv/bin/activate
 python -m pip install -r Tools/World/requirements.txt
+python Tools/World/world.py schema
 python Tools/World/world.py context
 ```
 
@@ -33,6 +34,8 @@ The fetcher downloads actual terrain assets for terrain queries and referenced m
 | Names matching Garage, bounds and materials | `scan --search Garage --details --limit 5` |
 | Continue a page | `scan --offset 100 --limit 100` |
 | One object, hierarchy, components, materials | `object --target scene:<scene-guid>:<game-object-fileID>` |
+| One target plus terrain/support/nearby scene and native context | `inspect --target scene:<scene-guid>:<game-object-fileID> --radius 50` |
+| Coordinate neighbourhood | `inspect --x 350 --y 18.4 --z 167.3 --radius 50` |
 | Ground height, gradient, slope, normal | `height --x -496 --z -212` |
 | Grid over a selected region | `region --xmin -510 --zmin -220 --xmax -490 --zmax -200 --step 2` |
 | Native trees, rocks or shrubs in an area | `instances --category tree --xmin -600 --zmin -300 --xmax -400 --zmax -100 --limit 100` |
@@ -40,47 +43,62 @@ The fetcher downloads actual terrain assets for terrain queries and referenced m
 | Read a particular native field | `asset --path Assets/.../Terrain_1_1_....asset --file-id 15600000 --field m_Heightmap.m_Heights --offset 1000 --limit 100` |
 | Material properties | `asset --path Assets/.../Wall.mat --file-id 2100000 --field m_SavedProperties` |
 | Source code lines | `asset --path Assets/AarisWorld/Scripts/AarisNearbyColliders.cs --file-id 0 --field lines --limit 100` |
+| Shared text-serialized references to an asset | `usages --path Assets/.../Wall.mat` |
+| Static loading/LOD/culling/frame/memory evidence | `runtime --search LoadScene --limit 100` |
 | Actual phone measurements | `performance --report /path/to/current.jsonl` |
 
 Replace placeholder asset paths with a real path returned by `context`, `object` or `asset`. JSON requests use the same command names and underscore keys (`file_id`, not `file-id`). Output includes timestamps, the actual files read and SHA256 fingerprints. Re-query after a source change. `--root <project>` and `--out <file>` are global options and go before the command.
 
 The scene is currently a four-tile 2km by 2km world. Each native terrain has a 2049 by 2049 height grid. The reader derives spacing/size/origin from the asset and scene rather than applying a single map-wide Y offset. This project's stored integer normalization is `/32766`; unsupported encodings/transforms fail explicitly. At a tile boundary `height` returns both sides and their difference. Bilinear height/slope are numerical estimates of the stored grid, not measurements of a roof, building floor or Unity's rendered triangle. For exact engine terrain values and collider movement, use the engine bridge.
 
-`scan` indexes saved inline GameObjects and pages results to keep AI context usable. `instances` covers the native vegetation/rock database. `asset` exposes other serialized fields without dumping a 53MB binary as an enormous JSON message. Arrays are paginated; dictionaries are compact summaries with keys and samples. Unknown/importer-only data is reported as unavailable and requires Unity. External prefab instances use Unity's complete GlobalObjectId in engine exports; their prefab instance ID must not be discarded. The Python write adapter intentionally supports inline scene objects only.
+`scan` indexes saved inline GameObjects and pages results to keep AI context usable. `instances` covers the native vegetation/rock database. `inspect` is the normal AI context capsule: target/point, current terrain relation, nearby scene objects, nearby native instances, support/overlap candidates, coverage and source fingerprints. It reports facts and evidence levels; it never decides that an artistic placement is right or wrong. `asset` exposes other serialized fields without dumping a 53MB binary as an enormous JSON message. Arrays are paginated; dictionaries are compact summaries with keys and samples. Unknown/importer-only data is reported as unavailable and requires Unity. External prefab instances use Unity's complete GlobalObjectId in engine exports; their prefab instance ID must not be discarded.
 
 Object bounds are transformed mesh AABBs, including descendants/LODs. Missing LFS meshes produce `bounds_incomplete`, not invented dimensions. Texture files can be queried for image dimensions/format. Serialized `_BaseColor` or `_Color` often is white while the texture supplies the visible wall color. A screenshot from the real URP pipeline is the appropriate evidence for visible colors, lighting and silhouettes.
 
 ## Edit the actual core files
 
-Use `Tools/World/patch.schema.json` and this structure. Obtain hashes from current files (for example `sha256sum <path>`), not old reports. Include both each target file and its existing `.meta`:
+Use `Tools/World/patch.schema.json` and schema v2. Obtain hashes from current files (for example `sha256sum <path>`), not old reports. Include both each target file and its existing `.meta`:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "transaction_id": "map-roof-cover-20261103-01",
+  "idempotency_key": "map-roof-cover-20261103-01",
   "reason": "Adjust this house after checking its road access and foundation",
   "expected_files": {
     "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity": "<current SHA256>",
     "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity.meta": "<current SHA256>"
   },
   "operations": [{
+    "id": "move-selected-rock",
     "op": "set_transform",
     "target": "scene:<scene-guid>:<game-object-fileID>",
-    "local_position": [350, -11.9368, 167.3]
+    "world_position": [350, 18.4, 167.3]
+  }],
+  "observe_after": [{
+    "target": "scene:<scene-guid>:<game-object-fileID>",
+    "radius": 40,
+    "native": true,
+    "geometry": true
   }]
 }
 ```
 
-The position is **parent-local**, as in Unity's Transform inspector. Query the world matrix/parent before choosing values. Supported transform fields: `local_position`, normalized `local_rotation_xyzw`, positive `local_scale` (up to 100 per axis). To change a tint use `set_material_color` with `path`, `file_id`, an already-existing `property` such as `_BaseColor`, and `rgba`. A shared material edit affects all its users.
+`world_position` is converted through the saved parent matrix; `local_position` remains available when the AI intentionally wants Inspector-local coordinates. Other transform fields are normalized `local_rotation_xyzw` and positive `local_scale` (up to 100 per axis). YAML operations also include `set_object_state`, `set_material_color` and `set_material_float`. A shared material edit affects all its users; query `usages` first.
+
+The Unity backend adds typed native operations: terrain height brush; native tree/rock/shrub move, scale, rotation, add and remove; prefab instantiate; scene object/prefab-instance duplicate and delete. Native instance targets are bound to the current TerrainData hash plus their inspected prototype, position, scale and rotation. Unity rejects a changed instance instead of editing whatever later occupies the same array index. Native instances remain terrain-supported; create a scene/prefab prop for a roof or bridge placement.
 
 ```bash
 python Tools/World/world.py plan --patch change.json
-python Tools/World/world.py apply --patch change.json
-python Tools/World/world.py apply --patch change.json --write
+python Tools/World/world.py preview --patch change.json --backend auto
+python Tools/World/world.py apply --patch change.json --backend auto --write
 python Tools/World/world.py verify --native
 python Tools/World/world.py verify --project-checks
 ```
 
-The first two commands are dry runs. Python replaces only the selected YAML documents, preserves the remaining scene bytes, fileIDs and `.meta` files, checks precondition hashes immediately before writing, stages/parses the result, and restores original bytes if its post-write structural validation fails. Work in a branch; multi-file writes are rolled back on handled errors but are not a filesystem-wide transaction against a machine crash. Check your Git diff.
+`plan` returns concrete diffs, native operations, scopes and impacts without writing. `preview` applies the transaction to an isolated hard-linked project (or disposable Unity import), then returns post-edit context while leaving source bytes unchanged. `apply --write` rechecks every hash immediately before copying back. Python preserves all untouched documents, fileIDs and `.meta` files and restores original bytes if post-write structural validation fails. Unity returns changed asset paths and old/new stable identities. Work in a branch and check the Git diff.
+
+Support distance, terrain gap, AABB overlap and authored-boundary relationships are observations, not design vetoes. If the AI intentionally accepts one, record its current observation ID/hash/reason in `acknowledgements`. Acknowledgements cannot bypass stale hashes, invalid GUID/fileID, non-finite values, missing LFS bytes, import/save/compile failures or corrupted serialization.
 
 `terrain_brush` is a bounded, smooth vertical delta (radius 0..100m, delta up to +/-20m). Supply `center_xz`, `radius_m`, `delta_m`, plus expected hashes for the saved scene, all four native terrains, and all five `.meta` files. Then use:
 
@@ -107,11 +125,25 @@ Save a request JSON with either explicit walking waypoints (world-space foot pos
 {"command":"probe","waypoints":[{"x":350,"y":-11.8,"z":155},{"x":350,"y":-11.8,"z":160}],"maxSteps":4000}
 ```
 
+Up to 32 independent route bots can run in one imported scene:
+
+```json
+{
+  "command": "probe",
+  "probes": [
+    {"id":"front-door","waypoints":[{"x":350,"y":-11.8,"z":155},{"x":350,"y":-11.8,"z":160}],"maxSteps":4000},
+    {"id":"east-side","target":"scene:<scene-guid>:<house-fileID>","maxSteps":10000}
+  ]
+}
+```
+
 ```bash
 python Tools/World/world.py engine --request route.json
 ```
 
-The probe uses the player's 1.78m height, .28m radius, .30m step and 46-degree slope limit with controlled walking/gravity. It temporarily enables saved environment colliders (including those initially disabled by distance gating), disables original CharacterControllers, syncs physics, and removes/restores everything in `finally` without saving the probe scene. Reports include start/target/reached positions, terrain height/slope/normal, route status, and nearby capsule-sweep contact candidates with object IDs/bounds. A collider candidate is not proof of the sole blocker. Colliders absent from the original asset are not invented.
+The probe uses the player's 1.78m height, .28m radius, .30m step and 46-degree slope limit with controlled walking/gravity. It temporarily enables saved environment colliders (including those initially disabled by distance gating), disables original CharacterControllers, syncs physics, and removes/restores everything in `finally` without saving the probe scene. Multi-probe bots run independently for deterministic evidence; they do not plan routes or simulate combat AI. Reports include start/target/reached positions, terrain height/slope/normal, route status, and nearby capsule-sweep contact candidates with object IDs/bounds. A collider candidate is not proof of the sole blocker. Colliders absent from the original asset are not invented.
+
+For exact post-placement support/collider context without walking, send `{"command":"observe","observations":[{"target":"scene:<scene-guid>:<fileID>","radius":40,"limit":100}]}`. Unity temporarily activates saved environment colliders, measures terrain and a downward support ray, reports nearby colliders, then restores the scene without saving unless this observation is part of an explicit apply/preview transaction.
 
 Automatic attempts start just outside the renderer AABB on four sides and aim at its center on the terrain. They are geometry hypotheses: a center may be an exterior courtyard or solid volume rather than a room. A blocked straight candidate does not prove a house has no entrance. For an actual entrance/interior test, inspect the model and supply the doorway/stair/interior waypoints. No bot decides to alter a wall automatically. Repeat selected probes after the AI makes a reviewed change; the total step budget bounds each request.
 
@@ -162,4 +194,5 @@ python Tools/World/world.py verify --native
 python Tools/World/world.py verify --project-checks
 ```
 
-Tests cover parent transforms, precise height/slope interpolation, missing/pointer data, ambiguous IDs, stale source/metadata, read-only plans, actual material/transform writes, identity preservation, rollback and cleanup scope. CI also checks the actual four-tile scene, spawn markers, C# syntax and workflow boundaries. Existing project checks cover saved bindings/materials/road geometry. A Unity import/compile, engine probes/captures and an Android device pass remain separate necessary evidence for changes that affect those behaviors.
+Tests cover parent/world transforms, schema-v2 transaction identities, isolated preview, neighbourhood context, reverse usages, runtime evidence, precise height/slope interpolation, missing/pointer data, ambiguous IDs, stale source/metadata, actual material/transform/state writes, identity preservation, rollback and cleanup scope. CI also checks the actual four-tile scene, spawn markers, C# syntax and workflow boundaries. Existing project checks cover saved bindings/materials/road geometry. A Unity import/compile, engine probes/captures and an Android device pass remain separate necessary evidence for changes that affect those behaviors.
+
