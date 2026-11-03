@@ -1,0 +1,42 @@
+name: Audit and save core rendering
+on:
+  push:
+    branches: [fix/rendering-core-20261103]
+    paths:
+      - 'Tools/MapBuild/render_review.py'
+      - 'Tools/MapBuild/native_assets.py'
+      - 'Tools/MapBuild/surfaces.py'
+      - 'Tools/Validation/check_render_review.py'
+      - '.github/workflows/rendering-core.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: aaris-render-core-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  inspect-and-save:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          lfs: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned offline tools
+        run: python -m pip install -r Tools/MapBuild/requirements.txt
+      - name: Fetch actual pipeline settings
+        run: |
+          git lfs install --local
+          git lfs pull --include="Assets/TerrainDemoScene_URP/Settings/URP/*.asset"
+      - name: Inspect pinned source materials and actual URP settings
+        run: python -u Tools/MapBuild/render_review.py
+      - name: Commit measured reports and saved core assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Assets Docs
+          git diff --cached --quiet || git commit -m "Measure source material semantics and native URP configuration"
+          git push origin HEAD:"${GITHUB_REF_NAME}"
