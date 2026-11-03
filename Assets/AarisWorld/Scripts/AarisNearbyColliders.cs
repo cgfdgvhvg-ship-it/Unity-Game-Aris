@@ -42,8 +42,12 @@ namespace Aaris.MapReview
                     Debug.LogWarning("Aaris proximity registry skips terrain/player collider " + c.name);
                     continue;
                 }
-                // Bounds of a disabled Collider are empty. Reconstruct its local envelope
-                // without enabling/cooking the whole district of distant collisions.
+                // Authored-disabled colliders must never become walk-blocking obstacles
+                // just because the player enters a nearby cell (e.g. an open doorway).
+                // Only colliders originally enabled by the level designer are managed.
+                if (!savedEnabled[i]) continue;
+                // Compute the local shape directly instead of using Collider.bounds,
+                // which becomes empty while proximity gating disables the collider.
                 Bounds local;
                 if (c is MeshCollider mc && mc.sharedMesh != null) local = mc.sharedMesh.bounds;
                 else if (c is BoxCollider box) local = new Bounds(box.center, box.size);
