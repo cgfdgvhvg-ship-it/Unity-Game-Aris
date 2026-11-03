@@ -42,12 +42,10 @@ namespace Aaris.MapReview
                     Debug.LogWarning("Aaris proximity registry skips terrain/player collider " + c.name);
                     continue;
                 }
-                // Authored-disabled colliders must never become walk-blocking obstacles
-                // just because the player enters a nearby cell (e.g. an open doorway).
-                // Only colliders originally enabled by the level designer are managed.
-                if (!savedEnabled[i]) continue;
-                // Compute the local shape directly instead of using Collider.bounds,
-                // which becomes empty while proximity gating disables the collider.
+                // Some building MeshColliders are deliberately authored disabled as
+                // proximity gates: still index them, then enable on approach. Their
+                // geometric bounds must not be read from the disabled Collider.bounds.
+                // Resolve the saved local shape without waking its distant physics.
                 Bounds local;
                 if (c is MeshCollider mc && mc.sharedMesh != null) local = mc.sharedMesh.bounds;
                 else if (c is BoxCollider box) local = new Bounds(box.center, box.size);
@@ -88,7 +86,8 @@ namespace Aaris.MapReview
                         entries.Add(i);
                     }
                 indexed[i] = true;
-                c.enabled = false;
+                // No unnecessary PhysX state change for an already disabled collider.
+                if (c.enabled) c.enabled = false;
             }
             RefreshNow();
         }
@@ -147,7 +146,8 @@ namespace Aaris.MapReview
             if (!restoreProximityStateOnEnable || indexed == null || obstacles == null) return;
             restoreProximityStateOnEnable = false;
             for (int i = 0; i < obstacles.Length; i++)
-                if (indexed[i] && obstacles[i] != null) obstacles[i].enabled = false;
+                if (indexed[i] && obstacles[i] != null && obstacles[i].enabled)
+                    obstacles[i].enabled = false;
             active.Clear();
             nextActive.Clear();
             RefreshNow();
@@ -159,7 +159,8 @@ namespace Aaris.MapReview
             // deliberately disabled in the authored scene or prefab.
             if (obstacles == null || savedEnabled == null) return;
             for (int i = 0; i < obstacles.Length; i++)
-                if (obstacles[i] != null) obstacles[i].enabled = savedEnabled[i];
+                if (obstacles[i] != null && obstacles[i].enabled != savedEnabled[i])
+                    obstacles[i].enabled = savedEnabled[i];
             restoreProximityStateOnEnable = true;
         }
     }
