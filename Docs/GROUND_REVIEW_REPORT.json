@@ -5,9 +5,9 @@
   "android_playtest_passed": false,
   "player_height_m": 1.78,
   "spawn_m": [
-    -650.0,
-    5.65553600000001,
-    -190.0
+    -496.0,
+    15.493645629882813,
+    -212.0
   ],
   "follow_distance_m": 4.2,
   "free_flight_camera_removed": true,

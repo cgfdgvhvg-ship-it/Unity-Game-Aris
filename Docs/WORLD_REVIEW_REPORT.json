@@ -19,6 +19,13 @@
     "minimum_foundation_to_road_edge_m": 1.3847999572753906,
     "minimum_building_to_vehicle_corridor_m": 0.26237498998636966
   },
+  "safe_spawn_m": [
+    -496.0,
+    15.493645629882813,
+    -212.0
+  ],
+  "spawn_yaw_degrees": 40.0,
+  "nearest_residential_footprint_m": 25.86760878161962,
   "daylight": {
     "sun_elevation_degrees": 50,
     "sun_intensity": 1.35,
@@ -41,6 +48,7 @@
   "terrain_heights_details_prototypes_and_alpha_preserved": true,
   "total_tree_count": 1939,
   "scaled_foundations_flat_ground_verified": true,
+  "spawn_native_ground_and_obstacles_verified": true,
   "all_original_close_meshes_preserved": true,
   "original_close_mesh_hashes": {
     "Assets/AarisWorld/Models/TownHall/Geometry.asset": "0d36fe01a59794b772e938f1f047c58c27f0a4543ce1d6000499c9dda16cf5b6",
