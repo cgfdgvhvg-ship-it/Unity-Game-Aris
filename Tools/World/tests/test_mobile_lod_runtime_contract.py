@@ -40,6 +40,34 @@ class LowRamWorldSourceContracts(unittest.TestCase):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, src)
 
+    def test_adaptive_grass_uses_sustained_p95_and_preserves_skyline(self):
+        src = (ROOT / "Assets/AarisWorld/Scripts/AarisMobileRuntime.cs").read_text(encoding="utf-8")
+        for fragment in (
+            "adaptDetailsToFrameTime = true;",
+            "frameCount < frameTimes.Length || Time.unscaledTime < 15f",
+            "p95FrameMs > frameBudgetMs * 1.30f",
+            "p95FrameMs < frameBudgetMs * 1.08f",
+            "pressureSamples >= 2 && performanceLevel < 2",
+            "recoverySamples >= 4 && performanceLevel > 0",
+            "nextPerformanceChangeAt = Time.unscaledTime + 12f;",
+            "lowMemoryDetailMultiplier = Mathf.Min(lowMemoryDetailMultiplier, 0.75f);",
+            "terrainDetailDistanceCap * distanceFactor * lowMemoryDetailMultiplier",
+            "terrainDetailDensityCap * densityFactor * lowMemoryDetailMultiplier",
+            'if (reason == "sample") TuneForFrameTime(s.p95FrameMs);',
+            "effectiveDetailDistanceM, effectiveDetailDensity, lowMemoryDetailMultiplier",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, src)
+        # Do not shorten the world horizon to obtain artificially higher FPS.
+        self.assertNotIn("farClipPlane =", src)
+        self.assertNotIn("treeDistance =", src)
+
+    def test_explicit_collider_refresh_keeps_physics_queries_current(self):
+        src = (ROOT / "Assets/AarisWorld/Scripts/AarisNearbyColliders.cs").read_text(encoding="utf-8")
+        self.assertIn("nextCheck) RefreshNow(false);", src)
+        self.assertIn("public void RefreshNow() { RefreshNow(true); }", src)
+        self.assertIn("if (changedColliders || forceSync) Physics.SyncTransforms();", src)
+
     def test_collider_manager_recovers_after_reenable(self):
         src = (ROOT / "Assets/AarisWorld/Scripts/AarisNearbyColliders.cs").read_text(encoding="utf-8")
         for fragment in (
