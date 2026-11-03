@@ -51,3 +51,30 @@ This follows Unity's transform-sync guidance without syncing every idle poll.
 5. Confirm real LFS mesh materialization; run Python unittest discovery, check_contracts, verify_tree_house_upgrade and native_smoke. Test actual Android devices with 2 GB, 3 GB and 4 GB+ RAM using identical traversal/camera, p95 frame time, memory/PSS, texture usage, GPU cost and thermal conditions before merge.
 
 Runtime caps do not prove a 60-FPS experience or full 2-GB compatibility. Chunk streaming, actual Android capture, Unity compile/physics tests, and an APK build have not been performed in this source-only integration.
+
+## 2026-11-04 targeted skyline, terrain LOD and FPS-cap fix
+
+The Android 2/3-GB runtime now caps the distance where native Terrain trees
+switch to billboard mode (100 m / 140 m), maximum simultaneous full-LOD
+Terrain mesh trees (28 / 44), heightmap pixel error minimum (8 / 6), and
+full-resolution terrain-to-basemap switch (at most 400 m / 550 m). These are
+**starting caps** applied only if the authored values are more expensive.
+The saved TerrainData, scene, prefabs, camera far clip and tree visibility
+distance are not changed. This is a visibility-preserving LOD **tradeoff**:
+more obvious billboard transitions and distant basemap softness may be visible,
+so sample screenshots during A/B testing are mandatory. All four changed
+Terrain runtime properties are recorded in JSONL diagnostics and restored when
+the runtime component is destroyed. No hard RAM or GPU cap is claimed.
+
+Fixed a source-level mismatch with the game's own 60/30-FPS button: the
+p95 feedback controller previously compared 30-FPS pacing against the serialized
+60-FPS budget. It now uses the active application target and clears the 180-frame
+window, pressure/recovery counters, and starts a six-second cooldown on cap
+switches. This prevents an intentional 30-FPS choice from automatically
+triggering low-quality mode. It does not distinguish GPU vs. CPU bottlenecks.
+
+The existing PR #19 tree/source geometry, opened door/window meshes, prefab LODs,
+collider shapes, GUID/fileID metadata and four TerrainData assets are unchanged
+by this amendment. The .meta files are deliberately preserved. Tests are
+source-contract checks only; Unity compile, device FPS, LOD transition visuals,
+terrain seam/raycast integrity and mobile memory/thermal tests remain required.
