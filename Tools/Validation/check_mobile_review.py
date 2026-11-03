@@ -35,7 +35,8 @@ def check(native=False):
     assert runtime['releaseTerrainPaintCpuCopies']==1 and runtime['targetFrameRate']==60
     assert len(runtime['terrains'])==4 and all(byid[r['fileID']][0]=='Terrain'for r in runtime['terrains'])
     gated={r['fileID']for r in nearby['obstacles']};actual={i for c,i,n,d in objects if n in ['MeshCollider','BoxCollider']}
-    assert gated==actual and nearby['activationDistance']==55
+    assert gated==actual and nearby['activationDistance']==55 and nearby['cellSize']==250
+    assert report['collision_spatial_cell_size_m']==250 and not report['full_terrain_asset_streaming_enabled']
     assert all(byid[i][0]not in ['TerrainCollider','CharacterController']for i in gated)
     assert sum(n=='TerrainCollider'and d['m_Enabled']==1 and d['m_EnableTreeColliders']==1 for c,i,n,d in objects)==4
     assert sum(n=='GameObject'and bool(re.fullmatch('VehicleSpawnPoint_[0-9]+',d['m_Name']))for c,i,n,d in objects)==45

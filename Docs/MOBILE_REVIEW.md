@@ -93,3 +93,24 @@ before/after. Repeat for several minutes. No device pass or FPS gain is claimed.
 Optional maintainer reproduction: run `Tools/MapBuild/mobile_review.py` last,
 after other map authoring, in a complete LFS checkout with its Python dependencies.
 Normal Unity builds open the already saved scene and need no generation method.
+
+## Spatial cells and actual asset streaming
+
+Static building/prop physics is indexed in 250 m spatial cells. A long object
+is indexed in every cell its world bounds touch; negative world coordinates
+and cell-border crossings are supported. The active window queries only nearby
+cells, reuses lists/stamps and activates the same exact collider set as a full
+map scan. This reduces candidate-search work as props grow. It does not unload
+TerrainData, meshes or textures: all four native terrain tiles remain resident.
+
+A future full terrain streaming migration needs independently loadable chunk
+assets, asynchronous preload before travel, an unload delay to prevent thrashing,
+and a distant representation so the island skyline never disappears. Source
+height sample spacing, painted texture layers, world-space UVs, shared edge
+normals and collision continuity must survive the bake. It requires Unity
+export and device testing, and is not claimed as implemented here. Merely
+disabling a GameObject does not release strongly referenced assets. Lowering
+paint maps to 512, forcing four layers, replacing the terrain shader, increasing
+Pixel Error, removing distant shadows or adding fog to hide missing detail are
+not applied to this version. No fixed FPS uplift or percentage RAM saving is
+asserted.

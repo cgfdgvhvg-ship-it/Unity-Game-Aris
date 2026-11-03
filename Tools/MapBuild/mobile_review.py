@@ -288,7 +288,7 @@ def upgrade(root):
     # Saved service bindings; nothing reconstructs terrain, buildings or props at scene load.
     go,tr,gd=scene.object('MobileRuntime',static=False)
     terrains=[i for c,i,n,d in scene.objects if n=='Terrain'];colliders=[i for c,i,n,d in scene.objects if n in ('MeshCollider','BoxCollider')]
-    nearby=scene.component(go,gd,114,'MonoBehaviour',{'m_Enabled':1,'m_EditorHideFlags':0,'m_Script':ref(11500000,guid('Assets/AarisWorld/Scripts/AarisNearbyColliders.cs'),3),'m_Name':'','m_EditorClassIdentifier':'Assembly-CSharp::Aaris.MapReview.AarisNearbyColliders','target':ref(player_tr),'obstacles':[ref(i)for i in colliders],'activationDistance':55})
+    nearby=scene.component(go,gd,114,'MonoBehaviour',{'m_Enabled':1,'m_EditorHideFlags':0,'m_Script':ref(11500000,guid('Assets/AarisWorld/Scripts/AarisNearbyColliders.cs'),3),'m_Name':'','m_EditorClassIdentifier':'Assembly-CSharp::Aaris.MapReview.AarisNearbyColliders','target':ref(player_tr),'obstacles':[ref(i)for i in colliders],'activationDistance':55,'cellSize':250})
     scene.component(go,gd,114,'MonoBehaviour',{'m_Enabled':1,'m_EditorHideFlags':0,'m_Script':ref(11500000,guid('Assets/AarisWorld/Scripts/AarisMobileRuntime.cs'),3),'m_Name':'','m_EditorClassIdentifier':'Assembly-CSharp::Aaris.MapReview.AarisMobileRuntime','terrains':[ref(i)for i in terrains],'releaseTerrainPaintCpuCopies':1,'targetFrameRate':60})
     player=next(d for c,i,n,d in scene.objects if n=='MonoBehaviour'and d.get('m_EditorClassIdentifier','').endswith('.AarisThirdPersonPlayer'));player['nearbyColliders']=ref(nearby)
     scene_meta=Path(str(root/SCENE)+'.meta').read_text();scene.save(root/SCENE);Path(str(root/SCENE)+'.meta').write_text(scene_meta)
@@ -301,7 +301,7 @@ def upgrade(root):
     output={'source_commit':'ae68166e65473f8b5c8181dcc1fd4b79b9a9d679','terrain_files_unchanged':True,'lighting_and_existing_visual_assets_unchanged':True,'existing_world_size_m':[2000,2000],
         'terrain_cpu_paint_bytes_eligible_for_release':8*22369620,'cpu_paint_release':'Android-only, read-only APK, one original mip chain per frame; Editor files unchanged. Requires device verification.',
         'residential_static_batch_flags_cleared':changed_static,'distant_building_colliders_disabled_at_start':initially_disabled,'nearby_static_collider_count':len(colliders),'nearby_activation_distance_m':55,'native_terrain_and_tree_colliders_preserved':True,
-        'target_fps':60,'fps_target_is_not_measured_fps':True,'graphics_api':'OpenGLES3','texture_compression':'ETC2','placements':placements,
+        'collision_spatial_cell_size_m':250,'full_terrain_asset_streaming_enabled':False,'target_fps':60,'fps_target_is_not_measured_fps':True,'graphics_api':'OpenGLES3','texture_compression':'ETC2','placements':placements,
         'models':{a['name']:{'triangles':a['triangles'],'reusable_prefab':f"{PROPS}/{a['name']}/{a['name']}.prefab"}for a in [tower,wreck,stone]},
         'new_asset_sources':sources,'licenses':{'rock_09':'CC0-1.0, Poly Haven / Jenelle van Heerden','rusty_metal_02':'CC0-1.0, Poly Haven / Rob Tuytel','ClimbableTower':'Original project geometry','StaticWreck':'Original project geometry; decorative only'},
         'unity_editor_compiled':False,'unity_render_tested':False,'android_device_tested':False,'crash_root_cause_confirmed':False}

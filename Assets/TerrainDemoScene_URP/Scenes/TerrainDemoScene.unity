@@ -59648,6 +59648,7 @@ MonoBehaviour:
   - {fileID: 401355}
   - {fileID: 401381}
   activationDistance: 55
+  cellSize: 250
 --- !u!114 &401403
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -658,5 +658,7 @@
   "unity_editor_compiled": false,
   "unity_render_tested": false,
   "android_device_tested": false,
-  "crash_root_cause_confirmed": false
+  "crash_root_cause_confirmed": false,
+  "collision_spatial_cell_size_m": 250,
+  "full_terrain_asset_streaming_enabled": false
 }
