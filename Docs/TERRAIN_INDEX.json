@@ -8,7 +8,7 @@
       "tile": "1_1",
       "terrain_instances": {
         "rock": 1330,
-        "tree": 295
+        "tree": 374
       },
       "detail_density_patches": 993,
       "tree_and_rock_prototypes": [
@@ -853,7 +853,7 @@
       "tile": "1_2",
       "terrain_instances": {
         "rock": 3442,
-        "tree": 539,
+        "tree": 618,
         "shrub": 5
       },
       "detail_density_patches": 1946,
@@ -1698,7 +1698,8 @@
     {
       "tile": "2_1",
       "terrain_instances": {
-        "rock": 388
+        "rock": 388,
+        "tree": 519
       },
       "detail_density_patches": 234,
       "tree_and_rock_prototypes": [
@@ -2671,7 +2672,7 @@
       "tile": "2_2",
       "terrain_instances": {
         "rock": 404,
-        "tree": 22
+        "tree": 428
       },
       "detail_density_patches": 648,
       "tree_and_rock_prototypes": [

@@ -6,7 +6,7 @@
   "vehicle_marker_count": 45,
   "building_lod_levels": 3,
   "planned_new_trees": 1100,
-  "native_assets_materialized": false,
+  "native_assets_materialized": true,
   "csharp_syntax_checked": [
     "Assets/AarisWorld/Editor/AarisExplorerBuild.cs",
     "Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs"
