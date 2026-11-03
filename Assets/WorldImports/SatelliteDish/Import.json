@@ -1,0 +1,88 @@
+{
+  "source_sha256": "9bdc6eb0add877e142ead2edcc83159a5e310a290ec2c1ba58bdcf879427504a",
+  "source_model_sha256": "f96837df8ee1ff54454e15dda24b583e6e6971a50a9dbc73591662c687e2a62f",
+  "source_contract": {
+    "fbx_version": 7700,
+    "global_settings": {
+      "UpAxis": 1,
+      "UpAxisSign": 1,
+      "FrontAxis": 2,
+      "FrontAxisSign": 1,
+      "CoordAxis": 0,
+      "CoordAxisSign": 1,
+      "UnitScaleFactor": 1.0
+    },
+    "non_static_records": [
+      "AnimationStack"
+    ]
+  },
+  "source_unit_to_metres": 0.01,
+  "source_pivot_removed_m": [
+    0.22166849672794342,
+    -0.0009157466702163219,
+    0.057977259159088135
+  ],
+  "animation_policy": "authored_default_pose_only",
+  "dimensions_m": [
+    0.5550243854522705,
+    1.4864659309387207,
+    0.8156390190124512
+  ],
+  "mesh": {
+    "guid": "67d11db33ef35000b4fc8dee8cd17ee8",
+    "bounds": {
+      "m_Center": {
+        "x": 1.4901161193847656e-08,
+        "y": 0.7432329654693604,
+        "z": 0.0
+      },
+      "m_Extent": {
+        "x": 0.27751219272613525,
+        "y": 0.7432329654693604,
+        "z": 0.4078195095062256
+      }
+    },
+    "triangles": 5538,
+    "vertices": 4000,
+    "submeshes": 1
+  },
+  "source_textures": {
+    "BaseColor": {
+      "sha256": "8740daf302c488fb4f38c88aa5e69230c770285ef1b04aaa87e49e2556f77b76",
+      "source_file": "textures/Antenna_01_antenna1_BaseColor.png",
+      "authored_size": [
+        2048,
+        2048
+      ]
+    },
+    "Roughness": {
+      "sha256": "ea38d287941ce761d699babe6e778a29518b95dcbe5c95f1d4242c0e6fd8bd23",
+      "source_file": "textures/Antenna_01_antenna1_Roughness.png",
+      "authored_size": [
+        2048,
+        2048
+      ]
+    },
+    "Metallic": {
+      "sha256": "16241cee5c68e9747c93604e3613691aff816238705c1c4b921a681f5fb0ccf8",
+      "source_file": "textures/Antenna_01_antenna1_Metallic.png",
+      "authored_size": [
+        2048,
+        2048
+      ]
+    },
+    "Normal": {
+      "sha256": "7f8be975193b6b4944fa11772faff108aeae17546b829535840ae08a158dfa40",
+      "source_file": "textures/Antenna_01_antenna1_Normal.png",
+      "authored_size": [
+        2048,
+        2048
+      ]
+    }
+  },
+  "prefab_path": "Assets/WorldImports/SatelliteDish/SatelliteDish.prefab",
+  "decision_owner": "AI/caller",
+  "geometry_conversion": "Assimp static node transforms baked; explicit Z reflection and triangle winding reversal",
+  "engine_import_tested": false,
+  "source_archive_preserved_by_caller": true
+}

@@ -31,15 +31,21 @@ class NativeTerrain:
     def __init__(self, world):
         self.world = world
         self.tiles = world.terrains()
-        self.cache = {}
+        if not hasattr(world,"_native_terrain_cache"):
+            world._native_terrain_cache = {}
+        self.cache = world._native_terrain_cache
 
     def load(self, tile):
         path = tile["asset"]["path"]
         if path in self.cache:
+            p = safe_path(self.world.root,path)
+            if (p.stat().st_mtime_ns,p.stat().st_size,p.stat().st_ino) != self.cache[path]["file_signature"]:
+                raise WorldError("TerrainData changed during this World snapshot; re-query current files")
             return self.cache[path]
         if not path or not (self.world.root / path).is_file():
             raise WorldError(f"TerrainData missing: {path}; fetch the original LFS asset and .meta")
         p = safe_path(self.world.root, path)
+        signature=(p.stat().st_mtime_ns,p.stat().st_size,p.stat().st_ino)
         self.world.read_files.add(path)
         if (self.world.root / (path + ".meta")).is_file():
             self.world.read_files.add(path + ".meta")
@@ -96,10 +102,34 @@ class NativeTerrain:
                   "size_m": [(n-1)*scale["x"], scale["y"], (n-1)*scale["z"]], "resolution": n,
                   "version": obj.assets_file.unity_version, "sha256": digest(p), "textures": textures,
                   "detail_prototypes": db["m_DetailPrototypes"], "native_name": data["m_Name"]}
+        result["detail_patches"] = db.get("m_Patches", [])
+        result["detail_patch_count"] = db.get("m_PatchCount", 0)
+        result["detail_patch_samples"] = db.get("m_PatchSamples", 0)
+        if (p.stat().st_mtime_ns,p.stat().st_size,p.stat().st_ino)!=signature:
+            raise WorldError("TerrainData changed while decoding")
+        result["file_signature"] = signature
         self.cache[path] = result
         del raw, data, db, env, obj
         gc.collect()
         return result
+
+    def detail_context(self, x, z):
+        """Saved grass/detail patch occupancy, never invented blade positions."""
+        rows = []
+        for tile in self.tiles:
+            d = self.load(tile); ox, _, oz = tile["origin_m"]; sx, _, sz = d["size_m"]
+            if not (ox <= x <= ox+sx and oz <= z <= oz+sz):
+                continue
+            count = d["detail_patch_count"]
+            if not count or len(d["detail_patches"]) != count*count:
+                rows.append({"terrain_id":tile["id"],"status":"unsupported_detail_patch_layout"});continue
+            ix = min(int((x-ox)/sx*count),count-1); iz = min(int((z-oz)/sz*count),count-1)
+            patch = d["detail_patches"][iz*count+ix]
+            rows.append({"terrain_id":tile["id"], "patch_xz":[ix,iz], "patch_width_depth_m":[sx/count,sz/count],
+                         "saved_patch":patch, "detail_prototype_count":len(d["detail_prototypes"]),
+                         "evidence":"decoded_native_detail_patch", "individual_grass_blades_available":False,
+                         "note":"Patch occupancy is not exact grass beneath a model, and does not prove rendered grass."})
+        return rows
 
     def instances(self):
         """Yield every native TerrainData instance from the current core bytes."""

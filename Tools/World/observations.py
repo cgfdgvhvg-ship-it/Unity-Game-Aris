@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 
 from terrain import NativeTerrain
-from unity_data import WorldError, bounds_json, digest, pointer, safe_path
+from unity_data import World, WorldError, bounds_json, digest, pointer, safe_path, xyz
 
 
 def _finite(value, name):
@@ -96,8 +96,15 @@ def inspect(w, request):
 
     candidates = []
     skipped = []
+    unavailable_geometry = []
+    excluded = set(w.descendants(target_go)) if target_go is not None else set()
+    target_basis = w.world_rotation(w.go_transform[target_go]) if target_go is not None else np.eye(3)
+    if target_native is not None:
+        yaw = math.radians(target_native["yaw_degrees"])
+        target_basis = np.array([[math.cos(yaw), 0, math.sin(yaw)], [0, 1, 0],
+                                 [-math.sin(yaw), 0, math.cos(yaw)]])
     for go in w.gos:
-        if go == target_go or go not in w.go_transform:
+        if go in excluded or go not in w.go_transform:
             continue
         try:
             position = w.world_matrix(w.go_transform[go])[:3, 3]
@@ -106,22 +113,42 @@ def inspect(w, request):
             continue
         delta = position - np.asarray(center)
         distance = float(np.linalg.norm(delta))
-        if distance > radius:
-            continue
+        bounds, incomplete = w.aggregate_bounds(go) if geometry else (None, [])
+        collider_bounds, collider_incomplete = w.aggregate_collider_bounds(go) if geometry else (None, [])
+        shape_kinds={"MeshFilter","SkinnedMeshRenderer","BoxCollider","MeshCollider","SphereCollider","CapsuleCollider"}
+        container_only=bool(w.children[go]) and not any(c["kind"] in shape_kinds for c in w.components(go))
+        if container_only:
+            # A group's union AABB may span a whole island, including empty air.
+            # It is not an obstacle or a supporting surface. Child shapes are
+            # indexed separately and retain their own identities.
+            bounds,collider_bounds=None,None
+        if geometry and not container_only and bounds is None and collider_bounds is None and any(c["kind"] in shape_kinds for c in w.components(go)):
+            unavailable_geometry.append({"id":w.stable_id(go),"name":w.gos[go].get("m_Name"),"reasons":sorted(set(incomplete+collider_incomplete))})
+        bound_kind = "renderer_mesh_aabb" if bounds is not None else "saved_collider_envelope" if collider_bounds is not None else "unavailable"
+        if bounds is None:bounds=collider_bounds
+        bounds_distance = _distance_to_bounds(center, bounds)[0] if bounds is not None else distance
+        if min(distance, bounds_distance) > radius: continue
         row = {"id": w.stable_id(go), "name": w.gos[go].get("m_Name"),
                "world_position_m": position.tolist(), "relative_m": delta.tolist(),
                "distance_m": distance, "horizontal_distance_m": float(np.linalg.norm(delta[[0, 2]])),
+               "world_forward":w.world_rotation(w.go_transform[go])[:,2].tolist(),
+               "relative_in_target_axes_m":(target_basis.T @ delta).tolist(),
+               "world_axis_scale":np.linalg.norm(w.world_matrix(w.go_transform[go])[:3,:3],axis=0).tolist(),
+               "container_only":container_only,
                "components": [c["kind"] for c in w.components(go)]}
         if geometry:
-            bounds, incomplete = w.aggregate_bounds(go)
             row["bounds"] = bounds_json(bounds)
             row["bounds_incomplete"] = incomplete
+            row["bounds_source"] = bound_kind
+            row["saved_collider_bounds"] = bounds_json(collider_bounds)
+            row["collider_bounds_incomplete"] = collider_incomplete
             if bounds is not None:
                 row["distance_to_bounds_m"], row["closest_bounds_point_m"] = _distance_to_bounds(center, bounds)
                 row["contains_inspection_point"] = bool(np.all(np.asarray(center) >= bounds[0]) and np.all(np.asarray(center) <= bounds[1]))
                 row["_raw_bounds"] = bounds
         candidates.append(row)
     candidates.sort(key=lambda row: (row.get("distance_to_bounds_m", row["distance_m"]), row["id"]))
+    scene_candidate_total = len(candidates)
     candidates = candidates[:limit]
 
     target_bounds = None
@@ -148,7 +175,7 @@ def inspect(w, request):
             if horizontal:
                 gap = bottom-float(bounds[1][1])
                 if abs(gap) <= max(5.0, radius*.1):
-                    supports.append({"kind": "renderer_aabb_top", "object": {k: row[k] for k in ("id", "name")},
+                    supports.append({"kind": row["bounds_source"]+"_top", "object": {k: row[k] for k in ("id", "name")},
                                      "surface_y_m": float(bounds[1][1]), "target_bottom_minus_surface_m": gap,
                                      "evidence": "geometry_estimate_aabb_not_physics"})
     else:
@@ -158,6 +185,7 @@ def inspect(w, request):
 
     native_rows = []
     native_errors = []
+    native_candidate_total = 0
     if include_native:
         try:
             for row in native.instances():
@@ -167,9 +195,35 @@ def inspect(w, request):
                 distance = float(np.linalg.norm(delta))
                 if distance <= radius:
                     native_rows.append({**row, "relative_m": delta.tolist(), "distance_m": distance,
+                                        "relative_in_target_axes_m":(target_basis.T @ delta).tolist(),
                                         "horizontal_distance_m": float(np.linalg.norm(delta[[0, 2]]))})
             native_rows.sort(key=lambda row: (row["distance_m"], row["id"]))
+            native_candidate_total = len(native_rows)
             native_rows = native_rows[:limit]
+            profiles = {}
+            for row in native_rows:
+                path = row.get("path")
+                if path not in profiles:
+                    try:
+                        if not path: raise WorldError("Prototype metadata is unavailable")
+                        prototype = World(w.root, path)
+                        w.read_files.update(prototype.read_files)
+                        colliders = []
+                        for component in prototype.docs.values():
+                            if component["kind"] not in ("CapsuleCollider", "BoxCollider", "SphereCollider"):continue
+                            data=component["data"];tr=prototype.go_transform[data["m_GameObject"]["fileID"]]
+                            colliders.append({"kind":component["kind"],"local_radius_m":data.get("m_Radius"),
+                                              "local_height_m":data.get("m_Height"),"local_size":data.get("m_Size"),
+                                              "prototype_axis_scale":np.linalg.norm(prototype.world_matrix(tr)[:3,:3],axis=0).tolist()})
+                        profiles[path]={"status":"serialized_colliders","colliders":colliders}
+                    except (WorldError, OSError, KeyError) as error:
+                        profiles[path]={"status":"unavailable","reason":str(error)}
+                row["prototype_geometry"]=profiles[path]
+                row["collider_diameter_estimates_m"]=[2*c["local_radius_m"]*row["width_scale"]*max(c["prototype_axis_scale"][0],c["prototype_axis_scale"][2])
+                    for c in profiles[path].get("colliders",[]) if c.get("local_radius_m") is not None]
+                row["box_collider_size_estimates_m"]=[(xyz(c["local_size"])*np.asarray(c["prototype_axis_scale"])*[row["width_scale"],row["height_scale"],row["width_scale"]]).tolist()
+                    for c in profiles[path].get("colliders",[]) if c.get("local_size")]
+                row["diameter_evidence"]="saved_collider_envelope; visible trunk thickness is not established"
         except (WorldError, ImportError) as error:
             native_errors.append(str(error))
 
@@ -193,22 +247,55 @@ def inspect(w, request):
         "terrain_relation": terrain_relation,
         "nearby_scene_objects": candidates,
         "nearby_native_instances": native_rows,
+        "grass_detail_context": _grass_context(native,center,include_native),
+        "terrain_under_footprint": _footprint_context(native,target_bounds) if include_native and target_bounds is not None else {"status":"not_requested_or_no_target_bounds"},
         "support_candidates": supports[:25],
         "overlap_candidates": overlaps[:25],
         "observations": facts,
         "coverage": {
             "inline_scene_objects_indexed": len(w.gos),
             "scene_candidates_returned": len(candidates),
+            "scene_candidates_total": scene_candidate_total,
+            "scene_candidates_truncated": scene_candidate_total>limit,
             "native_candidates_returned": len(native_rows),
+            "native_candidates_total": native_candidate_total,
+            "native_candidates_truncated": native_candidate_total>limit,
             "skipped_scene_objects": skipped[:25],
+            "scene_shape_bounds_unavailable_count":len(unavailable_geometry),
+            "scene_shape_bounds_unavailable_sample":unavailable_geometry[:25],
+            "neighbour_query_limit":"Origin distance or available shape envelopes; an object with unavailable geometry and a distant pivot may be missed",
             "native_errors": native_errors,
             "physics_tested": False,
             "render_tested": False,
-            "bounds_are_renderer_mesh_aabb": geometry,
+            "bounds_are_renderer_mesh_aabb": geometry and all(r.get("bounds_source")!="saved_collider_envelope" for r in candidates),
+            "bounds_evidence":"See each bounds_source; renderer and saved-collider AABBs are distinct estimates",
         },
         "source_fingerprint": source,
+        "decision_owner":"AI/caller; tool reports measurements and never accepts/rejects a design",
+        "relative_axes":"target right/up/forward; coordinate-only inspections use world X/Y/Z",
         "next": "Use Unity engine observe/probe/capture when exact collider, support, entrance or visible appearance evidence is required",
     }
+
+
+def _grass_context(native,center,enabled):
+    if not enabled:return {"status":"not_requested"}
+    try:
+        return native.detail_context(center[0],center[2])
+    except (WorldError, ImportError, OSError) as error:
+        return {"status":"unavailable","reason":str(error)}
+
+
+def _footprint_context(native,bounds):
+    samples=[]
+    try:
+        for x in np.linspace(bounds[0][0],bounds[1][0],3):
+            for z in np.linspace(bounds[0][2],bounds[1][2],3):
+                result=native.height(float(x),float(z))
+                samples.append({"world_xz_m":[float(x),float(z)],"terrain":result,
+                                "bounds_bottom_minus_ground_m":[float(bounds[0][1])-r["height_m"] for r in result["samples"]]})
+        return {"samples":samples,"evidence":"nine bilinear terrain samples under the renderer AABB; not exact mesh-foot contact", "decision_owner":"AI/caller"}
+    except (WorldError, ImportError, OSError) as error:
+        return {"status":"unavailable","reason":str(error),"samples_completed":samples}
 
 
 def usages(w, request):

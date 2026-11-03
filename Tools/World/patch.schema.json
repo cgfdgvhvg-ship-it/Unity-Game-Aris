@@ -27,7 +27,7 @@
       {"$ref": "#/$defs/terrainInstanceScale"}, {"$ref": "#/$defs/terrainInstanceRotate"},
       {"$ref": "#/$defs/terrainInstanceRemove"}, {"$ref": "#/$defs/terrainInstanceAdd"},
       {"$ref": "#/$defs/instantiatePrefab"}, {"$ref": "#/$defs/duplicateObject"},
-      {"$ref": "#/$defs/deleteObject"}
+      {"$ref": "#/$defs/deleteObject"}, {"$ref": "#/$defs/placeStaticPrefab"}
     ]}}
   },
   "allOf": [{
@@ -40,6 +40,49 @@
     "vec2": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}},
     "vec3": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "number"}},
     "vec4": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "number"}},
+    "placeStaticPrefab": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "op",
+        "prefab_path",
+        "world_position",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/opId"
+        },
+        "op": {
+          "const": "place_static_prefab"
+        },
+        "prefab_path": {
+          "type": "string",
+          "pattern": "^Assets/.*\\.prefab$"
+        },
+        "world_position": {
+          "$ref": "#/$defs/vec3"
+        },
+        "yaw_degrees": {
+          "type": "number"
+        },
+        "local_scale": {
+          "$ref": "#/$defs/vec3"
+        },
+        "parent": {
+          "$ref": "#/$defs/stableTarget"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "collider_registry_file_id": {
+          "type": "integer"
+        }
+      }
+    },
     "setTransform": {"type": "object", "additionalProperties": false, "required": ["op", "target"], "properties": {
       "id": {"$ref": "#/$defs/opId"}, "op": {"const": "set_transform"}, "target": {"$ref": "#/$defs/stableTarget"},
       "world_position": {"$ref": "#/$defs/vec3"}, "local_position": {"$ref": "#/$defs/vec3"},

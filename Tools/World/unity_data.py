@@ -12,7 +12,17 @@ import yaml
 
 SCENE = "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity"
 HEADER = re.compile(r"(?m)^--- !u!(\d+) &(-?\d+)([^\n]*)\n")
-LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+class UnityLoader(getattr(yaml, "CSafeLoader", yaml.SafeLoader)):
+    def construct_mapping(self, node, deep=False):
+        # Unity uses unquoted hex scalars. A digits-only index buffer or GUID
+        # must not be parsed as an octal/integer and lose leading zeroes.
+        for key, value in node.value:
+            if isinstance(key,yaml.ScalarNode) and key.value in ("guid","m_IndexBuffer","_typelessdata") and isinstance(value,yaml.ScalarNode):
+                value.tag = "tag:yaml.org,2002:str"
+        return super().construct_mapping(node,deep=deep)
+
+
+LOADER = UnityLoader
 BUILTINS = {"0000000000000000e000000000000000", "0000000000000000f0000000000000000"}
 
 
@@ -136,7 +146,7 @@ class World:
             parent = t.get("m_Father", {}).get("fileID", 0)
             if parent in self.transforms:
                 self.children[self.transforms[parent]["m_GameObject"]["fileID"]].append(t["m_GameObject"]["fileID"])
-        self._matrices, self._assets, self._bounds = {}, {}, {}
+        self._matrices, self._assets, self._bounds, self._collider_bounds = {}, {}, {}, {}
         self.read_files = {scene, scene + ".meta"}
 
     def stable_id(self, go):
@@ -282,6 +292,32 @@ class World:
             yield node
             stack.extend(reversed(self.children[node]))
 
+    def aggregate_collider_bounds(self, go):
+        """Saved collider envelopes; no claim about physics activation or contacts."""
+        if go in self._collider_bounds:return self._collider_bounds[go]
+        found, missing = [], []
+        for node in self.descendants(go):
+            if node not in self.go_transform:continue
+            m = self.world_matrix(self.go_transform[node])
+            for c in self.components(node):
+                d=c["data"];kind=c["kind"]
+                if kind=="BoxCollider":
+                    found.append(bounds_transform(d.get("m_Center",{}),dict(zip("xyz",xyz(d["m_Size"])/2)),m))
+                elif kind in ("SphereCollider","CapsuleCollider"):
+                    ext=np.full(3,float(d["m_Radius"]))
+                    if kind=="CapsuleCollider":
+                        axis=int(d.get("m_Direction",1));ext[axis]=max(ext[axis],float(d["m_Height"])/2)
+                    found.append(bounds_transform(d.get("m_Center",{}),dict(zip("xyz",ext)),m))
+                elif kind=="MeshCollider":
+                    ref=d.get("m_Mesh",{});info=self.reference(ref)
+                    mesh=next((r["data"] for r in self.asset_docs(info["path"])["docs"] if r["kind"]=="Mesh" and r["file_id"]==ref["fileID"]),None) if info["status"]=="read" else None
+                    if mesh and mesh.get("m_LocalAABB"):
+                        b=mesh["m_LocalAABB"];found.append(bounds_transform(b["m_Center"],b["m_Extent"],m))
+                    else:missing.append("mesh_collider_geometry_unavailable:"+str(info.get("path")))
+        bounds=[np.min([v[0] for v in found],axis=0),np.max([v[1] for v in found],axis=0)] if found else None
+        self._collider_bounds[go]=(bounds,sorted(set(missing)))
+        return self._collider_bounds[go]
+
     def object(self, go, details=False):
         d = self.gos[go]
         transform = self.go_transform.get(go)
@@ -311,6 +347,10 @@ class World:
                         if key not in materials:
                             materials[key] = self.material(ref)
             result["materials"] = list(materials.values())
+            collider_bounds, collider_unknown = self.aggregate_collider_bounds(go)
+            result["saved_collider_bounds"] = bounds_json(collider_bounds)
+            result["collider_bounds_incomplete"] = collider_unknown
+            result["collider_evidence"] = "serialized_envelopes; enabled state, collision cooking and actual contacts are not simulated"
         return result
 
     def terrains(self):
