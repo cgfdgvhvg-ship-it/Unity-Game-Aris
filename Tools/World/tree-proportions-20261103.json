@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "transaction_id": "tree-proportions-20261103-01",
+  "expected_files": {
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Conifer.prefab": "a5834989f27368bc0ce25a1e854a721a311452463ca916a5f52628e3570a73c3",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Conifer.prefab.meta": "ce96b75f8775f29f3cc4546acca3848b5b10f5c1d7336a2ec5bef508df9e4e16",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Conifer.st.meta": "afc138db8cf7daf36adabd2d88bcb2ab597e3531af592e48535cba31f43b6503",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Cypress_Forest_Desktop.prefab": "d5ffe032410f9c793acf1a23d3b860e21ff887cb33d1386eee7158fb55ebf40c",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Cypress_Forest_Desktop.prefab.meta": "9de079ff61650791caf463eb3914872865ba0607ea651401fb865981353f7900",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Cypress_Forest_Desktop.st.meta": "7af2521610372b109faba3525655851a961d24cc05635f2d2251b73ae372da3c",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_A/Pine_A.prefab": "6c1ec7a74011de438174fe3efb5649c73047e2fadc99d44ee38c41756bdd0468",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_A/Pine_A.prefab.meta": "bb97ddbd48cfe56a18553bec640bb8b8b3f2033bad151e77d83aea1ca4b8a092",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_A/Pine_A.st.meta": "50b75150ab64be640f7012b282fa650d817e0f748cce330fbc13881f956d9b1e",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_B/Pine_B.prefab": "6f332ea370bea1949a8353770dd7b1d602fbb3cf5ff1e6a0be69652cc6ea5150",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_B/Pine_B.prefab.meta": "8f97c6575e7c97a234095fad96ce7e064bc672ea4422f65471a139bc76f12304",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_B/Pine_B.st.meta": "feea6a91a6d16d5a65b26eb927e0d9d67ac7362926bb54d1b5ab7203ec9623ff",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_C/Pine_C.prefab": "c7a7c79add037b83f83e808f260f189b78d61e9c8aa6a1500fca2440c3979b33",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_C/Pine_C.prefab.meta": "15cdd2976eabd8077ae9f92b01a9e150d27c23e686e7677e299ddb5884900481",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_C/Pine_C.st.meta": "8dd36a1d56def37251d6e4fbed6ee3bb4661e9c0b6f49d35146d7d250b8dbbb6",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_D/Pine_D.prefab": "a898f1c71439cd3c776d759e0857c998626d1710e1936656f28681e968b766bd",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_D/Pine_D.prefab.meta": "9969824311df9115eef43d2ea88122c3a99a2d8b8e16e511f04100617c51aa2b",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_D/Pine_D.st.meta": "92a4d6e852d91aeba4c9faf00c1256bda750f6ebf8ff13f7a0d1acfba48d02cc"
+  },
+  "profiles": [
+    {
+      "prefab": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Conifer.prefab",
+      "source_meta": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Conifer.st.meta",
+      "height_factor": 0.62,
+      "base_width_factor": 1.55,
+      "crown_width_factor": 1.12
+    },
+    {
+      "prefab": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Cypress_Forest_Desktop.prefab",
+      "source_meta": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Cypress_Forest_Desktop.st.meta",
+      "height_factor": 0.82,
+      "base_width_factor": 1.4,
+      "crown_width_factor": 1.1
+    },
+    {
+      "prefab": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_A/Pine_A.prefab",
+      "source_meta": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_A/Pine_A.st.meta",
+      "height_factor": 0.62,
+      "base_width_factor": 1.55,
+      "crown_width_factor": 1.12
+    },
+    {
+      "prefab": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_B/Pine_B.prefab",
+      "source_meta": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_B/Pine_B.st.meta",
+      "height_factor": 0.64,
+      "base_width_factor": 1.55,
+      "crown_width_factor": 1.12
+    },
+    {
+      "prefab": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_C/Pine_C.prefab",
+      "source_meta": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_C/Pine_C.st.meta",
+      "height_factor": 0.78,
+      "base_width_factor": 1.5,
+      "crown_width_factor": 1.12
+    },
+    {
+      "prefab": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_D/Pine_D.prefab",
+      "source_meta": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_D/Pine_D.st.meta",
+      "height_factor": 0.78,
+      "base_width_factor": 1.5,
+      "crown_width_factor": 1.12
+    }
+  ]
+}

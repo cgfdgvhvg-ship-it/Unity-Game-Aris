@@ -1,5 +1,15 @@
 # Working on the Aaris Unity world
 
+## Tree proportions and residential openings migration
+
+The reviewed 2026-11-03 migration is reproducible with `Tools/World/apply_tree_house_upgrade.py`; it writes actual saved core meshes/import metadata and verifies the authored postconditions in `tree-house-20261103.postconditions.json`. `verify_tree_house_upgrade.py` checks exact hashes, preserved vertex attributes/material slots, 47 saved residential collider bindings and 900 discrete doorway rays across all three LODs. Those sampled rays are **not** continuous capsule physics or a full interior playtest. Do not re-run historical world generators over these edits.
+
+`remove_mesh_triangles` is a schema-v2 Python operation for explicit original triangle indices per submesh in uncompressed static YAML meshes. Inspect the actual geometry first: a material called oak can include both a door and an entire structural wall. Material slots and all vertex attributes remain intact, and non-convex MeshColliders keep the same mesh reference. Cooked, compressed or streamed geometry requires Unity. Never disable an entire building collider to obtain an entrance.
+
+Tree heights are authored in each existing SpeedTree source `.st.meta`. The tagged `AarisTreeShapeImporter` performs a continuous shared deformation of bark, branches, foliage, next-LOD positions and leaf-facing/wind anchors during the **next matching Unity import**. Matching saved prototype colliders are authored separately. Python does not decode/hex-edit proprietary SpeedTree source or claim that this Editor code has already run. Existing native instance records, positions, terrain heights, roads and vehicle pads stay unchanged. Check Unity compilation/import, LOD transitions, wind, billboards, captures and the selected player routes before claiming final visible/collision quality.
+
+Parent/child world-space edits are resolved through the final transaction hierarchy. Competing writes to the same transform field are rejected. Saved values and exact output bytes are checked against the caller's request before reporting success; a mismatch rolls back.
+
 Read `Docs/WORLD_AUTOMATION.md`, then start with:
 
 ```bash

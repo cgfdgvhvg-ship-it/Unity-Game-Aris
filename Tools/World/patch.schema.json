@@ -27,7 +27,7 @@
       {"$ref": "#/$defs/terrainInstanceScale"}, {"$ref": "#/$defs/terrainInstanceRotate"},
       {"$ref": "#/$defs/terrainInstanceRemove"}, {"$ref": "#/$defs/terrainInstanceAdd"},
       {"$ref": "#/$defs/instantiatePrefab"}, {"$ref": "#/$defs/duplicateObject"},
-      {"$ref": "#/$defs/deleteObject"}, {"$ref": "#/$defs/placeStaticPrefab"}
+      {"$ref": "#/$defs/deleteObject"}, {"$ref": "#/$defs/placeStaticPrefab"}, {"$ref": "#/$defs/removeMeshTriangles"}
     ]}}
   },
   "allOf": [{
@@ -35,6 +35,7 @@
     "then": {"required": ["transaction_id", "idempotency_key"]}
   }],
   "$defs": {
+    "removeMeshTriangles": {"type":"object","additionalProperties":false,"required":["id","op","path","file_id","selections"],"properties":{"id":{"$ref":"#/$defs/opId"},"op":{"const":"remove_mesh_triangles"},"path":{"type":"string","pattern":"^Assets/.*\\.asset$"},"file_id":{"type":"integer"},"selections":{"type":"array","minItems":1,"items":{"type":"object","additionalProperties":false,"required":["submesh","triangles"],"properties":{"submesh":{"type":"integer","minimum":0},"triangles":{"type":"array","minItems":1,"uniqueItems":true,"items":{"type":"integer","minimum":0}}}}}}},
     "opId": {"type": "string", "pattern": "^[A-Za-z0-9._:-]{1,96}$"},
     "stableTarget": {"type": "string", "minLength": 1},
     "vec2": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}},

@@ -16,6 +16,10 @@ for path in list((root/'Assets/AarisWorld/Editor').glob('World*.cs'))+[root/'Ass
     tree=parser.parse(path.read_bytes())
     assert not tree.root_node.has_error, str(path)+' C# syntax error'
     assert Path(str(path)+'.meta').is_file(), str(path)+' requires stable metadata'
+tree_importer=root/'Assets/AarisWorld/Editor/AarisTreeShapeImporter.cs'
+if tree_importer.exists():
+    assert not parser.parse(tree_importer.read_bytes()).root_node.has_error
+    assert Path(str(tree_importer)+'.meta').is_file()
 w=World(root)
 assert len(w.terrains())==4
 assert len([d for d in w.gos.values() if re.fullmatch(r'VehicleSpawnPoint_\d{2}',d.get('m_Name',''))])==45
@@ -24,7 +28,7 @@ assert contract['protocol_version']==2
 assert 'describe' in contract['read_commands']
 assert 'site' in contract['read_commands']
 assert contract['local_watch']['automatically_runs'] is False
-for operation in ('set_transform','place_static_prefab','terrain_instance_move','terrain_instance_add','instantiate_prefab','duplicate_object','delete_object'):
+for operation in ('set_transform','place_static_prefab','remove_mesh_triangles','terrain_instance_move','terrain_instance_add','instantiate_prefab','duplicate_object','delete_object'):
     assert operation in contract['write_operations'], operation+' missing from machine contract'
 bridge=(root/'Assets/AarisWorld/Editor/WorldBridge.cs').read_text()
 for symbol in ('ObservationRequest','TerrainEdit','SceneEdit','ApplyTerrainInstances','ApplySceneEdits'):

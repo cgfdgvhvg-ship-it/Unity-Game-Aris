@@ -16,6 +16,11 @@ PROTOCOL_VERSION = 2
 
 
 OPERATIONS = {
+    "remove_mesh_triangles": {
+        "backend":"python_yaml", "targets":["uncompressed_static_yaml_mesh"], "scope":"shared_asset",
+        "fields":["path","file_id","selections"],
+        "notes":"Explicit original triangle indices per submesh. Preserves material slots, vertex attributes, GUIDs and collider references; not automatic door recognition or a physics result.",
+    },
     "place_static_prefab": {
         "backend":"python_yaml", "targets":["explicit_static_yaml_prefab"], "scope":"new_scene_instance",
         "fields":["prefab_path","world_position","yaw_degrees","local_scale","parent","name","collider_registry_file_id"],
@@ -132,6 +137,9 @@ def schema():
         "write_operations": OPERATIONS,
         "local_import":{"command":"import-model", "formats":["ZIP with one binary FBX and explicit PBR textures"],
                         "backend":"python", "chooses_location":False, "requires_editor":False},
+        "tree_source_authoring":{"entrypoint":"Tools/World/tree_shapes.py", "scope":"shared SpeedTree source prototype",
+                                 "python_writes":"Existing importer metadata and matching saved prototype colliders",
+                                 "mesh_deformation_requires_unity_import":True, "runtime_generator":False},
         "local_watch": {"command": "watch", "mode": "foreground_json_lines", "polls_saved_core": True,
                         "automatically_runs": False, "before_after_context": True,
                         "limitations": "Must remain running on a local checkout; no remote daemon or Unity rendering"},

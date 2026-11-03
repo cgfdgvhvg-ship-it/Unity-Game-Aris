@@ -194,6 +194,11 @@ def _operation_state(world, operation, resolved=None):
                 "value": matches[0] if len(matches) == 1 else {"status": "not_exactly_one", "matches": len(matches)},
                 "shared_usages": usage_report["text_serialized_usages"],
                 "total_reference_occurrences": usage_report["total_reference_occurrences"]}}
+        if kind == "remove_mesh_triangles":
+            from mesh_faces import summary
+            doc = next(d for d in world.asset_docs(operation["path"])["docs"]
+                       if d["kind"] == "Mesh" and d["file_id"] == operation["file_id"])
+            return {"operation_id":operation_id,"status":"available","state":summary(doc["data"])}
         if kind == "place_static_prefab" and resolved:
             go = world.resolve(resolved["id"])
             return {"operation_id": operation_id, "status": "available", "state": world.object(go, True)}
@@ -505,6 +510,25 @@ def plan(root, patch):
             matching[0][op["property"]] = float(value)
             edits.setdefault(path, set()).add(op["file_id"])
             impacts.append({"core_file": path, "review": "Shared material: affects every renderer using this GUID."})
+        elif kind == "remove_mesh_triangles":
+            if version != 2 or op_fields(op) != {"op", "path", "file_id", "selections"}:
+                raise WorldError("remove_mesh_triangles requires schema v2, path, file_id and selections")
+            path = op["path"]
+            if not isinstance(path,str) or not path.startswith("Assets/") or not path.endswith(".asset"):
+                raise WorldError("Triangle edits require an Assets/*.asset saved YAML mesh")
+            _, docs = source(path)
+            doc = docs.get(op["file_id"])
+            if not doc or doc["kind"] != "Mesh":
+                raise WorldError("Saved Mesh fileID is unresolved")
+            if doc["file_id"] in edits.get(path,set()):
+                raise WorldError("Use a single triangle selection operation per mesh")
+            from mesh_faces import remove_triangles
+            doc["data"], removed = remove_triangles(doc["data"],op["selections"])
+            edits.setdefault(path,set()).add(doc["file_id"])
+            from observations import usages
+            impacts.append({"operation":kind,"core_file":path,"removed_triangles":removed,
+                            "shared_usages":usages(w,{"path":path})["text_serialized_usages"],
+                            "review":"Shared source mesh; keep material slots and non-convex collider references. Unity cooking/physics remain separate."})
         elif kind == "place_static_prefab":
             if version != 2:
                 raise WorldError("place_static_prefab requires schema v2")
@@ -692,6 +716,9 @@ def apply_yaml(root, patch, write=False):
             for t in world.transforms:
                 world.world_matrix(t)
             _verify_transform_postconditions(world, patch)
+            for path, text in outputs.items():
+                if digest(root/path) != hashlib.sha256(text.encode()).hexdigest():
+                    raise WorldError("Postcondition failed: saved bytes differ from the inspected plan: " + path)
             observed = _collect_observations(world, report["observe_after"])
             resolved_by_operation = {row["operation_id"]: row for row in report["resolved_objects"]}
             operation_after = [_operation_state(world, operation, resolved_by_operation.get(operation.get("id")))

@@ -60,7 +60,13 @@ def check(native=False):
     if native:
         assert report['total_tree_count']==1939 and report['terrain_heights_details_prototypes_and_alpha_preserved']
         assert report['spawn_native_ground_and_obstacles_verified']
-        for path,expected in report['original_close_mesh_hashes'].items():assert hashlib.sha256((ROOT/path).read_bytes()).hexdigest()==expected
+        for path,expected in report['original_close_mesh_hashes'].items():
+            if hashlib.sha256((ROOT/path).read_bytes()).hexdigest()!=expected:
+                # An intentional opening edit supersedes exactly its original mesh
+                # hash, without rewriting this historical preservation report.
+                sys.path.insert(0,str(ROOT/'Tools/World'))
+                from verify_tree_house_upgrade import accepts_historical_transition
+                assert accepts_historical_transition(ROOT,path,expected),(path,'Unreviewed source mesh drift')
         pipeline=documents(ROOT/'Assets/TerrainDemoScene_URP/Settings/URP/URP-HighQuality Pipeline Asset.asset')[0][3]
         assert pipeline['m_RenderScale']==1,'Render resolution changed'
     result={'status':'saved_core_checks_passed','building_prefabs_checked':len(prefab_checks),'scaled_residential_instances':47,
