@@ -13,7 +13,8 @@ namespace Aaris.MapReview
         [SerializeField] private float activationDistance = 55;
         [SerializeField] private float cellSize = 250;
         private Bounds[] worldBounds;
-        private bool[] savedEnabled;
+        private bool[] savedEnabled, indexed;
+        private bool restoreProximityStateOnEnable;
         private readonly Dictionary<long, List<int>> cells = new Dictionary<long, List<int>>();
         private List<int> active, nextActive;
         private int[] visited, wanted;
@@ -26,6 +27,7 @@ namespace Aaris.MapReview
             if (target == null || obstacles == null) { enabled = false; return; }
             worldBounds = new Bounds[obstacles.Length];
             savedEnabled = new bool[obstacles.Length];
+            indexed = new bool[obstacles.Length];
             visited = new int[obstacles.Length]; wanted = new int[obstacles.Length];
             active = new List<int>(obstacles.Length); nextActive = new List<int>(obstacles.Length);
             cellSize = Mathf.Max(32, cellSize);
@@ -34,6 +36,12 @@ namespace Aaris.MapReview
                 Collider c = obstacles[i];
                 if (c == null) continue;
                 savedEnabled[i] = c.enabled;
+                // Never gate the native terrain or the player, even if misregistered.
+                if (c is TerrainCollider || c is CharacterController)
+                {
+                    Debug.LogWarning("Aaris proximity registry skips terrain/player collider " + c.name);
+                    continue;
+                }
                 // Bounds of a disabled Collider are empty. Reconstruct its local envelope
                 // without enabling/cooking the whole district of distant collisions.
                 Bounds local;
@@ -75,6 +83,7 @@ namespace Aaris.MapReview
                         { entries = new List<int>(); cells.Add(key, entries); }
                         entries.Add(i);
                     }
+                indexed[i] = true;
                 c.enabled = false;
             }
             RefreshNow();
@@ -125,6 +134,18 @@ namespace Aaris.MapReview
             // Only synchronize after a collision window change, not every idle 0.25 s.
             if (changedColliders) Physics.SyncTransforms();
         }
+        private void OnEnable()
+        {
+            // First OnEnable has no restored state; later calls rebuild the window.
+            if (!restoreProximityStateOnEnable || indexed == null || obstacles == null) return;
+            restoreProximityStateOnEnable = false;
+            for (int i = 0; i < obstacles.Length; i++)
+                if (indexed[i] && obstacles[i] != null) obstacles[i].enabled = false;
+            active.Clear();
+            nextActive.Clear();
+            RefreshNow();
+        }
+
         private void OnDisable()
         {
             // Previously every registered collider was force-enabled, including colliders
@@ -132,6 +153,7 @@ namespace Aaris.MapReview
             if (obstacles == null || savedEnabled == null) return;
             for (int i = 0; i < obstacles.Length; i++)
                 if (obstacles[i] != null) obstacles[i].enabled = savedEnabled[i];
+            restoreProximityStateOnEnable = true;
         }
     }
 }

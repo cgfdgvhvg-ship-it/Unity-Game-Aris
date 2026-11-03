@@ -28,6 +28,10 @@ namespace Aaris.MapReview
         private int originalShadowAtlas;
         private bool mobileProfileApplied;
         private string mobileProfile = "baseline";
+        // Runtime grass/detail budgets: the far terrain and tree skyline stay visible.
+        private Terrain[] profiledTerrains;
+        private float[] originalDetailDistances, originalDetailDensities;
+        private float terrainDetailDistanceCap, terrainDetailDensityCap;
         private string lastError = "";
         public static string LatestReport { get; private set; } = "Starting map...";
 
@@ -99,8 +103,17 @@ namespace Aaris.MapReview
                 lowMemoryPending = false;
                 // Trim streamed mip cache pressure before optional unused-asset cleanup.
                 if (mobileProfileApplied)
+                {
+                    // An already smaller budget must never increase on a low-memory event.
+                    float currentBudget = QualitySettings.streamingMipmapsMemoryBudget;
                     QualitySettings.streamingMipmapsMemoryBudget =
-                        Mathf.Max(192f, QualitySettings.streamingMipmapsMemoryBudget - 32f);
+                        Mathf.Min(currentBudget, Mathf.Max(48f, currentBudget - 32f));
+                    if (profiledTerrains != null)
+                        foreach (Terrain terrain in profiledTerrains)
+                            if (terrain != null)
+                                terrain.detailObjectDistance = Mathf.Min(terrain.detailObjectDistance,
+                                    terrainDetailDistanceCap * 0.75f);
+                }
                 Record("low-memory");
                 if (Time.unscaledTime >= unloadAfter && (unloading == null || unloading.isDone))
                 {
@@ -142,6 +155,21 @@ namespace Aaris.MapReview
                 mobilePipeline.shadowDistance = Mathf.Min(originalShadowDistance, constrained ? 90f : 160f);
                 mobilePipeline.mainLightShadowmapResolution = Mathf.Min(originalShadowAtlas, 2048);
             }
+            // Constrain expensive near-ground details, not distant tree geometry.
+            terrainDetailDistanceCap = constrained ? 55f : 80f;
+            terrainDetailDensityCap = constrained ? 0.58f : 0.78f;
+            profiledTerrains = terrains != null && terrains.Length > 0 ? terrains : Terrain.activeTerrains;
+            originalDetailDistances = new float[profiledTerrains.Length];
+            originalDetailDensities = new float[profiledTerrains.Length];
+            for (int i = 0; i < profiledTerrains.Length; i++)
+            {
+                Terrain terrain = profiledTerrains[i];
+                if (terrain == null) continue;
+                originalDetailDistances[i] = terrain.detailObjectDistance;
+                originalDetailDensities[i] = terrain.detailObjectDensity;
+                terrain.detailObjectDistance = Mathf.Min(originalDetailDistances[i], terrainDetailDistanceCap);
+                terrain.detailObjectDensity = Mathf.Min(originalDetailDensities[i], terrainDetailDensityCap);
+            }
             mobileProfile = constrained ? "ram-2gb" : "ram-3gb";
             mobileProfileApplied = true;
         }
@@ -162,6 +190,14 @@ namespace Aaris.MapReview
                 mobilePipeline.shadowDistance = originalShadowDistance;
                 mobilePipeline.mainLightShadowmapResolution = originalShadowAtlas;
             }
+            if (profiledTerrains != null)
+                for (int i = 0; i < profiledTerrains.Length; i++)
+                {
+                    Terrain terrain = profiledTerrains[i];
+                    if (terrain == null) continue;
+                    terrain.detailObjectDistance = originalDetailDistances[i];
+                    terrain.detailObjectDensity = originalDetailDensities[i];
+                }
         }
         private void OnLog(string message, string stackTrace, LogType type)
         {
@@ -176,7 +212,7 @@ namespace Aaris.MapReview
             public string reason, utc, version, buildGuid, device, gpu, api, lastError;
             public int systemRamMB, targetFps, warningCount, shadowAtlasResolution;
             public string mobileQualityProfile;
-            public float streamingBudgetMb, lodBias, shadowDistanceM;
+            public float streamingBudgetMb, lodBias, shadowDistanceM, terrainDetailDistanceCapM, terrainDetailDensityCap;
             public float seconds, averageFps, p95FrameMs;
             public long unityAllocatedBytes, unityReservedBytes, managedBytes, androidPssKB;
             public ulong textureBytes, desiredTextureBytes;
@@ -194,6 +230,7 @@ namespace Aaris.MapReview
                 device = SystemInfo.deviceModel, gpu = SystemInfo.graphicsDeviceName, api = SystemInfo.graphicsDeviceType.ToString(),
                 systemRamMB = SystemInfo.systemMemorySize, targetFps = Application.targetFrameRate,
                 mobileQualityProfile = mobileProfile,
+                terrainDetailDistanceCapM = terrainDetailDistanceCap, terrainDetailDensityCap = terrainDetailDensityCap,
                 streamingBudgetMb = QualitySettings.streamingMipmapsMemoryBudget, lodBias = QualitySettings.lodBias,
                 shadowDistanceM = mobilePipeline != null ? mobilePipeline.shadowDistance : QualitySettings.shadowDistance,
                 shadowAtlasResolution = mobilePipeline != null ? mobilePipeline.mainLightShadowmapResolution : 0,
