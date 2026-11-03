@@ -99,3 +99,41 @@ and source-of-truth TerrainData checked out before any native edit.
 
 The project does not currently have an observed device pass for these changes.
 Do not merge or claim FPS/visibility improvements without reviewing run output.
+
+## Follow-up: low-RAM terrain details and residential LODs
+
+Seven residential source prefabs (a_frame_cabin, bungalow_house,
+detached_two_storey_house, garage_apartment, pitched_roof_cottage,
+row_three_townhouses, two_bedroom_garage_house) and RockCover.prefab
+now transition from LOD0/LOD1 at 0.28/0.095 screen height rather than
+0.22/0.07. Their farthest 0.0025 threshold, existing meshes,
+cross-fading, transforms, colliders and original .meta GUIDs remain
+unchanged. The close/mid-range model detail can cost less GPU time,
+but Unity screenshots are needed to detect poor distant silhouettes
+or transition popping.
+
+Android 2-GB / 3-GB memory classes now cap the runtime terrain
+grass/detail rendering distance at 55 m / 80 m and density at 0.58 /
+0.78. An authored lower value is never raised. A low-memory signal
+further decreases the active grass-detail distance to at most 75%
+of its profile cap; the mip streaming budget no longer increases
+when it was already below the old 192-MB floor. These values are
+reversible at component teardown, and do not cull distant tree
+meshes, terrain geometry, or camera far distance. These are
+hypotheses for an A/B device test, not an FPS measurement.
+
+The nearby-collider registry rebuilds its activation window when
+the component is re-enabled, preventing all previously restored
+colliders from continuing active outside the player's vicinity.
+TerrainColliders/CharacterControllers accidentally added to the
+registry are excluded. Authored obstacles that begin disabled but
+are explicitly registered for proximity management are still
+activated when near; their authored enabled states are restored
+on manager disable.
+
+The regression test in test_mobile_lod_runtime_contract.py guards
+the saved LOD thresholds and runtime/collider source contracts.
+It does not compile C#, raycast doors/windows, measure GPU budgets
+or prove 2-GB compatibility. Device tests, Unity import/compilation,
+real house mesh measurements, and native terrain placement review
+remain mandatory before merging to main.
