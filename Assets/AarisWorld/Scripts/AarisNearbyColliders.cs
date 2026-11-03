@@ -93,9 +93,12 @@ namespace Aaris.MapReview
         private void Update()
         {
             if (target == null) return;
-            if ((target.position - lastPosition).sqrMagnitude >= 4 || Time.unscaledTime >= nextCheck) RefreshNow();
+            if ((target.position - lastPosition).sqrMagnitude >= 4 || Time.unscaledTime >= nextCheck) RefreshNow(false);
         }
-        public void RefreshNow()
+        // Call explicitly after teleports or moved colliders to ensure immediate physics-query accuracy.
+        public void RefreshNow() { RefreshNow(true); }
+
+        private void RefreshNow(bool forceSync)
         {
             if (target == null || worldBounds == null) return;
             lastPosition = target.position;
@@ -132,7 +135,7 @@ namespace Aaris.MapReview
                 }
             List<int> swap = active; active = nextActive; nextActive = swap;
             // Only synchronize after a collision window change, not every idle 0.25 s.
-            if (changedColliders) Physics.SyncTransforms();
+            if (changedColliders || forceSync) Physics.SyncTransforms();
         }
         private void OnEnable()
         {
