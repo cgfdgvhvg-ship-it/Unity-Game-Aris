@@ -138,20 +138,23 @@ def run(root, query, poll_seconds=2.0, quiet_seconds=1.0, max_events=0):
         "execution": "foreground_only; stop with Ctrl+C; no autonomous cloud daemon",
     }, allow_nan=False), flush=True)
     events = 0
-    while not max_events or events < max_events:
-        time.sleep(poll_seconds)
-        # Debounce successive writes (scene then material then metadata).
-        if quiet_seconds and changed_paths(watcher.files, file_inventory(watcher.root)):
-            time.sleep(quiet_seconds)
-        try:
-            event = watcher.check()
-        except (WorldError, OSError, KeyError, ValueError, ImportError) as error:
-            print(json.dumps({"event": "watch_read_retry", "reason": str(error),
-                              "note": "Baseline unchanged; retry after file save completes"},
-                             allow_nan=False), flush=True)
-            continue
-        if event:
-            print(json.dumps(event, allow_nan=False), flush=True)
-            events += 1
+    try:
+        while not max_events or events < max_events:
+            time.sleep(poll_seconds)
+            # Debounce successive writes (scene then material then metadata).
+            if quiet_seconds and changed_paths(watcher.files, file_inventory(watcher.root)):
+                time.sleep(quiet_seconds)
+            try:
+                event = watcher.check()
+            except (WorldError, OSError, KeyError, ValueError, ImportError) as error:
+                print(json.dumps({"event": "watch_read_retry", "reason": str(error),
+                                  "note": "Baseline unchanged; retry after file save completes"},
+                                 allow_nan=False), flush=True)
+                continue
+            if event:
+                print(json.dumps(event, allow_nan=False), flush=True)
+                events += 1
+    except KeyboardInterrupt:
+        pass
     print(json.dumps({"event": "watch_stopped", "events": events}, allow_nan=False), flush=True)
     return 0
