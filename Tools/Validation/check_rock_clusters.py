@@ -28,7 +28,7 @@ def file_id(value):
 def vector(value, keys):
     result = {}
     for key in keys:
-        match = re.search(r"(?:^|, )" + key + r": ([^,}]+)", value)
+        match = re.search(r"(?:\{|, )" + key + r": ([^,}]+)", value)
         assert match, (key, value)
         result[key] = float(match.group(1))
     return result
