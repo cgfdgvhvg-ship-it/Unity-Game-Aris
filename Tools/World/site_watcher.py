@@ -146,7 +146,7 @@ def run(root, query, poll_seconds=2.0, quiet_seconds=1.0, max_events=0):
                 time.sleep(quiet_seconds)
             try:
                 event = watcher.check()
-            except (WorldError, OSError, KeyError, ValueError, ImportError) as error:
+            except Exception as error:  # Includes YAML parser errors during partial saves.
                 print(json.dumps({"event": "watch_read_retry", "reason": str(error),
                                   "note": "Baseline unchanged; retry after file save completes"},
                                  allow_nan=False), flush=True)
