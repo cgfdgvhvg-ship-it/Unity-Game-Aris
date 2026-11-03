@@ -24,6 +24,8 @@ Daylight uses sky exposure 1.15, neutral sky tint, sun intensity 1.35, shadow st
 
 Buildings retain their original close meshes and have saved middle/far meshes, with consistent material slots. Only the high-detail mesh has a static collider. Generated native meshes do not retain unused CPU-readable copies. The Android build selects ETC2 texture compression; global texture mipmap limit and render scale are not reduced.
 
+The URP renderer explicitly includes the saved Player layer in both opaque and transparent filters. Source glTF sidedness and normal strength are preserved: 59 kit materials use their intended back-face culling, 123 source double-sided materials retain it, and 13 normal strengths are corrected. Meshes, source texture pixels, material color/texture references and forest geometry are preserved. Future glTF occlusion imports also map source red-channel AO into URP's green channel, including cached imports.
+
 All 17 reusable building prefabs now contain the same three LOD levels as the scene. The 47 residential placements and their prefabs are uniformly enlarged by 10.5–12% per model type, while the player remains 1.78 m tall. Saved foundation meshes expand with them, and original close mesh geometry is shared. Road edges, vehicle corridors, building separation and full-resolution flat ground are checked before committing the new proportions. Large industrial/tower kits retain their original scale.
 
 `Docs/FOREST_PLANTING_PLAN.json` describes 1,100 additional source-tree placements, mostly in the sparse eastern half. Native authoring checks full-resolution slopes and shoreline, reserves district pads and road corridors, and writes accepted instances directly into the four TerrainData files. Shared SpeedTree prefabs, textures and existing LODs are reused. No runtime forest spawner is added. Terrain heights are unchanged.
@@ -36,13 +38,17 @@ The island still has 13 districts, 59 placed model objects from 17 sources, conn
 
 Road paint is clipped at the actual paved mesh triangle boundaries and saved 2 cm above those triangles, rather than following the terrain underneath. Original road meshes and their detail are preserved. `Docs/ROAD_SURFACE_REPORT.json` records the measured separation after saving.
 
+Coastal/canal water uses the native URP 17.3 PBR lighting function, with ambient spherical harmonics, sky/environment reflection, actual sun color/intensity and functional roughness/smoothness. Color and DepthOnly passes share the exact wave vertex function, supporting the renderer's existing forced depth priming. This adds no reflection camera, scene-color copy requirement, new render feature or post-processing pass. The checked-in `.shader` is the authoritative source for offline reproduction.
+
+`Docs/RENDER_REVIEW_REPORT.json` and `Docs/RENDER_CORE_CHECKS.json` record source-material agreement, renderer layer coverage, native settings and unchanged geometry/texture references. The existing SRP Batcher, HDR, render scale 1.0, 4096 shadow atlas and 1000 m shadow distance are preserved. Their target-device cost still needs profiling; no FPS gain is asserted from offline checks.
+
 ## Manual APK build
 
 Use **Aaris → Build Android Ground Review APK**, or the existing batch entry point:
 
 `Aaris.MapReview.Editor.AarisExplorerBuild.BuildAndroid`
 
-Output: `Builds/Android/AarisMapExplorer.apk` (kept for existing phone/cloud build scripts; app version 0.2.2, code 4).
+Output: `Builds/Android/AarisMapExplorer.apk` (kept for existing phone/cloud build scripts; app version 0.2.3, code 5).
 
 Target: ARM64 / IL2CPP / Android 8+ / landscape, package `com.aaris.mapexplorer`. The player targets a stable 30 FPS; actual target-device frame time and memory must be measured. Existing Unity 6.3 URP compatibility defines are preserved. No automatic Unity/APK build is added.
 
@@ -55,6 +61,8 @@ The build preprocessor rejects a missing player/camera, wrong player height, pen
 Optional maintainer reproduction only: `python Tools/MapBuild/ground_native.py` saves TerrainData and building LODs, reopens terrain binaries, verifies unchanged heights, regenerates indexes and updates hashes. It is idempotent for the saved planting plan. `python Tools/MapBuild/surface_native.py` reproduces the saved road paint. Neither command runs in the game or is required before a normal Unity build.
 
 `python Tools/MapBuild/world_review.py` reproduces the saved proportions, complete prefabs, cypress scale and daylight. `python Tools/Validation/check_world_review.py --native` verifies those saved outputs. This authoring command is also optional for maintainers; the outputs are committed, and normal builds do not generate them.
+
+`python Tools/MapBuild/render_review.py --apply` optionally reproduces source material/renderer settings. Native rendering checks compile the water's vertex/pixel HLSL for D3D11 and mobile Vulkan against pinned official URP 17.3 headers with verified Microsoft DXC binaries. `Docs/WATER_HLSL_CHECKS.json` records the actual compiler results and shader hash. Standalone HLSL checks do not replace Unity's ShaderLab import, Android shader build, full scene render or device test.
 
 `Tools/MapBuild/build_map.py` also invokes ground authoring after the original offline map assembly. Its terrain inputs must be the four original vendor archive tiles, as described in `Tools/MapBuild/README.md`; do not re-sculpt the already edited terrain.
 

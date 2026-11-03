@@ -271,7 +271,7 @@ def export_model(source,path,template,shared=None,reuse_images=False):
                 # glTF stores AO in red; URP Lit samples the green channel.
                 a=np.asarray(img).copy();a[:,:,:3]=a[:,:,0,None];img=Image.fromarray(a)
             filename=path/(f'Image_{source_index:02d}_{kind}'+(f'_{roughness}_{metallic}' if kind=='metallic' else '')+'.png')
-            if not (reuse_images and filename.exists()):img.save(filename)
+            if kind=='occlusion' or not (reuse_images and filename.exists()):img.save(filename)
             meta(filename,texture={'normal':kind=='normal','linear':kind in ('normal','metallic','occlusion')})
             images[key]=guid(filename)
         return images[key]
