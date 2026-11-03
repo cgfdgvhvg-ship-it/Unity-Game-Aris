@@ -5,6 +5,11 @@ on:
     paths:
       - Tools/World/house-openings-20261103.json
       - Tools/World/tree-proportions-20261103.json
+      - Tools/World/tree-house-20261103.postconditions.json
+      - Tools/World/apply_tree_house_upgrade.py
+      - Tools/World/mesh_faces.py
+      - Tools/World/tree_shapes.py
+      - Tools/World/verify_tree_house_upgrade.py
       - .github/workflows/tree-house-upgrade.yml
   pull_request:
     paths:
