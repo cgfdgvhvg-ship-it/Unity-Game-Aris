@@ -128,6 +128,7 @@ def observation_requests(patch, world=None):
             guids = {guid for guid, path in world.guid_paths.items() if path == op.get("path")}
             if not guids:
                 continue
+            users = set()
             for component in world.docs.values():
                 if component["kind"] not in ("MeshRenderer", "SkinnedMeshRenderer"):
                     continue
@@ -135,13 +136,22 @@ def observation_requests(patch, world=None):
                            references(component["data"].get("m_Materials", []))):
                     continue
                 go = component["data"].get("m_GameObject", {}).get("fileID")
-                if go in world.gos and go in world.go_transform:
-                    key = ("material_user", go)
-                    if key not in seen:
-                        requests.append({"target": world.stable_id(go), "radius": 35, "limit": 100,
-                                         "native": True, "geometry": True,
-                                         "appearance": True, "semantics": True})
-                        seen.add(key)
+                if go in world.gos and go in world.go_transform and ("material_user", go) not in seen:
+                    users.add(go)
+            ordered = sorted(users)
+            budget = 32 - len(explicit) - len(requests)
+            if ordered and budget < 1:
+                raise WorldError("No remaining observation budget for shared material users; split this edit")
+            # A shared material may be used by hundreds of objects. Keep a
+            # deterministic spread of saved fileIDs rather than rejecting
+            # ordinary material edits or pretending the sample is exhaustive.
+            if len(ordered) > budget:
+                ordered = [ordered[(index * len(ordered)) // budget] for index in range(budget)]
+            for go in ordered:
+                requests.append({"target": world.stable_id(go), "radius": 35, "limit": 100,
+                                 "native": True, "geometry": True,
+                                 "appearance": True, "semantics": True})
+                seen.add(("material_user", go))
     # The requested observations are never suppressed by the automatic probes.
     # Cap expensive inspection work and disclose this bound to the AI.
     combined = []
@@ -595,7 +605,7 @@ def plan(root, patch):
             "operation_before": operation_before,
             "pre_edit_observations": pre_edit_observations,
             "predicted_written_files": sorted(outputs),
-            "note": "Core assets change only on apply --write. Historical Docs/*REPORT.json are not refreshed or treated as current proof."}, outputs
+            "note": "Core assets change only on apply --write. Material users are sampled when >32 probes are needed; operation state reports total serialized usages. Historical Docs/*REPORT.json are not refreshed or treated as current proof."}, outputs
 
 
 def apply_yaml(root, patch, write=False):
