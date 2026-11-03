@@ -57,8 +57,10 @@ def collect(root, objects, transforms, seen=None):
     seen.add(go)
     components = [int(x) for x in re.findall(r"^  - component: \{fileID: (\d+)\}", objects[go][1], re.M)]
     for item in components:
-        assert item in objects and item not in seen
-        seen.add(item)
+        assert item in objects
+        if item != root:
+            assert item not in seen
+            seen.add(item)
     children = [int(x) for x in re.findall(r"^  - \{fileID: (\d+)\}", body, re.M)]
     for child in children:
         collect(child, objects, transforms, seen)
