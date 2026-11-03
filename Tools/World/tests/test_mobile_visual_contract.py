@@ -26,11 +26,11 @@ def tree_root_scale(path, name):
         raise AssertionError(f"Missing prefab root: {name}")
     # All supplied source prefabs serialize their root GameObject then its Transform.
     after = source[anchor.end():]
-    transform = re.search(r"^--- !u!4 &\\d+\\nTransform:", after, re.MULTILINE)
+    transform = re.search(r"^--- !u!4 &\d+\nTransform:", after, re.MULTILINE)
     if transform is None or transform.start() > 500:
         raise AssertionError(f"Missing adjacent root transform: {name}")
     scale = re.search(
-        r"^  m_LocalScale: \\{x: ([-.\\d]+), y: ([-.\\d]+), z: ([-.\\d]+)\\}$",
+        r"^  m_LocalScale: \{x: ([-.\d]+), y: ([-.\d]+), z: ([-.\d]+)\}$",
         after[transform.end():], re.MULTILINE,
     )
     if scale is None or scale.start() > 700:
