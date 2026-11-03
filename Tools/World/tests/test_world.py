@@ -150,6 +150,18 @@ class WorldTests(unittest.TestCase):
         native=NativeTerrain(World(self.root))
         with self.assertRaisesRegex(WorldError,"LFS pointer"):
             native.load({"asset":{"path":"Assets/Data.asset","file_id":15600000},"origin_m":[0,0,0]})
+    def test_neighbour_inspection_fetches_shapes_even_without_a_nearby_pivot(self):
+        mesh = "Assets/LargeBuilding.asset"
+        (self.root / mesh).write_text("version https://git-lfs.github.com/spec/v1\n")
+        (self.root / (mesh+".meta")).write_text("fileFormatVersion: 2\nguid: "+"4"*32+"\n")
+        scene = self.root / SCENE
+        text = scene.read_text().replace("  - component: {fileID: 301}\n", "  - component: {fileID: 301}\n  - component: {fileID: 302}\n")
+        text += "--- !u!33 &302\nMeshFilter:\n  m_GameObject: {fileID: 300}\n  m_Mesh: {fileID: 4300000, guid: "+"4"*32+", type: 2}\n"
+        scene.write_text(text)
+        w = World(self.root)
+        for request in ({"x":1000,"y":0,"z":0}, {"target":f"scene:{GUID}:200"}):
+            self.assertEqual(required(w,{"command":"inspect","native":False,**request}),[mesh])
+            self.assertEqual(required(w,{"command":"inspect","native":False,"geometry":False,**request}),[])
     def test_performance_uses_device_samples_and_build_identity(self):
         p=self.root/"phone.jsonl";p.write_text(json.dumps({"reason":"sample","averageFps":52,"p95FrameMs":25,"buildGuid":"b1","androidPssKB":1234})+"\n")
         r=performance(p);self.assertEqual(r["average_sample_fps"],52);self.assertEqual(r["build_guids"],["b1"])

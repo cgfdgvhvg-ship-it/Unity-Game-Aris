@@ -16,6 +16,11 @@ PROTOCOL_VERSION = 2
 
 
 OPERATIONS = {
+    "place_static_prefab": {
+        "backend":"python_yaml", "targets":["explicit_static_yaml_prefab"], "scope":"new_scene_instance",
+        "fields":["prefab_path","world_position","yaw_degrees","local_scale","parent","name","collider_registry_file_id"],
+        "notes":"Saved inline static objects; no Editor or Codespace. Does not retain a PrefabInstance connection. AI supplies the location; all dependency hashes are required.",
+    },
     "set_transform": {
         "backend": "python_yaml",
         "targets": ["inline_scene_object"],
@@ -123,6 +128,8 @@ def schema():
         "tool_role": "Observe facts, execute an explicit typed operation, preserve identity, and report the resulting facts",
         "read_commands": READ_COMMANDS,
         "write_operations": OPERATIONS,
+        "local_import":{"command":"import-model", "formats":["ZIP with one binary FBX and explicit PBR textures"],
+                        "backend":"python", "chooses_location":False, "requires_editor":False},
         "transaction": {
             "compare_and_swap": "expected_files SHA256",
             "idempotency": "schema v2 transaction_id + idempotency_key",

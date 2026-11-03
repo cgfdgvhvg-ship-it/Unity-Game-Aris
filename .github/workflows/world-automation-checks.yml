@@ -29,6 +29,8 @@ jobs:
       - run: python -m pip install -r Tools/World/requirements.txt tree-sitter==0.26.0 tree-sitter-c-sharp==0.23.5
       - run: python -m unittest discover -s Tools/World/tests -v
       - run: python Tools/World/check_contracts.py
+      - name: Verify Python-authored satellite mesh, scene copies and collider registry
+        run: python Tools/World/check_satellite.py
       - run: python Tools/World/world.py --out "$RUNNER_TEMP/world-verify.json" verify
       - name: Fetch actual four native terrains for reader integration test
         env:
@@ -36,6 +38,12 @@ jobs:
         run: python Tools/World/fetch_assets.py
       - name: Decode actual LFS binary assets and verify seams without writing source
         run: python Tools/World/native_smoke.py
+      - name: Fetch neighbourhood geometry for complete source bounds
+        env:
+          WORLD_REQUEST: '{"command":"inspect","x":662,"y":23.734358786547034,"z":-650,"native":true,"geometry":true}'
+        run: python Tools/World/fetch_assets.py
+      - name: Check saved satellites against native terrain and current neighbours
+        run: python Tools/World/check_satellite.py --native
       - name: Remove temporary verification report
         if: always()
         run: rm -f -- "$RUNNER_TEMP/world-verify.json"

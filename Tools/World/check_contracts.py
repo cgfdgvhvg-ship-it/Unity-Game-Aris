@@ -21,7 +21,7 @@ assert len(w.terrains())==4
 assert len([d for d in w.gos.values() if re.fullmatch(r'VehicleSpawnPoint_\d{2}',d.get('m_Name',''))])==45
 contract=automation_schema()
 assert contract['protocol_version']==2
-for operation in ('set_transform','terrain_instance_move','terrain_instance_add','instantiate_prefab','duplicate_object','delete_object'):
+for operation in ('set_transform','place_static_prefab','terrain_instance_move','terrain_instance_add','instantiate_prefab','duplicate_object','delete_object'):
     assert operation in contract['write_operations'], operation+' missing from machine contract'
 bridge=(root/'Assets/AarisWorld/Editor/WorldBridge.cs').read_text()
 for symbol in ('ObservationRequest','TerrainEdit','SceneEdit','ApplyTerrainInstances','ApplySceneEdits'):

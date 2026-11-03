@@ -51,6 +51,10 @@ def context(w):
             "coordinates": {"units": "metres", "axes": "Unity world: X right, Y up, Z forward", "terrain_interpolation": "native bilinear grid; Unity physics is a separate command"},
             "scene": w.scene_path, "scene_guid": w.scene_guid, "scene_sha256": digest(w.root/w.scene_path),
             "saved_game_objects": len(w.gos), "terrains": w.terrains(), "engine": engine.capabilities(w.root),
+            "python_authoring": {"requires_editor":False,"requires_codespace":False,
+                                 "model_import_command":"import-model", "static_placement_operation":"place_static_prefab",
+                                 "representation":"saved inline static objects with native mesh/material references",
+                                 "decision_owner":"AI/caller", "engine_commands_are_optional_for_this_workflow":True},
             "repository": repository_inventory(w.root),
             "read_commands": contract["read_commands"], "write_operations": contract["write_operations"],
             "write_commands": ["plan --patch change.json", "preview --patch change.json --backend auto",
@@ -282,6 +286,14 @@ def parser():
     subs = p.add_subparsers(dest="command", required=True)
     subs.add_parser("context")
     subs.add_parser("schema")
+    s = subs.add_parser("import-model", help="Python-only static FBX/PBR import; no location is chosen")
+    s.add_argument("--source", type=Path, required=True)
+    s.add_argument("--destination", required=True)
+    s.add_argument("--source-sha256", required=True)
+    s.add_argument("--unit-scale", type=float, required=True)
+    s.add_argument("--texture-size", type=int, choices=[512,1024,2048,4096], default=2048)
+    s.add_argument("--write", action="store_true")
+    s.add_argument("--freeze-static-pose", action="store_true", help="Explicitly import only the authored default geometry; discard animation")
     s = subs.add_parser("scan")
     s.add_argument("--search", default=""); s.add_argument("--offset", type=int, default=0); s.add_argument("--limit", type=int, default=100)
     s.add_argument("--details", action="store_true")
@@ -327,6 +339,10 @@ def main():
             if len(raw.encode()) > 32768:
                 raise WorldError("Request JSON exceeds 32KiB")
             result = dispatch(root, json.loads(raw), True)
+        elif cmd == "import-model":
+            from model_import import import_model
+            result = import_model(root, args["source"], args["destination"], args["source_sha256"],
+                                  args["unit_scale"], args["texture_size"], args["write"], args["freeze_static_pose"])
         elif cmd in ("plan", "preview", "apply"):
             from patching import load_patch, plan, apply_yaml, preview_yaml
             patch = load_patch(args["patch"])

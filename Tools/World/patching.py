@@ -127,6 +127,8 @@ def plan(root, patch):
         if not p.is_file() or digest(p) != expected:
             raise WorldError(f"Stale patch: {path}. Re-inspect the current core file before editing.")
     changes, edits, impacts, engine_ops = {}, {}, [], []
+    additions, resolved_objects = [], []
+    reserved_ids = set(w.docs)
     version = patch["schema_version"]
 
     def op_fields(op):
@@ -255,6 +257,19 @@ def plan(root, patch):
             matching[0][op["property"]] = float(value)
             edits.setdefault(path, set()).add(op["file_id"])
             impacts.append({"core_file": path, "review": "Shared material: affects every renderer using this GUID."})
+        elif kind == "place_static_prefab":
+            if version != 2:
+                raise WorldError("place_static_prefab requires schema v2")
+            from static_prefabs import expand
+            _, docs = source(SCENE)
+            added, modified, resolved = expand(w, patch, op, docs, require_identity, reserved_ids)
+            for doc in added:
+                docs[doc["file_id"]] = doc
+            additions.extend(added)
+            edits.setdefault(SCENE, set()).update(modified)
+            resolved_objects.append(resolved)
+            impacts.append({"operation":kind, "core_file":SCENE, "target":resolved["id"],
+                            "review":"Explicit inline static copy; placement judgment remains with AI/caller."})
         elif kind == "terrain_brush":
             if op_fields(op) != {"op", "center_xz", "radius_m", "delta_m"}:
                 raise WorldError("terrain_brush requires center_xz, radius_m, delta_m")
@@ -360,6 +375,8 @@ def plan(root, patch):
                             "review": "Unity will save the actual scene and return new/resolved object identities."})
         else:
             raise WorldError(f"Unsupported operation {kind!r}; no generic byte or arbitrary serialized-field writes")
+    if additions and engine_ops:
+        raise WorldError("Use a separate Python transaction for inline static placement; do not mix engine operations")
     outputs, diffs = {}, {}
     for path, ids in edits.items():
         text, docs = changes[path]
@@ -368,15 +385,23 @@ def plan(root, patch):
             d = docs[i]
             body = yaml.dump({d["kind"]: d["data"]}, Dumper=Dumper, sort_keys=False, allow_unicode=True, width=100000)
             out = out[:d["body_start"]] + body + out[d["end"]:]
+        if path == SCENE:
+            for d in additions:
+                out += f'--- !u!{d["class_id"]} &{d["file_id"]}\n'
+                out += yaml.dump({d["kind"]:d["data"]}, Dumper=Dumper, sort_keys=False, allow_unicode=True, width=100000)
         outputs[path] = out
         diffs[path] = "".join(difflib.unified_diff(text.splitlines(True), out.splitlines(True), fromfile=path, tofile=path))
     observe_after = observation_requests(patch)
+    for resolved in resolved_objects:
+        observe_after.append({"target":resolved["id"], "radius":50, "limit":100, "native":True, "geometry":True})
     return {"schema_version": version, "protocol_version": 2,
             "transaction_id": patch.get("transaction_id"), "idempotency_key": patch.get("idempotency_key"),
             "backend": "unity" if engine_ops else "python_yaml", "dry_run": True,
             "reason": patch["reason"], "expected_files": patch["expected_files"], "diffs": diffs,
             "native_operations": [o for o in engine_ops if o["op"] == "terrain_brush"],
             "unity_operations": engine_ops, "impacts": impacts,
+            "resolved_objects": resolved_objects,
+            "added_scene_file_ids": [d["file_id"] for d in additions],
             "observe_after": observe_after, "acknowledgements": patch.get("acknowledgements", []),
             "note": "Core assets change only on apply --write. Historical Docs/*REPORT.json are not refreshed or treated as current proof."}, outputs
 
@@ -396,7 +421,10 @@ def apply_yaml(root, patch, write=False):
             p.write_text(text)
             _, after = documents(p)
             _, before = documents(root/path)
-            if [(d["class_id"], d["file_id"], d["kind"]) for d in before] != [(d["class_id"], d["file_id"], d["kind"]) for d in after]:
+            added = set(report["added_scene_file_ids"]) if path == SCENE else set()
+            if ([(d["class_id"], d["file_id"], d["kind"]) for d in before]
+                    != [(d["class_id"], d["file_id"], d["kind"]) for d in after if d["file_id"] not in added]
+                    or {d["file_id"] for d in after} != {d["file_id"] for d in before} | added):
                 raise WorldError("Patch changed saved object identity")
         # Re-check the preconditions immediately before mutation.
         for path, expected in patch["expected_files"].items():
@@ -421,7 +449,7 @@ def apply_yaml(root, patch, write=False):
             raise
     return {**report, "dry_run": False, "written_files": {p: digest(root/p) for p in outputs},
             "post_edit_observations": observed,
-            "verification": "YAML identity and finite world transforms verified. Run verify and Unity/device tests before merge."}
+            "verification": "Saved YAML identities and finite world transforms checked. Neighbourhood measurements are for AI judgment; physics, rendering and device measurements are not part of this Python authoring result."}
 
 
 def _copy_project_hardlinked(source, destination):

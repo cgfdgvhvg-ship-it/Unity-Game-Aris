@@ -2,6 +2,33 @@
 
 This is a source inspection and controlled authoring toolkit, not a replacement game engine. Python can inspect saved Unity YAML, resolve GUIDs and hierarchy transforms, decode the native TerrainData, prepare precise patches and run verification. Actual collision movement, imported prefab resolution, URP rendering and native terrain writes use the matching Unity Editor through `WorldBridge.cs` in a temporary project copy. No map layout or graphic-quality change is applied merely by installing this toolkit.
 
+## Python-only static props: AI decides, Python measures and writes
+
+The static-prop path needs Python and materialized source assets, with no Unity Editor or Codespace. The existing optional engine bridge remains useful for rendering/physics, but is not used to import or place these supported static props.
+
+1. AI reads current `context`, `inspect`, `height`, `region` and object records. Sensors report facts; they do not recommend or choose a location.
+2. `import-model` converts a supported static FBX/PBR ZIP into native mesh, URP material, textures and explicit YAML prefab. Run without `--write` first. Supply the actual archive SHA256 and explicit source-unit-to-metres scale. The current importer supports one mesh/material and four named PBR texture maps. `--freeze-static-pose` explicitly discards any animation and imports default geometry only.
+3. AI supplies a schema-v2 `place_static_prefab` operation with `prefab_path`, `name`, `world_position`, `yaw_degrees` and `local_scale`. Optional `parent` is a stable scene GameObject ID. Optional `collider_registry_file_id` explicitly adds copied colliders to the existing AarisNearbyColliders registry. Obtain expected hashes for the scene, prefab, full asset dependency closure and their metadata.
+4. `plan` and `preview --backend python` return new resolved IDs and post-edit measurements. Preview never alters source. AI reads those facts, adjusts its request if needed, then runs `apply --backend python --write`.
+5. Apply writes actual saved scene objects with new fileIDs and existing mesh/material references. The copy has no connected PrefabInstance. Existing object IDs, metadata and untouched documents stay intact. Source/hash/serialization failures reject the transaction or roll it back. Placement taste/suitability is always the AI's decision.
+
+```bash
+python Tools/World/world.py import-model --source /path/model.zip --source-sha256 <actual-sha256> --destination Assets/WorldImports/MyProp --unit-scale 0.01 --texture-size 2048
+# Inspect the returned geometry/units; repeat with --write to create the new assets.
+```
+
+A placement operation is:
+
+```json
+{"id":"observatory-dish","op":"place_static_prefab","prefab_path":"Assets/WorldImports/MyProp/MyProp.prefab","name":"ObservatoryDish","world_position":[575,23.7588,-720],"yaw_degrees":145,"local_scale":[8,8,8]}
+```
+
+These example coordinates are not a location recommendation. Measure the current terrain and neighbours first. `static_prefabs.dependencies(World(root), prefab_path)` lists asset paths whose current hashes and metadata must appear in `expected_files`.
+
+The satellite integration is saved under `Assets/WorldImports/SatelliteDish` and three inline scene objects: `SatelliteDish_HighlandObservatory`, `SatelliteDish_SouthernAirfield`, and `SatelliteDish_ForestLookout`. They share one 4,000-vertex/5,538-triangle mesh and PBR material; their colliders are explicitly in the existing nearby-collider registry. The source archive contains an animation stack, so this import deliberately uses the authored default static pose. It does not animate. Run `python Tools/World/check_satellite.py --native` to recheck saved geometry, identity, terrain footprint samples and neighbourhood coverage. Missing surrounding LFS meshes are reported as unavailable, not clear space. The source check is not a Unity import/render/physics test.
+
+Context reports target-relative right/up/forward vectors, orientation, scale, labelled mesh/collider AABBs, support gaps, native tree/rock/shrub records and collider-based diameter estimates where original prefab data exists. Nine footprint samples describe terrain variation beneath a model's bounds. Native detail patch occupancy describes grass/ground-detail density; it does not invent individual grass positions. Missing geometry stays explicitly unavailable. Neither a complete-looking JSON nor a successful source write proves a physics collision, rendered pixel, visible trunk thickness, exact contact mesh, performance result or global suitability.
+
 ## Start locally
 
 Use Python 3.11 or later in a virtual environment:
@@ -25,6 +52,8 @@ python Tools/World/world.py request
 ```
 
 The fetcher downloads actual terrain assets for terrain queries and referenced mesh assets for detailed object queries. It limits each request to 1GiB of advertised LFS bytes. Narrow an oversized query. Source textures are fetched with an explicit `asset` request rather than silently downloading every texture. GitHub/LFS access, quotas and network availability still apply.
+
+Geometry-enabled `inspect` also fetches the scene's referenced shape geometry before measuring neighbours: a large building can intersect the query area even when its pivot is far away. This remains subject to the same 1GiB budget and does not download all material textures. A geometry-disabled inspection reports pivots only and must not be interpreted as complete obstacle coverage.
 
 ## Read the world
 

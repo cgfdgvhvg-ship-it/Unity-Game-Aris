@@ -25,8 +25,12 @@ def required(w, request):
     if cmd == "asset": paths.add(request["path"])
     ids = []
     if cmd == "object": ids = [w.resolve(request["target"])]
-    if cmd == "inspect" and request.get("target") and not str(request["target"]).startswith("terrain:"):
-        ids = [w.resolve(request["target"])]
+    if cmd == "inspect" and request.get("geometry", True):
+        # Until meshes are available, a distant pivot cannot exclude a large
+        # building whose bounds reach this neighbourhood. Fetch the scene's
+        # referenced shape geometry before measuring neighbours. The existing
+        # 1GiB budget still bounds downloads; texture pixels are not needed.
+        ids = list(w.gos)
     if cmd == "scan" and request.get("details"):
         ids = page([i for i,d in w.gos.items() if str(request.get("search", "")).casefold() in d.get("m_Name", "").casefold()],
                    request.get("offset", 0), request.get("limit",100))["items"]
