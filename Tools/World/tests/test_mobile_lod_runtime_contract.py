@@ -128,13 +128,13 @@ class LowRamWorldSourceContracts(unittest.TestCase):
         guid = re.search(r"^guid: ([0-9a-f]{32})$", meta, re.M).group(1)
         docs = re.split(r"(?=^--- !u!)", scene, flags=re.M)
         registry = next(d for d in docs if "guid: " + guid in d)
-        ids = re.findall(r"^  - \\{fileID: (\\d+)\\}$",
-                         re.search(r"(?m)^  obstacles:\\n((?:  - \\{fileID: \\d+\\}\\n)+)", registry).group(1),
+        ids = re.findall(r"^  - \{fileID: (\d+)\}$",
+                         re.search(r"(?m)^  obstacles:\n((?:  - \{fileID: \d+\}\n)+)", registry).group(1),
                          re.M)
         scene_colliders = {
             match.group(1): d
             for d in docs
-            if (match := re.match(r"^--- !u!(?:64|65) &(\\d+)\\n", d))
+            if (match := re.match(r"^--- !u!(?:64|65) &(\d+)\n", d))
         }
         self.assertGreater(len(ids), 200)
         self.assertTrue(all(i in scene_colliders for i in ids))
