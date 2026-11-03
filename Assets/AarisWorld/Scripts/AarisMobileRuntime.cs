@@ -15,6 +15,7 @@ namespace Aaris.MapReview
         [SerializeField] private Terrain[] terrains;
         [SerializeField] private bool releaseTerrainPaintCpuCopies = true;
         [SerializeField] private int targetFrameRate = 60;
+        [SerializeField] private bool adaptDetailsToFrameTime = true;
         private readonly float[] frameTimes = new float[180];
         private readonly float[] sortedTimes = new float[180];
         private int frameIndex, frameCount;
@@ -32,6 +33,9 @@ namespace Aaris.MapReview
         private Terrain[] profiledTerrains;
         private float[] originalDetailDistances, originalDetailDensities;
         private float terrainDetailDistanceCap, terrainDetailDensityCap;
+        private float profileShadowDistance, lowMemoryDetailMultiplier = 1f;
+        private int performanceLevel, pressureSamples, recoverySamples;
+        private float nextPerformanceChangeAt;
         private string lastError = "";
         public static string LatestReport { get; private set; } = "Starting map...";
 
@@ -108,11 +112,10 @@ namespace Aaris.MapReview
                     float currentBudget = QualitySettings.streamingMipmapsMemoryBudget;
                     QualitySettings.streamingMipmapsMemoryBudget =
                         Mathf.Min(currentBudget, Mathf.Max(48f, currentBudget - 32f));
-                    if (profiledTerrains != null)
-                        foreach (Terrain terrain in profiledTerrains)
-                            if (terrain != null)
-                                terrain.detailObjectDistance = Mathf.Min(terrain.detailObjectDistance,
-                                    terrainDetailDistanceCap * 0.75f);
+                    // Keep low-memory reductions in effect even when frame-time quality later recovers.
+                    lowMemoryDetailMultiplier = Mathf.Min(lowMemoryDetailMultiplier, 0.75f);
+                    performanceLevel = Mathf.Max(performanceLevel, 1);
+                    ApplyAdaptiveDetailBudget();
                 }
                 Record("low-memory");
                 if (Time.unscaledTime >= unloadAfter && (unloading == null || unloading.isDone))
@@ -170,8 +173,69 @@ namespace Aaris.MapReview
                 terrain.detailObjectDistance = Mathf.Min(originalDetailDistances[i], terrainDetailDistanceCap);
                 terrain.detailObjectDensity = Mathf.Min(originalDetailDensities[i], terrainDetailDensityCap);
             }
+            profileShadowDistance = mobilePipeline != null ? mobilePipeline.shadowDistance : 0f;
             mobileProfile = constrained ? "ram-2gb" : "ram-3gb";
             mobileProfileApplied = true;
+        }
+
+        // Grass is reduced first; distant trees, buildings, camera far plane and textures
+        // remain visible. A 12-second cooldown and asymmetric thresholds avoid LOD flicker.
+        private void TuneForFrameTime(float p95FrameMs)
+        {
+            if (!mobileProfileApplied || !adaptDetailsToFrameTime ||
+                frameCount < frameTimes.Length || Time.unscaledTime < 15f) return;
+            float frameBudgetMs = 1000f / Mathf.Clamp(targetFrameRate, 30, 120);
+            if (p95FrameMs > frameBudgetMs * 1.30f)
+            {
+                pressureSamples++;
+                recoverySamples = 0;
+            }
+            else if (p95FrameMs < frameBudgetMs * 1.08f)
+            {
+                recoverySamples++;
+                pressureSamples = 0;
+            }
+            else
+            {
+                pressureSamples = 0;
+                recoverySamples = 0;
+            }
+            if (Time.unscaledTime < nextPerformanceChangeAt) return;
+            if (pressureSamples >= 2 && performanceLevel < 2)
+            {
+                performanceLevel++;
+                pressureSamples = 0;
+                ApplyAdaptiveDetailBudget();
+                nextPerformanceChangeAt = Time.unscaledTime + 12f;
+            }
+            else if (recoverySamples >= 4 && performanceLevel > 0)
+            {
+                performanceLevel--;
+                recoverySamples = 0;
+                ApplyAdaptiveDetailBudget();
+                nextPerformanceChangeAt = Time.unscaledTime + 12f;
+            }
+        }
+
+        private void ApplyAdaptiveDetailBudget()
+        {
+            if (!mobileProfileApplied) return;
+            float distanceFactor = performanceLevel == 0 ? 1f : performanceLevel == 1 ? 0.85f : 0.70f;
+            float densityFactor = performanceLevel == 0 ? 1f : performanceLevel == 1 ? 0.80f : 0.62f;
+            float shadowFactor = performanceLevel == 0 ? 1f : performanceLevel == 1 ? 0.85f : 0.70f;
+            if (profiledTerrains != null)
+                for (int i = 0; i < profiledTerrains.Length; i++)
+                {
+                    Terrain terrain = profiledTerrains[i];
+                    if (terrain == null) continue;
+                    terrain.detailObjectDistance = Mathf.Min(originalDetailDistances[i],
+                        terrainDetailDistanceCap * distanceFactor * lowMemoryDetailMultiplier);
+                    terrain.detailObjectDensity = Mathf.Min(originalDetailDensities[i],
+                        terrainDetailDensityCap * densityFactor * lowMemoryDetailMultiplier);
+                }
+            if (mobilePipeline != null)
+                mobilePipeline.shadowDistance = Mathf.Min(originalShadowDistance,
+                    profileShadowDistance * shadowFactor);
         }
 
         private void OnLowMemory() { lowMemoryPending = true; }
@@ -210,9 +274,10 @@ namespace Aaris.MapReview
         private sealed class Sample
         {
             public string reason, utc, version, buildGuid, device, gpu, api, lastError;
-            public int systemRamMB, targetFps, warningCount, shadowAtlasResolution;
+            public int systemRamMB, targetFps, warningCount, shadowAtlasResolution, performanceLevel;
             public string mobileQualityProfile;
             public float streamingBudgetMb, lodBias, shadowDistanceM, terrainDetailDistanceCapM, terrainDetailDensityCap;
+            public float effectiveDetailDistanceM, effectiveDetailDensity, lowMemoryDetailMultiplier;
             public float seconds, averageFps, p95FrameMs;
             public long unityAllocatedBytes, unityReservedBytes, managedBytes, androidPssKB;
             public ulong textureBytes, desiredTextureBytes;
@@ -245,6 +310,18 @@ namespace Aaris.MapReview
             try { using (var debug = new AndroidJavaClass("android.os.Debug")) s.androidPssKB = debug.CallStatic<long>("getPss"); }
             catch (Exception e) { Debug.LogWarning("Android PSS unavailable: " + e.GetType().Name); }
 #endif
+            if (reason == "sample") TuneForFrameTime(s.p95FrameMs);
+            s.performanceLevel = performanceLevel;
+            s.lowMemoryDetailMultiplier = lowMemoryDetailMultiplier;
+            if (profiledTerrains != null)
+                foreach (Terrain terrain in profiledTerrains)
+                    if (terrain != null)
+                    {
+                        s.effectiveDetailDistanceM = terrain.detailObjectDistance;
+                        s.effectiveDetailDensity = terrain.detailObjectDensity;
+                        break;
+                    }
+            s.shadowDistanceM = mobilePipeline != null ? mobilePipeline.shadowDistance : QualitySettings.shadowDistance;
             LatestReport = JsonUtility.ToJson(s);
             if (logPath == null) return;
             try
