@@ -30,7 +30,7 @@ class SemanticContextTests(unittest.TestCase):
         script.write_text("public class DoorLogic { public void OpenDoor() {} private void Update() {} }\n")
         Path(str(script)+".meta").write_text("fileFormatVersion: 2\nguid: " + "6"*32 + "\n")
         material = self.root / "Assets/Test.mat"
-        material.write_text(material.read_text() +
+        material.write_text(material.read_text().replace("m_Name: Wall", "m_Name: House Front Door Timber") +
             "    m_TexEnvs:\n"
             "    - _BaseMap:\n"
             "        m_Texture: {fileID: 2800000, guid: " + "5"*32 + ", type: 3}\n"
@@ -58,6 +58,9 @@ class SemanticContextTests(unittest.TestCase):
         self.assertEqual(door["semantic"]["primary_role"], "door")
         self.assertEqual(door["semantic"]["status"], "labelled")
         self.assertEqual(door["material_slots"][0]["slot_index"], 0)
+        surface = door["material_slots"][0]["surface_semantic"]
+        self.assertEqual(surface["part_role"]["role"], "door")
+        self.assertEqual(surface["material_families"][0]["family"], "wood")
         stats = door["material_slots"][0]["material"]["textures"][0]["source"]["source_color_statistics"]
         self.assertEqual(stats["mean_srgb8"], [64.0, 96.0, 128.0])
         self.assertGreater(report["target"]["dimensions"]["height_m"], 0)
@@ -121,6 +124,9 @@ class SemanticContextTests(unittest.TestCase):
         self.assertEqual(color_record({"r": 64, "g": 128, "b": 255, "a": 255})["normalized_rgba"],
                          [64/255, 128/255, 1.0, 1.0])
         self.assertEqual(color_record({"r": .2, "g": .3, "b": .4, "a": 1})["encoding"], "float_0_1")
+        packed = color_record({"rgba": 0xffe5e5e5})
+        self.assertEqual(packed["srgb8_rgba"], [229, 229, 229, 255])
+        self.assertEqual(packed["encoding"], "packed_color32_lsb_r")
 
 
 if __name__ == "__main__":

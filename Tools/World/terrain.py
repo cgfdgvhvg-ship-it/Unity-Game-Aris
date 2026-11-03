@@ -12,13 +12,25 @@ from unity_data import WorldError, digest, pointer, safe_path
 
 def color_record(value):
     """Preserve native TreeInstance tint bytes/floats and add a normalized view."""
+    if isinstance(value, dict) and set(value) == {"rgba"}:
+        packed = value["rgba"]
+        if isinstance(packed, int) and not isinstance(packed, bool) and 0 <= packed <= 0xffffffff:
+            # Unity serializes Color32 as four consecutive r/g/b/a bytes. The
+            # uint returned by UnityPy is little-endian, so R is the low byte.
+            srgb8 = [(packed >> shift) & 0xff for shift in (0, 8, 16, 24)]
+            return {"status": "decoded", "serialized": value, "srgb8_rgba": srgb8,
+                    "normalized_rgba": [channel/255.0 for channel in srgb8],
+                    "encoding": "packed_color32_lsb_r"}
+        return {"status": "invalid_packed_rgba32", "serialized": value}
     if not isinstance(value, dict) or not all(k in value for k in ("r", "g", "b")):
         return {"status": "unavailable"}
     raw = [float(value.get(k, 1 if k == "a" else 0)) for k in ("r", "g", "b", "a")]
     if not all(math.isfinite(v) for v in raw):
         return {"status": "invalid_non_finite", "serialized": value}
     divisor = 255.0 if max(raw) > 1.0 else 1.0
-    return {"status": "decoded", "serialized": value, "normalized_rgba": [v/divisor for v in raw],
+    return {"status": "decoded", "serialized": value,
+            "srgb8_rgba": [round(v if divisor == 255 else v*255) for v in raw],
+            "normalized_rgba": [v/divisor for v in raw],
             "encoding": "color32_0_255" if divisor == 255 else "float_0_1"}
 
 

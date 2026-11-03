@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import math
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 import numpy as np
 
@@ -32,6 +32,35 @@ ROLE_TERMS = {
     "prop": {"prop", "crate", "barrel", "wreck", "dish", "furniture"},
 }
 
+SURFACE_PART_TERMS = {
+    "door": {"door", "doorway", "gate", "hatch"},
+    "window": {"window", "glazing", "pane"},
+    "roof": {"roof", "roofing", "shingle", "shingles"},
+    "wall": {"wall", "facade", "partition"},
+    "floor": {"floor"},
+    "stairs": {"stairs", "stair", "steps", "ladder", "ramp"},
+    "cabinet": {"cabinet", "cupboard", "wardrobe", "shelf", "shelves", "locker", "drawer"},
+}
+
+MATERIAL_FAMILY_TERMS = {
+    "wood": {"wood", "timber", "oak", "pine"},
+    "metal": {"metal", "steel", "iron", "aluminium", "aluminum"},
+    "glass": {"glass", "glazing", "pane"},
+    "concrete": {"concrete", "cement"},
+    "stone": {"stone", "masonry"},
+    "tile": {"tile", "ceramic"},
+    "textile": {"fabric", "linen", "cloth"},
+    "gravel": {"gravel"},
+}
+
+COLOR_NAME_TERMS = {"black", "white", "red", "green", "blue", "yellow", "orange", "purple",
+                    "pink", "brown", "grey", "gray", "beige", "cream"}
+
+ROLE_PRIORITY = {role: index for index, role in enumerate((
+    "door", "window", "roof", "wall", "floor", "stairs", "cabinet", "building",
+    "road", "tree", "rock", "grass", "water", "prop",
+))}
+
 
 def _tokens(*values):
     result = set()
@@ -50,12 +79,18 @@ def _add(scores, evidence, role, score, reason):
 
 def classify(name, components=(), bounds=None, parent_bounds=None, material_names=(), paths=()):
     """Return ranked roles from explicit labels first, conservative geometry second."""
-    tokens = _tokens(name, *material_names, *paths)
+    name_tokens = _tokens(name)
+    material_tokens = _tokens(*material_names)
+    path_tokens = _tokens(*paths)
     scores, evidence = defaultdict(float), defaultdict(list)
     for role, terms in ROLE_TERMS.items():
-        matches = sorted(tokens & terms)
-        if matches:
-            _add(scores, evidence, role, .96, {"kind": "explicit_name_or_material_token", "tokens": matches})
+        for tokens, score, kind in (
+                (name_tokens, .99, "explicit_object_name_token"),
+                (material_tokens, .94, "explicit_material_name_token"),
+                (path_tokens, .84, "explicit_asset_path_token")):
+            matches = sorted(tokens & terms)
+            if matches:
+                _add(scores, evidence, role, score, {"kind": kind, "tokens": matches})
 
     component_set = set(components)
     if "Terrain" in component_set:
@@ -96,7 +131,7 @@ def classify(name, components=(), bounds=None, parent_bounds=None, material_name
         return {"primary_role": "unknown", "confidence": 0.0, "candidates": [],
                 "evidence": [], "status": "unclassified",
                 "note": "No reliable saved label/component/geometry signal identifies this part"}
-    ranked = sorted(scores, key=lambda role: (-scores[role], role))
+    ranked = sorted(scores, key=lambda role: (-scores[role], ROLE_PRIORITY.get(role, 100), role))
     primary = ranked[0]
     return {
         "primary_role": primary,
@@ -105,6 +140,50 @@ def classify(name, components=(), bounds=None, parent_bounds=None, material_name
         "evidence": evidence[primary],
         "status": "labelled" if scores[primary] >= .9 else "inferred",
         "note": "Roles below 0.9 are hypotheses for AI review, not authored semantic truth",
+    }
+
+
+def classify_surface(material_name):
+    """Describe one renderer material slot without promoting it to an object.
+
+    A material called ``house_door_timber`` is evidence for a door surface and
+    wood family; the generic ``house`` prefix must not swallow that evidence.
+    Conversely, ``glass`` alone stays an ambiguous glass surface rather than an
+    asserted window because glass is also used by furniture and props.
+    """
+    tokens = _tokens(material_name)
+    part_candidates = []
+    for role, terms in SURFACE_PART_TERMS.items():
+        matches = sorted(tokens & terms)
+        if matches:
+            part_candidates.append({"role": role, "confidence": .98,
+                                    "evidence": [{"kind": "explicit_material_name_token", "tokens": matches}]})
+    if not part_candidates and "glass" in tokens:
+        part_candidates.append({"role": "window_or_glass_surface", "confidence": .72,
+                                "evidence": [{"kind": "ambiguous_material_name_token", "tokens": ["glass"],
+                                              "note": "Glass alone does not prove that this slot is a window"}]})
+    if not part_candidates and "render" in tokens:
+        part_candidates.append({"role": "wall_or_facade_finish", "confidence": .62,
+                                "evidence": [{"kind": "architectural_finish_token", "tokens": ["render"]}]})
+    if not part_candidates and "paving" in tokens:
+        part_candidates.append({"role": "road_or_floor_surface", "confidence": .58,
+                                "evidence": [{"kind": "ambiguous_material_name_token", "tokens": ["paving"]}]})
+    families = []
+    for family, terms in MATERIAL_FAMILY_TERMS.items():
+        matches = sorted(tokens & terms)
+        if matches:
+            families.append({"family": family, "confidence": .96,
+                             "evidence": [{"kind": "explicit_material_name_token", "tokens": matches}]})
+    colors = sorted(tokens & COLOR_NAME_TERMS)
+    return {
+        "material_name": material_name,
+        "part_role": part_candidates[0] if part_candidates else {
+            "role": "unknown", "confidence": 0.0,
+            "evidence": [], "note": "This material name does not identify a structural part"},
+        "part_candidates": part_candidates,
+        "material_families": families,
+        "named_color_tokens": colors,
+        "note": "Names are authored evidence. Source texture statistics and Unity capture remain separate appearance evidence.",
     }
 
 
@@ -200,6 +279,8 @@ def describe(w, request):
         raise WorldError("texture_analysis must be boolean")
     root_bounds, root_missing = w.aggregate_bounds(go)
     slots = w.material_slots(go, texture_analysis)
+    for slot in slots:
+        slot["surface_semantic"] = classify_surface(slot["material"].get("name"))
     slots_by_node = defaultdict(list)
     for slot in slots:
         slots_by_node[slot["node_id"]].append(slot)
@@ -240,6 +321,11 @@ def describe(w, request):
         "parts": {"total": len(descendants), "offset": offset, "items": items,
                   "next_offset": offset+limit if offset+limit < len(descendants) else None},
         "appearance": {"material_slot_count": len(slots), "slots": slots,
+                       "surface_part_role_counts": dict(sorted(Counter(
+                           slot["surface_semantic"]["part_role"]["role"] for slot in slots).items())),
+                       "material_family_counts": dict(sorted(Counter(
+                           family["family"] for slot in slots
+                           for family in slot["surface_semantic"]["material_families"]).items())),
                        "texture_analysis_requested": texture_analysis,
                        "rendered_pixels": False,
                        "note": "Texture statistics describe source rasters; Unity capture is required for lit appearance and stains at exact UV positions"},
