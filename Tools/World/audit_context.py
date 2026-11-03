@@ -78,7 +78,7 @@ def run(root):
             row["prototype_sources"] = [w.reference(d["data"].get("m_SourcePrefab", {}))
                                         for d in source.get("docs", []) if d["kind"] == "PrefabInstance"]
         queries.append(row)
-    houses = [go for go, row in w.gos.items() if "house" in row.get("m_Name", "").lower()
+    houses = [go for go, row in w.gos.items() if "_house_" in row.get("m_Name", "").lower()
               and "foundation" not in row["m_Name"].lower() and not row["m_Name"].startswith("ReviewLOD_")
               and any(c["kind"] == "MeshFilter" for c in w.components(go))]
     chosen_house = rng.choice(houses)
