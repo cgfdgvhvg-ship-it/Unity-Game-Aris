@@ -32,6 +32,9 @@ namespace Aaris.MapReview
         // Runtime grass/detail budgets: the far terrain and tree skyline stay visible.
         private Terrain[] profiledTerrains;
         private float[] originalDetailDistances, originalDetailDensities;
+        private float[] originalTreeBillboardDistances, originalHeightmapPixelErrors, originalBasemapDistances;
+        private int[] originalFullLodTreeCounts;
+        private int observedTargetFps;
         private float terrainDetailDistanceCap, terrainDetailDensityCap;
         private float profileShadowDistance, lowMemoryDetailMultiplier = 1f;
         private int performanceLevel, pressureSamples, recoverySamples;
@@ -42,6 +45,7 @@ namespace Aaris.MapReview
         private void Awake()
         {
             Application.targetFrameRate = targetFrameRate;
+            observedTargetFps = Application.targetFrameRate;
 #if UNITY_ANDROID && !UNITY_EDITOR
             ApplyMobileMemoryProfile();
 #endif
@@ -95,6 +99,17 @@ namespace Aaris.MapReview
 
         private void Update()
         {
+            // The in-game FPS switch changes Application.targetFrameRate after Awake.
+            // Reset the observation window so intentional 30 FPS pacing is not misread
+            // as sustained 60 FPS render pressure.
+            int cap = Application.targetFrameRate > 0 ? Application.targetFrameRate : targetFrameRate;
+            if (cap != observedTargetFps)
+            {
+                observedTargetFps = cap;
+                Array.Clear(frameTimes, 0, frameTimes.Length);
+                frameIndex = frameCount = pressureSamples = recoverySamples = 0;
+                nextPerformanceChangeAt = Time.unscaledTime + 6f;
+            }
             float dt = Time.unscaledDeltaTime;
             if (dt > 0)
             {
@@ -164,14 +179,32 @@ namespace Aaris.MapReview
             profiledTerrains = terrains != null && terrains.Length > 0 ? terrains : Terrain.activeTerrains;
             originalDetailDistances = new float[profiledTerrains.Length];
             originalDetailDensities = new float[profiledTerrains.Length];
+            originalTreeBillboardDistances = new float[profiledTerrains.Length];
+            originalFullLodTreeCounts = new int[profiledTerrains.Length];
+            originalHeightmapPixelErrors = new float[profiledTerrains.Length];
+            originalBasemapDistances = new float[profiledTerrains.Length];
             for (int i = 0; i < profiledTerrains.Length; i++)
             {
                 Terrain terrain = profiledTerrains[i];
                 if (terrain == null) continue;
                 originalDetailDistances[i] = terrain.detailObjectDistance;
                 originalDetailDensities[i] = terrain.detailObjectDensity;
+                originalTreeBillboardDistances[i] = terrain.treeBillboardDistance;
+                originalFullLodTreeCounts[i] = terrain.treeMaximumFullLODCount;
+                originalHeightmapPixelErrors[i] = terrain.heightmapPixelError;
+                originalBasemapDistances[i] = terrain.basemapDistance;
                 terrain.detailObjectDistance = Mathf.Min(originalDetailDistances[i], terrainDetailDistanceCap);
                 terrain.detailObjectDensity = Mathf.Min(originalDetailDensities[i], terrainDetailDensityCap);
+                // Keep the authored tree draw distance and distant skyline intact:
+                // reduce expensive *mesh* trees, not whether far trees exist.
+                terrain.treeBillboardDistance = Mathf.Min(originalTreeBillboardDistances[i],
+                    constrained ? 100f : 140f);
+                terrain.treeMaximumFullLODCount = Mathf.Min(originalFullLodTreeCounts[i],
+                    constrained ? 28 : 44);
+                terrain.heightmapPixelError = Mathf.Max(originalHeightmapPixelErrors[i],
+                    constrained ? 8f : 6f);
+                terrain.basemapDistance = Mathf.Min(originalBasemapDistances[i],
+                    constrained ? 400f : 550f);
             }
             profileShadowDistance = mobilePipeline != null ? mobilePipeline.shadowDistance : 0f;
             mobileProfile = constrained ? "ram-2gb" : "ram-3gb";
@@ -184,7 +217,7 @@ namespace Aaris.MapReview
         {
             if (!mobileProfileApplied || !adaptDetailsToFrameTime ||
                 frameCount < frameTimes.Length || Time.unscaledTime < 15f) return;
-            float frameBudgetMs = 1000f / Mathf.Clamp(targetFrameRate, 30, 120);
+            float frameBudgetMs = 1000f / Mathf.Clamp(observedTargetFps, 30, 120);
             if (p95FrameMs > frameBudgetMs * 1.30f)
             {
                 pressureSamples++;
@@ -261,6 +294,10 @@ namespace Aaris.MapReview
                     if (terrain == null) continue;
                     terrain.detailObjectDistance = originalDetailDistances[i];
                     terrain.detailObjectDensity = originalDetailDensities[i];
+                    terrain.treeBillboardDistance = originalTreeBillboardDistances[i];
+                    terrain.treeMaximumFullLODCount = originalFullLodTreeCounts[i];
+                    terrain.heightmapPixelError = originalHeightmapPixelErrors[i];
+                    terrain.basemapDistance = originalBasemapDistances[i];
                 }
         }
         private void OnLog(string message, string stackTrace, LogType type)
@@ -278,6 +315,8 @@ namespace Aaris.MapReview
             public string mobileQualityProfile;
             public float streamingBudgetMb, lodBias, shadowDistanceM, terrainDetailDistanceCapM, terrainDetailDensityCap;
             public float effectiveDetailDistanceM, effectiveDetailDensity, lowMemoryDetailMultiplier;
+            public float effectiveTreeBillboardDistanceM, effectiveHeightmapPixelError, effectiveBasemapDistanceM;
+            public int effectiveMaxFullLodTrees;
             public float seconds, averageFps, p95FrameMs;
             public long unityAllocatedBytes, unityReservedBytes, managedBytes, androidPssKB;
             public ulong textureBytes, desiredTextureBytes;
@@ -319,6 +358,10 @@ namespace Aaris.MapReview
                     {
                         s.effectiveDetailDistanceM = terrain.detailObjectDistance;
                         s.effectiveDetailDensity = terrain.detailObjectDensity;
+                        s.effectiveTreeBillboardDistanceM = terrain.treeBillboardDistance;
+                        s.effectiveMaxFullLodTrees = terrain.treeMaximumFullLODCount;
+                        s.effectiveHeightmapPixelError = terrain.heightmapPixelError;
+                        s.effectiveBasemapDistanceM = terrain.basemapDistance;
                         break;
                     }
             s.shadowDistanceM = mobilePipeline != null ? mobilePipeline.shadowDistance : QualitySettings.shadowDistance;
