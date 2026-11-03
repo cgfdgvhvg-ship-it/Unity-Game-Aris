@@ -139,10 +139,13 @@ def observation_requests(patch, world=None):
                 if go in world.gos and go in world.go_transform and ("material_user", go) not in seen:
                     users.add(go)
             ordered = sorted(users)
-            budget = 32 - len(explicit) - len(requests)
+            budget = min(6, 32 - len(explicit) - len(requests))
             if ordered and budget < 1:
                 raise WorldError("No remaining observation budget for shared material users; split this edit")
-            # A shared material may be used by hundreds of objects. Keep a
+            # A shared material may be used by hundreds of objects. Sample up
+            # to six users per material to keep the repeated full-map inspection
+            # workload bounded, and keep the full usage count in operation state.
+            # Keep a
             # deterministic spread of saved fileIDs rather than rejecting
             # ordinary material edits or pretending the sample is exhaustive.
             if len(ordered) > budget:
