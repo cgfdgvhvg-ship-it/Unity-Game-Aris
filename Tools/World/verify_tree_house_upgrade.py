@@ -47,6 +47,116 @@ RESIDENTIAL_MOBILE_LOD_PREFABS=frozenset(
 )
 
 
+
+# Scene LOD changes are confined to 47 inline residential objects and 32
+# RockCover objects. Reversing only those exact thresholds must reproduce the
+# entire original protected scene, byte for byte (not just selected components).
+SCENE_MOBILE_LOD_PATH = 'Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity'
+MOBILE_LOD_HOME_TYPES = frozenset((
+    'a_frame_cabin', 'bungalow_house', 'detached_two_storey_house',
+    'garage_apartment', 'pitched_roof_cottage', 'row_three_townhouses',
+    'two_bedroom_garage_house',
+))
+
+
+def restore_scene_mobile_lod(source):
+    import re
+    try:
+        chunks = re.split(r'(?=^--- !u!)', source.decode('utf-8'), flags=re.M)
+    except UnicodeDecodeError:
+        return None
+    names = {}
+    for chunk in chunks:
+        match = re.match(r'--- !u!1 &(\d+)', chunk)
+        if match:
+            name = re.search(r'^  m_Name: ([^\r\n]+)', chunk, re.M)
+            if name:
+                names[match.group(1)] = name.group(1)
+    counts = {'home': 0, 'rock': 0, 'untouched': 0}
+    result = []
+    for chunk in chunks:
+        if not re.match(r'--- !u!205 &', chunk):
+            result.append(chunk)
+            continue
+        owner = re.search(r'm_GameObject: \{fileID: (\d+)', chunk)
+        name = names.get(owner.group(1), '') if owner else ''
+        home = any(re.search(r'_' + re.escape(t) + r'_\d+
+    source=(Path(root)/path).read_bytes()
+    if hashlib.sha256(source).hexdigest()==expected_sha:return True
+    if path == SCENE_MOBILE_LOD_PATH:
+        original = restore_scene_mobile_lod(source)
+        return original is not None and hashlib.sha256(original).hexdigest() == expected_sha
+    if path not in RESIDENTIAL_MOBILE_LOD_PREFABS:return False
+    for new,old in (
+        (b'  - screenRelativeHeight: 0.28\n',b'  - screenRelativeHeight: 0.22\n'),
+        (b'  - screenRelativeHeight: 0.095\n',b'  - screenRelativeHeight: 0.07\n'),
+    ):
+        if source.count(new)!=1:return False
+        source=source.replace(new,old,1)
+    return hashlib.sha256(source).hexdigest()==expected_sha
+
+
+def verify(root):
+    root=Path(root).resolve();contract=json.loads((root/CONTRACT).read_text());rays=0
+    for path,row in contract['meshes'].items():
+        assert digest(root/path)==row['after_sha256'],path+' differs from inspected migration'
+        assert digest(root/(path+'.meta'))==row['meta_sha256'],path+' identity changed'
+        facts=summary(mesh_data(root/path))
+        assert facts['vertex_buffer_sha256']==row['vertex_buffer_sha256'],path+' vertex attributes changed'
+        assert facts['triangles_by_submesh']==row['triangles_by_submesh'],path+' material slots changed'
+    for path,sha in contract['tree_source_files'].items():assert digest(root/path)==sha,path+' tree source profile changed'
+    for path,sha in contract['preserved_files'].items():
+        assert preserved_or_reviewed_lod_only(root,path,sha),path+' protected source changed outside reviewed LOD fields'
+    for probe in contract['doorway_samples']:
+        folder=root/'Assets/AarisWorld/Models'/probe['model']
+        for path in sorted(folder.glob('Geometry*.asset')):
+            positions,groups,_=arrays(mesh_data(path))
+            center=np.array(probe['center']);normal=probe['normal_axis'];side=2 if normal==0 else 0
+            for offset in (-.28,0,.28):
+                for dy in (.04,.28,.89,1.5,1.74):
+                    start=center.copy();start[side]+=offset;start[1]=probe['foot_y']+dy;end=start.copy()
+                    start[normal]-=.55;end[normal]+=.55
+                    assert ray_hits(positions,groups,start,end)==0,(probe['model'],path.name,probe['center'],offset,dy,'sampled doorway blocked')
+                    rays+=1
+    world=World(root);models={Path(p).parent.name for p in contract['meshes']};bindings=0
+    for model in sorted(models):
+        path='Assets/AarisWorld/Models/'+model+'/Geometry.asset'
+        guid=next(g for g,p in world.guid_paths.items()if p==path)
+        users=[]
+        for go in world.gos:
+            components=world.components(go)
+            if any(c['kind']=='MeshFilter'and c['data'].get('m_Mesh',{}).get('guid')==guid for c in components):
+                users.append(go)
+                assert any(c['kind']=='MeshCollider'and c['data'].get('m_Mesh',{}).get('guid')==guid and not c['data'].get('m_Convex')for c in components)
+        assert users,model+' has no saved scene users';bindings+=len(users)
+    return {'source_meshes_checked':len(contract['meshes']),'residential_instances_using_opened_meshes':bindings,
+            'tree_source_files_checked':len(contract['tree_source_files']),'doorway_samples':len(contract['doorway_samples']),
+            'clear_sampled_rays_across_all_lods':rays,'vertex_attributes_and_material_slots_preserved':True,
+            'unity_import_render_or_physics_tested':False,
+            'limits':'Discrete source-triangle rays, not continuous capsule sweeps, complete interior navigation, Unity cooking, rendering or device tests.'}
+
+
+if __name__=='__main__':print(json.dumps(verify(Path(__file__).resolve().parents[2])))
+, name) for t in MOBILE_LOD_HOME_TYPES)
+        rock = re.fullmatch(r'RockCover_\d+', name) is not None
+        if not (home or rock):
+            counts['untouched'] += 1
+            result.append(chunk)
+            continue
+        thresholds = re.findall(r'^  - screenRelativeHeight: (\S+)', chunk, flags=re.M)
+        if thresholds != ['0.28', '0.095', '0.0025']:
+            return None
+        if chunk.count('  - screenRelativeHeight: 0.28\n') != 1 or chunk.count('  - screenRelativeHeight: 0.095\n') != 1:
+            return None
+        original = chunk.replace('  - screenRelativeHeight: 0.28\n', '  - screenRelativeHeight: 0.22\n', 1)
+        original = original.replace('  - screenRelativeHeight: 0.095\n', '  - screenRelativeHeight: 0.07\n', 1)
+        counts['home' if home else 'rock'] += 1
+        result.append(original)
+    if counts != {'home': 47, 'rock': 32, 'untouched': 22}:
+        return None
+    return ''.join(result).encode('utf-8')
+
+
 def preserved_or_reviewed_lod_only(root,path,expected_sha):
     source=(Path(root)/path).read_bytes()
     if hashlib.sha256(source).hexdigest()==expected_sha:return True
