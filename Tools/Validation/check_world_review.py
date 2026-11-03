@@ -41,6 +41,8 @@ def check(native=False):
     objects=documents(ROOT/SCENE);names={i:d['m_Name'] for c,i,n,d in objects if n=='GameObject'}
     transforms={names[d['m_GameObject']['fileID']]:d for c,i,n,d in objects if n=='Transform'}
     for b in layout['buildings']:assert list(transforms[b['name']]['m_LocalScale'].values())==b['scale']
+    assert list(transforms['AarisPlayer']['m_LocalPosition'].values())==report['safe_spawn_m']
+    assert 15<report['nearest_residential_footprint_m']<35
     player=next(d for c,i,n,d in objects if n=='MonoBehaviour' and names.get(d['m_GameObject']['fileID'])=='AarisPlayer')
     assert player['minLookPitch']==-70 and player['maxLookPitch']==70
     sky=next(d for c,i,n,d in documents(ROOT/SKY) if n=='Material')
@@ -57,6 +59,7 @@ def check(native=False):
     assert any(s['fileID']==106 for s in graphics['m_AlwaysIncludedShaders'])
     if native:
         assert report['total_tree_count']==1939 and report['terrain_heights_details_prototypes_and_alpha_preserved']
+        assert report['spawn_native_ground_and_obstacles_verified']
         for path,expected in report['original_close_mesh_hashes'].items():assert hashlib.sha256((ROOT/path).read_bytes()).hexdigest()==expected
         pipeline=documents(ROOT/'Assets/TerrainDemoScene_URP/Settings/URP/URP-HighQuality Pipeline Asset.asset')[0][3]
         assert pipeline['m_RenderScale']==1,'Render resolution changed'

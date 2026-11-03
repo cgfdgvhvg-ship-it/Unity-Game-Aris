@@ -10,7 +10,7 @@ from types import SimpleNamespace
 import numpy as np
 import yaml
 from ground_review import documents,segment_distance
-from native_assets import color,guid,ref,vec,write_yaml,Flow
+from native_assets import color,guid,ref,vec,write_yaml,Flow,quat_y
 from native_scene import Scene
 
 HOMES={'a_frame_cabin','bungalow_house','detached_two_storey_house','garage_apartment',
@@ -120,9 +120,23 @@ def save_world(root):
     layout,gaps=fit_layout(json.loads(layout_path.read_text()))
     objects=documents(root/SCENE);buildings={b['name']:b for b in layout['buildings']}
     go_names={i:d['m_Name'] for c,i,n,d in objects if n=='GameObject'};sun_go=next(i for i,n in go_names.items() if n=='Sun')
+    village=next(d for d in layout['districts'] if d['name']=='ValleySettlement')
+    spawn=np.array([-496.,village['height']+.085,-212.]);spawn_yaw=40.
+    nearest_home=min(box_distance([spawn[0],spawn[2],spawn[0],spawn[2]],b['aabb_xz_m']) for b in layout['buildings'] if b['model']in HOMES)
+    assert 15<nearest_home<35,'Spawn must give an immediate, safe residential scale reference'
+    for b in layout['buildings']:assert box_distance([spawn[0],spawn[2],spawn[0],spawn[2]],b['aabb_xz_m'])>3
     for c,i,n,d in objects:
         if n=='Transform' and go_names.get(d['m_GameObject']['fileID']) in buildings:
             b=buildings[go_names[d['m_GameObject']['fileID']]];d['m_LocalScale']=vec(*b['scale'])
+        if n=='Transform' and go_names.get(d['m_GameObject']['fileID'])=='AarisPlayer':
+            d['m_LocalPosition']=vec(*spawn);d['m_LocalRotation']=quat_y(spawn_yaw);d['m_LocalEulerAnglesHint']=vec(0,spawn_yaw,0)
+        if n=='Transform' and go_names.get(d['m_GameObject']['fileID'])=='Main Camera':
+            p=math.radians(12);y=math.radians(spawn_yaw)
+            forward=np.array([math.sin(y)*math.cos(p),-math.sin(p),math.cos(y)*math.cos(p)])
+            right=np.array([math.cos(y),0,-math.sin(y)])
+            d['m_LocalPosition']=vec(*(spawn+[0,1.45,0]-forward*4.2+right*.3))
+            d['m_LocalRotation']=Flow(x=math.cos(y/2)*math.sin(p/2),y=math.sin(y/2)*math.cos(p/2),z=-math.sin(y/2)*math.sin(p/2),w=math.cos(y/2)*math.cos(p/2))
+            d['m_LocalEulerAnglesHint']=vec(12,spawn_yaw,0)
         if n=='RenderSettings':
             d.update(m_AmbientMode=1,m_AmbientIntensity=1,m_AmbientSkyColor=color(.62,.72,.86),
                 m_AmbientEquatorColor=color(.54,.58,.56),m_AmbientGroundColor=color(.32,.34,.31),m_ReflectionIntensity=.75)
@@ -152,6 +166,7 @@ def save_world(root):
         'residential_scales':{name:layout['models'][name]['prefab_scale'] for name in sorted(HOMES)},
         'residential_instances_scaled':sum(b['model']in HOMES for b in layout['buildings']),
         'complete_three_lod_prefabs':len(layout['models']),'clearances':gaps,
+        'safe_spawn_m':spawn.tolist(),'spawn_yaw_degrees':spawn_yaw,'nearest_residential_footprint_m':nearest_home,
         'daylight':{'sun_elevation_degrees':50,'sun_intensity':1.35,'shadow_strength':.55,'sky_exposure':1.15,'maximum_upward_look_degrees':70},
         'graphics_resolution_reduced':False,'unity_editor_compilation_tested':False,'unity_render_tested':False,'android_device_tested':False}
     save_json(root/'Docs/WORLD_REVIEW_REPORT.json',report);return report
@@ -217,12 +232,22 @@ def save_native(root):
         x,z=p['position_xz_m'];key=f"{p['tile']}:{proto['guid']}:{x:.3f}:{z:.3f}"
         if key in targets['instances']:p['width_scale']=targets['instances'][key]['width'];p['height_scale']=targets['instances'][key]['height']
     save_json(plan_path,plan);save_json(target_path,targets)
-    ground_path=root/'Docs/GROUND_REVIEW_REPORT.json';ground=json.loads(ground_path.read_text());ground['world_scale_integrated']=True;save_json(ground_path,ground)
+    ground_path=root/'Docs/GROUND_REVIEW_REPORT.json';ground=json.loads(ground_path.read_text());ground['world_scale_integrated']=True
+    ground['spawn_m']=report['safe_spawn_m'];save_json(ground_path,ground)
+    x,spawn_y,z=report['safe_spawn_m'];i=min(2,max(1,int((x+1000)//1000)+1));j=min(2,max(1,int((z+1000)//1000)+1))
+    h=height_grids[f'{i}_{j}'];fx=(x-(i-2)*1000)*2048/1000;fz=(z-(j-2)*1000)*2048/1000;a=int(fx);c=int(fz);dx=fx-a;dz=fz-c
+    ground_y=(h[c,a]*(1-dx)+h[c,a+1]*dx)*(1-dz)+(h[c+1,a]*(1-dx)+h[c+1,a+1]*dx)*dz
+    assert abs(spawn_y-ground_y-.085)<.001,'Village spawn is not on flat native ground'
+    for tag,data in terrain.data.items():
+        ti,tj=map(int,tag.split('_'))
+        for tree in data['m_DetailDatabase']['m_TreeInstances']:
+            p=tree['position'];assert math.hypot((ti-2)*1000+p['x']*1000-x,(tj-2)*1000+p['z']*1000-z)>3,'Spawn is blocked by a native tree/rock'
     assert all(hashlib.sha256((root/path).read_bytes()).hexdigest()==sha for path,sha in close_hashes.items())
     report.update(native_assets_materialized=True,cypress_instances_enlarged=sum(changed.values()),cypress_factor=CYPRESS_FACTOR,
         cypress_instances_by_tile=dict(changed),terrain_heights_details_prototypes_and_alpha_preserved=True,
         total_tree_count=sum(t['terrain_instances'].get('tree',0) for t in json.loads((root/'Docs/TERRAIN_INDEX.json').read_text())['tiles']),
-        scaled_foundations_flat_ground_verified=True,all_original_close_meshes_preserved=True,original_close_mesh_hashes=close_hashes)
+        scaled_foundations_flat_ground_verified=True,spawn_native_ground_and_obstacles_verified=True,
+        all_original_close_meshes_preserved=True,original_close_mesh_hashes=close_hashes)
     save_json(root/'Docs/WORLD_REVIEW_REPORT.json',report);print(json.dumps(report));return report
 
 if __name__=='__main__':

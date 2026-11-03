@@ -12,7 +12,7 @@ SCENE = 'Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity'
 PLAYER = 'Assets/AarisWorld/Player'
 SCRIPT = 'Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs'
 SEA = -38.07552
-SPAWN_XZ = (-650.0, -190.0)
+SPAWN_XZ = (-496.0, -212.0)
 
 def documents(path):
     def flow(value):

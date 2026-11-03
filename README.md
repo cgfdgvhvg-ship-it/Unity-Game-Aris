@@ -10,6 +10,7 @@ The scene, player prefab, materials, terrain trees and road meshes are already s
 - **Phone:** left joystick moves, drag the right side to look, WALK toggles running, JUMP jumps, HOME returns to the safe spawn.
 - **Desktop:** WASD/arrows move, right mouse drag looks, Shift runs, Space jumps, F returns home.
 - The saved shoulder view follows the grounded player. The free-flight/overview/altitude controls have been removed.
+- Start in the flat western side of ValleySettlement, facing nearby houses. The saved spawn is checked against full-resolution terrain and native tree/rock obstacles, so residential scale is visible immediately rather than first viewing homes from roughly 176 m away.
 - Right-side look reaches 70 degrees upward, so the saved sun at 50 degrees elevation is reachable. The previous 18-degree upward limit could never show that sun.
 - CharacterController handles terrain, steps, slopes, trunk and building collisions. The saved Player layer excludes the avatar from camera/support queries; closest-hit camera checks avoid a truncated hit list in dense forest.
 - The visible human uses shared Unity primitive meshes and saved outfit materials, with walking limb animation. It is a lightweight scale-reference character, not an imported Free Fire character model.
