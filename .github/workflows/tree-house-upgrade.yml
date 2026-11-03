@@ -40,6 +40,19 @@ jobs:
       - run: python -m pip install -r Tools/World/requirements.txt tree-sitter==0.26.0 tree-sitter-c-sharp==0.23.5
       - name: Fetch actual saved geometry and native terrain
         run: git lfs pull --include="Assets/AarisWorld/**/*.asset,Assets/TerrainDemoScene_URP/Terrain/Data/*.asset" --exclude=""
+      - name: Fingerprint materialized tracked source bytes
+        run: |
+          python - <<'PYBASE'
+          import hashlib,json,os,pathlib,subprocess
+          paths=[p for p in subprocess.check_output(['git','ls-files','-z']).decode().split('\0') if p]
+          def sha(path):
+              h=hashlib.sha256()
+              with pathlib.Path(path).open('rb') as f:
+                  for block in iter(lambda:f.read(1024*1024),b''):h.update(block)
+              return h.hexdigest()
+          baseline={p:sha(p) for p in paths}
+          (pathlib.Path(os.environ['RUNNER_TEMP'])/'tree-house-baseline.json').write_text(json.dumps(baseline))
+          PYBASE
       - name: Preview and apply the exact reviewed core migration
         run: python -u Tools/World/apply_tree_house_upgrade.py
       - name: Verify scripts, source geometry, bindings and actual native terrain
@@ -59,7 +72,16 @@ jobs:
           contract=json.loads(pathlib.Path('Tools/World/tree-house-20261103.postconditions.json').read_text())
           allowed=set(contract['meshes'])|set(contract['tree_source_files'])
           changed=set(git('diff','--name-only').splitlines())
-          assert changed<=allowed, 'Unexpected source modifications: '+repr(changed-allowed)
+          baseline=json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'tree-house-baseline.json').read_text())
+          import hashlib
+          for path in sorted(changed-allowed):
+              # Some older blobs are full assets despite newer LFS attributes.
+              # Clean-filter normalization can report a diff without any byte edit.
+              h=hashlib.sha256()
+              with pathlib.Path(path).open('rb') as f:
+                  for block in iter(lambda:f.read(1024*1024),b''):h.update(block)
+              assert h.hexdigest()==baseline.get(path), 'Unexpected actual source edit: '+path
+          changed &= allowed
           assert os.environ['GITHUB_REF_NAME']==os.environ['TASK_BRANCH']
           git('fetch','origin',os.environ['TASK_BRANCH'])
           assert git('rev-parse','FETCH_HEAD')==os.environ['GITHUB_SHA'], 'Task branch changed during authoring'
@@ -73,7 +95,7 @@ jobs:
           PY
       - name: Remove temporary verification report
         if: always()
-        run: rm -f -- "$RUNNER_TEMP/tree-house-verify.json"
+        run: rm -f -- "$RUNNER_TEMP/tree-house-verify.json" "$RUNNER_TEMP/tree-house-baseline.json"
   verify-pr:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -93,4 +115,4 @@ jobs:
       - run: python Tools/World/native_smoke.py
       - run: python Tools/World/world.py --out "$RUNNER_TEMP/tree-house-verify.json" verify --native --project-checks
       - if: always()
-        run: rm -f -- "$RUNNER_TEMP/tree-house-verify.json"
+        run: rm -f -- "$RUNNER_TEMP/tree-house-verify.json" "$RUNNER_TEMP/tree-house-baseline.json"
