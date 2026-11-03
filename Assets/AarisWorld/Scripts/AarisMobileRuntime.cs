@@ -150,7 +150,8 @@ namespace Aaris.MapReview
             }
         }
 
-        // No changes to camera far clipping or render scale: the distant skyline remains visible.
+        // RAM-class baseline preserves the camera horizon and initial render scale;
+        // sustained pressure can later activate the separately guarded render-scale fallback.
         // This is a RAM-class budget, NOT a promise of FPS or a device benchmark.
         private void ApplyMobileMemoryProfile()
         {
