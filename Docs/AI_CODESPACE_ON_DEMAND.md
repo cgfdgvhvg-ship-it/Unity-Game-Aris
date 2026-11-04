@@ -149,3 +149,18 @@ x11vnc, websockify, xterm), VNC/non-VNC port statuses, and whether the
 password file exists. It does not read or expose password contents.
 Use this before guessing at service launch errors or asking the owner to
 reopen Termux; all command results are available via the Actions artifact.
+
+## Safe Unity disk audit and cache reclaim
+
+`storage_audit` with empty `args` is read-only. It summarizes the true
+local asset size, available disk space, known LFS records, clean-worktree
+SHA-256 matches (sampled to 128 MiB so the Codespace job cannot time out),
+modified core files to protect, and missing/pointer assets. It never
+repairs files; deferred hashes must not be described as verified.
+
+`prune_caches` with empty `args` deletes only two re-downloadable
+non-Unity caches: `~/.cache/copilot/pkg` and `~/.npm/_cacache`.
+It validates exact paths, avoids symlinks, and verifies the repo's
+`git status` is identical before and after. On failure, stop and read
+GitHub Actions job logs. Never clean `Assets`, `.git`, Unity Editor,
+or any dirty user-authored mesh, LOD, material or scene asset.

@@ -154,6 +154,56 @@ class OnDemandTests(unittest.TestCase):
             self.assertNotIn("ghp_123456",report["stdout"])
             self.assertTrue(data["saved_vnc_password_exists"])
 
+    def test_prune_caches_only_named_paths_and_preserves_assets(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            home=root/"home"
+            project=root/"Unity-Game-Aris"
+            project.mkdir()
+            (project/"Assets").mkdir()
+            important=project/"Assets"/"Geometry.asset"
+            important.write_bytes(b"saved core geometry must survive")
+            a=home/".cache"/"copilot"/"pkg"
+            b=home/".npm"/"_cacache"
+            for path in (a,b):
+                path.mkdir(parents=True)
+                (path/"temporary").write_text("cache")
+            keep=home/".cache"/"unity3d"/"bee"
+            keep.mkdir(parents=True)
+            (keep/"keep").write_text("needed")
+            with patch.object(e,"PROJECT",project), \
+                 patch.object(e,"run",return_value={"exit_code":0,"stdout":" M Assets/Geometry.asset\n","stderr":""}):
+                result=e.prune_caches(home)
+            self.assertFalse(a.exists())
+            self.assertFalse(b.exists())
+            self.assertTrue((keep/"keep").exists())
+            self.assertEqual(important.read_bytes(),b"saved core geometry must survive")
+            self.assertTrue(result["git_worktree_unchanged"])
+
+    def test_lfs_hashing_is_budget_limited_for_large_assets(self):
+        import hashlib
+        from subprocess import CompletedProcess
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            (root/"Assets").mkdir()
+            huge=root/"Assets"/"HugeTexture.asset"
+            with huge.open("wb") as out:
+                out.truncate(129 * 1024 * 1024)
+            long_oid=hashlib.sha256(b"dummy").hexdigest()
+            def cmd(argv, **kw):
+                if argv[:3]==["git","lfs","ls-files"]:
+                    return CompletedProcess(argv,0,(long_oid+" * Assets/HugeTexture.asset\n").encode(),b"")
+                if argv[:2]==["git","diff"]:
+                    return CompletedProcess(argv,0,b"",b"")
+                raise AssertionError(argv)
+            with patch.object(e,"PROJECT",root), \
+                 patch.object(e.subprocess,"run",side_effect=cmd), \
+                 patch.object(e,"run",return_value={"exit_code":0,"stdout":"","stderr":""}):
+                result=e._lfs_inventory()
+            self.assertEqual(result["lfs_status"]["hash_deferred"],1)
+            self.assertEqual(result["lfs_status"]["checked_sha256"],0)
+            self.assertEqual(result["hash_deferred_bytes"],129*1024*1024)
+
     def test_lfs_hash_matching_preserves_dirty_geometry(self):
         import hashlib
         from subprocess import CompletedProcess
