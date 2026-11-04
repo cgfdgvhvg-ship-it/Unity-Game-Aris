@@ -1,0 +1,39 @@
+name: Unity Full Editor Image and LFS Preflight Contracts
+
+on:
+  pull_request:
+    paths:
+      - 'Tools/World/unity_lfs_preflight.py'
+      - 'Tools/World/tests/test_unity_lfs_preflight.py'
+      - '.devcontainer/aaris-unity-image/**'
+      - 'Docs/UNITY_LEAN_IMAGE_LFS_SYNC.md'
+      - 'AGENTS.md'
+      - '.github/workflows/unity-lfs-preflight-tests.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'Tools/World/unity_lfs_preflight.py'
+      - 'Tools/World/tests/test_unity_lfs_preflight.py'
+      - '.devcontainer/aaris-unity-image/**'
+      - '.github/workflows/unity-lfs-preflight-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  lfs-safety-unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check Python syntax
+        run: python3 -m py_compile Tools/World/unity_lfs_preflight.py Tools/World/tests/test_unity_lfs_preflight.py
+      - name: Enforce read-only LFS and official full Editor image guards
+        run: python3 -m unittest discover -s Tools/World/tests -p test_unity_lfs_preflight.py -v
+      - name: Validate opt-in devcontainer JSON
+        run: python3 -m json.tool .devcontainer/aaris-unity-image/devcontainer.json > /dev/null
+      # Building the full 8+ GB Unity Docker image on every PR is intentionally
+      # disabled; image build, license, and GUI checks require a separate,
+      # explicitly selected Codespace after verified owner worktree backup.

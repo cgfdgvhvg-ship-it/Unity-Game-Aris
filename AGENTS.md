@@ -1,3 +1,23 @@
+## Unity full-Editor image and targeted LFS sync (2026-11-04)
+
+**No graphics downgrade:** keep complete official Unity 6000.3.26f1,
+URP/VFX Graph 17.3.0, Terrain and every saved asset. Optional (NOT
+yet built or deployed) image config is under
+.devcontainer/aaris-unity-image/devcontainer.json. It bakes the Editor
+into an image layer during build, avoiding a separate writable-layer
+Editor installation on a fresh Codespace. Do NOT rebuild the existing
+dirty Codespace until its source and Library are safely backed up and
+a new image has been smoke-tested. See Docs/UNITY_LEAN_IMAGE_LFS_SYNC.md.
+
+AI may run read-only python3 Tools/World/unity_lfs_preflight.py to
+check exact Unity version, Editor binary and LFS hydration. Present
+LFS files are never fetched again. The explicit --hydrate-missing
+command only allows at most 12 clean missing files, 512 MiB of LFS,
+exact HEAD OID validation and >=8 GiB persistent free disk. It
+must NEVER reset uncommitted assets or the paused Import.
+
+
+---
 ## OverlayFS and RAM safety (verified 2026-11-04)
 
 The exact Codespace /dev/shm capacity is **64 MiB**, not 8-16 GiB; it cannot hold a multi-GiB Unity PackageManager. Read-only probe result: https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41870345402 . The separate /tmp filesystem has ~101.63 GiB free but it is nonpersistent; never move active Unity Editor/PackageManager, Assets, Library, or .meta into it and leave a persistent symlink. Current Unity process 40121 is paused with 0.585 GiB free. Do not resume it at this capacity.
