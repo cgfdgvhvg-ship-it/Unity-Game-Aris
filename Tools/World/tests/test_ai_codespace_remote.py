@@ -92,7 +92,7 @@ class OnDemandTests(unittest.TestCase):
                     return SimpleNamespace(stdout=json.dumps({
                         "id":job["id"],"operation":job["operation"],
                         "ok":True,"exit_code":0,"stdout":"{}", "stderr":""
-                    })+"\\n",returncode=0)
+                    })+"\n",returncode=0)
                 return SimpleNamespace(stdout="",returncode=0)
             result=root/"result.json"
             r.execute_remote(job,"placeholder-token",root,result,runner=runner)
