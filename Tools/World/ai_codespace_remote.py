@@ -120,8 +120,9 @@ def start_and_wait(token: str, *, sleep=time.sleep, get=github_api, attempts=30)
     if info.get("name") != CODESPACE or info.get("repository", {}).get("full_name") != REPOSITORY:
         raise JobError("Codespace identity/repository mismatch: refusing to start another")
     state = info.get("state", "Unknown")
-    if state in {"Shutdown", "Unavailable", "Deleted", "Deleting"}:
+    if state in {"Unavailable", "Deleted", "Deleting", "Archived", "Failed"}:
         raise JobError(f"Codespace lifecycle state is {state}")
+    # Shutdown means normally stopped, not deleted; request a start.
     if state not in {"Available", "Running"}:
         print("AARIS: requesting Codespace start; prior state", state, flush=True)
         try:
@@ -137,7 +138,7 @@ def start_and_wait(token: str, *, sleep=time.sleep, get=github_api, attempts=30)
         print(f"AARIS: Codespace state {state} (poll {i + 1}/{attempts})", flush=True)
         if state in {"Available", "Running"}:
             return
-        if state in {"Shutdown", "Unavailable", "Deleted", "Deleting"}:
+        if state in {"Unavailable", "Deleted", "Deleting", "Archived", "Failed"}:
             raise JobError("Codespace became unavailable")
         sleep(5)
     raise JobError("Codespace did not become ready; check billing or quota")

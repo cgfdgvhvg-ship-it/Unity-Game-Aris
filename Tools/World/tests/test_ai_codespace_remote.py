@@ -43,7 +43,7 @@ class OnDemandTests(unittest.TestCase):
                 with self.assertRaises(r.JobError): r.select_job(event,root,"commit-123")
 
     def test_start_on_stopped_and_poll(self):
-        state=["Stopped","Starting","Available"]
+        state=["Shutdown","Starting","Available"]
         calls=[]
         def get(method,token,suffix=""):
             calls.append((method,suffix))
@@ -51,6 +51,16 @@ class OnDemandTests(unittest.TestCase):
             return {"name":r.CODESPACE,"repository":{"full_name":r.REPOSITORY},"state":state.pop(0)}
         r.start_and_wait("mock-token",sleep=lambda _:None,get=get,attempts=3)
         self.assertIn(("POST","/start"),calls)
+
+    def test_terminal_states_fail_closed(self):
+        for state in ("Deleted", "Deleting", "Failed", "Archived", "Unavailable"):
+            calls=[]
+            def get(method, token, suffix=""):
+                calls.append(method)
+                return {"name":r.CODESPACE,"repository":{"full_name":r.REPOSITORY},"state":state}
+            with self.assertRaises(r.JobError):
+                r.start_and_wait("mock",sleep=lambda _:None,get=get,attempts=2)
+            self.assertEqual(calls, ["GET"])
 
     def test_no_start_when_available(self):
         calls=[]
