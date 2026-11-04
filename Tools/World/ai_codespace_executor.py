@@ -10,6 +10,7 @@ import json
 import os
 import re
 import socket
+import signal
 from pathlib import Path
 import shutil
 import subprocess
@@ -344,6 +345,56 @@ def prune_caches(home=Path("/home/codespace")):
             "git_worktree_unchanged":True}
 
 
+
+def _install_live_bridge():
+    """Install only new reviewed files; fail closed on any existing content mismatch."""
+    stage=Path("/workspaces/.aaris-world-bridge/ondemand")
+    dest=PROJECT/"Assets/AarisWorld/Editor"
+    names=("AarisLiveEditorBridge.cs","AarisLiveEditorBridge.cs.meta")
+    dest.mkdir(parents=True,exist_ok=True)
+    installed=[]
+    for leaf in names:
+        src=stage/leaf
+        target=dest/leaf
+        if not src.is_file() or src.is_symlink() or src.stat().st_size>100000:
+            raise ValueError("Reviewed Unity bridge source not staged")
+        if target.is_symlink():
+            raise ValueError("Refusing to overwrite symlinked Unity source")
+        expected=hashlib.sha256(src.read_bytes()).hexdigest()
+        if target.exists():
+            if not target.is_file() or hashlib.sha256(target.read_bytes()).hexdigest()!=expected:
+                raise ValueError("Existing locally changed Unity bridge: never overwrite "+leaf)
+        else:
+            tmp=dest/(leaf+".aaris-new")
+            if tmp.exists(): raise ValueError("Stale staging file needs review")
+            tmp.write_bytes(src.read_bytes())
+            os.replace(tmp,target)
+            installed.append(leaf)
+    return installed
+
+
+def _monitor_unity(pid):
+    """Emergency protection for low-capacity Codespaces. Never delete Library/Assets."""
+    note=DESKTOP/"unity-storage-watchdog.log"
+    while True:
+        path=Path("/proc")/str(pid)/"cmdline"
+        try:
+            argv=path.read_bytes().replace(b"\0",b" ").decode("utf-8","replace")
+        except OSError:
+            break
+        if not argv.startswith(str(EDITOR)+" ") or "-projectPath "+str(PROJECT) not in argv:
+            break
+        free=shutil.disk_usage(PROJECT).free
+        if free < 1024**3:
+            with note.open("a") as file:
+                file.write("Low disk below 1 GiB: requesting safe Unity process shutdown; Library retained\n")
+            try:
+                os.kill(pid,signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            break
+        time.sleep(10)
+
 def _unity_pids():
     """Only match this project's real Unity Editor PID, not any unrelated Unity job."""
     scan = run(["ps", "-eo", "pid=,args="], timeout=10)
@@ -409,6 +460,7 @@ def ensure_unity_gui(*, launch=True):
     with lock.open("a+") as lockfile:
         fcntl.flock(lockfile.fileno(),fcntl.LOCK_EX)
         if not _unity_pids():
+            installed=_install_live_bridge()
             env=os.environ.copy()
             env["DISPLAY"]=":12"
             env.setdefault("XDG_RUNTIME_DIR",str(DESKTOP/"runtime"))
@@ -422,6 +474,11 @@ def ensure_unity_gui(*, launch=True):
                 proc=subprocess.Popen(args,cwd=PROJECT,stdin=subprocess.DEVNULL,
                                       stdout=output,stderr=output,env=env,start_new_session=True)
             (DESKTOP/"unity-last-pid.txt").write_text(str(proc.pid)+"\n")
+            watchdog=[sys.executable,str(Path(__file__).resolve()),"--unity-watchdog",str(proc.pid)]
+            with (DESKTOP/"unity-watchdog-launch.log").open("a") as watcher:
+                subprocess.Popen(watchdog, cwd=PROJECT,stdin=subprocess.DEVNULL,
+                                 stdout=watcher,stderr=watcher,start_new_session=True)
+
     # Non-blocking: big first import is checked by later status jobs.
     time.sleep(4)
     info=_unity_gui_status()
@@ -548,4 +605,7 @@ def main():
 
 
 if __name__ == "__main__":
+    if len(sys.argv)==3 and sys.argv[1]=="--unity-watchdog" and sys.argv[2].isdigit():
+        _monitor_unity(int(sys.argv[2]))
+        sys.exit(0)
     sys.exit(main())
