@@ -672,7 +672,6 @@ def execute(job):
                  "novnc_6080": _port_ready(6080), "xterm_running": True}
         return {"exit_code": 0, "stdout": json.dumps(state), "stderr": ""}
     if op == "unity_frame":
-        import re
         if len(args)!=1 or not re.fullmatch(r"[a-z][a-z0-9-]{3,55}",args[0]):
             raise ValueError("frame job ID required")
         name=args[0]+".jpg"
