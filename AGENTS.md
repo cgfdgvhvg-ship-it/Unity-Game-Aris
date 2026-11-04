@@ -1,3 +1,11 @@
+## OverlayFS and RAM safety (verified 2026-11-04)
+
+The exact Codespace /dev/shm capacity is **64 MiB**, not 8-16 GiB; it cannot hold a multi-GiB Unity PackageManager. Read-only probe result: https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41870345402 . The separate /tmp filesystem has ~101.63 GiB free but it is nonpersistent; never move active Unity Editor/PackageManager, Assets, Library, or .meta into it and leave a persistent symlink. Current Unity process 40121 is paused with 0.585 GiB free. Do not resume it at this capacity.
+
+OverlayFS lower layers are immutable: removing files with rm -rf from a running container masks them and need not reclaim base-image bytes. To really slim the image, review a **new devcontainer/Dockerfile base** and rebuild only after an owner-approved backup/recovery plan for all Unity Editor files and dirty workspace changes. Keep the current Codespace's worktree and Library intact. Future agents: call owner-only `layered_storage_probe` with empty args to recheck actual mounts and capacity. Full recovery procedure in `Docs/CODESPACE_OVERLAY_RECOVERY.md`.
+
+
+---
 ### Native Unity low-disk guard (2026-11-04)
 
 The Codespace launch controller now refuses a first Unity import unless at least **8 GiB** is free on the persistent project filesystem, or a restart with a retained partial Library unless at least **4 GiB** is free. A watchdog checks real free space while Unity runs and uses `SIGSTOP` on the verified Unity process/session below 1.5 GiB instead of relying on delayed SIGTERM; this preserves current source files and the partial Library. The Editor status includes `paused_pids`. A paused Editor is **not** a loaded/interactive map.
