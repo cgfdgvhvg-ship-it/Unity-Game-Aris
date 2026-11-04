@@ -385,11 +385,17 @@ def _monitor_unity(pid):
         if not argv.startswith(str(EDITOR)+" ") or "-projectPath "+str(PROJECT) not in argv:
             break
         free=shutil.disk_usage(PROJECT).free
-        if free < 1024**3:
-            with note.open("a") as file:
-                file.write("Low disk below 1 GiB: requesting safe Unity process shutdown; Library retained\n")
+        if free < int(1.5*1024**3):
+            # A real import used up remaining disk faster than SIGTERM could
+            # terminate Unity. Stop its *own* session instead, preserving
+            # Library and all source/core files for later continuation.
             try:
-                os.kill(pid,signal.SIGTERM)
+                if os.getpgid(pid)==pid:
+                    os.killpg(pid,signal.SIGSTOP)
+                else:
+                    os.kill(pid,signal.SIGSTOP)
+                with note.open("a") as file:
+                    file.write("Unity import paused under 1.5 GiB free; Library retained; increase persistent storage before resume\n")
             except ProcessLookupError:
                 pass
             break
@@ -434,12 +440,22 @@ def _unity_log_tail():
 def _unity_gui_status():
     free=shutil.disk_usage(PROJECT).free
     lib=PROJECT/"Library"
+    pids=_unity_pids()
+    paused=[]
+    for pid in pids:
+        try:
+            proc_state=(Path("/proc")/str(pid)/"stat").read_text().rsplit(")",1)[1].split()[0]
+            if proc_state in ("T","t"):
+                paused.append(pid)
+        except (OSError,IndexError):
+            pass
     return {
         "editor_version":"6000.3.26f1",
         "editor_present":EDITOR.is_file() and os.access(EDITOR,os.X_OK),
         "project_version_present":(PROJECT/"ProjectSettings/ProjectVersion.txt").is_file(),
         "map_scene_present":(PROJECT/"Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity").is_file(),
-        "pid":_unity_pids(),
+        "pid":pids,
+        "paused_pids":paused,
         "display_12":Path("/tmp/.X11-unix/X12").exists(),
         "novnc_6080":_port_ready(6080),
         "library_exists":lib.is_dir(),
@@ -452,12 +468,23 @@ def _unity_gui_status():
 def ensure_unity_gui(*, launch=True):
     """Resume saved project using existing Library, without checkout or re-import cleanup."""
     status=_unity_gui_status()
-    if not launch or status["pid"]:
+    if not launch:
+        return {"exit_code":0,"stdout":json.dumps(status,ensure_ascii=False),"stderr":""}
+    if status["pid"]:
+        if status.get("paused_pids"):
+            return {"exit_code":3,"stdout":json.dumps(status,ensure_ascii=False),
+                    "stderr":"Unity is paused for low disk safety; expand persistent storage before resuming"}
         return {"exit_code":0,"stdout":json.dumps(status,ensure_ascii=False),"stderr":""}
     if not status["editor_present"] or not status["project_version_present"] or not status["map_scene_present"]:
         return {"exit_code":3,"stdout":json.dumps(status),"stderr":"Unity Editor or saved project missing"}
-    if shutil.disk_usage(PROJECT).free < 3*1024**3:
-        return {"exit_code":3,"stdout":json.dumps(status),"stderr":"Less than 3 GiB available; refusing unsafe first import"}
+    # Reuse a retained Library rather than deleting it. Initial import needs
+    # more headroom than an already populated Library; do not launch into
+    # guaranteed exhaustion on this account's 32 GiB storage tier.
+    fresh=not status.get("library_exists",False) or status.get("library_bytes",0)<1024**2
+    required_gib=8 if fresh else 4
+    if shutil.disk_usage(PROJECT).free < required_gib*1024**3:
+        return {"exit_code":3,"stdout":json.dumps(status),
+                "stderr":f"Less than {required_gib} GiB persistent free disk; refusing unsafe Unity import/recovery"}
     error=ensure_desktop()
     if error:
         return {"exit_code":3,"stdout":json.dumps(status),"stderr":error}
