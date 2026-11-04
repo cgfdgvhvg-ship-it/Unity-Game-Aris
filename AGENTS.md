@@ -52,6 +52,16 @@ connector without opening Termux, provided the owner has configured the
   never launch a full Unity project import or Android module install without
   much more verified free space and separate approval.
 
+**Desktop recovery after Codespace restart:** `desktop_xterm` automatically checks
+and starts Xvfb `:12`, Openbox, authenticated x11vnc on loopback port 5900,
+and noVNC/websockify on port 6080 before opening xterm. It **requires** the
+pre-existing private `/home/codespace/.aaris-desktop/vnc.pass`; never generate
+or reveal VNC credentials through Actions logs. Keep forwarded port 6080
+private. `diagnose` only observes and does not start the desktop. A running
+noVNC desktop does **not** prove Unity GUI or map import is complete;
+check disk headroom first (last observed free space ~3.4 GiB).
+
+
 ---
 
 # Working on the Aaris Unity world
