@@ -309,6 +309,15 @@ class OnDemandTests(unittest.TestCase):
         with self.assertRaises(r.JobError):
             r.validate_job({"id":"unity-frame-001","operation":"unity_frame","args":["../../etc/passwd"]})
 
+    def test_unity_probe_only_fixed_owner_approved_diagnostics(self):
+        self.assertEqual(r.validate_job({"id":"unity-probe-001","operation":"unity_probe","args":[]})["operation"],"unity_probe")
+        with self.assertRaises(r.JobError):
+            r.validate_job({"id":"unity-probe-002","operation":"unity_probe","args":["-executeMethod","arbitrary"]})
+        with patch.object(e,"unity_probe",return_value={"editor":{"pid":[101]},"probes":{}}):
+            result=e.execute({"id":"unity-probe-001","operation":"unity_probe","args":[]})
+        self.assertEqual(result["exit_code"],0)
+        self.assertEqual(json.loads(result["stdout"])["editor"]["pid"],[101])
+
     def test_unity_gui_operation_is_owner_only_and_argument_free(self):
         self.assertEqual(r.validate_job({"id":"unity-gui-01","operation":"unity_gui","args":[]})["operation"],"unity_gui")
         with self.assertRaises(r.JobError):
