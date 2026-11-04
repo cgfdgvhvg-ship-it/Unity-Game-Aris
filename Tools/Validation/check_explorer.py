@@ -51,7 +51,19 @@ def check(require_native=False):
     names={i:d['m_Name'] for c,i,n,d in objects if n=='GameObject'}
     lods=[d for c,i,n,d in objects if n=='LODGroup' and names[d['m_GameObject']['fileID']] in building_names]
     assert len(lods)==59 and all(len(d['m_LODs'])==3 for d in lods)
-    assert all([l['screenRelativeHeight'] for l in d['m_LODs']]==[.22,.07,.0025] for d in lods)
+    # The 47 reviewed residences now use the source-prefab 0.28 / 0.095
+    # LOD profile; civic/industrial/other houses retain their old transitions.
+    # Guard the entire scene against unrelated edits via exact protected SHA256.
+    sys.path.insert(0, str(ROOT/'Tools/World'))
+    from verify_tree_house_upgrade import SCENE_MOBILE_LOD_PATH, preserved_or_reviewed_lod_only
+    contract=json.loads((ROOT/'Tools/World/tree-house-20261103.postconditions.json').read_text())
+    assert preserved_or_reviewed_lod_only(ROOT, SCENE_MOBILE_LOD_PATH,
+        contract['preserved_files'][SCENE_MOBILE_LOD_PATH]), 'Unexpected scene change outside reviewed LOD scalar values'
+    revised={d['m_GameObject']['fileID'] for c,i,n,d in objects if n=='LODGroup'
+        and [l['screenRelativeHeight'] for l in d['m_LODs']]==[.28,.095,.0025]}
+    assert len(revised)==79, 'Expected exactly 47 homes and 32 rock covers with revised LOD'
+    assert all([l['screenRelativeHeight'] for l in d['m_LODs']] in ([.28,.095,.0025], [.22,.07,.0025])
+        for d in lods), 'Unreviewed building LOD settings'
     sky=next(d for c,i,n,d in documents(ROOT/'Assets/TerrainDemoScene_URP/Prefabs/Skybox/Materials/Sky.mat') if n=='Material')
     assert sky['m_Shader']['fileID']==106 and sky['m_ShaderKeywords']=='_SUNDISK_HIGH_QUALITY'
     sun=next(d for c,i,n,d in objects if n=='Light');assert sun['m_Enabled'] and 1<=sun['m_Intensity']<=1.5

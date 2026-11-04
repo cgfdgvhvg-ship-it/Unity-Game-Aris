@@ -304,8 +304,8 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5684554348729839503}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 2.75, z: 0}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 2.145, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -452,7 +452,7 @@ LODGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8316334779356437779}
   serializedVersion: 2
-  m_LocalReferencePoint: {x: 0.101793766, y: 9.158331, z: -0.2564478}
+  m_LocalReferencePoint: {x: 0.13334983346, y: 7.143498180000001, z: -0.33594661800000003}
   m_Size: 19.609688
   m_FadeMode: 1
   m_AnimateCrossFading: 1
@@ -462,11 +462,11 @@ LODGroup:
     fadeTransitionWidth: 0
     renderers:
     - renderer: {fileID: 785464115290800314}
-  - screenRelativeHeight: 0.25
+  - screenRelativeHeight: 0.3
     fadeTransitionWidth: 0
     renderers:
     - renderer: {fileID: 4642510273986158537}
-  - screenRelativeHeight: 0.056679536
+  - screenRelativeHeight: 0.095
     fadeTransitionWidth: 0
     renderers:
     - renderer: {fileID: 5274867477197264637}
@@ -486,5 +486,5 @@ BoxCollider:
   m_IsTrigger: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Size: {x: 1.2310028, y: 4.1781297, z: 1.5382805}
-  m_Center: {x: 0.115501404, y: 1.5890648, z: -0.053380966}
+  m_Size: {x: 1.8465042, y: 3.2589411660000005, z: 2.30742075}
+  m_Center: {x: 0.17325210600000002, y: 1.239470544, z: -0.080071449}

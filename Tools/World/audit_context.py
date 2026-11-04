@@ -144,6 +144,9 @@ def run(root):
                                     "part_roles": dict(Counter(row["semantic"]["primary_role"] for row in house_description["parts"]["items"])),
                                     "parts": house_description["parts"]["total"],
                                     "material_slots": house_description["appearance"]["material_slot_count"],
+                                    "empty_saved_material_slots": house_description["appearance"]["empty_saved_material_slots"],
+                                    "door_material_geometry": [slot.get("submesh_geometry") for slot in house_description["appearance"]["slots"]
+                                                               if slot["surface_semantic"]["part_role"]["role"]=="door"],
                                     "surface_part_roles": house_description["appearance"]["surface_part_role_counts"],
                                     "material_families": house_description["appearance"]["material_family_counts"],
                                     "dependency_nodes": len(house_description["dependencies"]["nodes"])},
@@ -167,7 +170,12 @@ def run(root):
     assert report["core_bytes_unchanged"], "Audit altered original project files"
     assert report["native_tint_fields_present"], "Native high-level records omitted saved tint fields"
     assert report["native_tints_decoded"], "Native high-level records did not decode saved packed tint values"
-    assert house_description["appearance"]["surface_part_role_counts"].get("door", 0) > 0
+    labelled_doors = [slot for slot in house_description["appearance"]["slots"]
+                      if slot["surface_semantic"]["part_role"]["role"]=="door"]
+    assert labelled_doors, "Expected the source house's labelled door material bindings"
+    assert house_description["appearance"]["surface_part_role_counts"].get("door", 0) == sum(
+        slot.get("submesh_geometry",{}).get("status")!="empty" for slot in labelled_doors
+    ), "An empty material slot was mistaken for existing door geometry"
     assert house_description["coverage"]["parts_complete"] or house_description["parts"]["next_offset"] is not None
     np.testing.assert_allclose(moved_facts["target"]["world_position_m"], move_position, atol=1e-9)
     assert any(row.get("_BaseColor") == dict(zip("rgba", requested)) for row in after_color)

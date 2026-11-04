@@ -40,6 +40,7 @@ def _colors(row):
         out.append({
             "node_id": slot.get("node_id"), "node_name": slot.get("node_name"),
             "slot_index": slot.get("slot_index"), "material": mat.get("name"),
+            "submesh_geometry": slot.get("submesh_geometry"),
             "material_path": mat.get("path"), "serialized_rgba": colors[:24],
             "texture_references": textures[:24],
             "color_evidence": "saved material properties; not final visible pixels",

@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-from unity_data import SCENE, World, WorldError, digest, documents, safe_path, references
+from unity_data import SCENE, World, WorldError, digest, documents, safe_path, references, matrix
 
 
 class Dumper(yaml.SafeDumper):
@@ -194,6 +194,21 @@ def _operation_state(world, operation, resolved=None):
                 "value": matches[0] if len(matches) == 1 else {"status": "not_exactly_one", "matches": len(matches)},
                 "shared_usages": usage_report["text_serialized_usages"],
                 "total_reference_occurrences": usage_report["total_reference_occurrences"]}}
+        if kind == "remove_mesh_triangles":
+            from mesh_faces import summary
+            doc = next(d for d in world.asset_docs(operation["path"])["docs"]
+                       if d["kind"] == "Mesh" and d["file_id"] == operation["file_id"])
+            return {"operation_id":operation_id,"status":"available","state":summary(doc["data"])}
+        if kind == "set_prefab_lod_thresholds":
+            doc = next(d for d in world.asset_docs(operation["path"])["docs"]
+                       if d["kind"] == "LODGroup" and d["file_id"] == operation["file_id"])
+            from observations import usages
+            return {"operation_id": operation_id, "status": "available", "state": {
+                "path": operation["path"], "file_id": operation["file_id"],
+                "screen_relative_heights": [lod["screenRelativeHeight"] for lod in doc["data"]["m_LODs"]],
+                "renderer_sets": [lod["renderers"] for lod in doc["data"]["m_LODs"]],
+                "shared_usages": usages(world, {"path": operation["path"]})["text_serialized_usages"],
+                "coverage": "Saved prefab scalars and text references; native terrain users require materialized TerrainData; no render/device evidence."}}
         if kind == "place_static_prefab" and resolved:
             go = world.resolve(resolved["id"])
             return {"operation_id": operation_id, "status": "available", "state": world.object(go, True)}
@@ -239,6 +254,7 @@ def _observation_metrics(row):
         slots = (item.get("appearance") or {}).get("material_slots", [])
         appearance[identifier] = [
             {"node_id": slot.get("node_id"), "slot_index": slot.get("slot_index"),
+             "submesh_geometry": slot.get("submesh_geometry"),
              "material_path": (slot.get("material") or {}).get("path"),
              "color_properties": (slot.get("material") or {}).get("color_properties"),
              "texture_references": [
@@ -318,6 +334,52 @@ def _observation_deltas(before_rows, after_rows):
     return rows
 
 
+def _resolve_final_positions(world, docs, requested):
+    """Resolve explicit world positions through the final parent graph, in any op order."""
+    resolved = {}
+    def visit(transform, trail):
+        if transform in resolved:
+            return resolved[transform]
+        if transform in trail or transform not in world.transforms:
+            raise WorldError("Unresolved or cyclic planned transform parent")
+        data = docs[transform]["data"]
+        parent = data.get("m_Father", {}).get("fileID", 0)
+        parent_matrix = visit(parent, trail | {transform}) if parent else np.eye(4)
+        if transform in requested:
+            try:
+                local = np.linalg.solve(parent_matrix, np.r_[requested[transform], 1.0])
+            except np.linalg.LinAlgError as error:
+                raise WorldError("Final parent matrix cannot resolve world position") from error
+            if not np.isfinite(local).all() or abs(local[3]) < 1e-9:
+                raise WorldError("Final parent matrix produced an invalid local position")
+            data["m_LocalPosition"] = dict(zip("xyz", map(float, local[:3] / local[3])))
+        resolved[transform] = parent_matrix @ matrix(data)
+        return resolved[transform]
+    for transform in requested:
+        visit(transform, set())
+
+
+def _verify_transform_postconditions(world, patch):
+    """A finite, parseable file is insufficient: verify the caller's actual intent."""
+    for operation in patch["operations"]:
+        if operation["op"] != "set_transform":
+            continue
+        go = world.resolve(operation["target"])
+        transform = world.go_transform[go]
+        data = world.transforms[transform]
+        checks = []
+        if "world_position" in operation:
+            checks.append(("world_position", world.world_matrix(transform)[:3, 3], operation["world_position"]))
+        for field, prop, axes in (("local_position", "m_LocalPosition", "xyz"),
+                                  ("local_scale", "m_LocalScale", "xyz"),
+                                  ("local_rotation_xyzw", "m_LocalRotation", "xyzw")):
+            if field in operation:
+                checks.append((field, [data[prop][axis] for axis in axes], operation[field]))
+        for field, actual, expected in checks:
+            if not np.allclose(actual, expected, rtol=0, atol=1e-5):
+                raise WorldError(f"Postcondition failed: {operation['target']} {field}; expected {expected}, got {list(actual)}")
+
+
 def plan(root, patch):
     validate_patch(patch)
     root = Path(root).resolve()
@@ -328,6 +390,7 @@ def plan(root, patch):
             raise WorldError(f"Stale patch: {path}. Re-inspect the current core file before editing.")
     changes, edits, impacts, engine_ops = {}, {}, [], []
     additions, resolved_objects = [], []
+    world_positions, transform_fields = {}, set()
     reserved_ids = set(w.docs)
     version = patch["schema_version"]
 
@@ -363,18 +426,19 @@ def plan(root, patch):
             doc = docs[transform]
             if doc["stripped"] or doc["data"].get("m_PrefabInstance", {}).get("fileID"):
                 raise WorldError("Prefab instances need Unity edits; inline saved objects only")
+            for field in ("world_position", "local_position", "local_rotation_xyzw", "local_scale"):
+                if field not in op:
+                    continue
+                key = (transform, "position" if field.endswith("position") else field)
+                if key in transform_fields:
+                    raise WorldError("Conflicting transform field writes; use one final value per transaction")
+                transform_fields.add(key)
             fields = {"local_position": ("m_LocalPosition", 3, "xyz"),
                       "local_rotation_xyzw": ("m_LocalRotation", 4, "xyzw"),
                       "local_scale": ("m_LocalScale", 3, "xyz")}
             count = 0
             if "world_position" in op:
-                world_position = np.asarray(vector(op["world_position"], 3, "world_position") + [1.0])
-                parent = doc["data"].get("m_Father", {}).get("fileID", 0)
-                local = np.linalg.inv(w.world_matrix(parent)) @ world_position if parent else world_position
-                if not np.isfinite(local).all() or abs(local[3]) < 1e-9:
-                    raise WorldError("Parent matrix cannot resolve the requested world position")
-                local = local[:3] / local[3]
-                doc["data"]["m_LocalPosition"] = dict(zip("xyz", map(float, local)))
+                world_positions[transform] = vector(op["world_position"], 3, "world_position")
                 count += 1
             for key, (prop, size, axes) in fields.items():
                 if key in op:
@@ -457,6 +521,52 @@ def plan(root, patch):
             matching[0][op["property"]] = float(value)
             edits.setdefault(path, set()).add(op["file_id"])
             impacts.append({"core_file": path, "review": "Shared material: affects every renderer using this GUID."})
+        elif kind == "set_prefab_lod_thresholds":
+            if version != 2 or op_fields(op) != {"op", "path", "file_id", "screen_relative_heights"}:
+                raise WorldError("set_prefab_lod_thresholds requires schema v2, path, file_id and screen_relative_heights")
+            path = op["path"]
+            if not isinstance(path, str) or not path.startswith("Assets/") or not path.endswith(".prefab"):
+                raise WorldError("LOD edits require an Assets/*.prefab saved YAML source")
+            if type(op["file_id"]) is not int:
+                raise WorldError("LOD file_id must be an integer")
+            text, docs = source(path)
+            if safe_path(root, path).read_bytes() != text.encode("utf-8"):
+                raise WorldError("Scalar-only LOD edits require UTF-8 LF without BOM; refusing unrelated byte normalization")
+            doc = docs.get(op["file_id"])
+            if (not doc or doc["kind"] != "LODGroup" or doc["stripped"] or
+                    doc["data"].get("m_PrefabInstance", {}).get("fileID")):
+                raise WorldError("LOD writes require an explicit saved LODGroup")
+            if doc["file_id"] in edits.get(path, set()):
+                raise WorldError("Use a single LOD operation per saved group")
+            from lod_profiles import rewrite_thresholds
+            # Validate and retain a scalar-only body edit. Re-serializing a whole
+            # prefab is unnecessary and could change unrelated authored fields.
+            body = changes[path][0][doc["body_start"]:doc["end"]]
+            doc["lod_threshold_body"] = rewrite_thresholds(body, op["screen_relative_heights"])
+            edits.setdefault(path, set()).add(doc["file_id"])
+            from observations import usages
+            impacts.append({"operation": kind, "core_file": path,
+                            "shared_usages": usages(w, {"path": path})["text_serialized_usages"],
+                            "review": "Shared prefab LOD transitions only; final culling threshold, renderers, geometry, colliders and identities preserved. Inspect native users and render transitions in Unity."})
+        elif kind == "remove_mesh_triangles":
+            if version != 2 or op_fields(op) != {"op", "path", "file_id", "selections"}:
+                raise WorldError("remove_mesh_triangles requires schema v2, path, file_id and selections")
+            path = op["path"]
+            if not isinstance(path,str) or not path.startswith("Assets/") or not path.endswith(".asset"):
+                raise WorldError("Triangle edits require an Assets/*.asset saved YAML mesh")
+            _, docs = source(path)
+            doc = docs.get(op["file_id"])
+            if not doc or doc["kind"] != "Mesh":
+                raise WorldError("Saved Mesh fileID is unresolved")
+            if doc["file_id"] in edits.get(path,set()):
+                raise WorldError("Use a single triangle selection operation per mesh")
+            from mesh_faces import remove_triangles
+            doc["data"], removed = remove_triangles(doc["data"],op["selections"])
+            edits.setdefault(path,set()).add(doc["file_id"])
+            from observations import usages
+            impacts.append({"operation":kind,"core_file":path,"removed_triangles":removed,
+                            "shared_usages":usages(w,{"path":path})["text_serialized_usages"],
+                            "review":"Shared source mesh; keep material slots and non-convex collider references. Unity cooking/physics remain separate."})
         elif kind == "place_static_prefab":
             if version != 2:
                 raise WorldError("place_static_prefab requires schema v2")
@@ -577,13 +687,17 @@ def plan(root, patch):
             raise WorldError(f"Unsupported operation {kind!r}; no generic byte or arbitrary serialized-field writes")
     if additions and engine_ops:
         raise WorldError("Use a separate Python transaction for inline static placement; do not mix engine operations")
+    if world_positions:
+        _resolve_final_positions(w, changes[SCENE][1], world_positions)
     outputs, diffs = {}, {}
     for path, ids in edits.items():
         text, docs = changes[path]
         out = text
         for i in sorted(ids, key=lambda i: docs[i]["body_start"], reverse=True):
             d = docs[i]
-            body = yaml.dump({d["kind"]: d["data"]}, Dumper=Dumper, sort_keys=False, allow_unicode=True, width=100000)
+            body = d.get("lod_threshold_body")
+            if body is None:
+                body = yaml.dump({d["kind"]: d["data"]}, Dumper=Dumper, sort_keys=False, allow_unicode=True, width=100000)
             out = out[:d["body_start"]] + body + out[d["end"]:]
         if path == SCENE:
             for d in additions:
@@ -641,6 +755,10 @@ def apply_yaml(root, patch, write=False):
             world = World(root)
             for t in world.transforms:
                 world.world_matrix(t)
+            _verify_transform_postconditions(world, patch)
+            for path, text in outputs.items():
+                if digest(root/path) != hashlib.sha256(text.encode()).hexdigest():
+                    raise WorldError("Postcondition failed: saved bytes differ from the inspected plan: " + path)
             observed = _collect_observations(world, report["observe_after"])
             resolved_by_operation = {row["operation_id"]: row for row in report["resolved_objects"]}
             operation_after = [_operation_state(world, operation, resolved_by_operation.get(operation.get("id")))
