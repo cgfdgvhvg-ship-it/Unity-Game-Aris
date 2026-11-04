@@ -199,7 +199,10 @@ Before any move:
    `left=-X`, `right=+X`, `forward=+Z`, `backward=-Z`,
    `up=+Y`, `down=-Y`; units are metres. **Target-local**
    direction uses the object's rotation for left/right/forward/backward
-   (projected onto ground). Neither is “left on the phone's screen”:
+   (projected onto ground). **Reference-local** uses an explicit stable
+   `--reference scene:<guid>:<fileID>` for a camera or another saved
+   reference object's rotation. Neither world nor target-local is automatically
+   “left on the phone's screen”:
    a camera-relative request requires known camera orientation and an
    explicit conversion; never guess.
 3. Plan and inspect **both origin and destination** evidence; verify
@@ -244,7 +247,19 @@ AARIS_JOB
 {"id":"local-plan-example-101","argv":["python3","/workspaces/.aaris-world-bridge/ai_world_motion.py","plan","--target","scene:<guid>:<fileID>","--direction","left","--metres","50","--frame","target-local","--limit","3"]}
 ```
 
-**Example D — exact explicit Unity world delta, no interpretation:**
+**Example D — move a tree 50m LEFT from a selected camera's
+orientation (not an inferred screenshot heading):**
+```text
+AARIS_JOB
+{"id":"camera-plan-example-101","argv":["python3","/workspaces/.aaris-world-bridge/ai_world_motion.py","plan","--target","terrain:<actual-tree-guid>:<tree-index>","--direction","left","--metres","50","--frame","reference-local","--reference","scene:<camera-scene-guid>:<camera-file-id>","--limit","3"]}
+```
+
+Resolve the camera/reference stable scene object first and verify its rotation.
+The reference frame's left/right/forward/back directions are projected onto
+the horizontal XZ plane. Looking straight up/down can make a horizontal
+forward projection undefined; the planner rejects that ambiguity.
+
+**Example E — exact explicit Unity world delta, no interpretation:**
 ```text
 AARIS_JOB
 {"id":"vector-plan-example-101","argv":["python3","/workspaces/.aaris-world-bridge/ai_world_motion.py","plan","--target","scene:<guid>:<fileID>","--dx","-50","--dy","0","--dz","20","--limit","3"]}
