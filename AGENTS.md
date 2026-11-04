@@ -16,6 +16,19 @@ build. Existing importer-time helpers are not proof that changes are baked.
 When Unity has enough disk, inspect and test saved core mesh/LOD data and
 project import behavior independently, then save permanent asset changes and
 verify a clean re-import without relying on temporary build-time transforms.
+
+**Full LFS verification without an SSH timeout:** submit an owner-authorized
+`lfs_verify_chunk` job with exactly one numeric `args` cursor, beginning
+with `["0"]`. Read the Actions JSON result: `cursor`, `next_cursor`,
+`total`, `head_sha`, and per-chunk `categories`. Repeat from
+`next_cursor` until `all_done=true`, requiring the same `head_sha`
+throughout. Aggregate hash matches/mismatches across all chunks; do not
+claim that deferred files from `storage_audit` were verified. The chunked
+checker is read-only and excludes all locally modified tracked files.
+If the index changes or a chunk reports corruption, stop and diagnose before
+any LFS restore. Skip downloading files already fully hydrated. Never restore
+or overwrite the intentional baked core mesh/LOD edits.
+
 **Storage audit and cleanup:** The `storage_audit` AI terminal operation compares
 LFS file paths and expected Git SHA-256 with a **bounded 128 MiB clean-file
 hash sample**, and reports dirty files without treating them as invalid.
