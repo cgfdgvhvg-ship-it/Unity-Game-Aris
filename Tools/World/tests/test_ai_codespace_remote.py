@@ -74,6 +74,35 @@ class OnDemandTests(unittest.TestCase):
         self.assertIn("free_disk_gib",json.loads(e.execute(self.good())["stdout"])) if e.PROJECT.exists() else None
         with self.assertRaises(ValueError):e.execute({"id":"abc-1234","operation":"shell","args":[]})
 
+    def test_remote_copy_uses_fixed_path_expansion(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            script=root/"Tools/World/ai_codespace_executor.py"
+            script.parent.mkdir(parents=True)
+            script.write_text("# trusted executor fixture")
+            job=self.good()
+            path=root/r.QUEUE/(job["id"]+".json")
+            path.parent.mkdir(parents=True)
+            path.write_text(json.dumps(job))
+            calls=[]
+            def runner(argv, **kwargs):
+                calls.append(argv)
+                if "python3 /workspaces/.aaris-world-bridge/ondemand/" in " ".join(argv):
+                    return SimpleNamespace(stdout=json.dumps({
+                        "id":job["id"],"operation":job["operation"],
+                        "ok":True,"exit_code":0,"stdout":"{}", "stderr":""
+                    })+"\\n",returncode=0)
+                return SimpleNamespace(stdout="",returncode=0)
+            result=root/"result.json"
+            r.execute_remote(job,"placeholder-token",root,result,runner=runner)
+            self.assertTrue(result.is_file())
+            cp=[a for a in calls if a[:3]==["gh","codespace","cp"]]
+            self.assertEqual(len(cp),2)
+            for argv in cp:
+                self.assertIn("-e",argv)
+                self.assertTrue(argv[-1].startswith("remote:/workspaces/.aaris-world-bridge/ondemand/"))
+
     def test_missing_secret_reports_setup_required(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d); f=root/r.QUEUE/(self.good()["id"]+".json");f.parent.mkdir(parents=True);f.write_text(json.dumps(self.good()))
