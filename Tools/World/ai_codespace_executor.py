@@ -316,6 +316,75 @@ def storage_audit():
             "disk_directory_bytes":sizes,
             "lfs_inventory":inventory}
 
+
+def system_storage_audit():
+    """Bounded, read-only storage accounting. Never delete system or project files.
+
+    Du of a read-only base-image path does NOT establish recoverable bytes
+    because a Codespace can use overlay/layered filesystems.
+    """
+    import time
+    sources = (
+        ("lfs_objects", PROJECT/".git/lfs/objects"),
+        ("git_directory", PROJECT/".git"),
+        ("assets", PROJECT/"Assets"),
+        ("unity_library", PROJECT/"Library"),
+        ("project_temp", PROJECT/"Temp"),
+        ("codespace_cache", Path("/home/codespace/.cache")),
+        ("codespace_local", Path("/home/codespace/.local")),
+        ("npm_cache", Path("/home/codespace/.npm")),
+        ("opt_conda", Path("/opt/conda")),
+        ("opt_ghc", Path("/opt/ghc")),
+        ("opt_total", Path("/opt")),
+        ("usr_local_nvm", Path("/usr/local/share/nvm")),
+        ("usr_local_android", Path("/usr/local/lib/android")),
+        ("usr_local_rvm", Path("/usr/local/rvm")),
+        ("usr_local_total", Path("/usr/local")),
+        ("usr_lib_jvm", Path("/usr/lib/jvm")),
+        ("apt_archives", Path("/var/cache/apt/archives")),
+        ("apt_lists", Path("/var/lib/apt/lists")),
+        ("unity_editor", Path("/home/codespace/Unity/Hub/Editor/6000.3.26f1")),
+        ("world_bridge", Path("/workspaces/.aaris-world-bridge")),
+    )
+    deadline=time.monotonic()+90
+    sizes={}
+    for label,path in sources:
+        if time.monotonic()>deadline:
+            sizes[label]={"status":"time_budget_exceeded"}
+            continue
+        if path.is_symlink():
+            sizes[label]={"status":"symlink_refused"}
+            continue
+        if not path.exists():
+            sizes[label]={"status":"absent","bytes":0}
+            continue
+        remaining=max(1,min(8,int(deadline-time.monotonic())))
+        try:
+            process=subprocess.run(["du","-sx","-B1","--",str(path)],
+                                   stdout=subprocess.PIPE,stderr=subprocess.PIPE,
+                                   text=True,timeout=remaining,check=False)
+            if process.returncode:
+                sizes[label]={"status":"unknown","reason":"du_error",
+                              "detail":process.stderr[-120:]}
+            else:
+                sizes[label]={"status":"ok","bytes":int(process.stdout.split()[0])}
+        except (subprocess.TimeoutExpired,OSError,ValueError,IndexError):
+            sizes[label]={"status":"unknown","reason":"timeout_or_parse"}
+    free=shutil.disk_usage(PROJECT)
+    try:
+        mount_table=Path("/proc/self/mountinfo").read_text()
+        overlay=any(" - overlay " in row and row.split()[4]=="/"
+                    for row in mount_table.splitlines())
+    except OSError:
+        overlay=None
+    ps=run(["ps","-o","pid,stat,comm","-C","Unity"],timeout=5)
+    return {"free_disk_gib":round(free.free/2**30,3),
+            "total_disk_gib":round(free.total/2**30,3),
+            "unity_process":ps["stdout"][-250:],
+            "root_overlay":overlay,"sizes":sizes,
+            "note":"Sizes overlap. In layered/overlay filesystems, du size is NOT reclaimable space. No files changed; measure df before and after any separately reviewed cleanup."}
+
+
 def prune_caches(home=Path("/home/codespace")):
     """Delete only two named re-downloadable caches, never project or Unity."""
     paths=[home/".cache"/"copilot"/"pkg", home/".npm"/"_cacache"]
@@ -894,6 +963,9 @@ def execute(job):
         if len(args) != 1 or not args[0].isdigit():
             raise ValueError("expected one numeric LFS cursor")
         return {"exit_code":0,"stdout":json.dumps(lfs_verify_chunk(int(args[0])),ensure_ascii=False),"stderr":""}
+    if op == "system_storage_audit":
+        if args: raise ValueError("system storage audit takes no arguments")
+        return {"exit_code":0,"stdout":json.dumps(system_storage_audit(),ensure_ascii=False),"stderr":""}
     if op == "storage_audit":
         if args: raise ValueError("unexpected args")
         return {"exit_code":0,"stdout":json.dumps(storage_audit(),ensure_ascii=False),"stderr":""}
