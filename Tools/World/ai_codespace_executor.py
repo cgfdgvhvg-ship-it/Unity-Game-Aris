@@ -524,6 +524,43 @@ def ensure_unity_gui(*, launch=True):
 
 
 
+def resume_paused_unity():
+    """Resume only this project's paused Unity process with adequate persistent disk."""
+    state=_unity_gui_status()
+    paused=state.get("paused_pids",[])
+    if not paused:
+        return {"exit_code":3,"stdout":json.dumps(state),"stderr":"No paused Unity Editor process; use normal guarded unity_gui after storage recovery"}
+    free=shutil.disk_usage(PROJECT).free
+    if free < 4*1024**3:
+        return {"exit_code":3,"stdout":json.dumps(state),
+                "stderr":"At least 4 GiB persistent free disk required to resume paused Unity"}
+    for pid in paused:
+        if pid not in _unity_pids():
+            return {"exit_code":3,"stdout":json.dumps(state),"stderr":"Unity process identity changed"}
+    try:
+        for pid in paused:
+            group=os.getpgid(pid)
+            if group==pid:
+                os.killpg(group,signal.SIGCONT)
+            else:
+                os.kill(pid,signal.SIGCONT)
+        # A previous low-disk watchdog exits after SIGSTOP; start a fresh one
+        # after continuing, so future uncontrolled Library growth is guarded.
+        DESKTOP.mkdir(parents=True,exist_ok=True)
+        for pid in paused:
+            watchdog=[sys.executable,str(Path(__file__).resolve()),"--unity-watchdog",str(pid)]
+            with (DESKTOP/"unity-watchdog-launch.log").open("a") as output:
+                subprocess.Popen(watchdog,cwd=PROJECT,stdin=subprocess.DEVNULL,
+                                 stdout=output,stderr=output,start_new_session=True)
+    except OSError as exc:
+        return {"exit_code":3,"stdout":json.dumps(state),"stderr":f"Unity resume failed: {exc}"}
+    return {"exit_code":0,
+            "stdout":json.dumps({"resumed_pids":paused,
+                                 "free_disk_gib":round(free/2**30,3),
+                                 "library_retained":(PROJECT/"Library").is_dir()}),
+            "stderr":""}
+
+
 def validate_live_payload(value):
     """Minimal reviewed Unity commands only. No shell, paths or arbitrary code."""
     import math
@@ -853,6 +890,9 @@ def execute(job):
     if op == "unity_diagnostics":
         if args: raise ValueError("unexpected args")
         return {"exit_code":0,"stdout":json.dumps(unity_diagnostics(),ensure_ascii=False),"stderr":""}
+    if op == "unity_resume_paused":
+        if args: raise ValueError("Unity resume operation accepts no args")
+        return resume_paused_unity()
     if op == "unity_gui":
         if args: raise ValueError("unity_gui takes no arguments")
         return ensure_unity_gui()
