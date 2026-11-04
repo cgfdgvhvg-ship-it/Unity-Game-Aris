@@ -127,7 +127,7 @@ def execute(job):
             logfile = DESKTOP / name
             if logfile.is_file() and not logfile.is_symlink():
                 excerpt = logfile.read_text(encoding="utf-8", errors="replace")[-1800:]
-                excerpt = re.sub(r"(?i)\\b(?:ghp_|ghu_|gho_|ghs_|ghr_|github_pat_|sk-)[A-Za-z0-9_-]{8,}",
+                excerpt = re.sub(r"(?i)\b(?:ghp_|ghu_|gho_|ghs_|ghr_|github_pat_|sk-)[A-Za-z0-9_-]{8,}",
                                  "[REDACTED]", excerpt)
                 logs[name] = excerpt
             else:
