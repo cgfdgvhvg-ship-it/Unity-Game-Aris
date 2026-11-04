@@ -82,7 +82,7 @@ class WorldSensorContractTests(unittest.TestCase):
                 "counts_by_category_in_full_radius"]["tree"], 42)
             self.assertEqual(result["result"]["inspection_coverage"][
                 "scene_next_offset"], 8)
-            self.assertEqual(command.call_args.args[0][-5:], [
+            self.assertEqual(command.call_args.args[0][-6:], [
                 "--x", "350.0", "--z", "167.3", "--limit", "8"])
 
 
