@@ -76,6 +76,11 @@ def limited(node, max_list, max_dict, depth=0):
     if depth >= 12:
         return "[nested data omitted]"
     if isinstance(node, list):
+        # Three-dimensional vectors, RGBA colors, quaternions and world-axis
+        # scales must retain ALL numeric components. Truncating [x,y,z] to
+        # [x,y,omitted] makes spatial evidence misleading and unusable.
+        if len(node) <= 4 and all(isinstance(v, (int, float, bool)) for v in node):
+            return node[:]
         items = [limited(x, max_list, max_dict, depth + 1) for x in node[:max_list]]
         if len(node) > max_list:
             items.append({"_omitted_items": len(node) - max_list,
@@ -231,15 +236,23 @@ def main():
         return 2
     result = doc.get("result", doc)
     if args.command == "site" and isinstance(result, dict):
-        summary = {"site": result.get("site"),
+        site = dict(result.get("site") or {})
+        # The site itself may carry a 500+ file hash inventory. Send the
+        # stable fingerprint digest instead, retaining enough room for
+        # neighbouring buildings, trees, distances and material evidence.
+        site.pop("source_fingerprint", None)
+        summary = {"site": site,
                    "inspection_coverage": (result.get("inspection") or {}).get("coverage"),
-                   "terrain_relation": (result.get("inspection") or {}).get("terrain_relation"),
                    "unresolved_prefabs": (result.get("inspection") or {}).get(
                        "unresolved_serialized_prefab_instances")}
     else:
         summary = result
+    fingerprint = doc.get("source_fingerprint")
+    if isinstance(fingerprint, dict):
+        fingerprint = {"sha256": fingerprint.get("sha256"),
+                       "files_count": len(fingerprint.get("files") or [])}
     print(report({"status": "ok", "command": args.command, "query": supplied,
-                  "source_fingerprint": doc.get("source_fingerprint"),
+                  "source_fingerprint": fingerprint,
                   "result": summary,
                   "caution": "Read-only saved-file evidence; not Unity runtime/capture"}))
     return 0
