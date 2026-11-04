@@ -1,0 +1,1 @@
+{"id":"unity-home-cache-20261104-b10","operation":"terminal_readonly","args":["du","-sh","/home/codespace/.cache","/home/codespace/.npm"]}
