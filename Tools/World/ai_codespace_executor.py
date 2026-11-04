@@ -209,9 +209,8 @@ def storage_audit():
             "disk_directory_bytes":sizes,
             "lfs_inventory":inventory}
 
-def prune_caches():
+def prune_caches(home=Path("/home/codespace")):
     """Delete only two named re-downloadable caches, never project or Unity."""
-    home=Path("/home/codespace")
     paths=[home/".cache"/"copilot"/"pkg", home/".npm"/"_cacache"]
     initial=shutil.disk_usage(PROJECT).free
     git_before=run(["git","status","--porcelain","--untracked-files=all"],timeout=20)
