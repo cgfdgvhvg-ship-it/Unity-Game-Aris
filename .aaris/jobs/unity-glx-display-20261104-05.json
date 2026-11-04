@@ -1,0 +1,1 @@
+{"id":"unity-glx-display-20261104-05","operation":"terminal_readonly","args":["glxinfo","-display",":12","-B"]}
