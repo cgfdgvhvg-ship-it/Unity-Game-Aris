@@ -59,6 +59,13 @@ class WorldSensorContractTests(unittest.TestCase):
         self.assertEqual(parsed["command"], "site")
         self.assertTrue("result" in parsed or "warning" in parsed)
 
+    def test_three_component_coordinates_survive_report_budget(self):
+        for cap in (1, 2, 3):
+            self.assertEqual(sensor.limited([350.0, -11.9368, 167.3], cap, 10),
+                             [350.0, -11.9368, 167.3])
+            self.assertEqual(sensor.limited([1.0, 1.0, 1.0, 1.0], cap, 10),
+                             [1.0, 1.0, 1.0, 1.0])
+
     def test_site_summary_keeps_coverage(self):
         with tempfile.TemporaryDirectory() as tmp:
             original = {"command": "site", "source_fingerprint": {"sha256": "a" * 64},
