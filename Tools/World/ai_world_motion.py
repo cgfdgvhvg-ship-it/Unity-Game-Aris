@@ -185,7 +185,7 @@ def make_patch(target, before, after, scene, native_asset, root, digest):
 
 
 def plan(root, target, *, direction=None, meters=None, frame="world",
-         xyz=None, follow_terrain=False, inspect_radius=25.0, limit=5,
+         reference=None, xyz=None, follow_terrain=False, inspect_radius=25.0, limit=5,
          inspect_sites=True, validate=False):
     worldmod, terrainmod, patchmod, observations = root_modules(root)
     if not (SCENE_RE.fullmatch(target) or TERRAIN_RE.fullmatch(target)):
@@ -213,7 +213,20 @@ def plan(root, target, *, direction=None, meters=None, frame="world",
         doc = world.docs[tid]
         if doc.get("stripped") or doc["data"].get("m_PrefabInstance",{}).get("fileID"):
             raise MotionError("Connected prefab Transform requires Unity backend; no direct YAML move")
-    move = delta(direction, meters, frame, orientation, xyz)
+    if frame == "reference-local":
+        if not isinstance(reference, str) or not SCENE_RE.fullmatch(reference):
+            raise MotionError("reference-local requires stable --reference scene:<guid>:<fileID>")
+        reference_go = world.resolve(reference)
+        reference_transform = world.go_transform.get(reference_go)
+        if reference_transform is None:
+            raise MotionError("Reference has no inline Transform; request Unity export")
+        orientation = world.world_rotation(reference_transform)
+        basis_frame = "target-local"
+    else:
+        if reference is not None:
+            raise MotionError("--reference is only valid for --frame reference-local")
+        basis_frame = frame
+    move = delta(direction, meters, basis_frame, orientation, xyz)
     if is_native and abs(move[1]) > 1e-8:
         raise MotionError("Native TerrainData instances cannot move vertically; terrain owns Y")
     after = [before[i] + move[i] for i in range(3)]
@@ -254,7 +267,8 @@ def plan(root, target, *, direction=None, meters=None, frame="world",
         "status": "planned_read_only", "target": target, "target_name_or_category": kind,
         "target_type": "terrain_instance" if is_native else "inline_scene_object",
         "coordinate_system": "Unity world metres; +X right, +Y up, +Z forward",
-        "relative_frame": frame, "direction": direction, "distance_m": meters,
+        "relative_frame": frame, "reference_object_id": reference,
+        "direction": direction, "distance_m": meters,
         "before_world_xyz_m": rounded(before), "delta_world_xyz_m": rounded([after[i]-before[i] for i in range(3)]),
         "proposed_world_xyz_m": rounded(after),
         "ground_before_m": round(before_ground, 6),
@@ -307,7 +321,8 @@ def main(argv=None):
     parser.add_argument("--dy", type=float, default=0.)
     parser.add_argument("--dz", type=float, default=0.)
     parser.add_argument("--metres", type=float)
-    parser.add_argument("--frame", choices=("world","target-local"), default="world")
+    parser.add_argument("--frame", choices=("world","target-local","reference-local"), default="world")
+    parser.add_argument("--reference", help="Stable scene ID of camera or reference transform")
     parser.add_argument("--follow-terrain", action="store_true", help="Scene objects only")
     parser.add_argument("--radius", type=float, default=25.)
     parser.add_argument("--limit", type=int, default=5)
@@ -328,11 +343,16 @@ def main(argv=None):
             raise MotionError("--metres must only be used with --direction")
         if args.dx is not None and args.frame != "world":
             raise MotionError("dx/dy/dz are already world-space; frame must be world")
+        if args.frame == "reference-local" and not args.reference:
+            raise MotionError("reference-local requires --reference")
+        if args.frame != "reference-local" and args.reference:
+            raise MotionError("--reference requires --frame reference-local")
         if args.follow_terrain and args.dy != 0:
             raise MotionError("Use follow-terrain OR explicit dy to avoid ambiguity")
         root = args.root.resolve()
         result = plan(root, args.target, direction=args.direction, meters=args.metres,
-                      frame=args.frame, xyz=[args.dx,args.dy,args.dz] if args.dx is not None else None,
+                      frame=args.frame, reference=args.reference,
+                      xyz=[args.dx,args.dy,args.dz] if args.dx is not None else None,
                       follow_terrain=args.follow_terrain, inspect_radius=args.radius,
                       limit=args.limit, inspect_sites=not args.no_neighbours, validate=args.validate_plan)
         if args.out:
