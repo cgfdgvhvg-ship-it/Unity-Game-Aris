@@ -93,6 +93,22 @@ class PatchTests(unittest.TestCase):
             self.assertEqual(patch["operations"][0]["world_xz"],[51.,3.])
             self.assertEqual(len(patch["expected_files"]),4)
 
+    def test_reference_frame_requires_explicit_scene_id(self):
+        identity="scene:"+"a"*32+":123"
+        for extra in (
+            ["--frame","reference-local"],
+            ["--frame","world","--reference",identity],
+            ["--frame","reference-local","--reference","terrain:"+"f"*32+":8",
+             "--dx","5"],
+        ):
+            with self.subTest(extra=extra):
+                out=io.StringIO()
+                with contextlib.redirect_stdout(out):
+                    code=m.main(["plan","--target",identity,
+                                 "--direction","left","--metres","50",*extra])
+                self.assertEqual(code,2)
+                self.assertEqual(json.loads(out.getvalue())["status"],"rejected_no_write")
+
     def test_native_up_direction_rejected_by_planner_input(self):
         with contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
             with patch.object(sys,"argv",["ai_world_motion.py","plan",
