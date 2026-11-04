@@ -658,6 +658,61 @@ def unity_diagnostics():
 
 
 
+
+def ensure_desktop_tools():
+    """Install only screenshot/window-inspection utilities; leave Unity and assets intact."""
+    required=("xwininfo","scrot")
+    if all(shutil.which(x) for x in required):
+        return {"installed":True,"installed_before":True,
+                "free_disk_gib":round(shutil.disk_usage(PROJECT).free/2**30,3)}
+    if shutil.disk_usage(PROJECT).free < 2*1024**3:
+        raise ValueError("Less than 2 GiB free, refusing even small GUI package install")
+    env=os.environ.copy()
+    env["DEBIAN_FRONTEND"]="noninteractive"
+    argv=["sudo","-n","apt-get","install","-y","--no-install-recommends",
+          "x11-utils","scrot"]
+    proc=subprocess.run(argv,env=env,text=True,capture_output=True,timeout=105,check=False)
+    result={
+        "installed":proc.returncode==0 and all(shutil.which(x) for x in required),
+        "installed_before":False,
+        "exit_code":proc.returncode,
+        "stdout_tail":proc.stdout[-1700:],
+        "stderr_tail":proc.stderr[-800:],
+        "free_disk_gib":round(shutil.disk_usage(PROJECT).free/2**30,3),
+    }
+    return result
+
+
+def desktop_snapshot(job_id):
+    """Capture current Xvfb desktop, never commit it into repository history."""
+    import re
+    if not re.fullmatch(r"[a-z][a-z0-9-]{3,55}",job_id):
+        raise ValueError("Bad snapshot ID")
+    if not shutil.which("scrot"):
+        return {"exit_code":3,"stdout":"","stderr":"scrot unavailable: run desktop_tools first"}
+    if not Path("/tmp/.X11-unix/X12").exists():
+        return {"exit_code":3,"stdout":"","stderr":"Virtual display :12 unavailable"}
+    folder=DESKTOP/"frames"
+    folder.mkdir(parents=True,exist_ok=True)
+    folder.chmod(0o700)
+    target=folder/(job_id+".jpg")
+    if target.exists() or target.is_symlink():
+        raise ValueError("Snapshot path already exists; use a new job ID")
+    env=os.environ.copy()
+    env["DISPLAY"]=":12"
+    result=subprocess.run(["scrot","-z","-q","65",str(target)],env=env,
+                          capture_output=True,text=True,timeout=18,check=False)
+    if result.returncode!=0 or not target.is_file() or target.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"scrot failed: "+result.stderr[-300:]}
+    size=target.stat().st_size
+    if size<100 or size>3*1024*1024:
+        target.unlink(missing_ok=True)
+        return {"exit_code":3,"stdout":"","stderr":"Screen capture out of permitted size"}
+    info={"frame_job":job_id,"bytes":size,"sha256":hashlib.sha256(target.read_bytes()).hexdigest(),
+          "format":"jpg","retention":"1-day GitHub Actions artifact, remote copy deleted after upload"}
+    return {"exit_code":0,"stdout":json.dumps(info),"stderr":""}
+
+
 def execute(job):
     # Validate independently from Actions, where an untrusted queue file travels.
     if set(job) != {"id", "operation", "args"}:
@@ -759,6 +814,15 @@ def execute(job):
     if op == "unity_result":
         if len(args)!=1: raise ValueError("Unity result ID required")
         return _read_unity_result(args[0],wait_seconds=8)
+    if op == "desktop_tools":
+        if args: raise ValueError("unexpected arguments")
+        info=ensure_desktop_tools()
+        return {"exit_code":0 if info.get("installed") else 3,
+                "stdout":json.dumps(info,ensure_ascii=False),
+                "stderr":"" if info.get("installed") else "GUI tools install failed"}
+    if op == "desktop_snapshot":
+        if args: raise ValueError("unexpected arguments")
+        return desktop_snapshot(job["id"])
     if op == "unity_diagnostics":
         if args: raise ValueError("unexpected args")
         return {"exit_code":0,"stdout":json.dumps(unity_diagnostics(),ensure_ascii=False),"stderr":""}
