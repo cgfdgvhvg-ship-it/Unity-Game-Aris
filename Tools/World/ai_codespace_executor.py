@@ -396,20 +396,28 @@ def _monitor_unity(pid):
         time.sleep(10)
 
 def _unity_pids():
-    """Only match this project's real Unity Editor PID, not any unrelated Unity job."""
-    scan = run(["ps", "-eo", "pid=,args="], timeout=10)
-    found = []
-    if scan["exit_code"] != 0:
+    """Match actual argv via /proc; never mistake process table snippets for Unity."""
+    found=[]
+    proc=Path("/proc")
+    try:
+        entries=list(proc.iterdir())
+    except OSError:
         return found
-    for line in scan["stdout"].splitlines():
-        parts = line.strip().split(None, 1)
-        if len(parts) != 2 or not parts[0].isdigit():
+    for entry in entries:
+        if not entry.name.isdigit(): continue
+        try:
+            raw=(entry/"cmdline").read_bytes()
+            argv=[p.decode("utf-8","replace") for p in raw.split(b"\0") if p]
+        except (OSError,PermissionError):
             continue
-        argv = parts[1]
-        if (argv.startswith(str(EDITOR)+" ") and
-                "-projectPath "+str(PROJECT) in argv):
-            found.append(int(parts[0]))
-    return found
+        if len(argv)>=3 and argv[0]==str(EDITOR):
+            try:
+                i=argv.index("-projectPath")
+            except ValueError:
+                continue
+            if i+1<len(argv) and argv[i+1]==str(PROJECT):
+                found.append(int(entry.name))
+    return sorted(found)
 
 
 def _unity_log_tail():
@@ -570,6 +578,12 @@ def _read_unity_result(ident,*,wait_seconds=0):
     deadline=time.monotonic()+wait_seconds
     while time.monotonic()<deadline and not file.is_file():
         time.sleep(.7)
+    if not file.is_file() and not _unity_pids():
+        # A cold Codespace cannot process an earlier queued Unity command.
+        _install_live_bridge()
+        result=ensure_unity_gui()
+        if result["exit_code"]!=0:
+            return result
     if not file.is_file():
         return {"exit_code":0,"stdout":json.dumps({
             "job":ident,"pending":True,"unity_running":bool(_unity_pids()),
