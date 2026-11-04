@@ -509,6 +509,7 @@ def validate_live_payload(value):
         "move":{"target","delta"},
         "scale":{"target","scale"},
         "move_tree":{"target","delta","expectedPosition"},
+        "scale_tree":{"target","scale","expectedPosition"},
         "capture":{"cameraPosition","cameraTarget"},
     }
     if action not in allowed or set(value)-({"action"}|allowed[action]):
@@ -524,13 +525,13 @@ def validate_live_payload(value):
             or abs(n)>20000 for n in vec.values()
         ):
             raise ValueError("invalid vector "+field)
-    if action in ("move","scale","move_tree") and not value.get("target"):
+    if action in ("move","scale","move_tree","scale_tree") and not value.get("target"):
         raise ValueError("target required")
     if action in ("move","move_tree") and "delta" not in value:
         raise ValueError("move delta required")
-    if action=="scale" and "scale" not in value:
+    if action in ("scale","scale_tree") and "scale" not in value:
         raise ValueError("scale vector required")
-    if action=="move_tree" and "expectedPosition" not in value:
+    if action in ("move_tree","scale_tree") and "expectedPosition" not in value:
         raise ValueError("expected terrain tree position required")
     if action=="capture" and not {"cameraPosition","cameraTarget"}<=set(value):
         raise ValueError("camera position and target required")
@@ -559,7 +560,7 @@ def unity_live_job(job):
     command=commands/(ident+".json")
     if not output.is_file():
         payload=dict(params,id=ident)
-        if params["action"]=="move_tree":
+        if params["action"] in ("move_tree","scale_tree"):
             payload["hasExpectedPosition"]=True
         if not command.exists():
             temp=commands/(ident+".writing")
@@ -670,6 +671,32 @@ def execute(job):
         state = {"display_12": True, "vnc_local_5900": _port_ready(5900),
                  "novnc_6080": _port_ready(6080), "xterm_running": True}
         return {"exit_code": 0, "stdout": json.dumps(state), "stderr": ""}
+    if op == "unity_frame":
+        import re
+        if len(args)!=1 or not re.fullmatch(r"[a-z][a-z0-9-]{3,55}",args[0]):
+            raise ValueError("frame job ID required")
+        name=args[0]+".jpg"
+        path=DESKTOP/"frames"/name
+        if not path.is_file() or path.is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"Unity screenshot not ready or already expired"}
+        size=path.stat().st_size
+        if size<100 or size>3*1024*1024:
+            return {"exit_code":3,"stdout":"","stderr":"Invalid screenshot size"}
+        return {"exit_code":0,"stdout":json.dumps({"frame_job":args[0],"bytes":size,
+                         "sha256":hashlib.sha256(path.read_bytes()).hexdigest(),
+                         "format":"jpg","retention":"temporary, not committed to Git"}),"stderr":""}
+    if op == "world_site":
+        import math
+        if len(args)!=3 or any(not s.replace(".","",1).replace("-","",1).isdigit() for s in args):
+            raise ValueError("world_site requires x z radius")
+        x,z,radius=map(float,args)
+        if not all(math.isfinite(v) for v in (x,z,radius)) or max(abs(x),abs(z))>10000 or not 1<=radius<=150:
+            raise ValueError("world_site coordinates/radius out of range")
+        source=PROJECT/"Tools/World/ai_world_observe.py"
+        python=Path("/workspaces/.aaris-world-bridge/venv/bin/python")
+        return run([str(python) if python.is_file() else "python3",str(source),
+                    "site","--x",str(x),"--z",str(z),"--radius",str(radius),
+                    "--limit","12"],timeout=100)
     if op == "unity_live":
         if len(args)!=1 or len(args[0])>500: raise ValueError("one short Unity command required")
         return unity_live_job(job)
