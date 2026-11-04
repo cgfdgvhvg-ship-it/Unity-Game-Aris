@@ -129,7 +129,7 @@ def _lfs_inventory():
     import re
     records = []
     for line in cmd.stdout.decode("utf-8", "surrogateescape").splitlines():
-        match = re.match(r"^([0-9a-f]{64})\\s+[\\*\\-]\\s+(.+)$", line)
+        match = re.match(r"^([0-9a-f]{64})\s+[*-]\s+(.+)$", line)
         if match:
             records.append((match.group(2), match.group(1)))
     # Fail closed: do not mistake a CLI output-format change for zero LFS.
@@ -141,7 +141,7 @@ def _lfs_inventory():
                              stderr=subprocess.PIPE, timeout=35, check=False)
     if tracked.returncode:
         return {"error": "could not list dirty tracked paths"}
-    dirty = set(x.decode("utf-8", "surrogateescape") for x in tracked.stdout.split(b"\\0") if x)
+    dirty = set(x.decode("utf-8", "surrogateescape") for x in tracked.stdout.split(b"\0") if x)
     result = {"checked_sha256": 0, "hash_matches": 0, "hash_mismatch": 0,
               "lfs_pointer": 0, "file_missing": 0,
               "dirty_protected": 0, "unreadable": 0}
