@@ -12,7 +12,10 @@ namespace Aaris.MapReview
         [SerializeField] private Collider[] obstacles;
         [SerializeField] private float activationDistance = 55;
         [SerializeField] private float cellSize = 250;
-        private Bounds[] worldBounds;
+        // Cache the original collider shapes, not Collider.bounds (empty when disabled).
+        // The world envelopes and grid may be refreshed after explicit transform edits.
+        private Bounds[] worldBounds, localBounds;
+        private Matrix4x4[] indexedMatrices;
         private bool[] savedEnabled, indexed;
         private bool restoreProximityStateOnEnable;
         private readonly Dictionary<long, List<int>> cells = new Dictionary<long, List<int>>();
@@ -26,6 +29,8 @@ namespace Aaris.MapReview
         {
             if (target == null || obstacles == null) { enabled = false; return; }
             worldBounds = new Bounds[obstacles.Length];
+            localBounds = new Bounds[obstacles.Length];
+            indexedMatrices = new Matrix4x4[obstacles.Length];
             savedEnabled = new bool[obstacles.Length];
             indexed = new bool[obstacles.Length];
             visited = new int[obstacles.Length]; wanted = new int[obstacles.Length];
@@ -66,31 +71,68 @@ namespace Aaris.MapReview
                         + " on " + c.name + "; retaining its saved enabled state.");
                     continue;
                 }
-                Matrix4x4 m = c.transform.localToWorldMatrix;
-                Vector3 e = local.extents;
-                Vector3 x = m.MultiplyVector(new Vector3(e.x, 0, 0));
-                Vector3 y = m.MultiplyVector(new Vector3(0, e.y, 0));
-                Vector3 z = m.MultiplyVector(new Vector3(0, 0, e.z));
-                Vector3 worldSize = 2 * new Vector3(Mathf.Abs(x.x) + Mathf.Abs(y.x) + Mathf.Abs(z.x),
-                    Mathf.Abs(x.y) + Mathf.Abs(y.y) + Mathf.Abs(z.y), Mathf.Abs(x.z) + Mathf.Abs(y.z) + Mathf.Abs(z.z));
-                worldBounds[i] = new Bounds(m.MultiplyPoint3x4(local.center), worldSize);
-                Bounds bounds = worldBounds[i];
-                // An object belongs to EVERY cell touched by its bounds, not just its pivot.
-                // This keeps long piers and buildings collidable across cell boundaries.
-                for (int xCell = Cell(bounds.min.x); xCell <= Cell(bounds.max.x); xCell++)
-                    for (int zCell = Cell(bounds.min.z); zCell <= Cell(bounds.max.z); zCell++)
-                    {
-                        long key = Key(xCell, zCell);
-                        if (!cells.TryGetValue(key, out List<int> entries))
-                        { entries = new List<int>(); cells.Add(key, entries); }
-                        entries.Add(i);
-                    }
+                localBounds[i] = local;
+                indexedMatrices[i] = c.transform.localToWorldMatrix;
+                worldBounds[i] = TransformBounds(local, indexedMatrices[i]);
+                AddToCells(i, worldBounds[i]);
                 indexed[i] = true;
                 // No unnecessary PhysX state change for an already disabled collider.
                 if (c.enabled) c.enabled = false;
             }
             RefreshNow();
         }
+        private static Bounds TransformBounds(Bounds local, Matrix4x4 m)
+        {
+            Vector3 e = local.extents;
+            Vector3 x = m.MultiplyVector(new Vector3(e.x, 0, 0));
+            Vector3 y = m.MultiplyVector(new Vector3(0, e.y, 0));
+            Vector3 z = m.MultiplyVector(new Vector3(0, 0, e.z));
+            Vector3 worldSize = 2 * new Vector3(Mathf.Abs(x.x) + Mathf.Abs(y.x) + Mathf.Abs(z.x),
+                Mathf.Abs(x.y) + Mathf.Abs(y.y) + Mathf.Abs(z.y), Mathf.Abs(x.z) + Mathf.Abs(y.z) + Mathf.Abs(z.z));
+            return new Bounds(m.MultiplyPoint3x4(local.center), worldSize);
+        }
+
+        private void AddToCells(int i, Bounds bounds)
+        {
+            // Register every overlapped cell; long piers and rotated buildings can cross many.
+            for (int xCell = Cell(bounds.min.x); xCell <= Cell(bounds.max.x); xCell++)
+                for (int zCell = Cell(bounds.min.z); zCell <= Cell(bounds.max.z); zCell++)
+                {
+                    long key = Key(xCell, zCell);
+                    if (!cells.TryGetValue(key, out List<int> entries))
+                    { entries = new List<int>(); cells.Add(key, entries); }
+                    entries.Add(i);
+                }
+        }
+
+        // This O(N) check runs only for explicit RefreshNow() calls, never during
+        // ordinary 0.25-second player proximity polling. Rebuild once if any
+        // indexed obstacle moved, rotated, scaled or inherited a parent transform.
+        // Keep the authored disabled-collider geometry usable without enabling it.
+        private void ReindexMovedObstacles()
+        {
+            bool changed = false;
+            for (int i = 0; i < obstacles.Length; i++)
+            {
+                if (!indexed[i] || obstacles[i] == null) continue;
+                if (indexedMatrices[i] != obstacles[i].transform.localToWorldMatrix)
+                {
+                    changed = true;
+                    break;
+                }
+            }
+            if (!changed) return;
+            cells.Clear();
+            for (int i = 0; i < obstacles.Length; i++)
+            {
+                if (!indexed[i] || obstacles[i] == null) continue;
+                Matrix4x4 m = obstacles[i].transform.localToWorldMatrix;
+                indexedMatrices[i] = m;
+                worldBounds[i] = TransformBounds(localBounds[i], m);
+                AddToCells(i, worldBounds[i]);
+            }
+        }
+
         private int Cell(float value) => Mathf.FloorToInt(value / cellSize);
         private static long Key(int x, int z) => ((long)x << 32) ^ (uint)z;
         private void Update()
@@ -104,6 +146,9 @@ namespace Aaris.MapReview
         private void RefreshNow(bool forceSync)
         {
             if (target == null || worldBounds == null) return;
+            // Force refresh is also an explicit invalidation point for edited
+            // obstacle transforms. Syncing PhysX alone would leave cells stale.
+            if (forceSync) ReindexMovedObstacles();
             lastPosition = target.position;
             nextCheck = Time.unscaledTime + .25f;
             float limit = activationDistance * activationDistance;
