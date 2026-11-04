@@ -50,7 +50,8 @@ class StaticLodCrossFadeFallbackTests(unittest.TestCase):
         s = self.source
         self.assertNotIn("terrain.treeDistance =", s)
         self.assertNotIn("farClipPlane =", s)
-        self.assertIn("public bool emergencyRenderScaleActive, staticLodCrossFadeSuppressed;", s)
+        self.assertIn("public bool emergencyRenderScaleActive;", s)
+        self.assertIn("public bool staticLodCrossFadeSuppressed;", s)
         self.assertIn("public int staticLodCrossFadeGroupCount;", s)
         self.assertIn("s.staticLodCrossFadeSuppressed = staticLodCrossFadeSuppressed;", s)
         self.assertIn("s.staticLodCrossFadeGroupCount = staticLodGroups != null ? staticLodGroups.Length : 0;", s)
