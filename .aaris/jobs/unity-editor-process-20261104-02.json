@@ -1,0 +1,1 @@
+{"id":"unity-editor-process-20261104-02","operation":"terminal_readonly","args":["ps","-p","40121","-o","pid,stat,etime,%cpu,%mem,args"]}
