@@ -309,6 +309,17 @@ class OnDemandTests(unittest.TestCase):
         with self.assertRaises(r.JobError):
             r.validate_job({"id":"unity-frame-001","operation":"unity_frame","args":["../../etc/passwd"]})
 
+    def test_unity_diagnostics_requires_no_arguments(self):
+        job={"id":"unity-diag-test-001","operation":"unity_diagnostics","args":[]}
+        self.assertEqual(r.validate_job(job),job)
+        with self.assertRaises(r.JobError):
+            r.validate_job(dict(job,args=["--delete"]))
+        with patch.object(e,"unity_diagnostics",return_value={"gui":{"pid":[123]}}) as probe:
+            response=e.execute(job)
+        self.assertEqual(response["exit_code"],0)
+        self.assertEqual(json.loads(response["stdout"])["gui"]["pid"],[123])
+        probe.assert_called_once()
+
     def test_unity_gui_operation_is_owner_only_and_argument_free(self):
         self.assertEqual(r.validate_job({"id":"unity-gui-01","operation":"unity_gui","args":[]})["operation"],"unity_gui")
         with self.assertRaises(r.JobError):

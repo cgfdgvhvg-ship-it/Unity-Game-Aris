@@ -601,6 +601,63 @@ def _read_unity_result(ident,*,wait_seconds=0):
             "stderr":result.get("error","")[:300] if result.get("status")!="ok" else ""}
 
 
+
+def unity_diagnostics():
+    """Read-only X11/Unity state, with no secrets, new imports or asset changes."""
+    pidlist=_unity_pids()
+    rawlogs={}
+    for filename in ("unity-editor.log","unity-launch.log","unity-storage-watchdog.log"):
+        path=DESKTOP/filename
+        if path.is_file() and not path.is_symlink() and path.stat().st_size < 20*1024*1024:
+            data=path.read_text(encoding="utf-8",errors="replace")[-6000:]
+            rawlogs[filename]=re.sub(
+                r"(?i)(?:ghp_|ghu_|gho_|ghs_|ghr_|github_pat_|sk-)[A-Za-z0-9_-]{8,}",
+                "[REDACTED]", data
+            )
+        else:
+            rawlogs[filename]="missing_or_unavailable"
+    x11={}
+    env=os.environ.copy()
+    env["DISPLAY"]=":12"
+    for app,args in (
+        ("xwininfo",["xwininfo","-display",":12","-root","-tree"]),
+        ("wmctrl",["wmctrl","-l"]),
+        ("xdpyinfo",["xdpyinfo","-display",":12"]),
+    ):
+        x11[app]={"installed":bool(shutil.which(app))}
+        if not x11[app]["installed"]: continue
+        try:
+            p=subprocess.run(args,env=env,capture_output=True,text=True,
+                             timeout=12,check=False)
+            x11[app].update({"exit_code":p.returncode,
+                              "stdout":p.stdout[:7000],
+                              "stderr":p.stderr[-500:]})
+        except (OSError,subprocess.TimeoutExpired) as err:
+            x11[app]["error"]=str(err)[:300]
+    process=[]
+    for pid in pidlist:
+        proc=Path("/proc")/str(pid)
+        try:
+            line=(proc/"stat").read_text()
+            fields=line.rsplit(")",1)[1].split()
+            state=fields[0]
+            threads=len(list((proc/"task").iterdir()))
+            process.append({"pid":pid,"state":state,"threads":threads})
+        except OSError:
+            process.append({"pid":pid,"state":"unavailable"})
+    folder=PROJECT/"Library"
+    return {"gui":_unity_gui_status(),
+            "process":process,
+            "x11":x11,
+            "screenshot_tools":{k:bool(shutil.which(k)) for k in
+                                ("xwd","import","scrot","ffmpeg","python3")},
+            "project_library_entries":sorted(p.name for p in folder.iterdir())[:30] if folder.is_dir() else [],
+            "pending_commands":len(list((DESKTOP/"unity-commands").glob("*.json"))) if (DESKTOP/"unity-commands").is_dir() else 0,
+            "completed_responses":len(list((DESKTOP/"unity-results").glob("*.json"))) if (DESKTOP/"unity-results").is_dir() else 0,
+            "logs":rawlogs}
+
+
+
 def execute(job):
     # Validate independently from Actions, where an untrusted queue file travels.
     if set(job) != {"id", "operation", "args"}:
@@ -702,6 +759,9 @@ def execute(job):
     if op == "unity_result":
         if len(args)!=1: raise ValueError("Unity result ID required")
         return _read_unity_result(args[0],wait_seconds=8)
+    if op == "unity_diagnostics":
+        if args: raise ValueError("unexpected args")
+        return {"exit_code":0,"stdout":json.dumps(unity_diagnostics(),ensure_ascii=False),"stderr":""}
     if op == "unity_gui":
         if args: raise ValueError("unity_gui takes no arguments")
         return ensure_unity_gui()
