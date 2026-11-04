@@ -24,6 +24,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 2
       - name: Validate job, start Codespace if stopped, execute via SSH
         env:
           AARIS_CODESPACE_TOKEN: ${{ secrets.AARIS_CODESPACE_TOKEN }}
