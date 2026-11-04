@@ -316,6 +316,67 @@ def storage_audit():
             "disk_directory_bytes":sizes,
             "lfs_inventory":inventory}
 
+
+def layered_storage_probe():
+    """Read-only guard: measure tmpfs and mounted filesystems before cleanup.
+
+    Reporting visible directory sizes is not evidence of reclaimable storage
+    when a directory is part of the image's overlay lower layers.
+    """
+    targets = {
+        "dev_shm": Path("/dev/shm"),
+        "temporary": Path("/tmp"),
+        "workspace": PROJECT,
+        "editor": EDITOR,
+        "package_manager": Path("/home/codespace/Unity/Hub/Editor/6000.3.26f1/Editor/Data/Resources/PackageManager"),
+    }
+    storage = {}
+    for label,path in targets.items():
+        if path.is_symlink() or not path.exists():
+            storage[label] = {"status": "missing_or_symlink"}
+            continue
+        try:
+            cap=shutil.disk_usage(path)
+            storage[label]={"status":"ok","free_bytes":cap.free,
+                            "total_bytes":cap.total,"device":os.stat(path).st_dev}
+        except OSError:
+            storage[label]={"status":"unavailable"}
+    mounts={}
+    try:
+        for line in Path("/proc/self/mountinfo").read_text().splitlines():
+            cols=line.split(" - ",1)
+            if len(cols)!=2:
+                continue
+            tokens=cols[0].split()
+            mountpoint=tokens[4] if len(tokens)>4 else ""
+            if mountpoint in {"/","/workspaces","/dev/shm","/tmp"}:
+                mounted=cols[1].split()
+                mounts[mountpoint]=mounted[0] if mounted else "unknown"
+    except OSError:
+        pass
+    mem={}
+    try:
+        for line in Path("/proc/meminfo").read_text().splitlines():
+            for field in ("MemTotal","MemAvailable","Shmem","SwapTotal"):
+                if line.startswith(field+":"):
+                    fields=line.split()
+                    mem[field+"_bytes"]=int(fields[1])*1024
+    except (OSError,ValueError,IndexError):
+        pass
+    paused=[]
+    for pid in _unity_pids():
+        try:
+            state=(Path("/proc")/str(pid)/"status").read_text()
+            state_line=next(x for x in state.splitlines() if x.startswith("State:"))
+            if state_line.split()[1] in ("T","t"):
+                paused.append(pid)
+        except (OSError,StopIteration,IndexError):
+            pass
+    return {"volumes":storage,"mount_types":mounts,
+            "memory":mem,"paused_unity_pids":paused,
+            "policy":"Never use rm -rf on lower image layers or move persistent Unity Editor packages to tmpfs; lower-layer reclamation requires rebuilding a reviewed slimmer devcontainer image. The current workspace and partial Library are protected."}
+
+
 def prune_caches(home=Path("/home/codespace")):
     """Delete only two named re-downloadable caches, never project or Unity."""
     paths=[home/".cache"/"copilot"/"pkg", home/".npm"/"_cacache"]
@@ -793,6 +854,9 @@ def execute(job):
         if len(args) != 1 or not args[0].isdigit():
             raise ValueError("expected one numeric LFS cursor")
         return {"exit_code":0,"stdout":json.dumps(lfs_verify_chunk(int(args[0])),ensure_ascii=False),"stderr":""}
+    if op == "layered_storage_probe":
+        if args: raise ValueError("layered probe accepts no arguments")
+        return {"exit_code":0,"stdout":json.dumps(layered_storage_probe(),ensure_ascii=False),"stderr":""}
     if op == "storage_audit":
         if args: raise ValueError("unexpected args")
         return {"exit_code":0,"stdout":json.dumps(storage_audit(),ensure_ascii=False),"stderr":""}
