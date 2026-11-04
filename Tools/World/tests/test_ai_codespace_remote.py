@@ -103,6 +103,32 @@ class OnDemandTests(unittest.TestCase):
                 self.assertIn("-e",argv)
                 self.assertTrue(argv[-1].startswith("remote:/workspaces/.aaris-world-bridge/ondemand/"))
 
+    def test_desktop_requires_existing_private_password(self):
+        with tempfile.TemporaryDirectory() as d:
+            with patch.object(e, "DESKTOP", Path(d)), patch.object(e.shutil, "which", return_value="/usr/bin/test"):
+                reason=e.ensure_desktop()
+                self.assertIn("password missing", reason)
+
+    def test_desktop_auto_recovery_triggers_before_xterm(self):
+        with patch.object(e, "ensure_desktop", return_value=None) as ensure, \
+             patch.object(e, "_process_running", side_effect=[False, True]), \
+             patch.object(e, "_spawn_desktop") as spawn, \
+             patch.object(e, "_wait_ready", return_value=True), \
+             patch.object(e, "_port_ready", return_value=True):
+            result=e.execute({"id":"desktop-test-01", "operation":"desktop_xterm","args":[]})
+            self.assertEqual(result["exit_code"],0)
+            info=json.loads(result["stdout"])
+            self.assertTrue(info["novnc_6080"])
+            self.assertTrue(info["xterm_running"])
+            self.assertTrue(ensure.called)
+            self.assertEqual(spawn.call_args.args[0][0],"xterm")
+
+    def test_desktop_fails_closed_if_recovery_fails(self):
+        with patch.object(e, "ensure_desktop", return_value="Xvfb failed"):
+            out=e.execute({"id":"desktop-test-02", "operation":"desktop_xterm","args":[]})
+            self.assertEqual(out["exit_code"],3)
+            self.assertIn("Xvfb failed",out["stderr"])
+
     def test_missing_secret_reports_setup_required(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d); f=root/r.QUEUE/(self.good()["id"]+".json");f.parent.mkdir(parents=True);f.write_text(json.dumps(self.good()))
