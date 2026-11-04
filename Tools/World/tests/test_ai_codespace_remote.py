@@ -154,6 +154,32 @@ class OnDemandTests(unittest.TestCase):
             self.assertNotIn("ghp_123456",report["stdout"])
             self.assertTrue(data["saved_vnc_password_exists"])
 
+    def test_prune_caches_only_named_paths_and_preserves_assets(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            home=root/"home"
+            project=root/"Unity-Game-Aris"
+            project.mkdir()
+            (project/"Assets").mkdir()
+            important=project/"Assets"/"Geometry.asset"
+            important.write_bytes(b"saved core geometry must survive")
+            a=home/".cache"/"copilot"/"pkg"
+            b=home/".npm"/"_cacache"
+            for path in (a,b):
+                path.mkdir(parents=True)
+                (path/"temporary").write_text("cache")
+            keep=home/".cache"/"unity3d"/"bee"
+            keep.mkdir(parents=True)
+            (keep/"keep").write_text("needed")
+            with patch.object(e,"PROJECT",project), \
+                 patch.object(e,"run",return_value={"exit_code":0,"stdout":" M Assets/Geometry.asset\n","stderr":""}):
+                result=e.prune_caches(home)
+            self.assertFalse(a.exists())
+            self.assertFalse(b.exists())
+            self.assertTrue((keep/"keep").exists())
+            self.assertEqual(important.read_bytes(),b"saved core geometry must survive")
+            self.assertTrue(result["git_worktree_unchanged"])
+
     def test_lfs_hash_matching_preserves_dirty_geometry(self):
         import hashlib
         from subprocess import CompletedProcess
