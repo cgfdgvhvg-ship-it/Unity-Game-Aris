@@ -309,6 +309,29 @@ class OnDemandTests(unittest.TestCase):
         with self.assertRaises(r.JobError):
             r.validate_job({"id":"unity-frame-001","operation":"unity_frame","args":["../../etc/passwd"]})
 
+    def test_desktop_screen_job_cannot_contain_commands(self):
+        for op in ("desktop_tools","desktop_snapshot"):
+            job={"id":"screen-test-001","operation":op,"args":[]}
+            self.assertEqual(r.validate_job(job),job)
+            with self.assertRaises(r.JobError):
+                r.validate_job(dict(job,args=["--delete"]))
+        with patch.object(e,"desktop_snapshot",return_value={
+            "exit_code":0,"stdout":'{"frame_job":"screen-test-001","bytes":1000}',"stderr":""
+        }) as capture:
+            result=e.execute({"id":"screen-test-001","operation":"desktop_snapshot","args":[]})
+            self.assertEqual(result["exit_code"],0)
+            capture.assert_called_once_with("screen-test-001")
+
+    def test_desktop_tool_install_reuses_installed_binaries(self):
+        from types import SimpleNamespace
+        with patch.object(e.shutil,"which",return_value="/usr/bin/installed"), \
+             patch.object(e.shutil,"disk_usage",return_value=SimpleNamespace(free=5*2**30)), \
+             patch.object(e.subprocess,"run") as spawn:
+            info=e.ensure_desktop_tools()
+            self.assertTrue(info["installed"])
+            self.assertTrue(info["installed_before"])
+            spawn.assert_not_called()
+
     def test_unity_diagnostics_requires_no_arguments(self):
         job={"id":"unity-diag-test-001","operation":"unity_diagnostics","args":[]}
         self.assertEqual(r.validate_job(job),job)
