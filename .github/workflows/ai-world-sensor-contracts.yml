@@ -1,0 +1,41 @@
+name: AI world sensor and motion safety contracts
+
+on:
+  pull_request:
+    paths:
+      - 'Tools/World/ai_world_observe.py'
+      - 'Tools/World/ai_world_motion.py'
+      - 'Tools/World/tests/test_ai_world_observe.py'
+      - 'Tools/World/tests/test_ai_world_motion.py'
+      - '.github/workflows/ai-world-sensor-contracts.yml'
+  push:
+    branches:
+      - ai/codespace-terminal-bridge
+    paths:
+      - 'Tools/World/ai_world_observe.py'
+      - 'Tools/World/ai_world_motion.py'
+      - 'Tools/World/tests/test_ai_world_observe.py'
+      - 'Tools/World/tests/test_ai_world_motion.py'
+      - '.github/workflows/ai-world-sensor-contracts.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  readonly-motion-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile read-only sensors without Unity Editor
+        run: |
+          python -m py_compile Tools/World/ai_world_observe.py Tools/World/ai_world_motion.py
+      - name: Sensor tests
+        run: |
+          python -m unittest discover -s Tools/World/tests -p test_ai_world_observe.py -v
+      - name: Relative move planner tests
+        run: |
+          python -m unittest discover -s Tools/World/tests -p test_ai_world_motion.py -v
