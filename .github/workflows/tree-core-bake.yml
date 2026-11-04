@@ -19,6 +19,46 @@ on:
 permissions:
   contents: read
 jobs:
+  source-snapshot:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          lfs: true
+      - name: Prepare an exact source snapshot for the local authoring Editor
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, pathlib, subprocess, tarfile
+          paths = [p for p in subprocess.check_output(['git','ls-files','-z']).decode().split('\0') if p]
+          total = sum(pathlib.Path(p).stat().st_size for p in paths)
+          assert total <= 8*1024**3, 'Bounded source snapshot exceeded 8 GiB'
+          for path in paths:
+              p = pathlib.Path(path)
+              assert p.is_file() and not p.is_symlink(), 'Regular tracked source files required'
+              with p.open('rb') as stream:
+                  assert not stream.read(80).startswith(b'version https://git-lfs.github.com/spec/v1'), 'Unmaterialized LFS source: '+path
+          manifest = {'head_sha':os.environ['GITHUB_SHA'],'files':{},'source_bytes':total}
+          for path in paths:
+              h = hashlib.sha256()
+              with pathlib.Path(path).open('rb') as stream:
+                  for block in iter(lambda:stream.read(1024*1024),b''):h.update(block)
+              manifest['files'][path] = h.hexdigest()
+          out = pathlib.Path(os.environ['RUNNER_TEMP'])/'tree-core-source'
+          out.mkdir()
+          (out/'snapshot.json').write_text(json.dumps(manifest))
+          with tarfile.open(out/'source.tar.gz','w:gz',compresslevel=1) as archive:
+              for path in paths:archive.add(path,arcname=path,recursive=False)
+          print(json.dumps({'source_files':len(paths),'materialized_source_bytes':total,'archive_bytes':(out/'source.tar.gz').stat().st_size,'includes_git_credentials':False,'core_source_changed':False}))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tree-core-source-${{ github.sha }}
+          path: ${{ runner.temp }}/tree-core-source
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
   source-checks:
     runs-on: ubuntu-latest
     timeout-minutes: 20
