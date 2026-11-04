@@ -37,14 +37,17 @@ def validate_job(data: dict, *, expected_file: str | None = None) -> dict:
     op = data["operation"]
     if not isinstance(ident, str) or not ID_RE.fullmatch(ident):
         raise JobError("invalid job id")
-    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "storage_audit", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
+    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
         raise JobError("unsupported operation")
     args = data["args"]
     if not isinstance(args, list) or len(args) > 16 or any(
         not isinstance(a, str) or not (0 < len(a) < 500) for a in args
     ):
         raise JobError("args must be short strings")
-    if op != "terminal_readonly" and args:
+    if op == "lfs_verify_chunk":
+        if len(args) != 1 or not re.fullmatch(r"(?:0|[1-9][0-9]{0,4})", args[0]):
+            raise JobError("lfs_verify_chunk requires one numeric cursor")
+    elif op != "terminal_readonly" and args:
         raise JobError("this operation takes no arguments")
     if op == "terminal_readonly":
         validate_readonly_argv(args)

@@ -204,6 +204,50 @@ class OnDemandTests(unittest.TestCase):
             self.assertEqual(result["lfs_status"]["checked_sha256"],0)
             self.assertEqual(result["hash_deferred_bytes"],129*1024*1024)
 
+    def test_chunked_lfs_hash_verification_and_dirty_protection(self):
+        import hashlib
+        from subprocess import CompletedProcess
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            (root/"Assets").mkdir()
+            raw=b"material saved by Unity"
+            (root/"Assets/good.mat").write_bytes(raw)
+            (root/"Assets/protected.asset").write_bytes(b"modified mesh")
+            (root/"Assets/missing.prefab").write_text(
+                "version https://git-lfs.github.com/spec/v1\n"
+                "oid sha256:"+ "4"*64 + "\nsize 40\n")
+            rows = (
+                hashlib.sha256(raw).hexdigest()+" * Assets/good.mat\n"+
+                "1"*64+" * Assets/protected.asset\n"+
+                "4"*64+" - Assets/missing.prefab\n"
+            )
+            def cmd(argv, **kw):
+                if argv[:3] == ["git","lfs","ls-files"]:
+                    return CompletedProcess(argv,0,rows.encode(),b"")
+                if argv[:2] == ["git","diff"]:
+                    return CompletedProcess(argv,0,b"Assets/protected.asset\0",b"")
+                raise AssertionError(argv)
+            with patch.object(e,"PROJECT",root), \
+                 patch.object(e.subprocess,"run",side_effect=cmd), \
+                 patch.object(e,"run",return_value={"exit_code":0,"stdout":"abc123\n","stderr":""}):
+                result=e.lfs_verify_chunk(0)
+                last=e.lfs_verify_chunk(3)
+            self.assertTrue(result["all_done"])
+            self.assertEqual(result["next_cursor"],3)
+            self.assertEqual(result["categories"]["hash_matches"],1)
+            self.assertEqual(result["categories"]["dirty_protected"],1)
+            self.assertEqual(result["categories"]["pointer"],1)
+            self.assertEqual(result["categories"]["hash_mismatch"],0)
+            self.assertEqual(last["processed"],0)
+            self.assertTrue(last["all_done"])
+
+    def test_chunk_cursor_is_guarded(self):
+        job={"id":"lfs-chunk-001","operation":"lfs_verify_chunk","args":["120"]}
+        self.assertEqual(r.validate_job(job),job)
+        for bad in (["-1"],["001"],["0","10"],["foo"],[],["10; rm -rf /"]):
+            with self.assertRaises(r.JobError):
+                r.validate_job(dict(job,args=bad))
+
     def test_lfs_hash_matching_preserves_dirty_geometry(self):
         import hashlib
         from subprocess import CompletedProcess
