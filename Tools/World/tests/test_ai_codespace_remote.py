@@ -279,6 +279,65 @@ class OnDemandTests(unittest.TestCase):
             self.assertEqual(data["lfs_status"]["lfs_pointer"],1)
             self.assertEqual(data["lfs_status"]["hash_mismatch"],0)
 
+    def test_unity_live_command_schema_is_restricted(self):
+        request={"action":"inspect","cameraTarget":{"x":120,"y":5,"z":88},"radius":30,"limit":12}
+        job={"id":"unity-inspect-001","operation":"unity_live","args":[json.dumps(request)]}
+        self.assertEqual(r.validate_job(job),job)
+        self.assertEqual(e.validate_live_payload(request),request)
+        for bad in (
+            {"action":"shell","argv":["rm","-rf","/"]},
+            {"action":"move","target":"Tree","delta":{"x":float("nan"),"y":0,"z":0}},
+            {"action":"move","target":"Tree","delta":{"x":1,"y":2}},
+            {"action":"scale","target":"Tree"},
+            {"action":"move_tree","target":"terrain-tree:a:1","delta":{"x":1,"y":0,"z":0}},
+            {"action":"capture","cameraPosition":{"x":1,"y":2,"z":3},"capturePath":"/etc/passwd"},
+        ):
+            with self.assertRaises(ValueError): e.validate_live_payload(bad)
+
+    def test_unity_frame_is_temporary_and_validated(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            (root/"frames").mkdir()
+            frame=root/"frames"/"unity-shot-001.jpg"
+            frame.write_bytes(b"\xff\xd8"+b"\x00"*512+b"\xff\xd9")
+            with patch.object(e,"DESKTOP",root):
+                response=e.execute({"id":"unity-frame-001","operation":"unity_frame",
+                                    "args":["unity-shot-001"]})
+            self.assertEqual(response["exit_code"],0)
+            info=json.loads(response["stdout"])
+            self.assertEqual(info["bytes"],frame.stat().st_size)
+        with self.assertRaises(r.JobError):
+            r.validate_job({"id":"unity-frame-001","operation":"unity_frame","args":["../../etc/passwd"]})
+
+    def test_unity_gui_operation_is_owner_only_and_argument_free(self):
+        self.assertEqual(r.validate_job({"id":"unity-gui-01","operation":"unity_gui","args":[]})["operation"],"unity_gui")
+        with self.assertRaises(r.JobError):
+            r.validate_job({"id":"unity-gui-01","operation":"unity_gui","args":["rm","-rf"]})
+
+    def test_unity_gui_reuses_running_process_without_launch(self):
+        with patch.object(e,"_unity_gui_status",return_value={"pid":[4321]}) as state, \
+             patch.object(e,"ensure_desktop") as gui, \
+             patch.object(e.subprocess,"Popen") as popen:
+            result=e.ensure_unity_gui()
+        self.assertEqual(result["exit_code"],0)
+        gui.assert_not_called()
+        popen.assert_not_called()
+        state.assert_called_once()
+
+    def test_unity_gui_rejects_low_storage_before_launch(self):
+        from types import SimpleNamespace
+        status={"pid":[],"editor_present":True,"project_version_present":True,
+                "map_scene_present":True}
+        with patch.object(e,"_unity_gui_status",return_value=status), \
+             patch.object(e.shutil,"disk_usage",return_value=SimpleNamespace(free=2*1024**3)), \
+             patch.object(e,"ensure_desktop") as gui, \
+             patch.object(e.subprocess,"Popen") as popen:
+            result=e.ensure_unity_gui()
+        self.assertNotEqual(result["exit_code"],0)
+        self.assertIn("3 GiB",result["stderr"])
+        gui.assert_not_called()
+        popen.assert_not_called()
+
     def test_storage_audit_remains_read_only(self):
         job={"id":"storage-audit-test","operation":"storage_audit","args":[]}
         self.assertEqual(r.validate_job(job),job)

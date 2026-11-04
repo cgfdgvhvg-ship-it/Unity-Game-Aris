@@ -37,14 +37,40 @@ def validate_job(data: dict, *, expected_file: str | None = None) -> dict:
     op = data["operation"]
     if not isinstance(ident, str) or not ID_RE.fullmatch(ident):
         raise JobError("invalid job id")
-    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
+    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "unity_live", "unity_result", "unity_frame", "world_site", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
         raise JobError("unsupported operation")
     args = data["args"]
     if not isinstance(args, list) or len(args) > 16 or any(
         not isinstance(a, str) or not (0 < len(a) < 500) for a in args
     ):
         raise JobError("args must be short strings")
-    if op == "lfs_verify_chunk":
+    if op == "unity_live":
+        if len(args) != 1:
+            raise JobError("unity_live requires one short JSON request")
+        try:
+            from Tools.World.ai_codespace_executor import validate_live_payload
+            validate_live_payload(json.loads(args[0]))
+        except ImportError:
+            # Queue source layout doesn't have Tools as a Python package in
+            # every legacy checkout; remote executor validates independently.
+            if not args[0].startswith("{") or len(args[0]) > 500:
+                raise JobError("invalid Unity live request")
+        except (ValueError, TypeError, json.JSONDecodeError) as exc:
+            raise JobError("invalid live Unity request: " + str(exc)[:160])
+    elif op in {"unity_result", "unity_frame"}:
+        if len(args) != 1 or not ID_RE.fullmatch(args[0]):
+            raise JobError("expected one previously issued Unity job ID")
+    elif op == "world_site":
+        import math
+        if len(args)!=3:
+            raise JobError("world_site requires x z radius")
+        try:
+            x,z,radius=map(float,args)
+        except ValueError:
+            raise JobError("invalid world_site coordinates")
+        if not all(math.isfinite(v) for v in (x,z,radius)) or max(abs(x),abs(z))>10000 or not 1<=radius<=150:
+            raise JobError("world_site coordinates outside inspected bounds")
+    elif op == "lfs_verify_chunk":
         if len(args) != 1 or not re.fullmatch(r"(?:0|[1-9][0-9]{0,4})", args[0]):
             raise JobError("lfs_verify_chunk requires one numeric cursor")
     elif op != "terminal_readonly" and args:
@@ -177,6 +203,15 @@ def execute_remote(job: dict, token: str, workspace: Path, result_file: Path, *,
     runner(["gh", "codespace", "ssh", "-c", cs, "--", f"mkdir -p {remote}"], env=env, timeout=70)
     runner(["gh", "codespace", "cp", "-e", "-c", cs, str(local_script), f"remote:{remote}/ai_codespace_executor.py"], env=env, timeout=90)
     runner(["gh", "codespace", "cp", "-e", "-c", cs, str(local_job), f"remote:{remote}/{job['id']}.json"], env=env, timeout=90)
+    if job["operation"] in {"unity_gui", "unity_live", "unity_result"}:
+        # Trusted reviewed bridge sources are transferred to a staging folder,
+        # never to the owner's dirty Unity project by GitHub CLI directly.
+        for leaf in ("AarisLiveEditorBridge.cs", "AarisLiveEditorBridge.cs.meta"):
+            source = workspace / "Assets/AarisWorld/Editor" / leaf
+            if not source.is_file():
+                raise JobError("Native Unity editor bridge missing from checked-out job source")
+            runner(["gh","codespace","cp","-e","-c",cs,str(source),f"remote:{remote}/{leaf}"],
+                   env=env, timeout=90)
     proc = runner(["gh", "codespace", "ssh", "-c", cs, "--",
                    f"python3 {remote}/ai_codespace_executor.py {remote}/{job['id']}.json"],
                   env=env, timeout=125, attempts=1)
@@ -186,6 +221,19 @@ def execute_remote(job: dict, token: str, workspace: Path, result_file: Path, *,
         raise JobError("remote executor returned invalid JSON")
     if not isinstance(result, dict) or result.get("id") != job["id"] or result.get("operation") != job["operation"]:
         raise JobError("remote result identity mismatch")
+    if result.get("ok") and job["operation"]=="unity_frame":
+        # Screenshot stays out of Git history. Copy to short-lived Actions artifact;
+        # remove original only after secure remote copy and size check.
+        frame_id=job["args"][0]
+        remote_frame=f"/home/codespace/.aaris-desktop/frames/{frame_id}.jpg"
+        local_frame=result_file.parent/(frame_id+".jpg")
+        runner(["gh","codespace","cp","-e","-c",cs,f"remote:{remote_frame}",str(local_frame)],
+               env=env,timeout=90)
+        info=json.loads(result.get("stdout","{}"))
+        if not local_frame.is_file() or local_frame.stat().st_size!=info.get("bytes"):
+            raise JobError("Unity screenshot transfer size check failed; retaining source")
+        runner(["gh","codespace","ssh","-c",cs,"--",f"rm -f -- {remote_frame}"],env=env,timeout=65)
+        print("AARIS_FRAME_STAGED=",frame_id,local_frame.stat().st_size,flush=True)
     result_file.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
     print("AARIS_RESULT_JSON=" + json.dumps(result, ensure_ascii=False)[:MAX_OUTPUT], flush=True)
     if not result.get("ok"):
