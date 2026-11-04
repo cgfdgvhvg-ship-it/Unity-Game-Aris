@@ -898,6 +898,10 @@ def execute(job):
         if not all(math.isfinite(v) for v in (x,z,radius)) or max(abs(x),abs(z))>10000 or not 1<=radius<=150:
             raise ValueError("world_site coordinates/radius out of range")
         source=PROJECT/"Tools/World/ai_world_observe.py"
+        if not source.is_file():
+            source=Path("/workspaces/.aaris-world-bridge/ondemand/ai_world_observe.py")
+        if not source.is_file() or source.is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"Reviewed world sensor missing from both project and private staging"}
         python=Path("/workspaces/.aaris-world-bridge/venv/bin/python")
         return run([str(python) if python.is_file() else "python3",str(source),
                     "site","--x",str(x),"--z",str(z),"--radius",str(radius),
@@ -935,6 +939,8 @@ def execute(job):
         if args: raise ValueError("unexpected args")
         path = PROJECT / "Tools/World/ai_world_observe.py"
         if not path.is_file():
+            path = Path("/workspaces/.aaris-world-bridge/ondemand/ai_world_observe.py")
+        if not path.is_file() or path.is_symlink():
             return {"exit_code": 3, "stdout": "", "stderr": "World observer not present"}
         python = Path("/workspaces/.aaris-world-bridge/venv/bin/python")
         return run([str(python) if python.is_file() else "python3", str(path), "doctor"], timeout=90)
