@@ -368,9 +368,35 @@ class OnDemandTests(unittest.TestCase):
              patch.object(e.subprocess,"Popen") as popen:
             result=e.ensure_unity_gui()
         self.assertNotEqual(result["exit_code"],0)
-        self.assertIn("3 GiB",result["stderr"])
+        self.assertIn("8 GiB",result["stderr"])
         gui.assert_not_called()
         popen.assert_not_called()
+
+    def test_unity_gui_rejects_paused_process_without_restarting(self):
+        status={"pid":[40121],"paused_pids":[40121],"free_disk_gib":0.585}
+        with patch.object(e,"_unity_gui_status",return_value=status), \
+             patch.object(e,"ensure_desktop") as desktop, \
+             patch.object(e.subprocess,"Popen") as spawn:
+            result=e.ensure_unity_gui()
+        self.assertEqual(result["exit_code"],3)
+        self.assertIn("paused",result["stderr"])
+        desktop.assert_not_called()
+        spawn.assert_not_called()
+
+    def test_unity_gui_rejects_low_space_with_existing_library(self):
+        from types import SimpleNamespace
+        status={"pid":[],"editor_present":True,"project_version_present":True,
+                "map_scene_present":True,"library_exists":True,
+                "library_bytes":2*1024**3}
+        with patch.object(e,"_unity_gui_status",return_value=status), \
+             patch.object(e.shutil,"disk_usage",return_value=SimpleNamespace(free=3*1024**3)), \
+             patch.object(e,"ensure_desktop") as desktop, \
+             patch.object(e.subprocess,"Popen") as spawn:
+            result=e.ensure_unity_gui()
+        self.assertEqual(result["exit_code"],3)
+        self.assertIn("4 GiB",result["stderr"])
+        desktop.assert_not_called()
+        spawn.assert_not_called()
 
     def test_storage_audit_remains_read_only(self):
         job={"id":"storage-audit-test","operation":"storage_audit","args":[]}
