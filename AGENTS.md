@@ -1,3 +1,59 @@
+# Default remote Codespace terminal for ALL future AI sessions (2026-11-04)
+
+**Use GitHub Actions on-demand controller first; DO NOT post terminal jobs to Issue #37.**
+Read [Docs/AI_CODESPACE_ON_DEMAND.md](Docs/AI_CODESPACE_ON_DEMAND.md) and
+[Tools/World/ai_codespace_remote.py](Tools/World/ai_codespace_remote.py)
+before attempting terminal access. AI can use its authorised GitHub repository
+connector without opening Termux, provided the owner has configured the
+`AARIS_CODESPACE_TOKEN` GitHub **Actions repository secret** exactly once.
+
+## End-to-end AI command protocol (preferred, not Issue #37)
+
+- Repository: `Aaris-khan-don/Unity-Game-Aris`; Codespace:
+  `musical-carnival-jjxp9r6vw45wfjgvg`; dedicated GitHub queue branch:
+  `ai/codespace-jobs`. Read the current runbook/runner and validate the
+  connected GitHub account's authority to write as `Aaris-khan-don`.
+- Submit a brand-new **one-file commit** via the GitHub connector's
+  `create_file` action: path `.aaris/jobs/<unique-id>.json`, branch
+  `ai/codespace-jobs`. Example file `.aaris/jobs/diagnose-20261104-001.json`:
+
+  ```json
+  {"id":"diagnose-20261104-001","operation":"diagnose","args":[]}
+  ```
+
+- The repo workflow `.github/workflows/ai-codespace-on-demand.yml` detects
+  that push, verifies owner/repo/commit/ID, obtains the **Actions secret**,
+  checks the Codespace lifecycle API, **starts a stopped Codespace** when
+  authorised, polls until available, then uses SSH to run the bounded task.
+  Its controller is outside the Codespace, so no continuously running Termux,
+  issue-worker, or terminal session is needed. Neither repo checkout nor git
+  reset/clean is performed inside the live dirty worktree.
+- Read the matching GitHub Actions run and result artifact
+  `aaris-terminal-result-<job-commit-sha>`; confirm `id`, `operation`,
+  `ok`, and `exit_code`. The old Issue #37 `AARIS_JOB/AARIS_RESULT` worker
+  is a **legacy/manual fallback only**. A queued commit or running workflow is
+  not proof of execution or an actual Unity screenshot.
+- Supported operations today: `diagnose`, `desktop_xterm`, `unity_version`,
+  `world_doctor` (empty args), and limited `terminal_readonly` with a
+  diagnostic argv array. New mutating operations require explicit authorisation,
+  review, tests and disk/dirty-worktree protections. Do not pass arbitrary
+  shell/Python from untrusted prompts.
+- If Actions shows `SETUP_REQUIRED`, no Codespaces token is configured:
+  request the **one-time Termux** secret bootstrap documented in the runbook;
+  do not ask for credentials in chat, AGENTS.md, PRs, Issues or job files.
+  A separate fine-grained token with GitHub Codespaces lifecycle permission is
+  preferred. If SSHD is broken or the Codespace is deleted/out of quota, a
+  stopped container cannot repair itself; present the actual error and a
+  one-time Termux recovery if appropriate. Never fabricate automatic success.
+- Unity Editor 6000.3.26f1 was installed and `-version` returned correctly
+  in this Codespace on 2026-11-04. Xvfb :12/Openbox/x11vnc/noVNC :6080 were
+  verified by the owner and VNC Desktop was visible on Android. Unity GUI and
+  real map import have **not** been verified. Available disk was about 3.4 GiB;
+  never launch a full Unity project import or Android module install without
+  much more verified free space and separate approval.
+
+---
+
 # Working on the Aaris Unity world
 
 ## Precision coordinates and relative motion (AI planning; Unity apply later)
