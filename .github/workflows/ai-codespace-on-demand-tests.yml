@@ -1,0 +1,31 @@
+name: Aaris Codespace Remote Contracts
+
+on:
+  pull_request:
+    paths:
+      - 'Tools/World/ai_codespace_remote.py'
+      - 'Tools/World/ai_codespace_executor.py'
+      - 'Tools/World/tests/test_ai_codespace_remote.py'
+      - '.github/workflows/ai-codespace-on-demand*.yml'
+      - 'Docs/AI_CODESPACE_ON_DEMAND.md'
+      - 'AGENTS.md'
+  push:
+    branches: [main]
+    paths:
+      - 'Tools/World/ai_codespace_remote.py'
+      - 'Tools/World/ai_codespace_executor.py'
+      - 'Tools/World/tests/test_ai_codespace_remote.py'
+      - '.github/workflows/ai-codespace-on-demand*.yml'
+
+permissions:
+  contents: read
+jobs:
+  python-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m py_compile Tools/World/ai_codespace_remote.py Tools/World/ai_codespace_executor.py
+      - run: python -m unittest discover -s Tools/World/tests -p test_ai_codespace_remote.py -v
