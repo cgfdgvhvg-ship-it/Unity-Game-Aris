@@ -76,12 +76,20 @@ def select_job(event: dict, workspace: Path, sha: str):
     if event.get("sender", {}).get("login", "").casefold() != OWNER.casefold():
         raise JobError("job must be submitted by Codespace owner")
     head = event.get("head_commit") or {}
-    if head.get("id") != sha:
+    if event.get("after") != sha or (head.get("id") not in (None, sha)):
         raise JobError("push commit and checked-out HEAD do not match")
-    added = head.get("added") or []
-    if len(added) != 1 or head.get("modified") or head.get("removed"):
-        raise JobError("submit exactly one new job file per push, no other changes")
-    path = added[0]
+    # GitHub Actions push payloads omit added/modified/removed arrays.
+    # Inspect the actual checked-out Git commit rather than trusting webhook metadata.
+    diff = subprocess.run(
+        ["git", "diff-tree", "--no-commit-id", "--name-status", "-r", sha],
+        cwd=workspace, text=True, capture_output=True, timeout=20, check=False,
+    )
+    if diff.returncode != 0:
+        raise JobError("cannot inspect job commit diff: " + diff.stderr[-300:])
+    changes = [line.split("\t", 1) for line in diff.stdout.splitlines()]
+    if len(changes) != 1 or len(changes[0]) != 2 or changes[0][0] != "A":
+        raise JobError("submit exactly one newly added job file, no other changes")
+    path = changes[0][1]
     if not isinstance(path, str) or not re.fullmatch(r"\.aaris/jobs/[a-z][a-z0-9-]{3,55}\.json", path):
         raise JobError("new file must be a queue JSON job")
     file = workspace / path
