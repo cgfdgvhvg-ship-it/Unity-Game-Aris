@@ -40,7 +40,9 @@ def _port_ready(port):
         return False
 
 
-def _wait_ready(ready, attempts=20):
+def _wait_ready(ready, attempts=65):
+    # Heavy Xvfb/x11vnc startup can exceed 8 seconds on a resumed Codespace.
+    # Poll a bounded ~26 seconds, rather than reporting a false service failure.
     for _ in range(attempts):
         if ready():
             return True
