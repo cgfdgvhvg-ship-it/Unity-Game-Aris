@@ -187,7 +187,8 @@ namespace Aaris.WorldAutomation
                     case "inspect": Inspect(request, result); break;
                     case "move": Modify(request, result, false); break;
                     case "scale": Modify(request, result, true); break;
-                    case "move_tree": MoveNativeTree(request, result); break;
+                    case "move_tree": ModifyNativeTree(request, result, false); break;
+                    case "scale_tree": ModifyNativeTree(request, result, true); break;
                     case "capture": Capture(request, result); break;
                     case "status": result.status = "ok"; break;
                     default: throw new InvalidOperationException("Unsupported Unity command");
@@ -312,7 +313,7 @@ namespace Aaris.WorldAutomation
             SceneView.RepaintAll();
             SaveSession();
         }
-        private static void MoveNativeTree(Request request, Response result)
+        private static void ModifyNativeTree(Request request, Response result, bool isScale)
         {
             if (string.IsNullOrEmpty(request.target) || !request.target.StartsWith("terrain-tree:"))
                 throw new InvalidOperationException("Use exact terrain-tree ID from inspect");
@@ -329,15 +330,27 @@ namespace Aaris.WorldAutomation
             Vector3 size=t.terrainData.size, original=t.GetPosition()+Vector3.Scale(trees[index].position,size);
             if (!request.hasExpectedPosition || Vector3.Distance(original,request.expectedPosition) > .2f)
                 throw new InvalidOperationException("Tree moved since inspection; inspect again");
-            if (!Finite(request.delta) || Mathf.Abs(request.delta.x)>5 || Mathf.Abs(request.delta.z)>5 ||
-                Mathf.Abs(request.delta.y)>0.001f)
+            if (!isScale && (!Finite(request.delta) || Mathf.Abs(request.delta.x)>5 || Mathf.Abs(request.delta.z)>5 ||
+                Mathf.Abs(request.delta.y)>0.001f))
                 throw new InvalidOperationException("Tree horizontal move must be under 5m");
             Vector3 p=trees[index].position;
-            p.x+=request.delta.x/size.x;
-            p.z+=request.delta.z/size.z;
-            if (p.x < 0 || p.x > 1 || p.z < 0 || p.z > 1)
-                throw new InvalidOperationException("Tree cannot leave terrain");
-            trees[index].position=p;
+            if (isScale)
+            {
+                if (!Finite(request.scale) || request.scale.x < .5f || request.scale.x > 2f ||
+                    request.scale.y < .5f || request.scale.y > 2f ||
+                    Mathf.Abs(request.scale.z-1f) > .001f)
+                    throw new InvalidOperationException("Tree scales: x=width and y=height multipliers 0.5..2; z=1");
+                trees[index].widthScale *= request.scale.x;
+                trees[index].heightScale *= request.scale.y;
+            }
+            else
+            {
+                p.x+=request.delta.x/size.x;
+                p.z+=request.delta.z/size.z;
+                if (p.x < 0 || p.x > 1 || p.z < 0 || p.z > 1)
+                    throw new InvalidOperationException("Tree cannot leave terrain");
+                trees[index].position=p;
+            }
             TerrainData data=t.terrainData;
             Undo.RegisterCompleteObjectUndo(data,"Aaris move native terrain tree");
             data.SetTreeInstances(trees,true);
@@ -347,6 +360,7 @@ namespace Aaris.WorldAutomation
             result.changedAsset=AssetDatabase.GetAssetPath(data);
             result.targetId=request.target;
             result.position=t.GetPosition()+Vector3.Scale(p,size);
+            result.scale=new Vector3(trees[index].widthScale,trees[index].heightScale,trees[index].widthScale);
             SceneView.RepaintAll();
         }
         private static void Capture(Request request, Response result)
