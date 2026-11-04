@@ -164,3 +164,18 @@ It validates exact paths, avoids symlinks, and verifies the repo's
 `git status` is identical before and after. On failure, stop and read
 GitHub Actions job logs. Never clean `Assets`, `.git`, Unity Editor,
 or any dirty user-authored mesh, LOD, material or scene asset.
+
+## Exact LFS verification of the entire multi-GB saved map
+
+Use an owner-only `lfs_verify_chunk` queue job with one decimal cursor:
+`{"id":"lfs-check-unique-001","operation":"lfs_verify_chunk","args":["0"]}`.
+After Actions finishes, read its JSON `stdout` and submit another **new**
+job with `args:["<next_cursor>"]` until `all_done` is true.
+Each job limits hashing to roughly 480 MiB, 145 entries and 75 seconds,
+returns a source `head_sha`, and distinguishes `hash_matches`,
+`hash_mismatch`, `dirty_protected`, `pointer`, `missing`,
+`unreadable` and `large_deferred`. Sum the per-chunk categories and
+reject a changing Git HEAD. Never describe deferred or dirty files as
+byte-for-byte verified. A clean file with an LFS pointer is not a hydrated
+asset. Git LFS transfer is only justified for real missing/pointer files;
+no operations may revert modified Unity meshes, scenes, materials or scripts.
