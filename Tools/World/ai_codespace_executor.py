@@ -10,6 +10,7 @@ import json
 import os
 import re
 import socket
+import signal
 from pathlib import Path
 import shutil
 import subprocess
@@ -343,6 +344,263 @@ def prune_caches(home=Path("/home/codespace")):
             "recovered_mib":round((final-initial)/2**20,1),
             "git_worktree_unchanged":True}
 
+
+
+def _install_live_bridge():
+    """Install only new reviewed files; fail closed on any existing content mismatch."""
+    stage=Path("/workspaces/.aaris-world-bridge/ondemand")
+    dest=PROJECT/"Assets/AarisWorld/Editor"
+    names=("AarisLiveEditorBridge.cs","AarisLiveEditorBridge.cs.meta")
+    dest.mkdir(parents=True,exist_ok=True)
+    installed=[]
+    for leaf in names:
+        src=stage/leaf
+        target=dest/leaf
+        if not src.is_file() or src.is_symlink() or src.stat().st_size>100000:
+            raise ValueError("Reviewed Unity bridge source not staged")
+        if target.is_symlink():
+            raise ValueError("Refusing to overwrite symlinked Unity source")
+        expected=hashlib.sha256(src.read_bytes()).hexdigest()
+        if target.exists():
+            if not target.is_file() or hashlib.sha256(target.read_bytes()).hexdigest()!=expected:
+                raise ValueError("Existing locally changed Unity bridge: never overwrite "+leaf)
+        else:
+            tmp=dest/(leaf+".aaris-new")
+            if tmp.exists(): raise ValueError("Stale staging file needs review")
+            tmp.write_bytes(src.read_bytes())
+            os.replace(tmp,target)
+            installed.append(leaf)
+    return installed
+
+
+def _monitor_unity(pid):
+    """Emergency protection for low-capacity Codespaces. Never delete Library/Assets."""
+    note=DESKTOP/"unity-storage-watchdog.log"
+    while True:
+        path=Path("/proc")/str(pid)/"cmdline"
+        try:
+            argv=path.read_bytes().replace(b"\0",b" ").decode("utf-8","replace")
+        except OSError:
+            break
+        if not argv.startswith(str(EDITOR)+" ") or "-projectPath "+str(PROJECT) not in argv:
+            break
+        free=shutil.disk_usage(PROJECT).free
+        if free < 1024**3:
+            with note.open("a") as file:
+                file.write("Low disk below 1 GiB: requesting safe Unity process shutdown; Library retained\n")
+            try:
+                os.kill(pid,signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            break
+        time.sleep(10)
+
+def _unity_pids():
+    """Match actual argv via /proc; never mistake process table snippets for Unity."""
+    found=[]
+    proc=Path("/proc")
+    try:
+        entries=list(proc.iterdir())
+    except OSError:
+        return found
+    for entry in entries:
+        if not entry.name.isdigit(): continue
+        try:
+            raw=(entry/"cmdline").read_bytes()
+            argv=[p.decode("utf-8","replace") for p in raw.split(b"\0") if p]
+        except (OSError,PermissionError):
+            continue
+        if len(argv)>=3 and argv[0]==str(EDITOR):
+            try:
+                i=argv.index("-projectPath")
+            except ValueError:
+                continue
+            if i+1<len(argv) and argv[i+1]==str(PROJECT):
+                found.append(int(entry.name))
+    return sorted(found)
+
+
+def _unity_log_tail():
+    logfile=DESKTOP/"unity-editor.log"
+    if logfile.is_file() and not logfile.is_symlink():
+        with logfile.open("rb") as f:
+            f.seek(max(0, logfile.stat().st_size-3000))
+            raw=f.read().decode("utf-8","replace")
+        return re.sub(r"(?i)\b(?:ghp_|ghu_|gho_|ghs_|ghr_|github_pat_|sk-)[A-Za-z0-9_-]{8,}",
+                      "[REDACTED]",raw)[-2200:]
+    return "Unity log does not exist"
+
+
+def _unity_gui_status():
+    free=shutil.disk_usage(PROJECT).free
+    lib=PROJECT/"Library"
+    return {
+        "editor_version":"6000.3.26f1",
+        "editor_present":EDITOR.is_file() and os.access(EDITOR,os.X_OK),
+        "project_version_present":(PROJECT/"ProjectSettings/ProjectVersion.txt").is_file(),
+        "map_scene_present":(PROJECT/"Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity").is_file(),
+        "pid":_unity_pids(),
+        "display_12":Path("/tmp/.X11-unix/X12").exists(),
+        "novnc_6080":_port_ready(6080),
+        "library_exists":lib.is_dir(),
+        "library_bytes":_du_bytes(lib),
+        "free_disk_gib":round(free/2**30,3),
+        "last_log":_unity_log_tail(),
+    }
+
+
+def ensure_unity_gui(*, launch=True):
+    """Resume saved project using existing Library, without checkout or re-import cleanup."""
+    status=_unity_gui_status()
+    if not launch or status["pid"]:
+        return {"exit_code":0,"stdout":json.dumps(status,ensure_ascii=False),"stderr":""}
+    if not status["editor_present"] or not status["project_version_present"] or not status["map_scene_present"]:
+        return {"exit_code":3,"stdout":json.dumps(status),"stderr":"Unity Editor or saved project missing"}
+    if shutil.disk_usage(PROJECT).free < 3*1024**3:
+        return {"exit_code":3,"stdout":json.dumps(status),"stderr":"Less than 3 GiB available; refusing unsafe first import"}
+    error=ensure_desktop()
+    if error:
+        return {"exit_code":3,"stdout":json.dumps(status),"stderr":error}
+    import fcntl
+    DESKTOP.mkdir(parents=True,exist_ok=True)
+    DESKTOP.chmod(0o700)
+    lock=DESKTOP/"unity-launch.lock"
+    with lock.open("a+") as lockfile:
+        fcntl.flock(lockfile.fileno(),fcntl.LOCK_EX)
+        if not _unity_pids():
+            installed=_install_live_bridge()
+            env=os.environ.copy()
+            env["DISPLAY"]=":12"
+            env.setdefault("XDG_RUNTIME_DIR",str(DESKTOP/"runtime"))
+            runtime=Path(env["XDG_RUNTIME_DIR"])
+            runtime.mkdir(parents=True,exist_ok=True)
+            runtime.chmod(0o700)
+            args=[str(EDITOR),"-projectPath",str(PROJECT),
+                  "-logFile",str(DESKTOP/"unity-editor.log"),
+                  "-job-worker-count","2"]
+            with (DESKTOP/"unity-launch.log").open("a") as output:
+                proc=subprocess.Popen(args,cwd=PROJECT,stdin=subprocess.DEVNULL,
+                                      stdout=output,stderr=output,env=env,start_new_session=True)
+            (DESKTOP/"unity-last-pid.txt").write_text(str(proc.pid)+"\n")
+            watchdog=[sys.executable,str(Path(__file__).resolve()),"--unity-watchdog",str(proc.pid)]
+            with (DESKTOP/"unity-watchdog-launch.log").open("a") as watcher:
+                subprocess.Popen(watchdog, cwd=PROJECT,stdin=subprocess.DEVNULL,
+                                 stdout=watcher,stderr=watcher,start_new_session=True)
+
+    # Non-blocking: big first import is checked by later status jobs.
+    time.sleep(4)
+    info=_unity_gui_status()
+    info["launch_attempted"]=True
+    if not info["pid"]:
+        return {"exit_code":3,"stdout":json.dumps(info),"stderr":"Unity process exited; inspect last_log and unity-launch.log"}
+    return {"exit_code":0,"stdout":json.dumps(info,ensure_ascii=False),"stderr":""}
+
+
+
+def validate_live_payload(value):
+    """Minimal reviewed Unity commands only. No shell, paths or arbitrary code."""
+    import math
+    if not isinstance(value,dict) or "action" not in value:
+        raise ValueError("Unity request must be a JSON object with action")
+    action=value["action"]
+    allowed={
+        "status":set(),
+        "inspect":{"target","cameraTarget","radius","limit"},
+        "move":{"target","delta"},
+        "scale":{"target","scale"},
+        "move_tree":{"target","delta","expectedPosition"},
+        "scale_tree":{"target","scale","expectedPosition"},
+        "capture":{"cameraPosition","cameraTarget"},
+    }
+    if action not in allowed or set(value)-({"action"}|allowed[action]):
+        raise ValueError("unsupported Unity request action or fields")
+    for field in ("target",):
+        if field in value and (not isinstance(value[field],str) or not (1 <= len(value[field]) <= 210)):
+            raise ValueError("invalid target name")
+    for field in ("delta","scale","cameraPosition","cameraTarget","expectedPosition"):
+        if field not in value: continue
+        vec=value[field]
+        if not isinstance(vec,dict) or set(vec)!={"x","y","z"} or any(
+            not isinstance(n,(int,float)) or isinstance(n,bool) or not math.isfinite(n)
+            or abs(n)>20000 for n in vec.values()
+        ):
+            raise ValueError("invalid vector "+field)
+    if action in ("move","scale","move_tree","scale_tree") and not value.get("target"):
+        raise ValueError("target required")
+    if action in ("move","move_tree") and "delta" not in value:
+        raise ValueError("move delta required")
+    if action in ("scale","scale_tree") and "scale" not in value:
+        raise ValueError("scale vector required")
+    if action in ("move_tree","scale_tree") and "expectedPosition" not in value:
+        raise ValueError("expected terrain tree position required")
+    if action=="capture" and not {"cameraPosition","cameraTarget"}<=set(value):
+        raise ValueError("camera position and target required")
+    if action=="inspect" and not value.get("target") and "cameraTarget" not in value:
+        raise ValueError("inspect requires target or cameraTarget")
+    if "radius" in value and (not isinstance(value["radius"],(int,float)) or
+                               not 1<=value["radius"]<=200):
+        raise ValueError("radius outside 1..200")
+    if "limit" in value and (not isinstance(value["limit"],int) or not 1<=value["limit"]<=80):
+        raise ValueError("limit outside 1..80")
+    return value
+
+
+def unity_live_job(job):
+    params=validate_live_payload(json.loads(job["args"][0]))
+    _install_live_bridge()
+    started=ensure_unity_gui()
+    if started["exit_code"]:
+        return started
+    commands=DESKTOP/"unity-commands"
+    results=DESKTOP/"unity-results"
+    commands.mkdir(parents=True,exist_ok=True)
+    results.mkdir(parents=True,exist_ok=True)
+    ident=job["id"]
+    output=results/(ident+".json")
+    command=commands/(ident+".json")
+    if not output.is_file():
+        payload=dict(params,id=ident)
+        if params["action"] in ("move_tree","scale_tree"):
+            payload["hasExpectedPosition"]=True
+        if not command.exists():
+            temp=commands/(ident+".writing")
+            if temp.exists() or command.is_symlink():
+                raise ValueError("unsafe Unity command staging")
+            temp.write_text(json.dumps(payload,separators=(",",":"),allow_nan=False))
+            os.replace(temp,command)
+    return _read_unity_result(ident,wait_seconds=30)
+
+
+def _read_unity_result(ident,*,wait_seconds=0):
+    import re
+    if not re.fullmatch(r"[a-z][a-z0-9-]{3,55}",ident):
+        raise ValueError("invalid Unity result ID")
+    file=DESKTOP/"unity-results"/(ident+".json")
+    deadline=time.monotonic()+wait_seconds
+    while time.monotonic()<deadline and not file.is_file():
+        time.sleep(.7)
+    if not file.is_file() and not _unity_pids():
+        # A cold Codespace cannot process an earlier queued Unity command.
+        _install_live_bridge()
+        result=ensure_unity_gui()
+        if result["exit_code"]!=0:
+            return result
+    if not file.is_file():
+        return {"exit_code":0,"stdout":json.dumps({
+            "job":ident,"pending":True,"unity_running":bool(_unity_pids()),
+            "note":"Accepted, awaiting Editor import/domain compilation; poll unity_result by job ID."
+        }),"stderr":""}
+    if file.is_symlink() or file.stat().st_size>150000:
+        return {"exit_code":3,"stdout":"","stderr":"Invalid Unity response"}
+    result=json.loads(file.read_text(encoding="utf-8"))
+    if result.get("id")!=ident:
+        return {"exit_code":3,"stdout":"","stderr":"Unity response identity mismatch"}
+    # Output can contain relative saved scene paths, never VNC credentials.
+    return {"exit_code":0 if result.get("status")=="ok" else 3,
+            "stdout":json.dumps(result,ensure_ascii=False)[:16000],
+            "stderr":result.get("error","")[:300] if result.get("status")!="ok" else ""}
+
+
 def execute(job):
     # Validate independently from Actions, where an untrusted queue file travels.
     if set(job) != {"id", "operation", "args"}:
@@ -413,6 +671,40 @@ def execute(job):
         state = {"display_12": True, "vnc_local_5900": _port_ready(5900),
                  "novnc_6080": _port_ready(6080), "xterm_running": True}
         return {"exit_code": 0, "stdout": json.dumps(state), "stderr": ""}
+    if op == "unity_frame":
+        if len(args)!=1 or not re.fullmatch(r"[a-z][a-z0-9-]{3,55}",args[0]):
+            raise ValueError("frame job ID required")
+        name=args[0]+".jpg"
+        path=DESKTOP/"frames"/name
+        if not path.is_file() or path.is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"Unity screenshot not ready or already expired"}
+        size=path.stat().st_size
+        if size<100 or size>3*1024*1024:
+            return {"exit_code":3,"stdout":"","stderr":"Invalid screenshot size"}
+        return {"exit_code":0,"stdout":json.dumps({"frame_job":args[0],"bytes":size,
+                         "sha256":hashlib.sha256(path.read_bytes()).hexdigest(),
+                         "format":"jpg","retention":"temporary, not committed to Git"}),"stderr":""}
+    if op == "world_site":
+        import math
+        if len(args)!=3 or any(not s.replace(".","",1).replace("-","",1).isdigit() for s in args):
+            raise ValueError("world_site requires x z radius")
+        x,z,radius=map(float,args)
+        if not all(math.isfinite(v) for v in (x,z,radius)) or max(abs(x),abs(z))>10000 or not 1<=radius<=150:
+            raise ValueError("world_site coordinates/radius out of range")
+        source=PROJECT/"Tools/World/ai_world_observe.py"
+        python=Path("/workspaces/.aaris-world-bridge/venv/bin/python")
+        return run([str(python) if python.is_file() else "python3",str(source),
+                    "site","--x",str(x),"--z",str(z),"--radius",str(radius),
+                    "--limit","12"],timeout=100)
+    if op == "unity_live":
+        if len(args)!=1 or len(args[0])>500: raise ValueError("one short Unity command required")
+        return unity_live_job(job)
+    if op == "unity_result":
+        if len(args)!=1: raise ValueError("Unity result ID required")
+        return _read_unity_result(args[0],wait_seconds=8)
+    if op == "unity_gui":
+        if args: raise ValueError("unity_gui takes no arguments")
+        return ensure_unity_gui()
     if op == "unity_version":
         if args: raise ValueError("unexpected args")
         if not EDITOR.is_file():
@@ -457,4 +749,7 @@ def main():
 
 
 if __name__ == "__main__":
+    if len(sys.argv)==3 and sys.argv[1]=="--unity-watchdog" and sys.argv[2].isdigit():
+        _monitor_unity(int(sys.argv[2]))
+        sys.exit(0)
     sys.exit(main())
