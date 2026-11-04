@@ -3235,7 +3235,7 @@ LODGroup:
     fadeTransitionWidth: 0.12
     renderers:
     - renderer: {fileID: 10407}
-  - screenRelativeHeight: 0.07
+  - screenRelativeHeight: 0.11
     fadeTransitionWidth: 0.12
     renderers:
     - renderer: {fileID: 200395}
@@ -4401,7 +4401,7 @@ LODGroup:
     fadeTransitionWidth: 0.12
     renderers:
     - renderer: {fileID: 10519}
-  - screenRelativeHeight: 0.07
+  - screenRelativeHeight: 0.11
     fadeTransitionWidth: 0.12
     renderers:
     - renderer: {fileID: 200587}
@@ -5136,7 +5136,7 @@ LODGroup:
     fadeTransitionWidth: 0.12
     renderers:
     - renderer: {fileID: 10589}
-  - screenRelativeHeight: 0.07
+  - screenRelativeHeight: 0.11
     fadeTransitionWidth: 0.12
     renderers:
     - renderer: {fileID: 200707}
