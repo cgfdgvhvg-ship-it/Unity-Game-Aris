@@ -345,6 +345,16 @@ def system_storage_audit():
         ("apt_lists", Path("/var/lib/apt/lists")),
         ("unity_editor", Path("/home/codespace/Unity/Hub/Editor/6000.3.26f1")),
         ("world_bridge", Path("/workspaces/.aaris-world-bridge")),
+        ("conda_package_cache", Path("/opt/conda/pkgs")),
+        ("conda_environments", Path("/opt/conda/envs")),
+        ("usr_local_share", Path("/usr/local/share")),
+        ("usr_local_lib", Path("/usr/local/lib")),
+        ("usr_local_go", Path("/usr/local/go")),
+        ("usr_local_swift", Path("/usr/local/swift")),
+        ("usr_share_dotnet", Path("/usr/share/dotnet")),
+        ("usr_local_bin", Path("/usr/local/bin")),
+        ("home_local_share", Path("/home/codespace/.local/share")),
+        ("home_local_lib", Path("/home/codespace/.local/lib")),
     )
     deadline=time.monotonic()+90
     sizes={}
@@ -377,11 +387,14 @@ def system_storage_audit():
                     for row in mount_table.splitlines())
     except OSError:
         overlay=None
+    commands={name:shutil.which(name) for name in (
+        "python3","node","npm","conda","php","java","dotnet","git","gh"
+    )}
     ps=run(["ps","-o","pid,stat,comm","-C","Unity"],timeout=5)
     return {"free_disk_gib":round(free.free/2**30,3),
             "total_disk_gib":round(free.total/2**30,3),
             "unity_process":ps["stdout"][-250:],
-            "root_overlay":overlay,"sizes":sizes,
+            "root_overlay":overlay,"command_paths":commands,"sizes":sizes,
             "note":"Sizes overlap. In layered/overlay filesystems, du size is NOT reclaimable space. No files changed; measure df before and after any separately reviewed cleanup."}
 
 
