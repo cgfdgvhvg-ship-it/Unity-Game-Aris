@@ -18,6 +18,11 @@ class WorldSensorContractTests(unittest.TestCase):
         with patch.object(sys, "argv", ["ai_world_observe.py", *argv]):
             return sensor.parse()
 
+    def test_detects_local_repo_when_source_is_in_checkout(self):
+        candidate=Path(sensor.__file__).resolve().parents[2]
+        if (candidate/"Tools/World/world.py").is_file():
+            self.assertEqual(sensor.ROOT.resolve(), candidate)
+
     def test_no_mutating_world_commands_accepted(self):
         for name in ("apply", "preview", "plan", "engine", "watch", "import-model"):
             with self.subTest(name=name):
