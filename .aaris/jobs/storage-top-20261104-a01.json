@@ -1,0 +1,1 @@
+{"id":"storage-top-20261104-a01","operation":"terminal_readonly","args":["du","-h","--max-depth=1","/workspaces/"]}
