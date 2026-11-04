@@ -126,3 +126,16 @@ the new external controller.
 - Keep the older Issue #37 worker as a historical/manual fallback only.
   It stopped responding to several recent commands; do not keep posting
   there as the default route and do not assume it self-starts.
+## Restoring the phone-accessible Linux desktop after restart
+
+An AI job with `operation: "desktop_xterm"` checks and revives Xvfb display
+`:12`, Openbox, loopback-only x11vnc at `5900`, and websockify/noVNC at
+`6080`. It then opens an xterm window and returns structured port and
+process checks in `stdout`. Repeated jobs reuse existing processes rather
+than installing packages or replacing the VNC password. The private
+`~/.aaris-desktop/vnc.pass` must already exist; a missing password fails
+closed. Do not include the password in any job file, CI logs, or chat.
+The browser must reach a **private** Codespace-forwarded 6080 port.
+This is only GUI transport: Unity's 6000.3.26f1 Editor and full game map
+import are separate steps, and ~3.4 GiB free is currently insufficient
+for a trustworthy complete Unity project import.
