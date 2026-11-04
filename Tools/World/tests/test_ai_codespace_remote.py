@@ -129,6 +129,22 @@ class OnDemandTests(unittest.TestCase):
             self.assertEqual(out["exit_code"],3)
             self.assertIn("Xvfb failed",out["stderr"])
 
+    def test_desktop_diagnostics_are_bounded_and_redact_credentials(self):
+        with tempfile.TemporaryDirectory() as d:
+            home=Path(d)
+            (home/"vnc.log").write_text("Port busy. token ghp_123456789012345678901234 more details")
+            (home/"vnc.pass").write_text("hidden",encoding="utf-8")
+            with patch.object(e, "DESKTOP", home), \
+                 patch.object(e, "_process_running", return_value=False), \
+                 patch.object(e, "_port_ready", return_value=False):
+                report=e.execute({"id":"desktop-diag-test","operation":"desktop_diagnose","args":[]})
+            self.assertEqual(report["exit_code"],0)
+            data=json.loads(report["stdout"])
+            self.assertIn("Port busy",data["logs"]["vnc.log"])
+            self.assertIn("[REDACTED]",data["logs"]["vnc.log"])
+            self.assertNotIn("ghp_123456",report["stdout"])
+            self.assertTrue(data["saved_vnc_password_exists"])
+
     def test_missing_secret_reports_setup_required(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d); f=root/r.QUEUE/(self.good()["id"]+".json");f.parent.mkdir(parents=True);f.write_text(json.dumps(self.good()))

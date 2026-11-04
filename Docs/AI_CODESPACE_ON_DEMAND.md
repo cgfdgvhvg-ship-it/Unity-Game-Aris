@@ -139,3 +139,13 @@ The browser must reach a **private** Codespace-forwarded 6080 port.
 This is only GUI transport: Unity's 6000.3.26f1 Editor and full game map
 import are separate steps, and ~3.4 GiB free is currently insufficient
 for a trustworthy complete Unity project import.
+
+## VNC failure diagnostics without terminal access
+
+To inspect failed graphical startup, submit a normal new on-demand GitHub
+queue job with `"operation":"desktop_diagnose"` and `"args":[]`.
+The response includes only whitelisted desktop log tails (Xvfb, Openbox,
+x11vnc, websockify, xterm), VNC/non-VNC port statuses, and whether the
+password file exists. It does not read or expose password contents.
+Use this before guessing at service launch errors or asking the owner to
+reopen Termux; all command results are available via the Actions artifact.
