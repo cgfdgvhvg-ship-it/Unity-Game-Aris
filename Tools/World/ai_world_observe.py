@@ -166,7 +166,7 @@ def parse():
             p.add_argument("--" + name.replace("_", "-"), type=type_, default=None)
     args = p.parse_args()
     supplied = {k: v for k, v in vars(args).items()
-                if k != "command" and v not in (None, False)}
+                if k != "command" and v is not None and v is not False}
     if args.command in ("doctor", "unity") and supplied:
         p.error("This command does not take flags")
     allowed = set(COMMANDS.get(args.command, ()))
