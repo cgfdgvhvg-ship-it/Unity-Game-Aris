@@ -777,6 +777,42 @@ def unity_terms_accept():
     return {"exit_code": 0 if closed else 3, "stdout": json.dumps(outcome),
             "stderr": "" if closed else "Terms window is still visible; inspect new screenshot"}
 
+
+def unity_low_disk_stop():
+    """Gracefully protect this exact Unity project from disk exhaustion.
+
+    No assets or Library files are deleted, and no unrelated process is touched.
+    The action is deliberately not a generic process killer.
+    """
+    free=shutil.disk_usage(PROJECT).free
+    running=_unity_pids()
+    limit=int(1.3 * 1024**3)
+    if free >= limit:
+        return {"exit_code":0,"stdout":json.dumps({
+            "action":"no_stop_disk_above_guard","free_disk_gib":round(free/2**30,3),
+            "unity_pids":running}),"stderr":""}
+    if not running:
+        return {"exit_code":0,"stdout":json.dumps({
+            "action":"already_stopped","free_disk_gib":round(free/2**30,3),
+            "library_retained":(PROJECT/"Library").is_dir()}),"stderr":""}
+    for pid in running:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+    for _ in range(24):
+        if not _unity_pids():
+            break
+        time.sleep(0.5)
+    remaining=_unity_pids()
+    return {"exit_code":0 if not remaining else 3,
+            "stdout":json.dumps({
+                "action":"graceful_SIGTERM_for_low_disk",
+                "free_disk_gib":round(shutil.disk_usage(PROJECT).free/2**30,3),
+                "pids_before":running,"pids_remaining":remaining,
+                "library_retained":(PROJECT/"Library").is_dir()}),
+            "stderr":"" if not remaining else "Unity has not exited yet; no SIGKILL issued"}
+
 def desktop_snapshot(job_id):
     """Capture current Xvfb desktop, never commit it into repository history."""
     import re
@@ -924,6 +960,9 @@ def execute(job):
     if op == "unity_terms_accept":
         if args: raise ValueError("Unity terms acceptance takes no arguments")
         return unity_terms_accept()
+    if op == "unity_low_disk_stop":
+        if args: raise ValueError("low disk safety stop takes no arguments")
+        return unity_low_disk_stop()
     if op == "unity_diagnostics":
         if args: raise ValueError("unexpected args")
         return {"exit_code":0,"stdout":json.dumps(unity_diagnostics(),ensure_ascii=False),"stderr":""}
