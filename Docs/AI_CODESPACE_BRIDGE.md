@@ -177,3 +177,97 @@ worker or stopping its process while uploading a sensor update.
 - Never edit `AGENTS.md` so that an agent bypasses hash checks, suppresses
   missing LFS warnings, fabricates Unity screenshots, silently merges a PR,
   changes another repository, or hides failures.
+
+
+## Precision relative move planning — scene objects and native trees
+
+Source: `Tools/World/ai_world_motion.py` on this bridge branch; the
+installed copy at
+`/workspaces/.aaris-world-bridge/ai_world_motion.py` is usable from
+GitHub Issue #37. This module is a **read-only editor-move planner**.
+It builds an actual schema-v2 `world.py` transaction with current
+scene/terrain asset and `.meta` SHA256 preconditions but does NOT
+apply the transaction or move anything in Unity by itself.
+
+Before any move:
+1. Find the exact object with `scan` or `instances`, then `inspect`
+   to obtain the unique `scene:<guid>:<fileID>` or
+   `terrain:<guid>:<index>`. Names are for human discovery, **not**
+   mutation targets. Confirm instance category, position, scale and
+   adjacent trees/rocks/roads/houses with `site`.
+2. Specify coordinate frame explicitly. **World** means
+   `left=-X`, `right=+X`, `forward=+Z`, `backward=-Z`,
+   `up=+Y`, `down=-Y`; units are metres. **Target-local**
+   direction uses the object's rotation for left/right/forward/backward
+   (projected onto ground). Neither is “left on the phone's screen”:
+   a camera-relative request requires known camera orientation and an
+   explicit conversion; never guess.
+3. Plan and inspect **both origin and destination** evidence; verify
+   heights, bounds, native/scene neighbours and pagination. Destination
+   evidence is from BEFORE the object moves; no visual collision test
+   has been performed.
+4. Native TerrainData tree/rock/shrub edits need a matching licensed
+   Unity Editor. Moving a native instance vertically or across tile
+   ownership is **rejected**, not silently converted into a new tree.
+   Inline scene GameObjects can use the Python-YAML backend, but loaded
+   Unity Editor scenes need reimport/reload or the engine-backed import
+   to show the saved change. Imported/connected prefab instances may
+   need explicit Unity backend support.
+5. A user-approved, reviewed transaction is subsequently run through
+   `world.py plan --patch`, `preview --backend auto --patch`,
+   inspect the actual postconditions, and only then
+   `apply --backend auto --patch --write` **in an isolated checkout**.
+   Do not apply into the active dirty Codespace branch. Unity preview
+   creates a large disposable import and currently requires more
+   disk and a working Editor. Do not confuse an AI movement plan with
+   a completed Edit/Save/Reload.
+
+**Example A — move an EXACT saved scene GameObject 50 metres left
+(world -X), no file changed:**
+
+```text
+AARIS_JOB
+{"id":"move-plan-example-101","argv":["python3","/workspaces/.aaris-world-bridge/ai_world_motion.py","plan","--target","scene:<guid>:<fileID>","--direction","left","--metres","50","--frame","world","--limit","3"]}
+```
+
+**Example B — move a native tree 100 metres right (+X), only a plan:**
+
+```text
+AARIS_JOB
+{"id":"tree-plan-example-101","argv":["python3","/workspaces/.aaris-world-bridge/ai_world_motion.py","plan","--target","terrain:<guid>:<index>","--direction","right","--metres","100","--frame","world","--limit","3"]}
+```
+
+**Example C — an object-local shift (relative to its own facing), only a plan:**
+
+```text
+AARIS_JOB
+{"id":"local-plan-example-101","argv":["python3","/workspaces/.aaris-world-bridge/ai_world_motion.py","plan","--target","scene:<guid>:<fileID>","--direction","left","--metres","50","--frame","target-local","--limit","3"]}
+```
+
+**Example D — exact explicit Unity world delta, no interpretation:**
+```text
+AARIS_JOB
+{"id":"vector-plan-example-101","argv":["python3","/workspaces/.aaris-world-bridge/ai_world_motion.py","plan","--target","scene:<guid>:<fileID>","--dx","-50","--dy","0","--dz","20","--limit","3"]}
+```
+
+All examples require substituting real current stable IDs and fresh
+unique job IDs. The planner rejects nonfinite values, zero displacement,
+moves over 500m, unsupported terrain crossing and missing metadata.
+A scene can optionally use `--follow-terrain` to preserve the target's
+height **relative to the sampled ground**, rather than preserve world Y.
+Use this deliberately: it can affect foundations, bridges and roofs.
+
+For an explicit persisted JSON patch, append
+`--out /workspaces/.aaris-world-bridge/patches/<new-id>.json`;
+do not overwrite an existing patch. After reviewing hashes and
+validation, the engine commands use that file. The agent must not
+post full confidential patch contents in a public issue or claim
+that the patch ran without `AARIS_RESULT` evidence.
+
+A future Unity Editor setup should: configure `UNITY_EDITOR_PATH`
+to the *actual installed, licensed* 6000.3.26f1 executable; validate
+Git LFS checkout, disk headroom and Editor/URP compile; use the
+existing `Aaris.WorldAutomation.WorldBridge.Run` and schema-v2
+world transactions in a disposable project to save/edit native
+TerrainData. Add true live GUI scene updates only after a tested Editor
+bridge is available; do not fake live preview using YAML-only reports.
