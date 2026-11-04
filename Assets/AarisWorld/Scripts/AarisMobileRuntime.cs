@@ -119,9 +119,7 @@ namespace Aaris.MapReview
             if (cap != observedTargetFps)
             {
                 observedTargetFps = cap;
-                Array.Clear(frameTimes, 0, frameTimes.Length);
-                frameIndex = frameCount = pressureSamples = recoverySamples = 0;
-                nextPerformanceChangeAt = Time.unscaledTime + 6f;
+                ResetFrameObservation();
             }
             float dt = Time.unscaledDeltaTime;
             if (dt > 0)
@@ -158,6 +156,16 @@ namespace Aaris.MapReview
                 Record("sample");
                 sampleAt = Time.unscaledTime + 3;
             }
+        }
+
+        // A foreground resume or target-FPS switch must not grade a stale frame
+        // window from before the interruption. Preserve the selected quality tier,
+        // but require fresh evidence before changing it again.
+        private void ResetFrameObservation()
+        {
+            Array.Clear(frameTimes, 0, frameTimes.Length);
+            frameIndex = frameCount = pressureSamples = recoverySamples = 0;
+            nextPerformanceChangeAt = Time.unscaledTime + 6f;
         }
 
         // RAM-class baseline preserves the camera horizon and initial render scale;
@@ -357,7 +365,19 @@ namespace Aaris.MapReview
         }
 
         private void OnLowMemory() { lowMemoryPending = true; }
-        private void OnApplicationPause(bool paused) { if (paused) Record("pause"); }
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused) Record("pause");
+            else
+            {
+                ResetFrameObservation();
+                Record("resume");
+            }
+        }
+        private void OnApplicationFocus(bool focused)
+        {
+            if (focused) ResetFrameObservation();
+        }
         private void OnApplicationQuit() { Record("quit"); }
         private void OnDestroy()
         {

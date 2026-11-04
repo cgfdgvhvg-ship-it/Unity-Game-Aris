@@ -28,3 +28,7 @@ Sources:
 5. If the severe-pressure no-fade mode produces ugly transitions or no measurable improvement, turn the new serialized field off and keep the authored fades. Do not merge based on a synthetic FPS estimate.
 
 No Android profile or Unity Editor test has been performed in this GitHub source-only patch.
+
+## Foreground-resume frame-pacing safeguard
+
+The same Android runtime now resets only its 180-sample frame-time observation window, downgrade/recovery counters and six-second change cooldown when the application resumes or regains focus. It also uses that helper for an in-game 60/30 FPS switch. The chosen quality tier is retained until new measurements support a change. This prevents stale pre-background p95 frame times from incorrectly triggering additional near-grass/shadow reductions on return; it does not alter meshes, native terrain, far clip, device memory budget or source Prefabs. The resumed app still requires Unity/physical-device validation because OS callbacks and GPU recovery timings vary.

@@ -57,5 +57,19 @@ class StaticLodCrossFadeFallbackTests(unittest.TestCase):
         self.assertIn("s.staticLodCrossFadeGroupCount = staticLodGroups != null ? staticLodGroups.Length : 0;", s)
 
 
+    def test_foreground_resume_discards_stale_frame_pressure(self):
+        s = self.source
+        self.assertIn("private void ResetFrameObservation()", s)
+        self.assertIn("Array.Clear(frameTimes, 0, frameTimes.Length);", s)
+        self.assertIn("frameIndex = frameCount = pressureSamples = recoverySamples = 0;", s)
+        self.assertIn("nextPerformanceChangeAt = Time.unscaledTime + 6f;", s)
+        self.assertIn("if (cap != observedTargetFps)\n            {\n                observedTargetFps = cap;\n                ResetFrameObservation();", s)
+        self.assertIn("private void OnApplicationPause(bool paused)", s)
+        self.assertIn('if (paused) Record("pause");', s)
+        self.assertIn('ResetFrameObservation();\n                Record("resume");', s)
+        self.assertIn("private void OnApplicationFocus(bool focused)", s)
+        self.assertIn("if (focused) ResetFrameObservation();", s)
+        self.assertIn("performanceLevel >= 2", s)
+
 if __name__ == "__main__":
     unittest.main()
