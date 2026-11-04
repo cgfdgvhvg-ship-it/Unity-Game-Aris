@@ -12,6 +12,11 @@ import ai_world_motion as m
 
 
 class MathTests(unittest.TestCase):
+    def test_detects_repo_checkout_when_source_lives_in_repo(self):
+        origin=Path(m.__file__).resolve().parents[2]
+        if (origin/"Tools/World/world.py").is_file():
+            self.assertEqual(m.DEFAULT_ROOT.resolve(), origin)
+
     def test_world_left_50_and_right_100(self):
         self.assertEqual(m.delta("left",50),[-50.,0.,0.])
         self.assertEqual(m.delta("right",100),[100.,0.,0.])
