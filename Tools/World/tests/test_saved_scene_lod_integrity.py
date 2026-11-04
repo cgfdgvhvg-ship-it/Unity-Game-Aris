@@ -72,12 +72,14 @@ class SavedSceneMobileLodIntegrity(unittest.TestCase):
                 expected = self.contract['preserved_files'][path]
                 self.assertEqual(hashlib.sha256(original).hexdigest(), expected)
                 self.assertTrue(preserved_or_reviewed_lod_only(ROOT, path, expected))
-                unexpected = source.replace(b'  - screenRelativeHeight: 0.095\n',
-                                            b'  - screenRelativeHeight: 0.105\n', 1)
-                self.assertNotEqual(hashlib.sha256(
-                    unexpected.replace(b'  - screenRelativeHeight: 0.105\n',
-                                       b'  - screenRelativeHeight: 0.07\n', 1)
-                ).hexdigest(), expected)
+                # Another prefab property must not slip through the scalar-only guard.
+                tampered = source.replace(b'  m_FadeMode: 1\n',
+                                          b'  m_FadeMode: 0\n', 1)
+                self.assertNotEqual(tampered, source)
+                restored_tampered = tampered.replace(
+                    b'  - screenRelativeHeight: 0.095\n',
+                    b'  - screenRelativeHeight: 0.07\n', 1)
+                self.assertNotEqual(hashlib.sha256(restored_tampered).hexdigest(), expected)
 
     def test_modified_scene_geometry_or_metadata_cannot_pass(self):
         modified = self.scene.replace(b'  m_Fog: 1\n', b'  m_Fog: 0\n', 1)
