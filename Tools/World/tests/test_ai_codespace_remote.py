@@ -154,6 +154,18 @@ class OnDemandTests(unittest.TestCase):
             self.assertNotIn("ghp_123456",report["stdout"])
             self.assertTrue(data["saved_vnc_password_exists"])
 
+    def test_storage_audit_remains_read_only(self):
+        job={"id":"storage-audit-test","operation":"storage_audit","args":[]}
+        self.assertEqual(r.validate_job(job),job)
+        expected={"free_disk_gib":3.4,"lfs_inventory":{"pending_count":12}}
+        with patch.object(e,"storage_audit",return_value=expected) as inspector:
+            response=e.execute(job)
+            self.assertEqual(response["exit_code"],0)
+            self.assertEqual(json.loads(response["stdout"]),expected)
+            inspector.assert_called_once()
+        with self.assertRaises(r.JobError):
+            r.validate_job(dict(job,args=["--delete"]))
+
     def test_missing_secret_reports_setup_required(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d); f=root/r.QUEUE/(self.good()["id"]+".json");f.parent.mkdir(parents=True);f.write_text(json.dumps(self.good()))
