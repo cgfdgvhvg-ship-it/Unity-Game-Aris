@@ -123,6 +123,15 @@ class OnDemandTests(unittest.TestCase):
             self.assertTrue(ensure.called)
             self.assertEqual(spawn.call_args.args[0][0],"xterm")
 
+    def test_desktop_slow_start_succeeds_within_bounded_window(self):
+        attempts=[]
+        def eventually():
+            attempts.append(True)
+            return len(attempts) >= 25
+        with patch.object(e.time, "sleep"):
+            self.assertTrue(e._wait_ready(eventually))
+        self.assertEqual(len(attempts),25)
+
     def test_desktop_fails_closed_if_recovery_fails(self):
         with patch.object(e, "ensure_desktop", return_value="Xvfb failed"):
             out=e.execute({"id":"desktop-test-02", "operation":"desktop_xterm","args":[]})
