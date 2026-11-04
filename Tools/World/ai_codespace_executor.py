@@ -488,6 +488,104 @@ def ensure_unity_gui(*, launch=True):
     return {"exit_code":0,"stdout":json.dumps(info,ensure_ascii=False),"stderr":""}
 
 
+
+def validate_live_payload(value):
+    """Minimal reviewed Unity commands only. No shell, paths or arbitrary code."""
+    import math
+    if not isinstance(value,dict) or "action" not in value:
+        raise ValueError("Unity request must be a JSON object with action")
+    action=value["action"]
+    allowed={
+        "status":set(),
+        "inspect":{"target","cameraTarget","radius","limit"},
+        "move":{"target","delta"},
+        "scale":{"target","scale"},
+        "move_tree":{"target","delta","expectedPosition"},
+        "capture":{"cameraPosition","cameraTarget"},
+    }
+    if action not in allowed or set(value)-({"action"}|allowed[action]):
+        raise ValueError("unsupported Unity request action or fields")
+    for field in ("target",):
+        if field in value and (not isinstance(value[field],str) or not (1 <= len(value[field]) <= 210)):
+            raise ValueError("invalid target name")
+    for field in ("delta","scale","cameraPosition","cameraTarget","expectedPosition"):
+        if field not in value: continue
+        vec=value[field]
+        if not isinstance(vec,dict) or set(vec)!={"x","y","z"} or any(
+            not isinstance(n,(int,float)) or isinstance(n,bool) or not math.isfinite(n)
+            or abs(n)>20000 for n in vec.values()
+        ):
+            raise ValueError("invalid vector "+field)
+    if action in ("move","scale","move_tree") and not value.get("target"):
+        raise ValueError("target required")
+    if action in ("move","move_tree") and "delta" not in value:
+        raise ValueError("move delta required")
+    if action=="scale" and "scale" not in value:
+        raise ValueError("scale vector required")
+    if action=="move_tree" and "expectedPosition" not in value:
+        raise ValueError("expected terrain tree position required")
+    if action=="capture" and not {"cameraPosition","cameraTarget"}<=set(value):
+        raise ValueError("camera position and target required")
+    if action=="inspect" and not value.get("target") and "cameraTarget" not in value:
+        raise ValueError("inspect requires target or cameraTarget")
+    if "radius" in value and (not isinstance(value["radius"],(int,float)) or
+                               not 1<=value["radius"]<=200):
+        raise ValueError("radius outside 1..200")
+    if "limit" in value and (not isinstance(value["limit"],int) or not 1<=value["limit"]<=80):
+        raise ValueError("limit outside 1..80")
+    return value
+
+
+def unity_live_job(job):
+    params=validate_live_payload(json.loads(job["args"][0]))
+    _install_live_bridge()
+    started=ensure_unity_gui()
+    if started["exit_code"]:
+        return started
+    commands=DESKTOP/"unity-commands"
+    results=DESKTOP/"unity-results"
+    commands.mkdir(parents=True,exist_ok=True)
+    results.mkdir(parents=True,exist_ok=True)
+    ident=job["id"]
+    output=results/(ident+".json")
+    command=commands/(ident+".json")
+    if not output.is_file():
+        payload=dict(params,id=ident)
+        if params["action"]=="move_tree":
+            payload["hasExpectedPosition"]=True
+        if not command.exists():
+            temp=commands/(ident+".writing")
+            if temp.exists() or command.is_symlink():
+                raise ValueError("unsafe Unity command staging")
+            temp.write_text(json.dumps(payload,separators=(",",":"),allow_nan=False))
+            os.replace(temp,command)
+    return _read_unity_result(ident,wait_seconds=30)
+
+
+def _read_unity_result(ident,*,wait_seconds=0):
+    import re
+    if not re.fullmatch(r"[a-z][a-z0-9-]{3,55}",ident):
+        raise ValueError("invalid Unity result ID")
+    file=DESKTOP/"unity-results"/(ident+".json")
+    deadline=time.monotonic()+wait_seconds
+    while time.monotonic()<deadline and not file.is_file():
+        time.sleep(.7)
+    if not file.is_file():
+        return {"exit_code":0,"stdout":json.dumps({
+            "job":ident,"pending":True,"unity_running":bool(_unity_pids()),
+            "note":"Accepted, awaiting Editor import/domain compilation; poll unity_result by job ID."
+        }),"stderr":""}
+    if file.is_symlink() or file.stat().st_size>150000:
+        return {"exit_code":3,"stdout":"","stderr":"Invalid Unity response"}
+    result=json.loads(file.read_text(encoding="utf-8"))
+    if result.get("id")!=ident:
+        return {"exit_code":3,"stdout":"","stderr":"Unity response identity mismatch"}
+    # Output can contain relative saved scene paths, never VNC credentials.
+    return {"exit_code":0 if result.get("status")=="ok" else 3,
+            "stdout":json.dumps(result,ensure_ascii=False)[:16000],
+            "stderr":result.get("error","")[:300] if result.get("status")!="ok" else ""}
+
+
 def execute(job):
     # Validate independently from Actions, where an untrusted queue file travels.
     if set(job) != {"id", "operation", "args"}:
@@ -558,6 +656,12 @@ def execute(job):
         state = {"display_12": True, "vnc_local_5900": _port_ready(5900),
                  "novnc_6080": _port_ready(6080), "xterm_running": True}
         return {"exit_code": 0, "stdout": json.dumps(state), "stderr": ""}
+    if op == "unity_live":
+        if len(args)!=1 or len(args[0])>500: raise ValueError("one short Unity command required")
+        return unity_live_job(job)
+    if op == "unity_result":
+        if len(args)!=1: raise ValueError("Unity result ID required")
+        return _read_unity_result(args[0],wait_seconds=8)
     if op == "unity_gui":
         if args: raise ValueError("unity_gui takes no arguments")
         return ensure_unity_gui()
