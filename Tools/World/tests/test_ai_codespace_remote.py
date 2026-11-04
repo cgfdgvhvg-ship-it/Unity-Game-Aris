@@ -31,9 +31,9 @@ class OnDemandTests(unittest.TestCase):
             event={"ref":"refs/heads/"+r.BRANCH,"repository":{"full_name":r.REPOSITORY},
                    "sender":{"login":r.OWNER},"after":"commit-123",
                    "head_commit":{"id":"commit-123"}}
-            good_diff=CompletedProcess(args=[],returncode=0,stdout="A\\t"+rel+"\\n",stderr="")
+            good_diff=CompletedProcess(args=[],returncode=0,stdout="A\t"+rel+"\n",stderr="")
             # Also verify the fail-closed case if other files were changed.
-            changed_diff=CompletedProcess(args=[],returncode=0,stdout="A\\t"+rel+"\\nM\\tAGENTS.md\\n",stderr="")
+            changed_diff=CompletedProcess(args=[],returncode=0,stdout="A\t"+rel+"\nM\tAGENTS.md\n",stderr="")
             with patch.object(r.subprocess,"run",return_value=good_diff):
                 self.assertEqual(r.select_job(event,root,"commit-123"),self.good())
                 with self.assertRaises(r.JobError):
@@ -70,7 +70,7 @@ class OnDemandTests(unittest.TestCase):
             event={"ref":"refs/heads/"+r.BRANCH,"repository":{"full_name":r.REPOSITORY},"sender":{"login":r.OWNER},"head_commit":{"id":"123"},"after":"123"}
             evt=root/"push.json";evt.write_text(json.dumps(event))
             from subprocess import CompletedProcess
-            diff=CompletedProcess(args=[],returncode=0,stdout="A\\t"+r.QUEUE+f.name+"\\n",stderr="")
+            diff=CompletedProcess(args=[],returncode=0,stdout="A\t"+r.QUEUE+f.name+"\n",stderr="")
             with patch.object(r.subprocess,"run",return_value=diff), patch.dict("os.environ",{"AARIS_CODESPACE_TOKEN":""}):
                 self.assertEqual(r.main(["--event",str(evt),"--workspace",str(root),"--sha","123","--result-dir",str(root/"results")]),1)
             self.assertIn("SETUP_REQUIRED",(root/"results"/(self.good()["id"]+".json")).read_text())
