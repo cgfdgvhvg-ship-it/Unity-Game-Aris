@@ -322,6 +322,8 @@ def main(argv=None):
             raise MotionError("radius must be 1..100m")
         if args.direction and args.metres is None:
             raise MotionError("--direction requires --metres")
+        if args.direction and (args.dy != 0 or args.dz != 0):
+            raise MotionError("--direction cannot combine with --dy/--dz; use --dx/--dy/--dz instead")
         if args.dx is not None and args.metres is not None:
             raise MotionError("--metres must only be used with --direction")
         if args.dx is not None and args.frame != "world":
@@ -350,4 +352,11 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
+    # The GitHub Issue worker invokes "python3" from its system environment;
+    # the pinned Unity saved-data readers were deliberately installed into an
+    # isolated venv so the global Python installation remains unchanged.
+    venv = Path(os.environ.get("AARIS_WORLD_BRIDGE_HOME",
+                             "/workspaces/.aaris-world-bridge")) / "venv/bin/python"
+    if venv.is_file() and Path(sys.executable).resolve() != venv.resolve():
+        os.execv(str(venv), [str(venv), *sys.argv])
     raise SystemExit(main())
