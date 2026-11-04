@@ -172,8 +172,8 @@ def execute_remote(job: dict, token: str, workspace: Path, result_file: Path, *,
         raise JobError("remote executor source missing")
     local_job = workspace / QUEUE / (job["id"] + ".json")
     runner(["gh", "codespace", "ssh", "-c", cs, "--", f"mkdir -p {remote}"], env=env, timeout=70)
-    runner(["gh", "codespace", "cp", "-c", cs, str(local_script), f"remote:{remote}/ai_codespace_executor.py"], env=env, timeout=90)
-    runner(["gh", "codespace", "cp", "-c", cs, str(local_job), f"remote:{remote}/{job['id']}.json"], env=env, timeout=90)
+    runner(["gh", "codespace", "cp", "-e", "-c", cs, str(local_script), f"remote:{remote}/ai_codespace_executor.py"], env=env, timeout=90)
+    runner(["gh", "codespace", "cp", "-e", "-c", cs, str(local_job), f"remote:{remote}/{job['id']}.json"], env=env, timeout=90)
     proc = runner(["gh", "codespace", "ssh", "-c", cs, "--",
                    f"python3 {remote}/ai_codespace_executor.py {remote}/{job['id']}.json"],
                   env=env, timeout=125, attempts=1)
