@@ -398,6 +398,88 @@ def system_storage_audit():
             "note":"Sizes overlap. In layered/overlay filesystems, du size is NOT reclaimable space. No files changed; measure df before and after any separately reviewed cleanup."}
 
 
+
+def safe_archive_cleanroom(*, delete=False):
+    """Review only re-downloadable package archives, never installed programs.
+
+    Explicit fixed-directory allowlist; does not follow symlinks, run a shell,
+    touch Git/LFS/Assets/Library, or call apt/conda uninstall commands.
+    """
+    import stat
+    roots = (
+        ("conda_archives", Path("/opt/conda/pkgs"), (".conda",".tar.bz2")),
+        ("apt_archives", Path("/var/cache/apt/archives"), (".deb",)),
+    )
+    targets=[]
+    data={}
+    total_bytes=0
+    for label,root,suffixes in roots:
+        if root.is_symlink() or not root.is_dir():
+            data[label]={"status":"missing_or_unsafe"}
+            continue
+        files=[]
+        try:
+            for path in root.iterdir():
+                if not path.name.endswith(suffixes) or path.is_symlink():
+                    continue
+                st=path.stat(follow_symlinks=False)
+                if not stat.S_ISREG(st.st_mode) or st.st_size<=0:
+                    continue
+                files.append((path,st.st_size))
+        except OSError as exc:
+            data[label]={"status":"not_readable","reason":type(exc).__name__}
+            continue
+        files.sort(key=lambda v:v[0].name)
+        this_size=sum(size for _,size in files)
+        total_bytes+=this_size
+        data[label]={"status":"ok","count":len(files),
+                     "archive_bytes":this_size,
+                     "directory_writable":os.access(root,os.W_OK)}
+        targets.extend((label,path,size) for path,size in files)
+    free_before=shutil.disk_usage(PROJECT).free
+    if not delete:
+        return {"mode":"audit","candidates":data,"total_archive_bytes":total_bytes,
+                "free_disk_gib":round(free_before/2**30,3),"deleted":False}
+    if len(targets)>4000 or total_bytes>2*1024**3:
+        raise ValueError("Archive cleanup budget exceeded; manual review required")
+    active=run(["ps","-eo","comm="],timeout=5)
+    if active["exit_code"]!=0:
+        raise ValueError("Cannot check active package managers")
+    procs={p.strip() for p in active["stdout"].splitlines()}
+    if procs.intersection({"conda","mamba","apt","apt-get","dpkg","dpkg-deb"}):
+        raise ValueError("Package manager running; refuse archive cleanup")
+    before=run(["git","status","--porcelain","--untracked-files=all"],timeout=30)
+    if before["exit_code"]!=0:
+        raise ValueError("Cannot verify protected Git worktree")
+    freed_count=0
+    freed_nominal=0
+    denied=0
+    for label,path,size in targets:
+        # Fail closed: only direct regular file entries at fixed roots.
+        root = dict((x[0],x[1]) for x in roots)[label]
+        if path.parent!=root or path.is_symlink() or not path.is_file():
+            raise ValueError("Archive path changed during cleanup")
+        if not os.access(root,os.W_OK) or not os.access(path,os.W_OK):
+            denied+=1
+            continue
+        try:
+            path.unlink()
+            freed_count+=1
+            freed_nominal+=size
+        except PermissionError:
+            denied+=1
+    after=run(["git","status","--porcelain","--untracked-files=all"],timeout=30)
+    if before["stdout"]!=after["stdout"] or after["exit_code"]!=0:
+        raise ValueError("Git worktree changed unexpectedly; stop")
+    free_after=shutil.disk_usage(PROJECT).free
+    return {"mode":"cleanup","candidates":data,"deleted_files":freed_count,
+            "nominal_deleted_bytes":freed_nominal,"permission_denied":denied,
+            "recovered_mib":round((free_after-free_before)/2**20,2),
+            "free_disk_gib":round(free_after/2**30,3),
+            "git_worktree_unchanged":True,
+            "note":"Deleting archives does not remove installed Conda or APT packages; on OverlayFS lower-layer bytes may not be recovered."}
+
+
 def prune_caches(home=Path("/home/codespace")):
     """Delete only two named re-downloadable caches, never project or Unity."""
     paths=[home/".cache"/"copilot"/"pkg", home/".npm"/"_cacache"]
@@ -976,6 +1058,12 @@ def execute(job):
         if len(args) != 1 or not args[0].isdigit():
             raise ValueError("expected one numeric LFS cursor")
         return {"exit_code":0,"stdout":json.dumps(lfs_verify_chunk(int(args[0])),ensure_ascii=False),"stderr":""}
+    if op == "safe_archives_audit":
+        if args: raise ValueError("archive audit takes no arguments")
+        return {"exit_code":0,"stdout":json.dumps(safe_archive_cleanroom(delete=False)),"stderr":""}
+    if op == "safe_archives_cleanup":
+        if args: raise ValueError("archive cleanup takes no arguments")
+        return {"exit_code":0,"stdout":json.dumps(safe_archive_cleanroom(delete=True)),"stderr":""}
     if op == "system_storage_audit":
         if args: raise ValueError("system storage audit takes no arguments")
         return {"exit_code":0,"stdout":json.dumps(system_storage_audit(),ensure_ascii=False),"stderr":""}
