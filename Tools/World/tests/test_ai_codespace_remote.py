@@ -398,6 +398,41 @@ class OnDemandTests(unittest.TestCase):
         desktop.assert_not_called()
         spawn.assert_not_called()
 
+    def test_paused_unity_resume_needs_disk_and_explicit_no_arg_job(self):
+        from types import SimpleNamespace
+        job={"id":"unity-resume-01","operation":"unity_resume_paused","args":[]}
+        self.assertEqual(r.validate_job(job),job)
+        with self.assertRaises(r.JobError):
+            r.validate_job(dict(job,args=["force"]))
+        state={"pid":[40121],"paused_pids":[40121],"library_exists":True}
+        with patch.object(e,"_unity_gui_status",return_value=state), \
+             patch.object(e.shutil,"disk_usage",return_value=SimpleNamespace(free=512*1024**2)), \
+             patch.object(e.os,"killpg") as killer:
+            outcome=e.resume_paused_unity()
+        self.assertEqual(outcome["exit_code"],3)
+        self.assertIn("4 GiB",outcome["stderr"])
+        killer.assert_not_called()
+
+    def test_resumed_unity_gets_restarted_watchdog_without_asset_rewrite(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            (root/"Library").mkdir()
+            state={"pid":[40121],"paused_pids":[40121],"library_exists":True}
+            with patch.object(e,"_unity_gui_status",return_value=state), \
+                 patch.object(e,"_unity_pids",return_value=[40121]), \
+                 patch.object(e,"PROJECT",root), \
+                 patch.object(e,"DESKTOP",root/"desktop"), \
+                 patch.object(e.shutil,"disk_usage",return_value=SimpleNamespace(free=6*1024**3)), \
+                 patch.object(e.os,"getpgid",return_value=40121), \
+                 patch.object(e.os,"killpg") as send, \
+                 patch.object(e.subprocess,"Popen") as spawned:
+                outcome=e.resume_paused_unity()
+            self.assertEqual(outcome["exit_code"],0)
+            send.assert_called_once_with(40121,e.signal.SIGCONT)
+            spawned.assert_called_once()
+            self.assertTrue((root/"Library").is_dir())
+
     def test_storage_audit_remains_read_only(self):
         job={"id":"storage-audit-test","operation":"storage_audit","args":[]}
         self.assertEqual(r.validate_job(job),job)
