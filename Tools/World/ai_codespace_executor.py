@@ -144,12 +144,14 @@ def _lfs_inventory():
     dirty = set(x.decode("utf-8", "surrogateescape") for x in tracked.stdout.split(b"\0") if x)
     result = {"checked_sha256": 0, "hash_matches": 0, "hash_mismatch": 0,
               "lfs_pointer": 0, "file_missing": 0,
-              "dirty_protected": 0, "unreadable": 0}
+              "dirty_protected": 0, "unreadable": 0, "hash_deferred": 0}
     suffixes = {}
     samples = {"lfs_pointer":[], "file_missing":[], "dirty_protected":[],
                "hash_mismatch":[]}
     checked_bytes = 0
     existing_bytes = 0
+    skipped_hash_bytes = 0
+    hash_budget_bytes = 128 * 1024 * 1024
     for name, expected in records:
         if not name.startswith("Assets/") or ".." in Path(name).parts:
             continue
@@ -171,6 +173,12 @@ def _lfs_inventory():
                 if pointer:
                     kind = "lfs_pointer"
                 else:
+                    # Exact SHA check in a bounded sample, not the entire
+                    # multi-GB Unity project in one SSH call.
+                    if checked_bytes + size > hash_budget_bytes:
+                        result["hash_deferred"] += 1
+                        skipped_hash_bytes += size
+                        continue
                     digest = hashlib.sha256()
                     with target.open("rb") as stream:
                         for part in iter(lambda: stream.read(1024*1024), b""):
@@ -190,6 +198,8 @@ def _lfs_inventory():
             samples[kind].append(name)
     return {"all_lfs_paths":len(records), "lfs_assets":sum(suffixes.values()),
             "lfs_status": result, "checked_bytes":checked_bytes,
+            "hash_budget_bytes":hash_budget_bytes,
+            "hash_deferred_bytes":skipped_hash_bytes,
             "present_lfs_bytes_excluding_dirty":existing_bytes,
             "file_extensions":dict(sorted(suffixes.items(),key=lambda x:-x[1])[:20]),
             "examples":samples, "protected_dirty_tracked_count":len(dirty),
