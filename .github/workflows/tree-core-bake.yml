@@ -1,0 +1,33 @@
+name: Bake saved tree core assets
+on:
+  push:
+    branches: [ai/bake-tree-core-20261104]
+    paths:
+      - '.github/workflows/tree-core-bake.yml'
+      - 'Assets/AarisWorld/Editor/AarisTreeCoreBake.cs*'
+      - 'Tools/World/tree_core_bake.py'
+      - 'Tools/World/tree-core-bake-20261104.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  editor-availability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check available Unity execution route without changing assets
+        env:
+          UNITY_RUNNER_LABEL: ${{ vars.WORLD_UNITY_RUNNER }}
+          UNITY_EDITOR_EXECUTABLE: ${{ vars.UNITY_EDITOR_PATH }}
+          HAS_UNITY_LICENSE: ${{ secrets.UNITY_LICENSE != '' }}
+        run: |
+          python - <<'PY'
+          import json, os
+          runner = bool(os.environ.get('UNITY_RUNNER_LABEL'))
+          editor = bool(os.environ.get('UNITY_EDITOR_EXECUTABLE'))
+          license_file = os.environ.get('HAS_UNITY_LICENSE', '').lower() == 'true'
+          result = {'matchingUnityVersion': '6000.3.26f1', 'runnerLabelConfigured': runner, 'editorPathConfigured': editor, 'hostedLicenseSecretAvailable': license_file, 'bakeExecuted': False}
+          print(json.dumps(result))
+          if not ((runner and editor) or license_file):
+              raise SystemExit('No configured Unity execution route. No scene, prefab, source mesh or importer was changed.')
+          PY
