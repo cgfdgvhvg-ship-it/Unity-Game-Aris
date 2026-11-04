@@ -209,6 +209,35 @@ def storage_audit():
             "disk_directory_bytes":sizes,
             "lfs_inventory":inventory}
 
+def prune_caches():
+    """Delete only two named re-downloadable caches, never project or Unity."""
+    home=Path("/home/codespace")
+    paths=[home/".cache"/"copilot"/"pkg", home/".npm"/"_cacache"]
+    initial=shutil.disk_usage(PROJECT).free
+    git_before=run(["git","status","--porcelain","--untracked-files=all"],timeout=20)
+    if git_before["exit_code"] != 0:
+        raise ValueError("cannot verify git status before cleanup")
+    removed={}
+    for target in paths:
+        # Don't follow symlinks or remove anything other than an exact cache root.
+        if target.is_symlink() or target.parent.is_symlink() or not target.is_dir():
+            removed[str(target)]="not_present_or_unsafe"
+            continue
+        if not target.resolve().is_relative_to(home.resolve()):
+            raise ValueError("cache path escapes home directory")
+        estimate=_du_bytes(target)
+        shutil.rmtree(target)
+        removed[str(target)]=estimate
+    git_after=run(["git","status","--porcelain","--untracked-files=all"],timeout=20)
+    if git_before["stdout"] != git_after["stdout"] or git_after["exit_code"] != 0:
+        raise ValueError("git status changed unexpectedly; stop")
+    final=shutil.disk_usage(PROJECT).free
+    return {"deleted_only_allowlisted_cache_paths":removed,
+            "free_disk_gib_before":round(initial/2**30,3),
+            "free_disk_gib_after":round(final/2**30,3),
+            "recovered_mib":round((final-initial)/2**20,1),
+            "git_worktree_unchanged":True}
+
 def execute(job):
     # Validate independently from Actions, where an untrusted queue file travels.
     if set(job) != {"id", "operation", "args"}:
@@ -218,6 +247,9 @@ def execute(job):
         raise ValueError("invalid job id")
     if not isinstance(args, list):
         raise ValueError("invalid args")
+    if op == "prune_caches":
+        if args: raise ValueError("unexpected arguments")
+        return {"exit_code":0,"stdout":json.dumps(prune_caches(),ensure_ascii=False),"stderr":""}
     if op == "storage_audit":
         if args: raise ValueError("unexpected args")
         return {"exit_code":0,"stdout":json.dumps(storage_audit(),ensure_ascii=False),"stderr":""}
