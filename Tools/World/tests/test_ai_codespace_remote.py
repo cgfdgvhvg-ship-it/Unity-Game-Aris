@@ -23,14 +23,24 @@ class OnDemandTests(unittest.TestCase):
             with self.assertRaises(r.JobError): r.validate_job({"id":"foo-bar-01","operation":"terminal_readonly","args":argv})
 
     def test_selects_exact_commit_and_owner(self):
+        from subprocess import CompletedProcess
         with tempfile.TemporaryDirectory() as d:
             root=Path(d); path=root/r.QUEUE/(self.good()["id"]+".json")
             path.parent.mkdir(parents=True); path.write_text(json.dumps(self.good()))
-            event={"ref":"refs/heads/"+r.BRANCH,"repository":{"full_name":r.REPOSITORY},"sender":{"login":r.OWNER},"head_commit":{"id":"commit-123","added":[r.QUEUE+path.name],"modified":[],"removed":[]}}
-            self.assertEqual(r.select_job(event,root,"commit-123"),self.good())
-            for changed in [dict(event, sender={"login":"stranger"}),dict(event, head_commit=dict(event["head_commit"],modified=["AGENTS.md"]))]:
-                with self.assertRaises(r.JobError):r.select_job(changed,root,"commit-123")
-            with self.assertRaises(r.JobError):r.select_job(event,root,"other-commit")
+            rel=r.QUEUE+path.name
+            event={"ref":"refs/heads/"+r.BRANCH,"repository":{"full_name":r.REPOSITORY},
+                   "sender":{"login":r.OWNER},"after":"commit-123",
+                   "head_commit":{"id":"commit-123"}}
+            good_diff=CompletedProcess(args=[],returncode=0,stdout="A\\t"+rel+"\\n",stderr="")
+            # Also verify the fail-closed case if other files were changed.
+            changed_diff=CompletedProcess(args=[],returncode=0,stdout="A\\t"+rel+"\\nM\\tAGENTS.md\\n",stderr="")
+            with patch.object(r.subprocess,"run",return_value=good_diff):
+                self.assertEqual(r.select_job(event,root,"commit-123"),self.good())
+                with self.assertRaises(r.JobError):
+                    r.select_job(dict(event, sender={"login":"stranger"}),root,"commit-123")
+                with self.assertRaises(r.JobError): r.select_job(event,root,"other-commit")
+            with patch.object(r.subprocess,"run",return_value=changed_diff):
+                with self.assertRaises(r.JobError): r.select_job(event,root,"commit-123")
 
     def test_start_on_stopped_and_poll(self):
         state=["Stopped","Starting","Available"]
@@ -57,9 +67,11 @@ class OnDemandTests(unittest.TestCase):
     def test_missing_secret_reports_setup_required(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d); f=root/r.QUEUE/(self.good()["id"]+".json");f.parent.mkdir(parents=True);f.write_text(json.dumps(self.good()))
-            event={"ref":"refs/heads/"+r.BRANCH,"repository":{"full_name":r.REPOSITORY},"sender":{"login":r.OWNER},"head_commit":{"id":"123","added":[r.QUEUE+f.name],"modified":[],"removed":[]}}
+            event={"ref":"refs/heads/"+r.BRANCH,"repository":{"full_name":r.REPOSITORY},"sender":{"login":r.OWNER},"head_commit":{"id":"123"},"after":"123"}
             evt=root/"push.json";evt.write_text(json.dumps(event))
-            with patch.dict("os.environ",{"AARIS_CODESPACE_TOKEN":""}):
+            from subprocess import CompletedProcess
+            diff=CompletedProcess(args=[],returncode=0,stdout="A\\t"+r.QUEUE+f.name+"\\n",stderr="")
+            with patch.object(r.subprocess,"run",return_value=diff), patch.dict("os.environ",{"AARIS_CODESPACE_TOKEN":""}):
                 self.assertEqual(r.main(["--event",str(evt),"--workspace",str(root),"--sha","123","--result-dir",str(root/"results")]),1)
             self.assertIn("SETUP_REQUIRED",(root/"results"/(self.good()["id"]+".json")).read_text())
 
