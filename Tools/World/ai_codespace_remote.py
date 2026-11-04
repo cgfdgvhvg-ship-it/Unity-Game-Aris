@@ -37,7 +37,7 @@ def validate_job(data: dict, *, expected_file: str | None = None) -> dict:
     op = data["operation"]
     if not isinstance(ident, str) or not ID_RE.fullmatch(ident):
         raise JobError("invalid job id")
-    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "unity_diagnostics", "unity_live", "unity_result", "unity_frame", "world_site", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
+    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "unity_diagnostics", "desktop_tools", "desktop_snapshot", "unity_live", "unity_result", "unity_frame", "world_site", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
         raise JobError("unsupported operation")
     args = data["args"]
     if not isinstance(args, list) or len(args) > 16 or any(
@@ -221,10 +221,10 @@ def execute_remote(job: dict, token: str, workspace: Path, result_file: Path, *,
         raise JobError("remote executor returned invalid JSON")
     if not isinstance(result, dict) or result.get("id") != job["id"] or result.get("operation") != job["operation"]:
         raise JobError("remote result identity mismatch")
-    if result.get("ok") and job["operation"]=="unity_frame":
+    if result.get("ok") and job["operation"] in {"unity_frame", "desktop_snapshot"}:
         # Screenshot stays out of Git history. Copy to short-lived Actions artifact;
         # remove original only after secure remote copy and size check.
-        frame_id=job["args"][0]
+        frame_id=job["id"] if job["operation"]=="desktop_snapshot" else job["args"][0]
         remote_frame=f"/home/codespace/.aaris-desktop/frames/{frame_id}.jpg"
         local_frame=result_file.parent/(frame_id+".jpg")
         runner(["gh","codespace","cp","-e","-c",cs,f"remote:{remote_frame}",str(local_frame)],

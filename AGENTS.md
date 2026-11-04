@@ -1,3 +1,15 @@
+**If Unity GUI hangs before Library import:** do NOT claim that a Unity PID
+means the map is open. Use owner Actions `unity_diagnostics` (no args) to
+inspect Unity logs, process state, X11 windows, import cache and pending bridge
+jobs. If `xwininfo`/`scrot` are unavailable, the `desktop_tools` (no args)
+operation installs only x11-utils + scrot with a disk guard. A
+`desktop_snapshot` (no args) captures the actual current Xvfb `:12` screen
+into a **one-day private Actions artifact** (without Git commits); the source
+image is deleted after validated transfer. This X11 screenshot works even if
+the Unity Editor has not finished importing and is preferable to guessing what
+dialog is blocking startup. Read its artifact before changing Unity lifecycle.
+Never upload Unity project files or private passwords as screen artifacts.
+
 # Persistent Unity Editor and native live map editing (2026-11-04)
 
 Use the **owner-only GitHub Actions job queue** (`ai/codespace-jobs`, `.aaris/jobs/<unique-id>.json`) for Codespace commands; never Issue #37. Details: [Docs/UNITY_LIVE_EDITOR.md](Docs/UNITY_LIVE_EDITOR.md).
