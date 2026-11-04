@@ -275,6 +275,7 @@ def main(argv=None):
                     for m in options if isinstance(m, dict)]
             response = {"id":job["id"],"operation":job["operation"],"ok":True,
                         "exit_code":0,"stdout":json.dumps({"machines":safe}),"stderr":""}
+            result.parent.mkdir(parents=True,exist_ok=True)
             result.write_text(json.dumps(response,ensure_ascii=False,indent=2))
             print("AARIS_RESULT_JSON="+json.dumps(response),flush=True)
             return 0
