@@ -1,0 +1,1 @@
+{"id":"unity-pause-verify-20261104-b20","operation":"terminal_readonly","args":["ps","-o","pid,ppid,stat,comm","-p","40121"]}
