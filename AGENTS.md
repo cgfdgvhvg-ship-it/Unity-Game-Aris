@@ -16,6 +16,16 @@ build. Existing importer-time helpers are not proof that changes are baked.
 When Unity has enough disk, inspect and test saved core mesh/LOD data and
 project import behavior independently, then save permanent asset changes and
 verify a clean re-import without relying on temporary build-time transforms.
+**Storage audit and cleanup:** The `storage_audit` AI terminal operation compares
+LFS file paths and expected Git SHA-256 with a **bounded 128 MiB clean-file
+hash sample**, and reports dirty files without treating them as invalid.
+A deferred hash is not a verified match. Use `prune_caches` (no args) only
+to remove the two explicitly allowlisted re-downloadable caches:
+`/home/codespace/.cache/copilot/pkg` and `/home/codespace/.npm/_cacache`.
+It verifies the Git working tree is unchanged. Never delete Unity Editor,
+Unity Library/import assets, `Assets/`, `.git/`, or any modified file.
+Restore LFS only after confirming missing/pointer cases and free-disk budget.
+
 If any existing modified source is an LFS object, restore only OTHER clean
 LFS pointer files. `.mat`, `.prefab`, and `.unity` may be ordinary Git
 blobs; do not blindly reinterpret them as missing LFS. See the repository's
