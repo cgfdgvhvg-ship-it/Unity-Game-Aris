@@ -1,0 +1,43 @@
+name: Aaris Codespace On-Demand Terminal
+
+on:
+  push:
+    branches:
+      - ai/codespace-jobs
+    paths:
+      - '.aaris/jobs/*.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aaris-codespace-on-demand
+  cancel-in-progress: false
+
+jobs:
+  run-owner-job:
+    # Other GitHub accounts cannot trigger the privileged remote workflow.
+    if: github.actor == 'Aaris-khan-don'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate job, start Codespace if stopped, execute via SSH
+        env:
+          AARIS_CODESPACE_TOKEN: ${{ secrets.AARIS_CODESPACE_TOKEN }}
+        run: |
+          python3 Tools/World/ai_codespace_remote.py \
+            --event "$GITHUB_EVENT_PATH" \
+            --workspace "$GITHUB_WORKSPACE" \
+            --sha "$GITHUB_SHA" \
+            --result-dir "$RUNNER_TEMP/aaris-results"
+      - name: Preserve machine-readable terminal result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-terminal-result-${{ github.sha }}
+          path: ${{ runner.temp }}/aaris-results/*.json
+          if-no-files-found: warn
+          retention-days: 7
