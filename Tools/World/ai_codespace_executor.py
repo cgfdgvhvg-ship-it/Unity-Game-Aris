@@ -395,6 +395,41 @@ def _monitor_unity(pid):
             break
         time.sleep(10)
 
+def unity_probe():
+    """Fixed, read-only display/runtime diagnostics for stalled graphical Unity."""
+    status=_unity_gui_status()
+    env=os.environ.copy()
+    env["DISPLAY"]=":12"
+    probes={}
+    for name,cmd in (
+        ("glxinfo",["glxinfo","-B"]),
+        ("windows",["xwininfo","-root","-tree"]),
+        ("unity_libraries",["ldd",str(EDITOR)]),
+    ):
+        if not shutil.which(cmd[0]):
+            probes[name]={"exit_code":127,"stdout":"","stderr":"program not installed"}
+            continue
+        result=run(cmd,timeout=15,env=env)
+        probes[name]={"exit_code":result["exit_code"],
+                      "stdout":result["stdout"][-1600:],
+                      "stderr":result["stderr"][-500:]}
+    pids=_unity_pids()
+    if pids:
+        probes["unity_process"]=run(["ps","-p",str(pids[0]),
+                                     "-o","pid=,stat=,etime=,%cpu=,%mem=,wchan=,args="],timeout=8)
+    else:
+        probes["unity_process"]={"exit_code":3,"stdout":"","stderr":"not running"}
+    logfile=DESKTOP/"unity-launch.log"
+    launch_tail=""
+    if logfile.is_file() and not logfile.is_symlink():
+        with logfile.open("rb") as handle:
+            handle.seek(max(0,logfile.stat().st_size-2000))
+            launch_tail=handle.read().decode("utf-8","replace")
+    launch_tail=re.sub(r"(?i)\b(?:ghp_|ghu_|gho_|ghs_|ghr_|github_pat_|sk-)[A-Za-z0-9_-]{8,}",
+                       "[REDACTED]",launch_tail)
+    return {"editor":status, "probes":probes,"launch_log_tail":launch_tail[-1500:]}
+
+
 def _unity_pids():
     """Match actual argv via /proc; never mistake process table snippets for Unity."""
     found=[]
@@ -702,6 +737,9 @@ def execute(job):
     if op == "unity_result":
         if len(args)!=1: raise ValueError("Unity result ID required")
         return _read_unity_result(args[0],wait_seconds=8)
+    if op == "unity_probe":
+        if args: raise ValueError("unity_probe takes no arguments")
+        return {"exit_code":0,"stdout":json.dumps(unity_probe(),ensure_ascii=False),"stderr":""}
     if op == "unity_gui":
         if args: raise ValueError("unity_gui takes no arguments")
         return ensure_unity_gui()
