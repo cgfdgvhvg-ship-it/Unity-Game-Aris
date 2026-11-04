@@ -154,6 +154,37 @@ class OnDemandTests(unittest.TestCase):
             self.assertNotIn("ghp_123456",report["stdout"])
             self.assertTrue(data["saved_vnc_password_exists"])
 
+    def test_lfs_hash_matching_preserves_dirty_geometry(self):
+        import hashlib
+        from subprocess import CompletedProcess
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            (root/"Assets").mkdir()
+            good=b"the original Unity material bytes"
+            (root/"Assets/good.mat").write_bytes(good)
+            (root/"Assets/core.asset").write_bytes(b"intentionally baked geometry")
+            (root/"Assets/pending.prefab").write_text(
+                "version https://git-lfs.github.com/spec/v1\n"
+                "oid sha256:"+"1"*64+"\nsize 42\n")
+            records=(
+                hashlib.sha256(good).hexdigest()+" * Assets/good.mat\n"+
+                "0"*64+" * Assets/core.asset\n"+
+                "1"*64+" - Assets/pending.prefab\n")
+            def cmd(argv, **kwargs):
+                if argv[:3]==["git","lfs","ls-files"]:
+                    return CompletedProcess(argv,0,records.encode(),b"")
+                if argv[:2]==["git","diff"]:
+                    return CompletedProcess(argv,0,b"Assets/core.asset\0",b"")
+                raise AssertionError("unexpected command "+str(argv))
+            with patch.object(e, "PROJECT", root), \
+                 patch.object(e.subprocess, "run", side_effect=cmd), \
+                 patch.object(e, "run", return_value={"exit_code":0,"stdout":"","stderr":""}):
+                data=e._lfs_inventory()
+            self.assertEqual(data["lfs_status"]["hash_matches"],1)
+            self.assertEqual(data["lfs_status"]["dirty_protected"],1)
+            self.assertEqual(data["lfs_status"]["lfs_pointer"],1)
+            self.assertEqual(data["lfs_status"]["hash_mismatch"],0)
+
     def test_storage_audit_remains_read_only(self):
         job={"id":"storage-audit-test","operation":"storage_audit","args":[]}
         self.assertEqual(r.validate_job(job),job)
