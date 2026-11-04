@@ -279,6 +279,35 @@ class OnDemandTests(unittest.TestCase):
             self.assertEqual(data["lfs_status"]["lfs_pointer"],1)
             self.assertEqual(data["lfs_status"]["hash_mismatch"],0)
 
+    def test_unity_gui_operation_is_owner_only_and_argument_free(self):
+        self.assertEqual(r.validate_job({"id":"unity-gui-01","operation":"unity_gui","args":[]})["operation"],"unity_gui")
+        with self.assertRaises(r.JobError):
+            r.validate_job({"id":"unity-gui-01","operation":"unity_gui","args":["rm","-rf"]})
+
+    def test_unity_gui_reuses_running_process_without_launch(self):
+        with patch.object(e,"_unity_gui_status",return_value={"pid":[4321]}) as state, \
+             patch.object(e,"ensure_desktop") as gui, \
+             patch.object(e.subprocess,"Popen") as popen:
+            result=e.ensure_unity_gui()
+        self.assertEqual(result["exit_code"],0)
+        gui.assert_not_called()
+        popen.assert_not_called()
+        state.assert_called_once()
+
+    def test_unity_gui_rejects_low_storage_before_launch(self):
+        from types import SimpleNamespace
+        status={"pid":[],"editor_present":True,"project_version_present":True,
+                "map_scene_present":True}
+        with patch.object(e,"_unity_gui_status",return_value=status), \
+             patch.object(e.shutil,"disk_usage",return_value=SimpleNamespace(free=2*1024**3)), \
+             patch.object(e,"ensure_desktop") as gui, \
+             patch.object(e.subprocess,"Popen") as popen:
+            result=e.ensure_unity_gui()
+        self.assertNotEqual(result["exit_code"],0)
+        self.assertIn("3 GiB",result["stderr"])
+        gui.assert_not_called()
+        popen.assert_not_called()
+
     def test_storage_audit_remains_read_only(self):
         job={"id":"storage-audit-test","operation":"storage_audit","args":[]}
         self.assertEqual(r.validate_job(job),job)
