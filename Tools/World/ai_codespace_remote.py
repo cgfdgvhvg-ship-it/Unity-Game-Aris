@@ -37,7 +37,7 @@ def validate_job(data: dict, *, expected_file: str | None = None) -> dict:
     op = data["operation"]
     if not isinstance(ident, str) or not ID_RE.fullmatch(ident):
         raise JobError("invalid job id")
-    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "unity_diagnostics", "desktop_tools", "desktop_snapshot", "unity_terms_accept", "unity_low_disk_stop", "unity_low_disk_pause", "unity_resume_paused", "unity_live", "unity_result", "unity_frame", "world_site", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
+    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "unity_diagnostics", "desktop_tools", "desktop_snapshot", "unity_terms_accept", "unity_low_disk_stop", "unity_low_disk_pause", "unity_resume_paused", "codespace_machines", "unity_live", "unity_result", "unity_frame", "world_site", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
         raise JobError("unsupported operation")
     args = data["args"]
     if not isinstance(args, list) or len(args) > 16 or any(
@@ -265,6 +265,19 @@ def main(argv=None):
         token = os.getenv("AARIS_CODESPACE_TOKEN", "")
         if not token:
             raise JobError("SETUP_REQUIRED: add repository Actions secret AARIS_CODESPACE_TOKEN; it requires Codespaces lifecycle admin write, Codespaces read and permission for gh codespace ssh")
+        if job["operation"] == "codespace_machines":
+            # Read account-offered machine types without touching billing, disk or SSH.
+            info = github_api("GET", token, "/machines")
+            options = info.get("machines", []) if isinstance(info, dict) else []
+            safe = [{"name": m.get("name"), "display_name": m.get("display_name"),
+                     "cpus": m.get("cpus"), "memory_in_bytes": m.get("memory_in_bytes"),
+                     "storage_in_bytes": m.get("storage_in_bytes")}
+                    for m in options if isinstance(m, dict)]
+            response = {"id":job["id"],"operation":job["operation"],"ok":True,
+                        "exit_code":0,"stdout":json.dumps({"machines":safe}),"stderr":""}
+            result.write_text(json.dumps(response,ensure_ascii=False,indent=2))
+            print("AARIS_RESULT_JSON="+json.dumps(response),flush=True)
+            return 0
         start_and_wait(token)
         execute_remote(job, token, args.workspace, result)
         print("AARIS_JOB_COMPLETE", job["id"], flush=True)
