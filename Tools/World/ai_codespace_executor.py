@@ -5,6 +5,7 @@ No repo checkout or git cleanup. Never access secrets or publish credentials.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -113,49 +114,86 @@ def _du_bytes(path):
 
 
 def _lfs_inventory():
-    # Enumerate only the checked-out branch's tracked LFS paths; do not
-    # confuse ordinary .unity/.mat/.prefab Git assets with missing LFS.
-    base = subprocess.run(["git","lfs","ls-files","--name-only","-z"],
-                          cwd=PROJECT, stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE, timeout=75, check=False)
-    if base.returncode:
-        return {"error": "git lfs ls-files failed", "detail": base.stderr.decode("utf-8","replace")[-400:]}
-    paths = [v.decode("utf-8","surrogateescape") for v in base.stdout.split(b"\0") if v]
-    counts = {"hydrated": 0, "pointer_or_missing": 0, "dirty_protected": 0}
-    suffixes = {}
-    pending = []
-    samples = []
-    for name in paths:
-        if not name.startswith("Assets/"):
-            continue
-        if ".." in Path(name).parts:
-            continue
-        target = PROJECT/name
-        suffix = target.suffix.lower()
-        suffixes[suffix] = suffixes.get(suffix,0)+1
-        if not target.is_file() or target.is_symlink():
-            counts["pointer_or_missing"] += 1
-            pending.append(name)
-            if len(samples)<12: samples.append(name)
-            continue
-        try:
-            with target.open("rb") as handle:
-                pointer = handle.read(100).startswith(b"version https://git-lfs.github.com/spec/v1")
-        except OSError:
-            pointer = True
-        if pointer:
-            counts["pointer_or_missing"] += 1
-            pending.append(name)
-            if len(samples)<12: samples.append(name)
-        else:
-            counts["hydrated"] += 1
-    status = run(["git","status","--short","--untracked-files=all"],timeout=35)
-    return {"all_lfs_paths": len(paths), "asset_lfs_paths": sum(suffixes.values()),
-            "counts":counts,"file_extensions":dict(sorted(suffixes.items(),key=lambda x:-x[1])[:18]),
-            "missing_or_pointer_examples":samples,
-            "pending_count":len(pending),
-            "git_status":status}
+    """Compare original LFS OIDs with clean checked-out asset bytes.
 
+    Read-only and dirty-aware. Modified core geometry is NEVER hashed as if
+    it were unchanged; dirty paths are separately protected and reported.
+    """
+    cmd = subprocess.run(["git", "lfs", "ls-files", "--long"],
+                         cwd=PROJECT, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE, timeout=45, check=False)
+    if cmd.returncode:
+        return {"error": "git lfs ls-files --long failed",
+                "detail": cmd.stderr.decode("utf-8", "replace")[-400:]}
+    # Output: '<64 hex OID> * Assets/...'; - means not checked out.
+    import re
+    records = []
+    for line in cmd.stdout.decode("utf-8", "surrogateescape").splitlines():
+        match = re.match(r"^([0-9a-f]{64})\s+[*-]\s+(.+)$", line)
+        if match:
+            records.append((match.group(2), match.group(1)))
+    # Fail closed: do not mistake a CLI output-format change for zero LFS.
+    if not records and cmd.stdout.strip():
+        return {"error": "unrecognized git lfs ls-files --long format",
+                "sample": cmd.stdout[:100].decode("utf-8", "replace")}
+    tracked = subprocess.run(["git", "diff", "--name-only", "-z", "HEAD", "--"],
+                             cwd=PROJECT, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, timeout=35, check=False)
+    if tracked.returncode:
+        return {"error": "could not list dirty tracked paths"}
+    dirty = set(x.decode("utf-8", "surrogateescape") for x in tracked.stdout.split(b"\0") if x)
+    result = {"checked_sha256": 0, "hash_matches": 0, "hash_mismatch": 0,
+              "lfs_pointer": 0, "file_missing": 0,
+              "dirty_protected": 0, "unreadable": 0}
+    suffixes = {}
+    samples = {"lfs_pointer":[], "file_missing":[], "dirty_protected":[],
+               "hash_mismatch":[]}
+    checked_bytes = 0
+    existing_bytes = 0
+    for name, expected in records:
+        if not name.startswith("Assets/") or ".." in Path(name).parts:
+            continue
+        target = PROJECT / name
+        suffix = target.suffix.lower()
+        suffixes[suffix] = suffixes.get(suffix, 0) + 1
+        if name in dirty:
+            result["dirty_protected"] += 1
+            if len(samples["dirty_protected"]) < 10: samples["dirty_protected"].append(name)
+            continue
+        if not target.is_file() or target.is_symlink():
+            kind = "file_missing"
+        else:
+            try:
+                size = target.stat().st_size
+                existing_bytes += size
+                with target.open("rb") as stream:
+                    pointer = stream.read(100).startswith(b"version https://git-lfs.github.com/spec/v1")
+                if pointer:
+                    kind = "lfs_pointer"
+                else:
+                    digest = hashlib.sha256()
+                    with target.open("rb") as stream:
+                        for part in iter(lambda: stream.read(1024*1024), b""):
+                            digest.update(part)
+                    checked_bytes += size
+                    result["checked_sha256"] += 1
+                    if digest.hexdigest() == expected:
+                        result["hash_matches"] += 1
+                    else:
+                        result["hash_mismatch"] += 1
+                        if len(samples["hash_mismatch"]) < 10: samples["hash_mismatch"].append(name)
+                    continue
+            except OSError:
+                kind = "unreadable"
+        result[kind] += 1
+        if kind in samples and len(samples[kind]) < 10:
+            samples[kind].append(name)
+    return {"all_lfs_paths":len(records), "lfs_assets":sum(suffixes.values()),
+            "lfs_status": result, "checked_bytes":checked_bytes,
+            "present_lfs_bytes_excluding_dirty":existing_bytes,
+            "file_extensions":dict(sorted(suffixes.items(),key=lambda x:-x[1])[:20]),
+            "examples":samples, "protected_dirty_tracked_count":len(dirty),
+            "git_status":run(["git","status","--short","--untracked-files=all"],timeout=30)}
 
 def storage_audit():
     home=Path("/home/codespace")
