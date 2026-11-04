@@ -179,3 +179,17 @@ reject a changing Git HEAD. Never describe deferred or dirty files as
 byte-for-byte verified. A clean file with an LFS pointer is not a hydrated
 asset. Git LFS transfer is only justified for real missing/pointer files;
 no operations may revert modified Unity meshes, scenes, materials or scripts.
+
+---
+
+## 2026-11-04 verified Unity Terms and low-disk recovery
+
+- Work on the existing Codespace musical-carnival-jjxp9r6vw45wfjgvg only. Preserve ALL intentionally modified and untracked source/core files, including any Unity-generated ProjectSettings and live bridge sources. Never reset, git clean, re-clone, delete Library or re-fetch the 764 already-verified Git LFS assets.
+- The owner explicitly authorized acceptance of Unity 6000.3.26f1 Editor Software Terms. The exact X11 Unity terms dialog was accepted and its disappearance verified: [run 41855189075](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41855189075).
+- Real Unity import started, including native materials, prefabs and textures; the Library grew beyond 2.6 GiB. Import and C# compilation remain unfinished. The map SceneView is NOT verified loaded; no native tree move/capture/readback may be claimed.
+- Persistent /workspaces has 32 GiB total; free space dropped to 0.585 GiB. A bounded SIGTERM request did not terminate Unity. A guarded SIGSTOP paused its own process group 40121, confirmed by real ps state T<sl: [run 41858218549](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41858218549). Library is intact. Do not resume without more *persistent* disk capacity.
+- The owner can select a higher persistent-storage Codespace machine type (e.g. 64 GiB if available) after reviewing billing; this can stop/restart the Codespace. Never change paid resources without explicit owner authorization. Codespace stop destroys the paused process/RAM but preserves Library on disk.
+- The ai/codespace-jobs branch presently includes tested one-purpose Unity terms confirmation, staged Python world-site sensor fallback, guarded unity_low_disk_pause and unity_resume_paused operations. These extra operations are NOT in main at this checkpoint; read queue branch code before using. The resume operation requires at least 4 GiB free and only continues a matching Unity process group.
+- Read-only world-site sensing succeeded from the reviewed staged Python source: [run 41856938356](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41856938356). Source-file coordinates and native TreeInstances are not Unity-rendered pixels or collision tests.
+- IMPORTANT queue discipline: push exactly ONE new .aaris/jobs/<unique-id>.json job per completed Actions workflow and matching result artifact. GitHub Actions permits one running and one pending per concurrency group; further job pushes can CANCEL a previous pending run, even when cancel-in-progress is false. Do not assume FIFO. Retry cancelled work with a fresh unique ID.
+- After persistent disk expansion, verify free space and worktree; restore private desktop on the same Codespace; resume/restart Unity using the retained Library, finish compile and exact TerrainDemoScene load; perform native inspect, small reversible tree move/scale plus saved core readback and true camera screenshot. Keep screenshot artifacts short-lived, not committed to Git.
