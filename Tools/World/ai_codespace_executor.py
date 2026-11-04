@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import socket
 from pathlib import Path
 import shutil
@@ -119,6 +120,28 @@ def execute(job):
             "git_status": run(["git", "status", "--short"], timeout=15),
         }
         return {"exit_code": 0, "stdout": json.dumps(result, ensure_ascii=False), "stderr": ""}
+    if op == "desktop_diagnose":
+        if args: raise ValueError("unexpected args")
+        logs = {}
+        for name in ("xvfb.log", "openbox.log", "vnc.log", "novnc.log", "ai-xterm.log"):
+            logfile = DESKTOP / name
+            if logfile.is_file() and not logfile.is_symlink():
+                excerpt = logfile.read_text(encoding="utf-8", errors="replace")[-1800:]
+                excerpt = re.sub(r"(?i)\b(?:ghp_|ghu_|gho_|ghs_|ghr_|github_pat_|sk-)[A-Za-z0-9_-]{8,}",
+                                 "[REDACTED]", excerpt)
+                logs[name] = excerpt
+            else:
+                logs[name] = "MISSING"
+        status = {"display_socket": Path("/tmp/.X11-unix/X12").exists(),
+                  "vnc_local_5900": _port_ready(5900),
+                  "novnc_6080": _port_ready(6080),
+                  "xvfb_process": _process_running("Xvfb"),
+                  "openbox_process": _process_running("openbox"),
+                  "x11vnc_process": _process_running("x11vnc"),
+                  "websockify_process": _process_running("websockify"),
+                  "saved_vnc_password_exists": (DESKTOP/"vnc.pass").is_file(),
+                  "logs": logs}
+        return {"exit_code": 0, "stdout": json.dumps(status, ensure_ascii=False), "stderr": ""}
     if op == "desktop_xterm":
         if args: raise ValueError("unexpected args")
         error = ensure_desktop()
