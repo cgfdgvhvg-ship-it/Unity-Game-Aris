@@ -29,8 +29,30 @@ class SavedSceneMobileLodIntegrity(unittest.TestCase):
         self.assertEqual(self.scene.count(b'  - screenRelativeHeight: 0.28\n'), 79)
         self.assertEqual(self.scene.count(b'  - screenRelativeHeight: 0.095\n'), 79)
         self.assertEqual(self.scene.count(b'  - screenRelativeHeight: 0.22\n'), 22)
-        self.assertEqual(self.scene.count(b'  - screenRelativeHeight: 0.07\n'), 22)
+        self.assertEqual(self.scene.count(b'  - screenRelativeHeight: 0.07\n'), 19)
+        self.assertEqual(self.scene.count(b'  - screenRelativeHeight: 0.11\n'), 3)
         self.assertEqual(self.scene.count(b'  - screenRelativeHeight: 0.0025\n'), 101)
+
+    def test_three_heavy_compound_prefabs_restore_to_exact_protected_sources(self):
+        from verify_tree_house_upgrade import (
+            HEAVY_COMPOUND_SOURCE_PREFABS, preserved_or_reviewed_lod_only
+        )
+        self.assertEqual(len(HEAVY_COMPOUND_SOURCE_PREFABS), 3)
+        for path in sorted(HEAVY_COMPOUND_SOURCE_PREFABS):
+            with self.subTest(path=path):
+                source = (ROOT / path).read_bytes()
+                self.assertEqual(source.count(b'  - screenRelativeHeight: 0.11\n'), 1)
+                self.assertEqual(source.count(b'  - screenRelativeHeight: 0.22\n'), 1)
+                self.assertEqual(source.count(b'  - screenRelativeHeight: 0.0025\n'), 1)
+                old = source.replace(b'  - screenRelativeHeight: 0.11\n',
+                                     b'  - screenRelativeHeight: 0.07\n', 1)
+                self.assertEqual(hashlib.sha256(old).hexdigest(),
+                                 self.contract['preserved_files'][path])
+                self.assertTrue(preserved_or_reviewed_lod_only(
+                    ROOT, path, self.contract['preserved_files'][path]))
+        changed = self.scene.replace(b'  - screenRelativeHeight: 0.11\n',
+                                     b'  - screenRelativeHeight: 0.12\n', 1)
+        self.assertIsNone(restore_scene_mobile_lod(changed))
 
     def test_modified_scene_geometry_or_metadata_cannot_pass(self):
         modified = self.scene.replace(b'  m_Fog: 1\n', b'  m_Fog: 0\n', 1)
