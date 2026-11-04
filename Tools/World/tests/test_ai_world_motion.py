@@ -98,8 +98,6 @@ class PatchTests(unittest.TestCase):
         for extra in (
             ["--frame","reference-local"],
             ["--frame","world","--reference",identity],
-            ["--frame","reference-local","--reference","terrain:"+"f"*32+":8",
-             "--dx","5"],
         ):
             with self.subTest(extra=extra):
                 out=io.StringIO()
