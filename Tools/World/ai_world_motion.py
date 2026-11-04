@@ -16,7 +16,14 @@ from pathlib import Path
 import re
 import sys
 
-DEFAULT_ROOT = Path(os.environ.get("AARIS_WORLD_ROOT", "/workspaces/Unity-Game-Aris"))
+# Prefer the actual repo checkout (GitHub Actions, another Codespace, local PC).
+# An installed worker copy outside the checkout keeps the known Codespace fallback.
+SOURCE_REPO = Path(__file__).resolve().parents[2]
+DEFAULT_ROOT = Path(os.environ.get(
+    "AARIS_WORLD_ROOT",
+    str(SOURCE_REPO if (SOURCE_REPO / "Tools/World/world.py").is_file()
+        else Path("/workspaces/Unity-Game-Aris")),
+))
 SCENE_RE = re.compile(r"scene:[a-f0-9]{32}:-?[0-9]+\Z")
 TERRAIN_RE = re.compile(r"terrain:[a-f0-9]{32}:[0-9]+\Z")
 VECTORS = {
