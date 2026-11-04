@@ -89,6 +89,15 @@ class PrefabLodTransactions(unittest.TestCase):
         (self.root/(PREFAB+'.meta')).write_text('changed')
         with self.assertRaises(WorldError): apply_yaml(self.root, patch, True)
 
+    def test_line_endings_and_bom_cannot_normalize_unrelated_saved_bytes(self):
+        original = (self.root/PREFAB).read_bytes()
+        for source in (original.replace(b'\n', b'\r\n'), b'\xef\xbb\xbf'+original):
+            with self.subTest(prefix=source[:8]):
+                (self.root/PREFAB).write_bytes(source)
+                with self.assertRaisesRegex(WorldError, 'byte normalization'):
+                    apply_yaml(self.root, self.patch(), True)
+                self.assertEqual((self.root/PREFAB).read_bytes(), source)
+
 
 class ActualSpeedTreeProfileIntegrity(unittest.TestCase):
     def test_all_six_profiles_retain_close_detail_and_far_cutoff_and_only_change_thresholds(self):

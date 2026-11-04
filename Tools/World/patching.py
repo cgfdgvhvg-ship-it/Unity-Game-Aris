@@ -529,7 +529,9 @@ def plan(root, patch):
                 raise WorldError("LOD edits require an Assets/*.prefab saved YAML source")
             if type(op["file_id"]) is not int:
                 raise WorldError("LOD file_id must be an integer")
-            _, docs = source(path)
+            text, docs = source(path)
+            if safe_path(root, path).read_bytes() != text.encode("utf-8"):
+                raise WorldError("Scalar-only LOD edits require UTF-8 LF without BOM; refusing unrelated byte normalization")
             doc = docs.get(op["file_id"])
             if (not doc or doc["kind"] != "LODGroup" or doc["stripped"] or
                     doc["data"].get("m_PrefabInstance", {}).get("fileID")):
