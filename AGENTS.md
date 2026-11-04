@@ -33,7 +33,7 @@ connector without opening Termux, provided the owner has configured the
   `ok`, and `exit_code`. The old Issue #37 `AARIS_JOB/AARIS_RESULT` worker
   is a **legacy/manual fallback only**. A queued commit or running workflow is
   not proof of execution or an actual Unity screenshot.
-- Supported operations today: `diagnose`, `desktop_xterm`, `unity_version`,
+- Supported operations today: `diagnose`, `desktop_xterm`, `desktop_diagnose`, `unity_version`,
   `world_doctor` (empty args), and limited `terminal_readonly` with a
   diagnostic argv array. New mutating operations require explicit authorisation,
   review, tests and disk/dirty-worktree protections. Do not pass arbitrary
@@ -57,7 +57,7 @@ and starts Xvfb `:12`, Openbox, authenticated x11vnc on loopback port 5900,
 and noVNC/websockify on port 6080 before opening xterm. It **requires** the
 pre-existing private `/home/codespace/.aaris-desktop/vnc.pass`; never generate
 or reveal VNC credentials through Actions logs. Keep forwarded port 6080
-private. `diagnose` only observes and does not start the desktop. A running
+private. `diagnose` only observes and does not start the desktop. Use `desktop_diagnose` to read bounded VNC log tails and exact display/port/process status when restart fails; never read or print the password file. A running
 noVNC desktop does **not** prove Unity GUI or map import is complete;
 check disk headroom first (last observed free space ~3.4 GiB).
 
