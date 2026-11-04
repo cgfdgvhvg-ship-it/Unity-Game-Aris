@@ -17,7 +17,12 @@ import shutil
 import subprocess
 import sys
 
-ROOT = Path("/workspaces/Unity-Game-Aris")
+SOURCE_REPO = Path(__file__).resolve().parents[2]
+ROOT = Path(os.environ.get(
+    "AARIS_WORLD_ROOT",
+    str(SOURCE_REPO if (SOURCE_REPO / "Tools/World/world.py").is_file()
+        else Path("/workspaces/Unity-Game-Aris")),
+))
 STATE = Path("/workspaces/.aaris-world-bridge")
 MAX_JSON = 9500  # issue worker retains at most ~12000 output characters
 COMMANDS = {
