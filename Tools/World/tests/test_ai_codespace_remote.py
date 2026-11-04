@@ -433,6 +433,24 @@ class OnDemandTests(unittest.TestCase):
             spawned.assert_called_once()
             self.assertTrue((root/"Library").is_dir())
 
+
+    def test_layered_storage_probe_is_owner_only_no_args_and_readonly(self):
+        request={"id":"layered-probe-001","operation":"layered_storage_probe","args":[]}
+        self.assertEqual(r.validate_job(request),request)
+        with self.assertRaises(r.JobError):
+            r.validate_job(dict(request,args=["rm","-rf"]))
+        with patch.object(e,"_unity_pids",return_value=[]), \
+             patch.object(e.subprocess,"Popen") as proc, \
+             patch.object(e.os,"kill") as signaler:
+            out=e.execute(request)
+        self.assertEqual(out["exit_code"],0)
+        data=json.loads(out["stdout"])
+        self.assertIn("dev_shm",data["volumes"])
+        self.assertIn("workspace",data["volumes"])
+        self.assertIn("policy",data)
+        proc.assert_not_called()
+        signaler.assert_not_called()
+
     def test_storage_audit_remains_read_only(self):
         job={"id":"storage-audit-test","operation":"storage_audit","args":[]}
         self.assertEqual(r.validate_job(job),job)
