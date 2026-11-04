@@ -399,6 +399,70 @@ def system_storage_audit():
 
 
 
+def runtime_mount_probe():
+    """Pure read-only tmpfs and Unity recovery feasibility inspection."""
+    pkg=Path("/home/codespace/Unity/Hub/Editor/6000.3.26f1/Editor/Data/Resources/PackageManager")
+    paths={"/dev/shm":Path("/dev/shm"),"project":PROJECT,
+           "editor_package_manager":pkg,"editor":EDITOR,"home":Path("/home/codespace"),
+           "temporary":Path("/tmp")}
+    disks={}
+    for label,path in paths.items():
+        try:
+            if not path.exists() or path.is_symlink():
+                disks[label]={"status":"absent_or_symlink"}
+                continue
+            disk=shutil.disk_usage(path)
+            fs=os.statvfs(path)
+            disks[label]={"status":"ok","total_gib":round(disk.total/2**30,3),
+                          "free_gib":round(disk.free/2**30,3),
+                          "device_id":os.stat(path).st_dev,
+                          "f_bavail":fs.f_bavail,"f_frsize":fs.f_frsize}
+        except OSError as ex:
+            disks[label]={"status":"error","reason":type(ex).__name__}
+    try:
+        mountinfo=Path("/proc/self/mountinfo").read_text()
+        mountnames={}
+        for line in mountinfo.splitlines():
+            parts=line.split(" - ",1)
+            if len(parts)!=2:
+                continue
+            front=parts[0].split()
+            if len(front)<5:
+                continue
+            path=front[4].replace("\\040"," ")
+            if path in ("/","/dev/shm","/workspaces","/tmp","/home","/home/codespace"):
+                fields=parts[1].split()
+                mountnames[path]={"filesystem":fields[0] if fields else None,
+                                  "source":fields[1] if len(fields)>1 else None}
+    except OSError:
+        mountnames={}
+    mem={}
+    try:
+        content=Path("/proc/meminfo").read_text()
+        for field in ("MemTotal","MemAvailable","Shmem","SwapTotal","SwapFree"):
+            import re
+            m=re.search(r"^"+field+r":\s+(\d+) kB$",content,re.MULTILINE)
+            if m: mem[field+"_gib"]=round(int(m.group(1))/1024**2,3)
+    except OSError:
+        pass
+    process_states={}
+    for pid in _unity_pids():
+        try:
+            raw=(Path("/proc")/str(pid)/"status").read_text()
+            rows={}
+            for key in ("State","VmRSS","VmSize"):
+                import re
+                m=re.search(r"^"+key+r":\s+(.+)$",raw,re.MULTILINE)
+                if m: rows[key]=m.group(1)
+            process_states[str(pid)]=rows
+        except OSError:
+            process_states[str(pid)]={"status":"unreadable"}
+    pkg_bytes=_du_bytes(pkg)
+    return {"paths":disks,"mounts":mountnames,"memory":mem,
+            "unity_processes":process_states,"unity_package_manager_bytes":pkg_bytes,
+            "warning":"A /dev/shm tmpfs copy is VOLATILE across Codespace stop and shares RAM; a persistent symlink to it would strand Unity Editor on restart. This operation did not move, delete, symlink or resume anything."}
+
+
 def safe_archive_cleanroom(*, delete=False):
     """Review only re-downloadable package archives, never installed programs.
 
@@ -1064,6 +1128,9 @@ def execute(job):
     if op == "safe_archives_cleanup":
         if args: raise ValueError("archive cleanup takes no arguments")
         return {"exit_code":0,"stdout":json.dumps(safe_archive_cleanroom(delete=True)),"stderr":""}
+    if op == "runtime_mount_probe":
+        if args: raise ValueError("runtime mount probe accepts no arguments")
+        return {"exit_code":0,"stdout":json.dumps(runtime_mount_probe(),ensure_ascii=False),"stderr":""}
     if op == "system_storage_audit":
         if args: raise ValueError("system storage audit takes no arguments")
         return {"exit_code":0,"stdout":json.dumps(system_storage_audit(),ensure_ascii=False),"stderr":""}
