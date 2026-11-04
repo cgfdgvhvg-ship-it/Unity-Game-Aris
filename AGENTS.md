@@ -1,3 +1,10 @@
+### Native Unity low-disk guard (2026-11-04)
+
+The Codespace launch controller now refuses a first Unity import unless at least **8 GiB** is free on the persistent project filesystem, or a restart with a retained partial Library unless at least **4 GiB** is free. A watchdog checks real free space while Unity runs and uses `SIGSTOP` on the verified Unity process/session below 1.5 GiB instead of relying on delayed SIGTERM; this preserves current source files and the partial Library. The Editor status includes `paused_pids`. A paused Editor is **not** a loaded/interactive map.
+
+After obtaining sufficient **persistent** disk, the owner may issue the argument-free `unity_resume_paused` operation to continue the same live process; it refuses to resume below 4 GiB and reinstalls its watchdog. If the Codespace was stopped and the PID no longer exists, use `unity_gui` to reopen the *retained* Library instead. The 32 GiB-only machine options observed for this account mean this may require a different persistent environment or available storage policy change. Never delete the project Library/Assets or regenerate/re-fetch intact Git LFS assets to make room.
+
+---
 
 ## 2026-11-04 verified Unity Terms and low-disk recovery
 
