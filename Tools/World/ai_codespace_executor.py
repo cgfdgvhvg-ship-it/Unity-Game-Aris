@@ -343,6 +343,94 @@ def prune_caches(home=Path("/home/codespace")):
             "recovered_mib":round((final-initial)/2**20,1),
             "git_worktree_unchanged":True}
 
+
+def _unity_pids():
+    """Only match this project's real Unity Editor PID, not any unrelated Unity job."""
+    scan = run(["ps", "-eo", "pid=,args="], timeout=10)
+    found = []
+    if scan["exit_code"] != 0:
+        return found
+    for line in scan["stdout"].splitlines():
+        parts = line.strip().split(None, 1)
+        if len(parts) != 2 or not parts[0].isdigit():
+            continue
+        argv = parts[1]
+        if (argv.startswith(str(EDITOR)+" ") and
+                "-projectPath "+str(PROJECT) in argv):
+            found.append(int(parts[0]))
+    return found
+
+
+def _unity_log_tail():
+    logfile=DESKTOP/"unity-editor.log"
+    if logfile.is_file() and not logfile.is_symlink():
+        with logfile.open("rb") as f:
+            f.seek(max(0, logfile.stat().st_size-3000))
+            raw=f.read().decode("utf-8","replace")
+        return re.sub(r"(?i)\b(?:ghp_|ghu_|gho_|ghs_|ghr_|github_pat_|sk-)[A-Za-z0-9_-]{8,}",
+                      "[REDACTED]",raw)[-2200:]
+    return "Unity log does not exist"
+
+
+def _unity_gui_status():
+    free=shutil.disk_usage(PROJECT).free
+    lib=PROJECT/"Library"
+    return {
+        "editor_version":"6000.3.26f1",
+        "editor_present":EDITOR.is_file() and os.access(EDITOR,os.X_OK),
+        "project_version_present":(PROJECT/"ProjectSettings/ProjectVersion.txt").is_file(),
+        "map_scene_present":(PROJECT/"Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity").is_file(),
+        "pid":_unity_pids(),
+        "display_12":Path("/tmp/.X11-unix/X12").exists(),
+        "novnc_6080":_port_ready(6080),
+        "library_exists":lib.is_dir(),
+        "library_bytes":_du_bytes(lib),
+        "free_disk_gib":round(free/2**30,3),
+        "last_log":_unity_log_tail(),
+    }
+
+
+def ensure_unity_gui(*, launch=True):
+    """Resume saved project using existing Library, without checkout or re-import cleanup."""
+    status=_unity_gui_status()
+    if not launch or status["pid"]:
+        return {"exit_code":0,"stdout":json.dumps(status,ensure_ascii=False),"stderr":""}
+    if not status["editor_present"] or not status["project_version_present"] or not status["map_scene_present"]:
+        return {"exit_code":3,"stdout":json.dumps(status),"stderr":"Unity Editor or saved project missing"}
+    if shutil.disk_usage(PROJECT).free < 3*1024**3:
+        return {"exit_code":3,"stdout":json.dumps(status),"stderr":"Less than 3 GiB available; refusing unsafe first import"}
+    error=ensure_desktop()
+    if error:
+        return {"exit_code":3,"stdout":json.dumps(status),"stderr":error}
+    import fcntl
+    DESKTOP.mkdir(parents=True,exist_ok=True)
+    DESKTOP.chmod(0o700)
+    lock=DESKTOP/"unity-launch.lock"
+    with lock.open("a+") as lockfile:
+        fcntl.flock(lockfile.fileno(),fcntl.LOCK_EX)
+        if not _unity_pids():
+            env=os.environ.copy()
+            env["DISPLAY"]=":12"
+            env.setdefault("XDG_RUNTIME_DIR",str(DESKTOP/"runtime"))
+            runtime=Path(env["XDG_RUNTIME_DIR"])
+            runtime.mkdir(parents=True,exist_ok=True)
+            runtime.chmod(0o700)
+            args=[str(EDITOR),"-projectPath",str(PROJECT),
+                  "-logFile",str(DESKTOP/"unity-editor.log"),
+                  "-job-worker-count","2"]
+            with (DESKTOP/"unity-launch.log").open("a") as output:
+                proc=subprocess.Popen(args,cwd=PROJECT,stdin=subprocess.DEVNULL,
+                                      stdout=output,stderr=output,env=env,start_new_session=True)
+            (DESKTOP/"unity-last-pid.txt").write_text(str(proc.pid)+"\n")
+    # Non-blocking: big first import is checked by later status jobs.
+    time.sleep(4)
+    info=_unity_gui_status()
+    info["launch_attempted"]=True
+    if not info["pid"]:
+        return {"exit_code":3,"stdout":json.dumps(info),"stderr":"Unity process exited; inspect last_log and unity-launch.log"}
+    return {"exit_code":0,"stdout":json.dumps(info,ensure_ascii=False),"stderr":""}
+
+
 def execute(job):
     # Validate independently from Actions, where an untrusted queue file travels.
     if set(job) != {"id", "operation", "args"}:
@@ -413,6 +501,9 @@ def execute(job):
         state = {"display_12": True, "vnc_local_5900": _port_ready(5900),
                  "novnc_6080": _port_ready(6080), "xterm_running": True}
         return {"exit_code": 0, "stdout": json.dumps(state), "stderr": ""}
+    if op == "unity_gui":
+        if args: raise ValueError("unity_gui takes no arguments")
+        return ensure_unity_gui()
     if op == "unity_version":
         if args: raise ValueError("unexpected args")
         if not EDITOR.is_file():
