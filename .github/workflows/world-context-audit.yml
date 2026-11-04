@@ -35,3 +35,10 @@ jobs:
       - name: Inspect seeded random points and preview move and color edits in temporary copies
         run: python Tools/World/audit_context.py
 
+
+      - name: Smoke-test real saved scene relative move without writing
+        run: |
+          python Tools/World/ai_world_motion.py plan \
+            --target 'scene:9a18cc5d35536fd428eb6e90b3402589:10242' \
+            --direction left --metres 50 --frame world \
+            --limit 2 --no-neighbours --validate-plan
