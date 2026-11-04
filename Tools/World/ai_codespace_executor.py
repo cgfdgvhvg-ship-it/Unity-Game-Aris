@@ -1134,6 +1134,17 @@ def execute(job):
     if op == "system_storage_audit":
         if args: raise ValueError("system storage audit takes no arguments")
         return {"exit_code":0,"stdout":json.dumps(system_storage_audit(),ensure_ascii=False),"stderr":""}
+    if op == "unity_lfs_preflight":
+        if args: raise ValueError("read-only LFS preflight takes no arguments")
+        source = Path("/workspaces/.aaris-world-bridge/ondemand/unity_lfs_preflight.py")
+        if not source.is_file() or source.is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"Reviewed LFS preflight not staged"}
+        audit = subprocess.run(
+            ["python3",str(source),"--project",str(PROJECT),"--editor",str(EDITOR)],
+            text=True,capture_output=True,timeout=90,check=False
+        )
+        return {"exit_code":audit.returncode,"stdout":audit.stdout[-16000:],
+                "stderr":audit.stderr[-1400:]}
     if op == "storage_audit":
         if args: raise ValueError("unexpected args")
         return {"exit_code":0,"stdout":json.dumps(storage_audit(),ensure_ascii=False),"stderr":""}
