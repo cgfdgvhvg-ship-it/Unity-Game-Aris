@@ -321,11 +321,14 @@ def describe(w, request):
         "parts": {"total": len(descendants), "offset": offset, "items": items,
                   "next_offset": offset+limit if offset+limit < len(descendants) else None},
         "appearance": {"material_slot_count": len(slots), "slots": slots,
+                       "empty_saved_material_slots": sum(slot.get("submesh_geometry",{}).get("status")=="empty" for slot in slots),
                        "surface_part_role_counts": dict(sorted(Counter(
-                           slot["surface_semantic"]["part_role"]["role"] for slot in slots).items())),
+                           slot["surface_semantic"]["part_role"]["role"] for slot in slots
+                           if slot.get("submesh_geometry",{}).get("status")!="empty").items())),
                        "material_family_counts": dict(sorted(Counter(
                            family["family"] for slot in slots
-                           for family in slot["surface_semantic"]["material_families"]).items())),
+                           for family in slot["surface_semantic"]["material_families"]
+                           if slot.get("submesh_geometry",{}).get("status")!="empty").items())),
                        "texture_analysis_requested": texture_analysis,
                        "rendered_pixels": False,
                        "note": "Texture statistics describe source rasters; Unity capture is required for lit appearance and stains at exact UV positions"},

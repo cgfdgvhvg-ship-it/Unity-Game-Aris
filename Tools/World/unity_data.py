@@ -353,6 +353,26 @@ class World:
                 },
                 "appearance_note": "Serialized tint and optional source-raster statistics are not final lit pixels. Use Unity capture for final appearance."}
 
+    def submesh_geometry(self, mesh_ref, slot):
+        """Distinguish an empty saved slot from a remaining material reference."""
+        info = self.reference(mesh_ref)
+        if info.get("status") != "read" or not info.get("path"):
+            return {"status":info.get("status", "unavailable"), "triangle_count":None,
+                    "evidence":"No decoded saved submesh table; not evidence of empty geometry"}
+        asset = self.asset_docs(info["path"])
+        if asset.get("status") != "read":
+            return {"status":asset.get("status", "unavailable"), "triangle_count":None}
+        mesh = next((d["data"] for d in asset["docs"] if d["kind"] == "Mesh" and d["file_id"] == mesh_ref.get("fileID")), None)
+        groups = mesh.get("m_SubMeshes", []) if mesh else []
+        if not 0 <= slot < len(groups):
+            return {"status":"saved_submesh_unresolved", "triangle_count":None}
+        submesh = groups[slot];count = submesh.get("indexCount")
+        if type(count) is not int or count < 0:
+            return {"status":"invalid_saved_index_count", "triangle_count":None}
+        return {"status":"empty" if count == 0 else "present", "index_count":count,
+                "triangle_count":count//3 if submesh.get("topology") == 0 else None,
+                "evidence":"Exact saved submesh index count; not a rendered-pixel or physics result"}
+
     def material_slots(self, go, texture_analysis=False, descendants=True):
         """Bind each material slot to the exact renderer/mesh part using it."""
         slots = []
@@ -372,8 +392,9 @@ class World:
                         "node_id": self.stable_id(node), "node_name": self.gos[node].get("m_Name"),
                         "renderer_file_id": component["file_id"], "renderer_kind": component["kind"],
                         "slot_index": index, "mesh": self.reference(mesh_ref or {}),
+                        "submesh_geometry": self.submesh_geometry(mesh_ref or {}, index),
                         "material": self.material(ref, texture_analysis),
-                        "evidence": "serialized renderer material slot; exact submesh coverage requires mesh/importer or Unity export",
+                        "evidence": "saved renderer binding; submesh_geometry reports decoded face counts where available, not final pixels",
                     })
         return slots
 

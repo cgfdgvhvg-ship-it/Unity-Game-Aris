@@ -1,0 +1,111 @@
+{
+  "schema_version": 2,
+  "transaction_id": "speedtree-middle-lod-20261104-01",
+  "idempotency_key": "speedtree-middle-lod-20261104-01",
+  "reason": "Use cheaper intermediate SpeedTree LODs without reducing close-detail thresholds, final culling cutoff or the authored global LOD bias",
+  "expected_files": {
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Conifer.prefab": "f24a246faf8ce7335d088e0d57b876edf40773d7922d01ba5652180ec2dfbc16",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Conifer.prefab.meta": "ce96b75f8775f29f3cc4546acca3848b5b10f5c1d7336a2ec5bef508df9e4e16",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Conifer.st.meta": "6ea712911541628a5f7157fe97eba9baefb9150d6a83857e97e89d913f24f542",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Cypress_Forest_Desktop.prefab": "58d1b1572959893b849c16f2c650391ec6507632e8aa713e8ab05cff55e0dec5",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Cypress_Forest_Desktop.prefab.meta": "9de079ff61650791caf463eb3914872865ba0607ea651401fb865981353f7900",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Cypress_Forest_Desktop.st.meta": "cd561a82f641499734ffba1c66a87d87cdffbee138624d188c3ff8a0e0c38090",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_A/Pine_A.prefab": "6654c3b65598705809833ccc7798189c11084b45da216f3f30b4832ede6da3ba",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_A/Pine_A.prefab.meta": "bb97ddbd48cfe56a18553bec640bb8b8b3f2033bad151e77d83aea1ca4b8a092",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_A/Pine_A.st.meta": "197caf59c27c84f4f64039755c9d8e593ba38b5f0086be1e140719e1c5a6d9d0",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_B/Pine_B.prefab": "ad28b4abcd308646b37a72ffe8a333cfda4ae64bcfe281f115918d8ccca6b6c2",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_B/Pine_B.prefab.meta": "8f97c6575e7c97a234095fad96ce7e064bc672ea4422f65471a139bc76f12304",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_B/Pine_B.st.meta": "0a6a2725abc8b79253859d880dbff47bfa9a4c45a17a1aa810357e610b70c6be",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_C/Pine_C.prefab": "546eb3835db237d00c50119f9208f5602ba10fc82d6602dd9a6d66d8dabfc598",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_C/Pine_C.prefab.meta": "15cdd2976eabd8077ae9f92b01a9e150d27c23e686e7677e299ddb5884900481",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_C/Pine_C.st.meta": "076aec4c0560530f17ee32fa0a48cbb95d9605a1301e10bc63d6f47f9f2ec4ba",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_D/Pine_D.prefab": "4b0db91fa56807e2c5931b7fa0ebb1b93dafdc343123bd54a8416968042e51de",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_D/Pine_D.prefab.meta": "9969824311df9115eef43d2ea88122c3a99a2d8b8e16e511f04100617c51aa2b",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_D/Pine_D.st.meta": "d2b834f9528cf3a240d0abe545228b8d698a4708537b36a0d29d5798e83b8f1c"
+  },
+  "operations": [
+    {
+      "id": "lod-conifer",
+      "op": "set_prefab_lod_thresholds",
+      "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Conifer.prefab",
+      "file_id": 8844894662087583905,
+      "screen_relative_heights": [
+        0.6882781,
+        0.34,
+        0.1,
+        0.01
+      ]
+    },
+    {
+      "id": "lod-cypress_forest_desktop",
+      "op": "set_prefab_lod_thresholds",
+      "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Cypress_Forest_Desktop.prefab",
+      "file_id": 1805363375214341228,
+      "screen_relative_heights": [
+        0.58904696,
+        0.32,
+        0.06,
+        0.004869537
+      ]
+    },
+    {
+      "id": "lod-pine_a",
+      "op": "set_prefab_lod_thresholds",
+      "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_A/Pine_A.prefab",
+      "file_id": 8047786361642113852,
+      "screen_relative_heights": [
+        0.5,
+        0.3,
+        0.11,
+        0.01
+      ]
+    },
+    {
+      "id": "lod-pine_b",
+      "op": "set_prefab_lod_thresholds",
+      "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_B/Pine_B.prefab",
+      "file_id": 4807207596415725723,
+      "screen_relative_heights": [
+        0.5,
+        0.3,
+        0.12,
+        0.01
+      ]
+    },
+    {
+      "id": "lod-pine_c",
+      "op": "set_prefab_lod_thresholds",
+      "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_C/Pine_C.prefab",
+      "file_id": 6554870738805096853,
+      "screen_relative_heights": [
+        0.43247095,
+        0.24,
+        0.08,
+        0.01
+      ]
+    },
+    {
+      "id": "lod-pine_d",
+      "op": "set_prefab_lod_thresholds",
+      "path": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_D/Pine_D.prefab",
+      "file_id": 4501419769428881624,
+      "screen_relative_heights": [
+        0.5,
+        0.3,
+        0.095,
+        0.01
+      ]
+    }
+  ],
+  "observe_after": [
+    {
+      "x": -496.0,
+      "y": 15.493645629882813,
+      "z": -212.0,
+      "radius": 35,
+      "limit": 30,
+      "native": false,
+      "geometry": false
+    }
+  ]
+}
