@@ -101,6 +101,20 @@ class UnityLfsPreflightTests(unittest.TestCase):
         result=pre.hydration_plan(self.root,entries,state,free=500*1024**2)
         self.assertFalse(result["allowed"])
 
+    def test_optional_image_preserves_exact_full_editor_release(self):
+        root=Path(__file__).resolve().parents[3]
+        image=root/".devcontainer/aaris-unity-image/Dockerfile"
+        cfg=root/".devcontainer/aaris-unity-image/devcontainer.json"
+        container=json.loads(cfg.read_text())
+        recipe=image.read_text()
+        self.assertEqual(container["build"]["dockerfile"],"Dockerfile")
+        self.assertEqual(container["remoteUser"],"codespace")
+        self.assertIn("ARG UNITY_VERSION=6000.3.26f1",recipe)
+        self.assertIn("de8167e7440c/LinuxEditorInstaller",recipe)
+        self.assertIn("test -x",recipe)
+        self.assertNotIn("COPY Assets",recipe)
+        self.assertNotIn("rm -rf /home/codespace/Unity",recipe)
+
     def test_preflight_contains_required_core_and_editor_version(self):
         self.assertEqual(pre.EXPECTED_EDITOR,"6000.3.26f1")
         self.assertIn("Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity",pre.CORE_FILES)
