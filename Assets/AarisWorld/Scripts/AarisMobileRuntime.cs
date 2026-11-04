@@ -399,7 +399,8 @@ namespace Aaris.MapReview
         {
             public string reason, utc, version, buildGuid, device, gpu, api, lastError;
             public int systemRamMB, targetFps, warningCount, shadowAtlasResolution, performanceLevel;
-            public bool emergencyRenderScaleActive, staticLodCrossFadeSuppressed;
+            public bool emergencyRenderScaleActive;
+            public bool staticLodCrossFadeSuppressed;
             public int staticLodCrossFadeGroupCount;
             public string mobileQualityProfile;
             public float streamingBudgetMb, lodBias, shadowDistanceM, terrainDetailDistanceCapM, terrainDetailDensityCap;
