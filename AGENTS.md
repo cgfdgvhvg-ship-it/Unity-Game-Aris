@@ -1,5 +1,20 @@
 # Working on the Aaris Unity world
 
+## Precision coordinates and relative motion (AI planning; Unity apply later)
+
+The [AI World Motion planner](https://github.com/Aaris-khan-don/Unity-Game-Aris/blob/ai/codespace-terminal-bridge/Tools/World/ai_world_motion.py) extends the [Codespace runbook](https://github.com/Aaris-khan-don/Unity-Game-Aris/blob/ai/codespace-terminal-bridge/Docs/AI_CODESPACE_BRIDGE.md) with safe, read-only relative movement. It does NOT directly shift a loaded Unity Editor object. The installed motion planner, when deployed, is `/workspaces/.aaris-world-bridge/ai_world_motion.py`. New AI agents must recheck that it exists and returns a real AARIS_RESULT before assuming it is available.
+
+To plan a **50 m world-left** move for a stable scene object, publish to issue #37:
+
+```text
+AARIS_JOB
+{"id":"move-unique-001","argv":["python3","/workspaces/.aaris-world-bridge/ai_world_motion.py","plan","--target","scene:<actual-guid>:<actual-file-id>","--direction","left","--metres","50","--frame","world","--limit","3"]}
+```
+
+For **100 m world-right** use `--direction right --metres 100`, with a real `terrain:<guid>:<index>` native tree ID. To move according to the *object's rotation* use `--frame target-local`. To move by exact world deltas use `--dx -50 --dy 0 --dz 20`. Never guess what “left of the camera” means without the camera's orientation; screen-left, world-left and object-left are distinct. World axes are +X right, +Y up, +Z forward, in metres. A native TerrainData tree's vertical position is terrain-supported; arbitrary Y offsets and tile-crossing movements are rejected. A connected prefab cannot be moved via the Python-only inline-object route.
+
+The planner inspects the original and proposed locations, reports precise coordinates, ground height, nearby saved scene/native objects, separate pagination markers, and a schema-v2 transaction with current SHA256 hashes of each touched core file and `.meta`. Those findings are source evidence, NOT final rendered collisions, clearance or camera visibility. The source worker still has a powerful owner-controlled Python execution path; protect the issue and tokens. For a validated write, follow `world.py plan` → `preview` → inspected postconditions → explicit `apply --write` in an **isolated clean checkout**, with the matching Unity Editor for native TerrainData writes. Do not edit the currently dirty Codespace branch or claim that installing a motion planner installed Unity.
+
 ## AI remote Codespace access (2026-11-04)
 
 **New AI sessions: read this first.** This private repo has an owner-authorised GitHub Issue command bridge connected to Codespace `musical-carnival-jjxp9r6vw45wfjgvg`. To inspect live saved map files without copying terminal output manually, follow the complete [AI Codespace Bridge runbook](https://github.com/Aaris-khan-don/Unity-Game-Aris/blob/ai/codespace-terminal-bridge/Docs/AI_CODESPACE_BRIDGE.md) and read [the AI world sensor](https://github.com/Aaris-khan-don/Unity-Game-Aris/blob/ai/codespace-terminal-bridge/Tools/World/ai_world_observe.py). These files currently live on branch `ai/codespace-terminal-bridge`; **do not assume that branch is checked out in Codespace**.
