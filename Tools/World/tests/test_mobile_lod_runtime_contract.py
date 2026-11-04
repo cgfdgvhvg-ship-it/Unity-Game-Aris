@@ -108,6 +108,31 @@ class LowRamWorldSourceContracts(unittest.TestCase):
         self.assertIn("public void RefreshNow() { RefreshNow(true); }", src)
         self.assertIn("if (changedColliders || forceSync) Physics.SyncTransforms();", src)
 
+    def test_explicit_moved_obstacle_reindexes_saved_bounds_without_idle_scan(self):
+        # A saved spatial hash cannot find a collider moved to another grid cell.
+        # RefreshNow() after a transform edit must invalidate the grid, even when
+        # the collider was originally disabled. Source-only: Unity physics QA needed.
+        src = (ROOT / "Assets/AarisWorld/Scripts/AarisNearbyColliders.cs").read_text(encoding="utf-8")
+        self.assertIn("private Bounds[] worldBounds, localBounds;", src)
+        self.assertIn("private Matrix4x4[] indexedMatrices;", src)
+        self.assertIn("localBounds[i] = local;", src)
+        self.assertIn("indexedMatrices[i] = c.transform.localToWorldMatrix;", src)
+        self.assertIn("worldBounds[i] = TransformBounds(local, indexedMatrices[i]);", src)
+        self.assertIn("private void ReindexMovedObstacles()", src)
+        self.assertIn("if (indexedMatrices[i] != obstacles[i].transform.localToWorldMatrix)", src)
+        self.assertIn("if (!changed) return;", src)
+        self.assertIn("cells.Clear();", src)
+        self.assertIn("worldBounds[i] = TransformBounds(localBounds[i], m);", src)
+        self.assertIn("AddToCells(i, worldBounds[i]);", src)
+        self.assertIn("if (forceSync) ReindexMovedObstacles();", src)
+        self.assertIn("if (changedColliders || forceSync) Physics.SyncTransforms();", src)
+        # No per-frame/idle player-poll matrix scan or unsafely using empty
+        # bounds from authored-disabled colliders.
+        update = src.split("private void Update()", 1)[1].split("public void RefreshNow()", 1)[0]
+        self.assertNotIn("ReindexMovedObstacles()", update)
+        self.assertNotIn("c.bounds", src)
+        self.assertIn("if (c is MeshCollider mc && mc.sharedMesh != null) local = mc.sharedMesh.bounds;", src)
+
     def test_saved_disabled_buildings_are_proximity_gated_and_state_writes_are_conditional(self):
         # The saved scene intentionally leaves many building MeshColliders off until
         # the player approaches. These MUST be indexed and enabled when nearby.
