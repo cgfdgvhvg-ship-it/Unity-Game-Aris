@@ -203,6 +203,14 @@ def execute_remote(job: dict, token: str, workspace: Path, result_file: Path, *,
     runner(["gh", "codespace", "ssh", "-c", cs, "--", f"mkdir -p {remote}"], env=env, timeout=70)
     runner(["gh", "codespace", "cp", "-e", "-c", cs, str(local_script), f"remote:{remote}/ai_codespace_executor.py"], env=env, timeout=90)
     runner(["gh", "codespace", "cp", "-e", "-c", cs, str(local_job), f"remote:{remote}/{job['id']}.json"], env=env, timeout=90)
+    if job["operation"] in {"world_site", "world_doctor"}:
+        # Stage the reviewed sensor outside the owner's dirty checkout. The
+        # live worktree may be on an older branch missing this file.
+        source = workspace / "Tools/World/ai_world_observe.py"
+        if not source.is_file():
+            raise JobError("Read-only world sensor missing from trusted queue branch")
+        runner(["gh", "codespace", "cp", "-e", "-c", cs, str(source),
+                f"remote:{remote}/ai_world_observe.py"], env=env, timeout=90)
     if job["operation"] in {"unity_gui", "unity_live", "unity_result"}:
         # Trusted reviewed bridge sources are transferred to a staging folder,
         # never to the owner's dirty Unity project by GitHub CLI directly.
