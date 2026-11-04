@@ -205,6 +205,102 @@ def _lfs_inventory():
             "examples":samples, "protected_dirty_tracked_count":len(dirty),
             "git_status":run(["git","status","--short","--untracked-files=all"],timeout=30)}
 
+def lfs_verify_chunk(cursor):
+    """One bounded, strictly read-only verification of LFS checkout bytes.
+
+    Each run reports the next cursor and keeps all dirty core assets intact.
+    Multiple queued jobs can cover the complete 764-file checkout.
+    """
+    import re
+    if not isinstance(cursor, int) or cursor < 0 or cursor > 20000:
+        raise ValueError("invalid LFS cursor")
+    command = subprocess.run(["git", "lfs", "ls-files", "--long"],
+                             cwd=PROJECT, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, timeout=45, check=False)
+    if command.returncode:
+        raise ValueError("cannot enumerate LFS files: " + command.stderr.decode("utf-8", "replace")[-250:])
+    records = []
+    for line in command.stdout.decode("utf-8", "surrogateescape").splitlines():
+        found = re.fullmatch(r"([0-9a-f]{64})\s+[*-]\s+(.+)", line)
+        if not found:
+            raise ValueError("unrecognized LFS entry format")
+        if found.group(2).startswith("Assets/"):
+            records.append((found.group(2), found.group(1)))
+    if not records or cursor > len(records):
+        raise ValueError("no LFS entries or invalid cursor")
+    modified = subprocess.run(["git", "diff", "--name-only", "-z", "HEAD", "--"],
+                              cwd=PROJECT, stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, timeout=30, check=False)
+    if modified.returncode:
+        raise ValueError("cannot enumerate protected changed files")
+    protected = {x.decode("utf-8", "surrogateescape")
+                 for x in modified.stdout.split(b"\0") if x}
+    head = run(["git", "rev-parse", "HEAD"], timeout=10)
+    if head["exit_code"]:
+        raise ValueError("cannot read Git HEAD")
+    max_bytes = 480 * 1024 * 1024
+    max_items = 145
+    max_elapsed = 75
+    deadline = time.monotonic() + max_elapsed
+    count = dict(hash_matches=0, hash_mismatch=0, dirty_protected=0,
+                 pointer=0, missing=0, unreadable=0, changed_during_check=0,
+                 large_deferred=0)
+    samples = {"hash_mismatch": [], "dirty_protected": [], "pointer": [],
+               "missing": [], "large_deferred": []}
+    i = cursor
+    read_bytes = 0
+    while i < len(records):
+        if i > cursor and (i-cursor >= max_items or
+                           read_bytes >= max_bytes or time.monotonic() >= deadline):
+            break
+        name, oid = records[i]
+        target = PROJECT / name
+        if ".." in Path(name).parts:
+            raise ValueError("invalid LFS path")
+        category = None
+        if name in protected:
+            category = "dirty_protected"
+        elif target.is_symlink() or not target.is_file():
+            category = "missing"
+        else:
+            try:
+                stat_before = target.stat()
+                with target.open("rb") as stream:
+                    is_pointer = stream.read(100).startswith(
+                        b"version https://git-lfs.github.com/spec/v1")
+                if is_pointer:
+                    category = "pointer"
+                elif stat_before.st_size > 1024 * 1024 * 1024:
+                    category = "large_deferred"
+                elif read_bytes + stat_before.st_size > max_bytes and i > cursor:
+                    # Do not consume this file; resume at the same index next job.
+                    break
+                else:
+                    checksum = hashlib.sha256()
+                    with target.open("rb") as stream:
+                        for part in iter(lambda: stream.read(4 * 1024 * 1024), b""):
+                            checksum.update(part)
+                    stat_after = target.stat()
+                    read_bytes += stat_before.st_size
+                    if (stat_before.st_size != stat_after.st_size or
+                            stat_before.st_mtime_ns != stat_after.st_mtime_ns):
+                        category = "changed_during_check"
+                    elif checksum.hexdigest() == oid:
+                        category = "hash_matches"
+                    else:
+                        category = "hash_mismatch"
+            except OSError:
+                category = "unreadable"
+        count[category] += 1
+        if category in samples and len(samples[category]) < 6:
+            samples[category].append(name)
+        i += 1
+    return {"head_sha": head["stdout"].strip(), "cursor": cursor,
+            "next_cursor": i, "total": len(records),
+            "processed": i-cursor, "hash_checked_bytes": read_bytes,
+            "all_done": i == len(records), "categories": count, "examples": samples}
+
+
 def storage_audit():
     home=Path("/home/codespace")
     parts=[PROJECT/"Library", PROJECT/"Temp",PROJECT/".git",PROJECT/"Assets",
@@ -259,6 +355,10 @@ def execute(job):
     if op == "prune_caches":
         if args: raise ValueError("unexpected arguments")
         return {"exit_code":0,"stdout":json.dumps(prune_caches(),ensure_ascii=False),"stderr":""}
+    if op == "lfs_verify_chunk":
+        if len(args) != 1 or not args[0].isdigit():
+            raise ValueError("expected one numeric LFS cursor")
+        return {"exit_code":0,"stdout":json.dumps(lfs_verify_chunk(int(args[0])),ensure_ascii=False),"stderr":""}
     if op == "storage_audit":
         if args: raise ValueError("unexpected args")
         return {"exit_code":0,"stdout":json.dumps(storage_audit(),ensure_ascii=False),"stderr":""}
