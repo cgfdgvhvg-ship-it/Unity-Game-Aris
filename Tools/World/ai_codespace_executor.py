@@ -813,6 +813,41 @@ def unity_low_disk_stop():
                 "library_retained":(PROJECT/"Library").is_dir()}),
             "stderr":"" if not remaining else "Unity has not exited yet; no SIGKILL issued"}
 
+
+def unity_import_pause_or_resume(resume=False):
+    """Pause only the Unity Editor's own verified process group on low disk.
+
+    A paused process retains RAM only while the Codespace stays running.
+    The persistent Library and all source assets are never rewritten here.
+    """
+    free=shutil.disk_usage(PROJECT).free
+    pids=_unity_pids()
+    if resume:
+        if free < 4*1024**3:
+            return {"exit_code":3,"stdout":"","stderr":"Resume denied: 4 GiB persistent free disk required"}
+    elif free >= int(1.3*1024**3):
+        return {"exit_code":0,"stdout":json.dumps({
+            "action":"not_needed","free_disk_gib":round(free/2**30,3),
+            "unity_pids":pids}),"stderr":""}
+    if not pids:
+        return {"exit_code":0,"stdout":json.dumps({
+            "action":"no_unity_process","free_disk_gib":round(free/2**30,3),
+            "library_preserved":(PROJECT/"Library").is_dir()}),"stderr":""}
+    groups=[]
+    for pid in pids:
+        pgid=os.getpgid(pid)
+        # The reviewed launcher uses start_new_session=True. Refuse to signal
+        # any group that could include unrelated SSH or Codespace programs.
+        if pgid!=pid:
+            return {"exit_code":3,"stdout":"","stderr":"Unity PID is not its own process-group leader"}
+        groups.append(pgid)
+    for pgid in groups:
+        os.killpg(pgid, signal.SIGCONT if resume else signal.SIGSTOP)
+    result={"action":"resume" if resume else "pause",
+            "groups":groups,"free_disk_gib":round(shutil.disk_usage(PROJECT).free/2**30,3),
+            "library_preserved":(PROJECT/"Library").is_dir()}
+    return {"exit_code":0,"stdout":json.dumps(result),"stderr":""}
+
 def desktop_snapshot(job_id):
     """Capture current Xvfb desktop, never commit it into repository history."""
     import re
@@ -960,6 +995,12 @@ def execute(job):
     if op == "unity_terms_accept":
         if args: raise ValueError("Unity terms acceptance takes no arguments")
         return unity_terms_accept()
+    if op == "unity_low_disk_pause":
+        if args: raise ValueError("no arguments accepted")
+        return unity_import_pause_or_resume(False)
+    if op == "unity_resume_paused":
+        if args: raise ValueError("no arguments accepted")
+        return unity_import_pause_or_resume(True)
     if op == "unity_low_disk_stop":
         if args: raise ValueError("low disk safety stop takes no arguments")
         return unity_low_disk_stop()
