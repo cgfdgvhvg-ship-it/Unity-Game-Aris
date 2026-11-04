@@ -279,6 +279,36 @@ class OnDemandTests(unittest.TestCase):
             self.assertEqual(data["lfs_status"]["lfs_pointer"],1)
             self.assertEqual(data["lfs_status"]["hash_mismatch"],0)
 
+    def test_unity_live_command_schema_is_restricted(self):
+        request={"action":"inspect","cameraTarget":{"x":120,"y":5,"z":88},"radius":30,"limit":12}
+        job={"id":"unity-inspect-001","operation":"unity_live","args":[json.dumps(request)]}
+        self.assertEqual(r.validate_job(job),job)
+        self.assertEqual(e.validate_live_payload(request),request)
+        for bad in (
+            {"action":"shell","argv":["rm","-rf","/"]},
+            {"action":"move","target":"Tree","delta":{"x":float("nan"),"y":0,"z":0}},
+            {"action":"move","target":"Tree","delta":{"x":1,"y":2}},
+            {"action":"scale","target":"Tree"},
+            {"action":"move_tree","target":"terrain-tree:a:1","delta":{"x":1,"y":0,"z":0}},
+            {"action":"capture","cameraPosition":{"x":1,"y":2,"z":3},"capturePath":"/etc/passwd"},
+        ):
+            with self.assertRaises(ValueError): e.validate_live_payload(bad)
+
+    def test_unity_frame_is_temporary_and_validated(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            (root/"frames").mkdir()
+            frame=root/"frames"/"unity-shot-001.jpg"
+            frame.write_bytes(b"\xff\xd8"+b"\x00"*512+b"\xff\xd9")
+            with patch.object(e,"DESKTOP",root):
+                response=e.execute({"id":"unity-frame-001","operation":"unity_frame",
+                                    "args":["unity-shot-001"]})
+            self.assertEqual(response["exit_code"],0)
+            info=json.loads(response["stdout"])
+            self.assertEqual(info["bytes"],frame.stat().st_size)
+        with self.assertRaises(r.JobError):
+            r.validate_job({"id":"unity-frame-001","operation":"unity_frame","args":["../../etc/passwd"]})
+
     def test_unity_gui_operation_is_owner_only_and_argument_free(self):
         self.assertEqual(r.validate_job({"id":"unity-gui-01","operation":"unity_gui","args":[]})["operation"],"unity_gui")
         with self.assertRaises(r.JobError):
