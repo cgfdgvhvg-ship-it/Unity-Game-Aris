@@ -99,6 +99,78 @@ def ensure_desktop():
     return None
 
 
+
+def _du_bytes(path):
+    if not path.exists():
+        return 0
+    value = run(["du", "-sb", str(path)], timeout=30)
+    if value["exit_code"] != 0:
+        return None
+    try:
+        return int(value["stdout"].split()[0])
+    except (ValueError, IndexError):
+        return None
+
+
+def _lfs_inventory():
+    # Enumerate only the checked-out branch's tracked LFS paths; do not
+    # confuse ordinary .unity/.mat/.prefab Git assets with missing LFS.
+    base = subprocess.run(["git","lfs","ls-files","--name-only","-z"],
+                          cwd=PROJECT, stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE, timeout=75, check=False)
+    if base.returncode:
+        return {"error": "git lfs ls-files failed", "detail": base.stderr.decode("utf-8","replace")[-400:]}
+    paths = [v.decode("utf-8","surrogateescape") for v in base.stdout.split(b"\0") if v]
+    counts = {"hydrated": 0, "pointer_or_missing": 0, "dirty_protected": 0}
+    suffixes = {}
+    pending = []
+    samples = []
+    for name in paths:
+        if not name.startswith("Assets/"):
+            continue
+        if ".." in Path(name).parts:
+            continue
+        target = PROJECT/name
+        suffix = target.suffix.lower()
+        suffixes[suffix] = suffixes.get(suffix,0)+1
+        if not target.is_file() or target.is_symlink():
+            counts["pointer_or_missing"] += 1
+            pending.append(name)
+            if len(samples)<12: samples.append(name)
+            continue
+        try:
+            with target.open("rb") as handle:
+                pointer = handle.read(100).startswith(b"version https://git-lfs.github.com/spec/v1")
+        except OSError:
+            pointer = True
+        if pointer:
+            counts["pointer_or_missing"] += 1
+            pending.append(name)
+            if len(samples)<12: samples.append(name)
+        else:
+            counts["hydrated"] += 1
+    status = run(["git","status","--short","--untracked-files=all"],timeout=35)
+    return {"all_lfs_paths": len(paths), "asset_lfs_paths": sum(suffixes.values()),
+            "counts":counts,"file_extensions":dict(sorted(suffixes.items(),key=lambda x:-x[1])[:18]),
+            "missing_or_pointer_examples":samples,
+            "pending_count":len(pending),
+            "git_status":status}
+
+
+def storage_audit():
+    home=Path("/home/codespace")
+    parts=[PROJECT/"Library", PROJECT/"Temp",PROJECT/".git",PROJECT/"Assets",
+           home/".cache",home/".cache"/"pip",home/".cache"/"uv",
+           home/".npm"/"_cacache",home/".local",home/"Unity",
+           Path("/tmp"),Path("/var/cache/apt/archives")]
+    sizes={str(p):_du_bytes(p) for p in parts}
+    disk=shutil.disk_usage(PROJECT)
+    inventory=_lfs_inventory()
+    return {"free_disk_gib":round(disk.free/2**30,3),
+            "total_disk_gib":round(disk.total/2**30,3),
+            "disk_directory_bytes":sizes,
+            "lfs_inventory":inventory}
+
 def execute(job):
     # Validate independently from Actions, where an untrusted queue file travels.
     if set(job) != {"id", "operation", "args"}:
@@ -108,6 +180,9 @@ def execute(job):
         raise ValueError("invalid job id")
     if not isinstance(args, list):
         raise ValueError("invalid args")
+    if op == "storage_audit":
+        if args: raise ValueError("unexpected args")
+        return {"exit_code":0,"stdout":json.dumps(storage_audit(),ensure_ascii=False),"stderr":""}
     if op == "diagnose":
         if args: raise ValueError("unexpected args")
         free = shutil.disk_usage(PROJECT).free
