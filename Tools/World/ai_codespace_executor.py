@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 from pathlib import Path
 import shutil
 import subprocess
@@ -27,6 +28,72 @@ def run(cmd, timeout=45, env=None):
         return {"exit_code": 124, "stdout": "", "stderr": "TIMEOUT"}
     except OSError as exc:
         return {"exit_code": 127, "stdout": "", "stderr": str(exc)}
+
+
+
+def _port_ready(port):
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=1):
+            return True
+    except OSError:
+        return False
+
+
+def _wait_ready(ready, attempts=20):
+    for _ in range(attempts):
+        if ready():
+            return True
+        time.sleep(0.4)
+    return False
+
+
+def _spawn_desktop(command, logname, *, env=None):
+    DESKTOP.mkdir(parents=True, exist_ok=True)
+    with (DESKTOP / logname).open("a", encoding="utf-8") as output:
+        subprocess.Popen(command, cwd=PROJECT, env=env, stdin=subprocess.DEVNULL,
+                         stdout=output, stderr=output, start_new_session=True)
+
+
+def _process_running(name):
+    return run(["pgrep", "-u", str(os.getuid()), "-x", name], timeout=5)["exit_code"] == 0
+
+
+def ensure_desktop():
+    """Revive trusted GUI processes after Codespace auto-start, without touching assets."""
+    required = ("Xvfb", "openbox", "x11vnc", "websockify", "xterm")
+    missing = [name for name in required if not shutil.which(name)]
+    if missing:
+        return "Missing GUI packages: " + ", ".join(missing)
+    password = DESKTOP / "vnc.pass"
+    if not password.is_file() or password.is_symlink() or password.stat().st_size == 0:
+        return "Existing VNC password missing; refusing to start unprotected VNC"
+    DESKTOP.mkdir(parents=True, exist_ok=True)
+    DESKTOP.chmod(0o700)
+    password.chmod(0o600)
+    env = os.environ.copy()
+    env["DISPLAY"] = ":12"
+    display_socket = Path("/tmp/.X11-unix/X12")
+    if not display_socket.exists():
+        _spawn_desktop(["Xvfb", ":12", "-screen", "0", "1600x900x24",
+                        "-nolisten", "tcp", "-noreset"], "xvfb.log")
+    if not _wait_ready(display_socket.exists):
+        return "Xvfb :12 did not start; inspect ~/.aaris-desktop/xvfb.log"
+    if not _process_running("openbox"):
+        _spawn_desktop(["openbox"], "openbox.log", env=env)
+        if not _wait_ready(lambda: _process_running("openbox")):
+            return "Openbox did not start; inspect ~/.aaris-desktop/openbox.log"
+    if not _port_ready(5900):
+        _spawn_desktop(["x11vnc", "-display", ":12", "-rfbauth", str(password),
+                        "-rfbport", "5900", "-localhost", "-forever", "-shared"],
+                       "vnc.log")
+        if not _wait_ready(lambda: _port_ready(5900)):
+            return "x11vnc did not listen on localhost:5900; inspect ~/.aaris-desktop/vnc.log"
+    if not _port_ready(6080):
+        _spawn_desktop(["websockify", "--web=/usr/share/novnc", "0.0.0.0:6080",
+                        "127.0.0.1:5900"], "novnc.log")
+        if not _wait_ready(lambda: _port_ready(6080)):
+            return "noVNC did not listen on port 6080; inspect ~/.aaris-desktop/novnc.log"
+    return None
 
 
 def execute(job):
@@ -54,24 +121,19 @@ def execute(job):
         return {"exit_code": 0, "stdout": json.dumps(result, ensure_ascii=False), "stderr": ""}
     if op == "desktop_xterm":
         if args: raise ValueError("unexpected args")
-        if not Path("/tmp/.X11-unix/X12").exists():
-            return {"exit_code": 3, "stdout": "", "stderr": "X display :12 is missing"}
-        if not shutil.which("xterm"):
-            return {"exit_code": 3, "stdout": "", "stderr": "xterm is not installed"}
-        DESKTOP.mkdir(parents=True, exist_ok=True)
-        env = os.environ.copy(); env["DISPLAY"] = ":12"
-        output = (DESKTOP / "ai-xterm.log").open("a", encoding="utf-8")
-        try:
-            subprocess.Popen(["xterm", "-title", "Aaris Unity Desktop", "-geometry", "105x35+80+80"],
-                             env=env, stdout=output, stderr=output, stdin=subprocess.DEVNULL,
-                             start_new_session=True, cwd=PROJECT)
-        finally:
-            output.close()
-        time.sleep(2)
-        process = run(["pgrep", "-u", str(os.getuid()), "-x", "xterm"], timeout=5)
-        return {"exit_code": process["exit_code"],
-                "stdout": "XTERM_WINDOW_OPENED" if process["exit_code"] == 0 else "",
-                "stderr": "" if process["exit_code"] == 0 else "xterm exited: inspect ~/.aaris-desktop/ai-xterm.log"}
+        error = ensure_desktop()
+        if error:
+            return {"exit_code": 3, "stdout": "", "stderr": error}
+        env = os.environ.copy()
+        env["DISPLAY"] = ":12"
+        if not _process_running("xterm"):
+            _spawn_desktop(["xterm", "-title", "Aaris Unity Desktop",
+                            "-geometry", "105x35+80+80"], "ai-xterm.log", env=env)
+        if not _wait_ready(lambda: _process_running("xterm")):
+            return {"exit_code": 3, "stdout": "", "stderr": "xterm not running; inspect ~/.aaris-desktop/ai-xterm.log"}
+        state = {"display_12": True, "vnc_local_5900": _port_ready(5900),
+                 "novnc_6080": _port_ready(6080), "xterm_running": True}
+        return {"exit_code": 0, "stdout": json.dumps(state), "stderr": ""}
     if op == "unity_version":
         if args: raise ValueError("unexpected args")
         if not EDITOR.is_file():
