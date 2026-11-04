@@ -1,5 +1,23 @@
 # Working on the Aaris Unity world
 
+## AI remote Codespace access (2026-11-04)
+
+**New AI sessions: read this first.** This private repo has an owner-authorised GitHub Issue command bridge connected to Codespace `musical-carnival-jjxp9r6vw45wfjgvg`. To inspect live saved map files without copying terminal output manually, follow the complete [AI Codespace Bridge runbook](https://github.com/Aaris-khan-don/Unity-Game-Aris/blob/ai/codespace-terminal-bridge/Docs/AI_CODESPACE_BRIDGE.md) and read [the AI world sensor](https://github.com/Aaris-khan-don/Unity-Game-Aris/blob/ai/codespace-terminal-bridge/Tools/World/ai_world_observe.py). These files currently live on branch `ai/codespace-terminal-bridge`; **do not assume that branch is checked out in Codespace**.
+
+The [authenticated command inbox is Issue #37](https://github.com/Aaris-khan-don/Unity-Game-Aris/issues/37). With permission to post as GitHub user `Aaris-khan-don`, an AI may submit a comment whose first line is `AARIS_JOB` followed by a JSON command, for example:
+
+```text
+AARIS_JOB
+{"id":"ai-doctor-new-001","argv":["python3","/workspaces/.aaris-world-bridge/ai_world_observe.py","doctor"]}
+```
+
+Fetch issue comments until an `AARIS_RESULT` with the exact same job ID appears; check `status` and `exit_code`. For nearby map evidence, the sensor accepts `site --x 350 --z 167.3 --radius 35 --limit 3`, as well as `scan`, `inspect`, `describe`, `height`, `instances`, `usages`, and `unity`. Read the runbook for full examples, pagination and output limits. The AI should report actual saved coordinates, nearby objects, materials/colors, native tree/rock/grass evidence, uncertainties and source hashes—not invent world data.
+
+This is NOT an automatic API granted to every ChatGPT account. A different ChatGPT account must be given access to the same private GitHub repo and authenticated as the allowed owner identity. Never expose tokens or request them in issue comments. Issue commands can run powerful Python; only submit trusted instructions. The worker operates only while Codespace is running. On 2026-11-04, the read-only world Python dependencies were installed under `/workspaces/.aaris-world-bridge/venv`, but the Unity Editor was not found, so Python saved-world inspection must not be presented as Unity rendering or collision testing.
+
+Protect the Codespace's outstanding map changes on branch `ai/bake-tree-core-20261104` (15 modified and 3 untracked files when inspected). Do not reset, clean, switch branch, rebuild, install Unity over the project, regenerate native terrain, or alter any core file merely to check its contents. Follow the existing schema-v2 `plan` → `preview` → guarded `apply` protocol before any authorised edit. This bridge's tooling and documentation live on a separate GitHub branch and the installed sensor lives **outside** the working checkout.
+
+
 ## Tree proportions and residential openings migration
 
 The reviewed 2026-11-03 migration is reproducible with `Tools/World/apply_tree_house_upgrade.py`; it writes actual saved core meshes/import metadata and verifies the authored postconditions in `tree-house-20261103.postconditions.json`. `verify_tree_house_upgrade.py` checks exact hashes, preserved vertex attributes/material slots, 47 saved residential collider bindings and 900 discrete doorway rays across all three LODs. Those sampled rays are **not** continuous capsule physics or a full interior playtest. Do not re-run historical world generators over these edits.
