@@ -110,3 +110,45 @@ G5. LFS and backup checkpoints; isolated PR and merge authorization.
 G6. Performance/visual acceptance via actual Unity/Android evidence.
 
 Never confuse a working control plane with a working Unity editing system.
+
+## Local read-only worker (proposed; not deployed)
+
+The pull request adds `Tools/World/ai_world_worker.py`, a one-shot local executor
+that delegates to existing `world.py` read operations. It does **not** pull
+GitHub commands, mutate map assets, start a Codespace, or publish images.
+The initial allowlist is `schema`, `context`, `scan`, `site` and `capture`.
+Requests are size- and type-bounded, the worker takes a single-writer flock,
+and each request ID is tied to a content SHA256 for replay protection.
+Local receipts and images are stored in ignored `.aaris_ai_world/jobs/`.
+
+With the real project checkout and Python requirements available in a Codespace,
+an initial *read-only* smoke test is:
+
+```bash
+printf '%s\n' '{"id":"bootstrap-schema-01","mode":"schema"}' > /tmp/aaris-world-job.json
+python3 Tools/World/ai_world_worker.py --request /tmp/aaris-world-job.json
+cat .aaris_ai_world/jobs/bootstrap-schema-01/status.json
+```
+
+A local sector observation request can use:
+
+```json
+{"id":"sector-350-167-01","mode":"site","x":350,"z":167.3,"radius":50,"limit":100}
+```
+
+For a rendered `capture` request, `--allow-capture` and a verified graphics-capable
+Unity installation configured by `UNITY_EDITOR_PATH` are required. The existing
+engine launches an isolated imported project per request; it is not yet a
+persistent Unity camera service. An actual successful render must be tested.
+
+Run the pure-stdlib safety contract tests without Unity:
+
+```bash
+python3 -m unittest discover -s Tools/World/tests -p 'test_ai_world_worker.py' -v
+```
+
+No Codespace post-start hook, remote job poller, authenticated image transport,
+core editing API, auto-merge, or LFS sync is activated by adding this worker.
+These require a further explicitly tested rollout after confirming the Codespace
+owner, repository and installed Editor. A GitHub connector alone cannot execute
+commands inside a stopped Codespace.
