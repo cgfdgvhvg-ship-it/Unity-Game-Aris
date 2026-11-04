@@ -37,14 +37,30 @@ def validate_job(data: dict, *, expected_file: str | None = None) -> dict:
     op = data["operation"]
     if not isinstance(ident, str) or not ID_RE.fullmatch(ident):
         raise JobError("invalid job id")
-    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
+    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "unity_live", "unity_result", "unity_frame", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
         raise JobError("unsupported operation")
     args = data["args"]
     if not isinstance(args, list) or len(args) > 16 or any(
         not isinstance(a, str) or not (0 < len(a) < 500) for a in args
     ):
         raise JobError("args must be short strings")
-    if op == "lfs_verify_chunk":
+    if op == "unity_live":
+        if len(args) != 1:
+            raise JobError("unity_live requires one short JSON request")
+        try:
+            from Tools.World.ai_codespace_executor import validate_live_payload
+            validate_live_payload(json.loads(args[0]))
+        except ImportError:
+            # Queue source layout doesn't have Tools as a Python package in
+            # every legacy checkout; remote executor validates independently.
+            if not args[0].startswith("{") or len(args[0]) > 500:
+                raise JobError("invalid Unity live request")
+        except (ValueError, TypeError, json.JSONDecodeError) as exc:
+            raise JobError("invalid live Unity request: " + str(exc)[:160])
+    elif op in {"unity_result", "unity_frame"}:
+        if len(args) != 1 or not ID_RE.fullmatch(args[0]):
+            raise JobError("expected one previously issued Unity job ID")
+    elif op == "lfs_verify_chunk":
         if len(args) != 1 or not re.fullmatch(r"(?:0|[1-9][0-9]{0,4})", args[0]):
             raise JobError("lfs_verify_chunk requires one numeric cursor")
     elif op != "terminal_readonly" and args:
@@ -177,7 +193,7 @@ def execute_remote(job: dict, token: str, workspace: Path, result_file: Path, *,
     runner(["gh", "codespace", "ssh", "-c", cs, "--", f"mkdir -p {remote}"], env=env, timeout=70)
     runner(["gh", "codespace", "cp", "-e", "-c", cs, str(local_script), f"remote:{remote}/ai_codespace_executor.py"], env=env, timeout=90)
     runner(["gh", "codespace", "cp", "-e", "-c", cs, str(local_job), f"remote:{remote}/{job['id']}.json"], env=env, timeout=90)
-    if job["operation"] in {"unity_gui"}:
+    if job["operation"] in {"unity_gui", "unity_live", "unity_result"}:
         # Trusted reviewed bridge sources are transferred to a staging folder,
         # never to the owner's dirty Unity project by GitHub CLI directly.
         for leaf in ("AarisLiveEditorBridge.cs", "AarisLiveEditorBridge.cs.meta"):
