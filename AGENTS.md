@@ -17,6 +17,13 @@ When Unity has enough disk, inspect and test saved core mesh/LOD data and
 project import behavior independently, then save permanent asset changes and
 verify a clean re-import without relying on temporary build-time transforms.
 
+**Verified 2026-11-04:** All **764/764** hydrated Git LFS map assets on
+Codespace HEAD `8225f4346df94ca5e2a2edb671976a49866d04bf` matched their
+Git LFS SHA-256 OIDs across 11 real on-demand Actions jobs. **No missing or
+corrupt LFS assets, so do not waste 4 GB refetching this checkout.** Preserve
+the 15 modified plus 3 untracked intentional Unity core-authoring files.
+See the evidence report: [Docs/LFS_INTEGRITY_20261104.md](Docs/LFS_INTEGRITY_20261104.md).
+
 **Full LFS verification without an SSH timeout:** submit an owner-authorized
 `lfs_verify_chunk` job with exactly one numeric `args` cursor, beginning
 with `["0"]`. Read the Actions JSON result: `cursor`, `next_cursor`,
