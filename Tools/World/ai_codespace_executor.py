@@ -683,6 +683,100 @@ def ensure_desktop_tools():
     return result
 
 
+
+def unity_terms_accept():
+    """Owner-authorized, single-purpose click for the exact Unity 6000 Terms dialog.
+
+    This is deliberately NOT a generic GUI command executor. Never accept
+    untrusted coordinates, window names, commands or arguments.
+    """
+    import ctypes
+    import ctypes.util
+
+    if not _unity_pids() or not Path("/tmp/.X11-unix/X12").exists():
+        return {"exit_code": 3, "stdout": "", "stderr": "Unity GUI/display not running"}
+    env = os.environ.copy()
+    env["DISPLAY"] = ":12"
+    command = ["xwininfo", "-display", ":12", "-name",
+               "Unity Editor Software Terms", "-stats"]
+    probe = subprocess.run(command, env=env, capture_output=True, text=True,
+                           timeout=12, check=False)
+    info = probe.stdout
+    if probe.returncode != 0 or '"Unity Editor Software Terms"' not in info:
+        return {"exit_code": 3, "stdout": "",
+                "stderr": "Exact Unity Editor Software Terms window not found"}
+    def value(pattern):
+        match = re.search(pattern, info, re.MULTILINE)
+        if not match:
+            raise ValueError("Unexpected Unity Terms window geometry")
+        return int(match.group(1))
+    x = value(r"^\s*Absolute upper-left X:\s*(-?\d+)\s*$")
+    y = value(r"^\s*Absolute upper-left Y:\s*(-?\d+)\s*$")
+    w = value(r"^\s*Width:\s*(\d+)\s*$")
+    h = value(r"^\s*Height:\s*(\d+)\s*$")
+    if (w, h) != (640, 480) or not (0 <= x <= 960 and 0 <= y <= 420):
+        return {"exit_code": 3, "stdout": "",
+                "stderr": "Terms window geometry differs from verified screenshot"}
+    if not re.search(r"Map State:\s+IsViewable", info):
+        return {"exit_code": 3, "stdout": "",
+                "stderr": "Terms window is not viewable"}
+    x11_name, xtst_name = ctypes.util.find_library("X11"), ctypes.util.find_library("Xtst")
+    if not x11_name or not xtst_name:
+        return {"exit_code": 3, "stdout": "", "stderr": "X11 XTest libraries unavailable"}
+    x11, xtst = ctypes.CDLL(x11_name), ctypes.CDLL(xtst_name)
+    ptr = ctypes.c_void_p
+    x11.XOpenDisplay.argtypes = [ctypes.c_char_p]
+    x11.XOpenDisplay.restype = ptr
+    x11.XRootWindow.argtypes = [ptr, ctypes.c_int]
+    x11.XRootWindow.restype = ctypes.c_ulong
+    x11.XWarpPointer.argtypes = [ptr, ctypes.c_ulong, ctypes.c_ulong,
+                                ctypes.c_int, ctypes.c_int, ctypes.c_uint,
+                                ctypes.c_uint, ctypes.c_int, ctypes.c_int]
+    x11.XWarpPointer.restype = ctypes.c_int
+    x11.XSync.argtypes = [ptr, ctypes.c_int]
+    x11.XSync.restype = ctypes.c_int
+    x11.XCloseDisplay.argtypes = [ptr]
+    x11.XCloseDisplay.restype = ctypes.c_int
+    xtst.XTestFakeButtonEvent.argtypes = [ptr, ctypes.c_uint, ctypes.c_int,
+                                         ctypes.c_ulong]
+    xtst.XTestFakeButtonEvent.restype = ctypes.c_int
+    display = x11.XOpenDisplay(b":12")
+    if not display:
+        return {"exit_code": 3, "stdout": "", "stderr": "Cannot open local X11 display"}
+    def press(xx, yy):
+        root = x11.XRootWindow(display, 0)
+        if x11.XWarpPointer(display, 0, root, 0, 0, 0, 0, xx, yy) == 0:
+            raise RuntimeError("X11 pointer movement failed")
+        x11.XSync(display, 0)
+        if xtst.XTestFakeButtonEvent(display, 1, 1, 0) == 0:
+            raise RuntimeError("XTest button press failed")
+        if xtst.XTestFakeButtonEvent(display, 1, 0, 0) == 0:
+            raise RuntimeError("XTest button release failed")
+        x11.XSync(display, 0)
+    try:
+        # Coordinates relative to the verified 640x480 Unity terms CLIENT
+        # window, not the 1600x900 screenshot or an arbitrary desktop window.
+        press(x + 32, y + 395)  # unchecked "I have read and agree"
+        time.sleep(0.7)
+        # Refuse the second click if the expected dialog disappeared.
+        midway = subprocess.run(command, env=env, capture_output=True,
+                                text=True, timeout=12, check=False)
+        if midway.returncode != 0 or '"Unity Editor Software Terms"' not in midway.stdout:
+            return {"exit_code": 3, "stdout": "",
+                    "stderr": "Terms window changed after checkbox; no confirm click sent"}
+        press(x + 350, y + 443)  # "Accept and Continue"
+        time.sleep(2.5)
+    finally:
+        x11.XCloseDisplay(display)
+    after = subprocess.run(command, env=env, capture_output=True,
+                           text=True, timeout=12, check=False)
+    closed = after.returncode != 0
+    outcome = {"terms_window_closed": closed, "editor_pids": _unity_pids(),
+               "project_library_exists": (PROJECT / "Library").is_dir(),
+               "free_disk_gib": round(shutil.disk_usage(PROJECT).free / 2**30, 3)}
+    return {"exit_code": 0 if closed else 3, "stdout": json.dumps(outcome),
+            "stderr": "" if closed else "Terms window is still visible; inspect new screenshot"}
+
 def desktop_snapshot(job_id):
     """Capture current Xvfb desktop, never commit it into repository history."""
     import re
@@ -823,6 +917,9 @@ def execute(job):
     if op == "desktop_snapshot":
         if args: raise ValueError("unexpected arguments")
         return desktop_snapshot(job["id"])
+    if op == "unity_terms_accept":
+        if args: raise ValueError("Unity terms acceptance takes no arguments")
+        return unity_terms_accept()
     if op == "unity_diagnostics":
         if args: raise ValueError("unexpected args")
         return {"exit_code":0,"stdout":json.dumps(unity_diagnostics(),ensure_ascii=False),"stderr":""}
