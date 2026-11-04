@@ -1,3 +1,28 @@
+# Preserve intentional baked Unity core files (2026-11-04)
+
+**Do not treat the dirty map worktree as garbage.** The user reports the existing
+15 modified and 3 untracked files were intentionally authored to bake foliage,
+LOD and shared prop geometry into the Unity project's actual source assets.
+Before any disk cleanup or Git LFS restoration, record dirty path names and
+preserve their exact contents. Never run `git reset --hard`, `git clean`,
+`git checkout --`, re-clone over the worktree, or overwrite dirty scene,
+mesh, texture or Editor-code files with an LFS checkout. Avoid changing the
+current checked-out branch or importing the entire project on a nearly-full disk.
+
+The desired final deliverable is **saved Unity core source assets** (scene,
+TerrainData, mesh LOD geometry, prefabs, materials, collider bindings), not a
+script that tells the Unity compiler/importer to reshape trees only on each
+build. Existing importer-time helpers are not proof that changes are baked.
+When Unity has enough disk, inspect and test saved core mesh/LOD data and
+project import behavior independently, then save permanent asset changes and
+verify a clean re-import without relying on temporary build-time transforms.
+If any existing modified source is an LFS object, restore only OTHER clean
+LFS pointer files. `.mat`, `.prefab`, and `.unity` may be ordinary Git
+blobs; do not blindly reinterpret them as missing LFS. See the repository's
+on-demand `storage_audit` operation and `Docs/AI_CODESPACE_ON_DEMAND.md`.
+
+---
+
 # Default remote Codespace terminal for ALL future AI sessions (2026-11-04)
 
 **Use GitHub Actions on-demand controller first; DO NOT post terminal jobs to Issue #37.**
