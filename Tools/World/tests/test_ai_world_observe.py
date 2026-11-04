@@ -34,6 +34,11 @@ class WorldSensorContractTests(unittest.TestCase):
         self.assertEqual(supplied["native_offset"], 4)
         self.assertEqual(supplied["limit"], 8)
 
+    def test_zero_coordinates_remain_explicit(self):
+        args, supplied = self.parse("site", "--x", "0", "--z", "0")
+        self.assertEqual(supplied["x"], 0.0)
+        self.assertEqual(supplied["z"], 0.0)
+
     def test_rejects_nonfinite_coordinates_and_oversized_pages(self):
         for values in (
             ("site", "--x", "nan", "--z", "0"),
