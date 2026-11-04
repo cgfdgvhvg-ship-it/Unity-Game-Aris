@@ -1,0 +1,1 @@
+{"id":"storage-cache-breakdown-20261104-a04","operation":"terminal_readonly","args":["du","-h","--max-depth=2","/home/codespace/.cache/"]}
