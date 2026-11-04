@@ -28,8 +28,11 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 RUN set -eux; \
+    groupadd --force codespace; \
     if ! id codespace >/dev/null 2>&1; then \
-      useradd --create-home --shell /bin/bash codespace; \
+      useradd --create-home --gid codespace --shell /bin/bash codespace; \
+    else \
+      usermod --gid codespace codespace; \
     fi; \
     mkdir -p "/home/codespace/Unity/Hub/Editor/${UNITY_VERSION}"; \
     curl --fail --location --show-error --silent --retry 4 \
