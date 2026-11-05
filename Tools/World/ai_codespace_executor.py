@@ -2594,7 +2594,7 @@ def unity_main_core_sync(job):
     new_shader=b"9920c1f1781549a46ba081a2a15a16ec"
     def sha256(data): return hashlib.sha256(data).hexdigest()
     def blob(data):
-        return hashlib.sha1(b"blob "+str(len(data)).encode()+b"\\0"+data).hexdigest()
+        return hashlib.sha1(b"blob "+str(len(data)).encode()+b"\0"+data).hexdigest()
     if not stage.is_file() or stage.is_symlink() or stage.stat().st_size>8*1024*1024:
         return {"exit_code":3,"stdout":"","stderr":"Trusted exact-main core bundle missing or oversized"}
     if not scratch.is_dir() or scratch.is_symlink() or backup.exists() or backup.is_symlink():
