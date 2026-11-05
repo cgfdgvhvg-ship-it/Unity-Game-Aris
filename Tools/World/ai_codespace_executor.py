@@ -1028,6 +1028,143 @@ def unity_forest_editor_refresh():
         "note":"Check Unity asset import and C# compiler before any forest core write"}),"stderr":""}
 
 
+def unity_forest_one_shot(job):
+    """Run one fully licensed real Unity Editor startup authoring transaction.
+
+    Runs in isolated /tmp only, produces native .asset SHA256-backed output.
+    Executes before rendering the heavy SceneView that crashes on this Xvfb GL.
+    """
+    op=job["operation"]
+    ident=job["id"]
+    apply=op=="unity_forest_one_shot_apply"
+    args=job["args"]
+    names={
+        "1_1":"Terrain_1_1_4bf22c8f-eb55-436d-84e3-dedfa85665b1.asset",
+        "1_2":"Terrain_1_2_1694bb0f-cffe-402c-b6f9-cf47692fbb78.asset",
+        "2_1":"Terrain_2_1_82fc4922-5564-4a18-858e-787f6d901556.asset",
+        "2_2":"Terrain_2_2_b6e03cf0-de91-4cae-b6af-0128d856ae43.asset",
+    }
+    if apply:
+        if len(args)!=2 or args[0] not in names or not re.fullmatch(r"[0-9a-f]{64}",args[1]):
+            return {"exit_code":3,"stdout":"","stderr":"Exact tile key and SHA256 required"}
+        target="Assets/TerrainDemoScene_URP/Terrain/Data/"+names[args[0]]
+        digest=args[1]
+    else:
+        if args: return {"exit_code":3,"stdout":"","stderr":"Plan takes no args"}
+        target="all"
+        digest=""
+    project=BATCH_ROOT/"project"
+    source=Path("/workspaces/.aaris-world-bridge/ondemand/AarisForestOneShot.cs")
+    destination=project/"Assets/AarisWorld/Editor/AarisForestOneShot.cs"
+    helper=destination.with_name("AarisForestCoreAuthoring.cs")
+    if not source.is_file() or source.is_symlink() or not helper.is_file() or helper.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Reviewed forest authoring and one-shot sources unavailable"}
+    if not project.is_dir() or project.is_symlink() or not Path("/tmp/.X11-unix/X12").exists():
+        return {"exit_code":3,"stdout":"","stderr":"Isolated Unity project or Xvfb unavailable"}
+    if _scratch_unity_pids():
+        return {"exit_code":3,"stdout":"","stderr":"Existing scratch Unity Editor must finish before one-shot"}
+    if shutil.disk_usage(project).free<20*1024**3 or shutil.disk_usage(PROJECT).free<250*1024**2:
+        return {"exit_code":3,"stdout":"","stderr":"Unsafe temporary or persistent disk headroom"}
+    commands=VIRTUAL_CONTROL/"unity-commands"
+    if commands.is_dir() and any(p.is_file() and p.suffix==".json" for p in commands.iterdir()):
+        return {"exit_code":3,"stdout":"","stderr":"Unfinished Unity bridge command"}
+    if apply:
+        actual=hashlib.sha256((project/target).read_bytes()).hexdigest()
+        if actual!=digest:
+            return {"exit_code":3,"stdout":"","stderr":"Native TerrainData core SHA changed since plan"}
+        original=PROJECT/target
+        if not original.is_file() or original.is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"Owner core data identity cannot be checked"}
+        for p in (original.with_suffix(".asset.meta"),(project/target).with_suffix(".asset.meta")):
+            if not p.is_file() or p.is_symlink():
+                return {"exit_code":3,"stdout":"","stderr":"Expected exact terrain GUID metadata missing"}
+        if hashlib.sha256(original.with_suffix(".asset.meta").read_bytes()).hexdigest() != hashlib.sha256((project/target).with_suffix(".asset.meta").read_bytes()).hexdigest():
+            return {"exit_code":3,"stdout":"","stderr":"TerrainData GUID metadata changed"}
+    result=VIRTUAL_CONTROL/"unity-results"/(ident+".json")
+    if result.exists() or result.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"One-shot result already exists"}
+    if destination.is_symlink() or source.stat().st_size>10000:
+        return {"exit_code":3,"stdout":"","stderr":"Untrusted one-shot scratch source"}
+    content=source.read_bytes()
+    if b"public static class AarisForestOneShot" not in content or b"EditorApplication.Exit" not in content:
+        return {"exit_code":3,"stdout":"","stderr":"Unreviewed one-shot entrypoint"}
+    if destination.exists():
+        if destination.read_bytes()!=content:
+            return {"exit_code":3,"stdout":"","stderr":"Scratch one-shot script differs, refuse overwrite"}
+    else:
+        destination.write_bytes(content)
+        if destination.read_bytes()!=content:
+            return {"exit_code":3,"stdout":"","stderr":"Scratch staging verification failed"}
+    env=os.environ.copy()
+    env.update({
+        "DISPLAY":":12",
+        "XDG_CACHE_HOME":str(BATCH_ROOT/"xdg-cache"),
+        "TMPDIR":str(BATCH_ROOT/"temp"),
+        "UPM_CACHE_ROOT":str(BATCH_ROOT/"upm-cache"),
+        "AARIS_FOREST_JOB_ID":ident,
+        "AARIS_FOREST_MODE":"apply" if apply else "plan",
+        "AARIS_FOREST_TARGET":target,
+        "AARIS_FOREST_SHA256":digest
+    })
+    for name in ("xdg-cache","temp","upm-cache"):
+        (BATCH_ROOT/name).mkdir(parents=True,exist_ok=True)
+    logfile=BATCH_ROOT/("forest-oneshot-"+ident+".log")
+    if logfile.exists() or logfile.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"One-shot diagnostic log already exists"}
+    argv=[str(EDITOR),"-projectPath",str(project),
+          "-executeMethod","Aaris.WorldAutomation.AarisForestOneShot.Execute",
+          "-logFile",str(logfile),"-job-worker-count","2"]
+    with logfile.open("wb") as logfile_handle:
+        proc=subprocess.Popen(argv,env=env,cwd=BATCH_ROOT,
+                              stdin=subprocess.DEVNULL,
+                              stdout=logfile_handle,stderr=logfile_handle,
+                              start_new_session=True)
+    end=time.monotonic()+105
+    while time.monotonic()<end and not result.is_file():
+        if proc.poll() is not None:
+            break
+        time.sleep(.75)
+    if not result.is_file():
+        with logfile.open("rb") as file:
+            file.seek(max(0,logfile.stat().st_size-15000))
+            raw=file.read().replace(bytes([0]),b"").decode("utf-8","replace")
+        errors=[x[-350:] for x in raw.splitlines() if any(
+            mark in x for mark in ("error CS","Exception","Caught fatal signal",
+                                  "AARIS_FOREST","Compilation failed"))]
+        return {"exit_code":3,"stdout":json.dumps({
+            "status":"unity_oneshot_no_result",
+            "pid":proc.pid,"process_exit":proc.poll(),
+            "log_errors":errors[-10:],"log_tail":raw[-900:]}),
+            "stderr":"Native Unity did not produce confirmed forest plan/save"}
+    if result.is_symlink() or result.stat().st_size>120000:
+        return {"exit_code":3,"stdout":"","stderr":"Unsafe native Unity one-shot result"}
+    report=json.loads(result.read_text())
+    if report.get("id")!=ident or report.get("action")!=("forest_apply" if apply else "forest_plan"):
+        return {"exit_code":3,"stdout":"","stderr":"Native Unity result identity/action mismatch"}
+    if report.get("status")!="ok":
+        return {"exit_code":3,"stdout":json.dumps(report,ensure_ascii=False)[:11500],
+                "stderr":"Unity refused native forest authoring"}
+    if apply:
+        if report.get("changedAsset")!=target or len(report.get("forestReports") or [])!=1:
+            return {"exit_code":3,"stdout":"","stderr":"Invalid native changedAsset/readback report"}
+        row=report["forestReports"][0]
+        actual=hashlib.sha256((project/target).read_bytes()).hexdigest()
+        if actual!=row.get("afterSha256") or digest!=row.get("beforeSha256"):
+            return {"exit_code":3,"stdout":"","stderr":"Native .asset SHA256 after Unity save mismatch"}
+        if row.get("changedCount",0)<1 or row.get("treeCount",0)<1:
+            return {"exit_code":3,"stdout":"","stderr":"No changed trees on the native terrain tile"}
+    else:
+        if report.get("terrainTreeCount")!=7508 or len(report.get("forestReports") or [])!=4:
+            return {"exit_code":3,"stdout":"","stderr":"Full-forest plan did not cover exactly 7508 trees"}
+    for _ in range(15):
+        if proc.poll() is not None: break
+        time.sleep(.35)
+    return {"exit_code":0,"stdout":json.dumps({
+        "status":"native_unity_core_"+("saved" if apply else "planned"),
+        "report":report,"process_exit":proc.poll(),"project_original_untouched":True,
+        "unity_editor_pid":proc.pid},ensure_ascii=False)[:16500],"stderr":""}
+
+
 def unity_forest_crash_report():
     """Read-only, redacted, bounded Unity compiler/crash and core-hash evidence."""
     data={"scratch_pids":_scratch_unity_pids(),
@@ -2174,6 +2311,8 @@ def execute(job):
     if op == "unity_forest_editor_refresh":
         if args: raise ValueError("Unity refresh takes no arguments")
         return unity_forest_editor_refresh()
+    if op in {"unity_forest_one_shot_plan","unity_forest_one_shot_apply"}:
+        return unity_forest_one_shot(job)
     if op == "unity_forest_crash_report":
         if args: raise ValueError("Crash inspection takes no parameters")
         return unity_forest_crash_report()
