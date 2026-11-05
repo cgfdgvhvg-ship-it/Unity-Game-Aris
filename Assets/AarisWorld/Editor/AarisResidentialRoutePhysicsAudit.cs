@@ -98,8 +98,14 @@ namespace Aaris.WorldAutomation
 
         private static float TerrainY(Terrain t, float x, float z)
         {
-            // Unity Terrain.SampleHeight returns the height relative to its origin.
-            return t.transform.position.y + t.SampleHeight(new Vector3(x, 0f, z));
+            // TerrainData interpolation is explicitly local to its heightmap.
+            // Add the terrain's world origin exactly once to avoid ambiguity
+            // around the Terrain.SampleHeight coordinate/return contract.
+            var origin = t.transform.position;
+            var size = t.terrainData.size;
+            float u = Mathf.Clamp01((x - origin.x) / size.x);
+            float v = Mathf.Clamp01((z - origin.z) / size.z);
+            return origin.y + t.terrainData.GetInterpolatedHeight(u, v);
         }
 
         [MenuItem("AarisEngine/QA/Read-Only Garage Physics Probe")]
