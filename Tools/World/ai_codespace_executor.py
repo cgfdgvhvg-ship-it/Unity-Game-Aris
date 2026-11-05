@@ -589,6 +589,27 @@ def unity_batch_status():
         data["persistent_free_gib"]=round(shutil.disk_usage(PROJECT).free/2**30,3)
     except OSError:
         pass
+    root=BATCH_ROOT/"project"
+    if root.is_dir():
+        try:
+            size=subprocess.run(
+                ["du","-s","-B1","--",str(root)],capture_output=True,
+                text=True,timeout=15,check=False
+            )
+            if size.returncode==0:
+                data["scratch_project_gib"]=round(int(size.stdout.split()[0])/2**30,3)
+        except (OSError,ValueError,IndexError,subprocess.TimeoutExpired):
+            pass
+    try:
+        data["worker_running"] = bool(data.get("worker_pid") and
+                                      Path("/proc",str(data["worker_pid"])).exists())
+        unity=run(["ps","-eo","pid,stat,comm"],timeout=5)
+        data["unity_processes"]=[
+            item.strip() for item in unity["stdout"].splitlines()
+            if item.strip().endswith(" Unity")
+        ][:6]
+    except OSError:
+        pass
     return data
 
 
