@@ -1665,6 +1665,10 @@ def execute(job):
     if op == "system_storage_audit":
         if args: raise ValueError("system storage audit takes no arguments")
         return {"exit_code":0,"stdout":json.dumps(system_storage_audit(),ensure_ascii=False),"stderr":""}
+    if op == "unity_session_status":
+        if args: raise ValueError("Session status takes no arguments")
+        return {"exit_code":0,"stdout":json.dumps(_session_plan(),
+                                                  ensure_ascii=False),"stderr":""}
     if op == "unity_session_checkpoint":
         if args: raise ValueError("Session checkpoint takes no arguments")
         return {"exit_code":0,"stdout":json.dumps(_session_plan(save=True),
