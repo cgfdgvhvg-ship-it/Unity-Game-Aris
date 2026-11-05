@@ -764,7 +764,8 @@ def _scratch_unity_pids():
 def unity_virtual_gui_status():
     data=unity_batch_status()
     data["scratch_unity_pids"]=_scratch_unity_pids()
-    log=BATCH_ROOT/"virtual-editor.log"
+    has_forest=(BATCH_ROOT/"project/Assets/AarisWorld/Editor/AarisForestCoreAuthoring.cs").is_file()
+    log=BATCH_ROOT/("virtual-editor-forest.log" if has_forest else "virtual-editor.log")
     if log.is_file() and not log.is_symlink():
         try:
             with log.open("rb") as stream:
@@ -861,7 +862,9 @@ def unity_virtual_gui_launch():
     # The Editor remains alive for the existing file-based AI bridge.
     args=[str(EDITOR),"-projectPath",str(target),
           "-executeMethod","AarisBatchProbe.OpenMapAndAudit",
-          "-logFile",str(BATCH_ROOT/"virtual-editor.log"),
+          "-logFile",str(BATCH_ROOT/("virtual-editor-forest.log" if
+              (target/"Assets/AarisWorld/Editor/AarisForestCoreAuthoring.cs").is_file()
+              else "virtual-editor.log")),
           "-job-worker-count","2"]
     with (BATCH_ROOT/"virtual-launch.log").open("a") as out:
         proc=subprocess.Popen(args,cwd=BATCH_ROOT,env=env,
@@ -1036,7 +1039,7 @@ def unity_forest_crash_report():
     markers=("error CS","AarisForestCoreAuthoring","AarisLiveEditorBridge",
              "Compilation failed","script compilation","Fatal","SIGSEGV",
              "Aborting batchmode","Asset Pipeline","Exception","crash","Exit")
-    for leaf in ("virtual-editor.log","virtual-launch.log","xvfb.log"):
+    for leaf in ("virtual-editor.log","virtual-editor-forest.log","virtual-launch.log","xvfb.log"):
         p=BATCH_ROOT/leaf
         if not p.is_file() or p.is_symlink() or p.stat().st_size > 40*1024**2:
             data[leaf]={"available":False}
