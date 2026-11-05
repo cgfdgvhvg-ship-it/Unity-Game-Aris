@@ -223,7 +223,7 @@ def execute_remote(job: dict, token: str, workspace: Path, result_file: Path, *,
                 f"remote:{remote}/unity_session_checkpoint.py"],env=env,timeout=90)
     if job["operation"] in {"unity_sync_auth","unity_sync_status",
                             "unity_sync_arm","unity_sync_dry_run",
-                            "unity_sync_save_session","unity_sync_watch_start"}:
+                            "unity_sync_watch_start"}:
         source = workspace / "Tools/World/unity_batched_autosync.py"
         if not source.is_file():
             raise JobError("Reviewed Unity batching source missing")
