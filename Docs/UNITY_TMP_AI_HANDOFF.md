@@ -134,10 +134,16 @@ there, or use a trusted authenticated remote Library cache with
 immutable hash validation and a supported restore process.
 
 GitHub supports changing an existing Codespace machine to an available
-type with larger storage. **This can increase usage charges and stops
-the running Codespace**, so AI must not change machine size without
-the owner's explicit approval and a verified backup of 36 or more
-dirty/untracked paths. Official documentation:
+type with larger storage **when one is offered**. The real owner-account
+read-only machine inventory on November 5, 2026
+([Actions run 41954952019](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41954952019))
+offered ONLY `basicLinux32gb` (2 CPU/8 GiB RAM/32 GiB storage)
+and `standardLinux32gb` (4 CPU/16 GiB RAM/32 GiB storage).
+**Neither solves the disk problem.** Do not switch machines as a
+purported fix. If a larger option appears later, **it can increase usage
+charges and stops the running Codespace**, so AI must not change machine
+size without the owner's explicit approval and a verified backup of
+36 or more dirty/untracked paths. Official documentation:
 https://docs.github.com/en/codespaces/customizing-your-codespace/changing-the-machine-type-for-your-codespace
 
 **Never** rely on a symlink to /tmp for persistent Editor/Library,
