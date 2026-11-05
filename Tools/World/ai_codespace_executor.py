@@ -1755,6 +1755,15 @@ def execute(job):
     if op == "unity_session_recover":
         if args: raise ValueError("Session recovery takes no arguments")
         return unity_session_recover()
+    if op == "unity_tree_v2_preview":
+        if args: raise ValueError("Tree-v2 scratch preview takes no arguments")
+        if not _scratch_unity_pids() or not (BATCH_ROOT/"scene-readback.json").is_file():
+            return {"exit_code":3,"stdout":"",
+                    "stderr":"Native Unity Editor and Scene must be loaded before selective tree reimport"}
+        source = Path("/workspaces/.aaris-world-bridge/ondemand/unity_tree_v2_preview.py")
+        if not source.is_file() or source.is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"Reviewed selective scratch tree helper absent"}
+        return run(["python3",str(source)],timeout=115)
     if op == "unity_scratch_reconcile":
         if args: raise ValueError("scratch reconciliation takes no arguments")
         source = Path("/workspaces/.aaris-world-bridge/ondemand/unity_scratch_reconcile.py")
