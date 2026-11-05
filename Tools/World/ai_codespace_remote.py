@@ -37,7 +37,7 @@ def validate_job(data: dict, *, expected_file: str | None = None) -> dict:
     op = data["operation"]
     if not isinstance(ident, str) or not ID_RE.fullmatch(ident):
         raise JobError("invalid job id")
-    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "unity_diagnostics", "desktop_tools", "desktop_snapshot", "unity_terms_accept", "unity_low_disk_stop", "unity_low_disk_pause", "unity_resume_paused", "codespace_machines", "system_storage_audit", "runtime_mount_probe", "safe_archives_audit", "safe_archives_cleanup", "unity_lfs_preflight", "unity_scratch_reconcile", "unity_sync_auth", "unity_sync_status", "unity_sync_arm", "unity_sync_dry_run", "unity_sync_save_session", "unity_sync_watch_start", "unity_session_status", "unity_session_stop_simulation", "unity_session_checkpoint", "unity_session_recover", "unity_batch_launch", "unity_batch_status", "unity_virtual_gui_launch", "unity_virtual_gui_status", "unity_virtual_live", "unity_virtual_result", "unity_virtual_frame", "unity_live", "unity_result", "unity_frame", "world_site", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
+    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "unity_diagnostics", "desktop_tools", "desktop_snapshot", "unity_terms_accept", "unity_low_disk_stop", "unity_low_disk_pause", "unity_resume_paused", "codespace_machines", "system_storage_audit", "runtime_mount_probe", "safe_archives_audit", "safe_archives_cleanup", "unity_lfs_preflight", "unity_scratch_reconcile", "unity_tree_v2_preview", "unity_sync_auth", "unity_sync_status", "unity_sync_arm", "unity_sync_dry_run", "unity_sync_save_session", "unity_sync_watch_start", "unity_session_status", "unity_session_stop_simulation", "unity_session_checkpoint", "unity_session_recover", "unity_batch_launch", "unity_batch_status", "unity_virtual_gui_launch", "unity_virtual_gui_status", "unity_virtual_live", "unity_virtual_result", "unity_virtual_frame", "unity_live", "unity_result", "unity_frame", "world_site", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
         raise JobError("unsupported operation")
     args = data["args"]
     if not isinstance(args, list) or len(args) > 16 or any(
@@ -229,6 +229,12 @@ def execute_remote(job: dict, token: str, workspace: Path, result_file: Path, *,
             raise JobError("Reviewed Unity batching source missing")
         runner(["gh","codespace","cp","-e","-c",cs,str(source),
                 f"remote:{remote}/unity_batched_autosync.py"],env=env,timeout=90)
+    if job["operation"] == "unity_tree_v2_preview":
+        source = workspace / "Tools/World/unity_tree_v2_preview.py"
+        if not source.is_file() or source.is_symlink():
+            raise JobError("Reviewed v2 SpeedTree scratch-only source stage missing")
+        runner(["gh","codespace","cp","-e","-c",cs,str(source),
+                f"remote:{remote}/unity_tree_v2_preview.py"],env=env,timeout=110)
     if job["operation"] == "unity_scratch_reconcile":
         source = workspace / "Tools/World/unity_scratch_reconcile.py"
         if not source.is_file():
