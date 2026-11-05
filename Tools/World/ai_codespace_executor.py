@@ -544,6 +544,173 @@ def safe_archive_cleanroom(*, delete=False):
             "note":"Deleting archives does not remove installed Conda or APT packages; on OverlayFS lower-layer bytes may not be recovered."}
 
 
+
+# Headless Unity scene import: all expensive writes and imported assets go to
+# the separate /tmp ext4 volume. The existing original project/Library and
+# dirty Core Files are never modified by this experimental test.
+BATCH_ROOT=Path("/tmp/aaris-unity-batch")
+BATCH_META=Path("/workspaces/.aaris-world-bridge/ondemand/unity-batch-status.json")
+BATCH_CS=Path("/workspaces/.aaris-world-bridge/ondemand/AarisBatchProbe.cs")
+
+
+def _batch_write(state, **fields):
+    data={"state":state,"timestamp_utc":__import__("datetime").datetime.now(
+        __import__("datetime").timezone.utc).isoformat(),
+        "workspace_source_untouched":True,"no_vnc_used":True,**fields}
+    BATCH_META.parent.mkdir(parents=True,exist_ok=True)
+    path=BATCH_META.with_suffix(".new")
+    path.write_text(json.dumps(data,ensure_ascii=False))
+    os.replace(path,BATCH_META)
+    return data
+
+
+def unity_batch_status():
+    try:
+        data=json.loads(BATCH_META.read_text()) if BATCH_META.is_file() else {"state":"not_started"}
+    except (OSError,ValueError):
+        data={"state":"unreadable"}
+    logfile=BATCH_ROOT/"editor.log"
+    if logfile.is_file() and not logfile.is_symlink():
+        try:
+            tail=logfile.read_text(encoding="utf-8",errors="replace")[-3200:]
+            data["unity_log_tail"]=re.sub(
+                r"(?i)(?:ghp_|github_pat_|sk-)[A-Za-z0-9_-]{8,}",
+                "[REDACTED]",tail)
+        except OSError:
+            pass
+    report=BATCH_ROOT/"scene-readback.json"
+    if report.is_file() and not report.is_symlink():
+        try:
+            data["scene_readback"]=json.loads(report.read_text())
+        except (ValueError,OSError):
+            data["scene_readback_error"]="invalid or unavailable scene report"
+    try:
+        data["scratch_free_gib"]=round(shutil.disk_usage(BATCH_ROOT if BATCH_ROOT.exists() else Path("/tmp")).free/2**30,3)
+        data["persistent_free_gib"]=round(shutil.disk_usage(PROJECT).free/2**30,3)
+    except OSError:
+        pass
+    return data
+
+
+def unity_batch_launch():
+    if not EDITOR.is_file() or not os.access(EDITOR,os.X_OK):
+        return {"exit_code":3,"stdout":"","stderr":"Unity Editor not installed or executable"}
+    if not BATCH_CS.is_file() or BATCH_CS.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Reviewed headless C# probe not staged"}
+    if BATCH_ROOT.exists():
+        return {"exit_code":3,"stdout":json.dumps(unity_batch_status()),
+                "stderr":"Existing scratch run present; inspect status instead of overwriting it"}
+    if shutil.disk_usage(Path("/tmp")).free < 20*1024**3:
+        return {"exit_code":3,"stdout":"","stderr":"Not enough separate /tmp free disk for safe project import"}
+    if shutil.disk_usage(PROJECT).free < 420*1024**2:
+        return {"exit_code":3,"stdout":"","stderr":"Original persistent project disk critically full"}
+    for path in ("Assets","Packages","ProjectSettings"):
+        if not (PROJECT/path).is_dir() or (PROJECT/path).is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"Missing original project folder: "+path}
+    _batch_write("launching","original_project":str(PROJECT),
+                 "scratch_project":str(BATCH_ROOT/"project"),
+                 "note":"Separate throwaway /tmp test; original paused GUI is untouched")
+    env=os.environ.copy()
+    out=BATCH_META.parent/"unity-batch-worker.log"
+    with out.open("a") as log:
+        proc=subprocess.Popen(
+            [sys.executable,str(Path(__file__).resolve()),"--unity-batch-worker"],
+            cwd=Path("/tmp"),env=env,stdin=subprocess.DEVNULL,
+            stdout=log,stderr=log,start_new_session=True)
+    _batch_write("worker_started",worker_pid=proc.pid,
+                 "scratch_project":str(BATCH_ROOT/"project"))
+    return {"exit_code":0,"stdout":json.dumps(unity_batch_status()),"stderr":""}
+
+
+def _headless_mem_available():
+    try:
+        m=re.search(r"^MemAvailable:\s*(\d+)\s+kB",Path("/proc/meminfo").read_text(),re.M)
+        return int(m.group(1))*1024 if m else 0
+    except OSError:
+        return 0
+
+
+def unity_batch_worker():
+    """Non-destructive separate project clone, then REAL Unity Editor CLI open."""
+    try:
+        BATCH_ROOT.mkdir(mode=0o700)
+        _batch_write("copying_original_to_scratch",scratch_project=str(BATCH_ROOT/"project"))
+        target=BATCH_ROOT/"project"
+        target.mkdir()
+        for folder in ("Assets","Packages","ProjectSettings"):
+            src=PROJECT/folder
+            # Refuse symlinks so a project copy cannot reach outside original.
+            for base,dirs,files in os.walk(src,followlinks=False):
+                for entry in dirs+files:
+                    if (Path(base)/entry).is_symlink():
+                        raise RuntimeError("Symlink detected; abort scratch copy safely")
+            shutil.copytree(src,target/folder,symlinks=True)
+        if shutil.disk_usage(BATCH_ROOT).free < 12*1024**3:
+            raise RuntimeError("Scratch filesystem too full after source copy")
+        probe=target/"Assets/Editor/AarisBatchProbe.cs"
+        probe.parent.mkdir(parents=True,exist_ok=True)
+        if probe.exists():
+            raise RuntimeError("Refuse to overwrite an existing Editor script in test copy")
+        shutil.copy2(BATCH_CS,probe)
+        (BATCH_ROOT/"xdg-cache").mkdir()
+        (BATCH_ROOT/"temp").mkdir()
+        _batch_write("unity_importing",scratch_project=str(target),
+                     note="Unity CLI -batchmode -nographics -executeMethod; no screen/VNC")
+        env=os.environ.copy()
+        env["XDG_CACHE_HOME"]=str(BATCH_ROOT/"xdg-cache")
+        env["TMPDIR"]=str(BATCH_ROOT/"temp")
+        env["AARIS_BATCH_REPORT"]=str(BATCH_ROOT/"scene-readback.json")
+        args=[str(EDITOR),"-batchmode","-nographics","-quit",
+              "-projectPath",str(target),
+              "-executeMethod","AarisBatchProbe.OpenMapAndAudit",
+              "-logFile",str(BATCH_ROOT/"editor.log")]
+        with (BATCH_ROOT/"stdout.log").open("w") as output:
+            proc=subprocess.Popen(args,cwd=BATCH_ROOT,env=env,
+                                  stdin=subprocess.DEVNULL,stdout=output,
+                                  stderr=subprocess.STDOUT,start_new_session=True)
+            start=time.monotonic()
+            while proc.poll() is None:
+                time.sleep(8)
+                original_free=shutil.disk_usage(PROJECT).free
+                scratch_free=shutil.disk_usage(BATCH_ROOT).free
+                mem=_headless_mem_available()
+                elapsed=round(time.monotonic()-start)
+                if (original_free < 350*1024**2 or
+                    scratch_free < 5*1024**3 or
+                    (mem and mem < 1200*1024**2) or elapsed>2600):
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=15)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.wait(timeout=15)
+                    raise RuntimeError(
+                        "Safe scratch Unity stop: persistent_free_mib="+
+                        str(original_free//2**20)+" scratch_free_gib="+
+                        str(round(scratch_free/2**30,2))+
+                        " mem_available_mib="+str(mem//2**20)+
+                        " elapsed_seconds="+str(elapsed))
+                if elapsed%40<8:
+                    _batch_write("unity_importing",unity_pid=proc.pid,
+                                 elapsed_seconds=elapsed,
+                                 scratch_free_gib=round(scratch_free/2**30,3),
+                                 persistent_free_gib=round(original_free/2**30,3))
+            exitcode=proc.returncode
+        report=BATCH_ROOT/"scene-readback.json"
+        if exitcode!=0 or not report.is_file():
+            raise RuntimeError("Unity batch incomplete: exit="+str(exitcode)+
+                               " report_present="+str(report.is_file()))
+        obj=json.loads(report.read_text())
+        if obj.get("sceneLoaded") is not True:
+            raise RuntimeError("Scene audit did not confirm Unity scene loaded")
+        _batch_write("unity_scene_opened_and_audited",
+                     unity_exit_code=exitcode,scene=obj,
+                     note="ONLY scratch-copy loaded, no persistent source mutation")
+    except Exception as err:
+        _batch_write("failed",error=type(err).__name__+": "+str(err)[:600])
+    return 0
+
+
 def prune_caches(home=Path("/home/codespace")):
     """Delete only two named re-downloadable caches, never project or Unity."""
     paths=[home/".cache"/"copilot"/"pkg", home/".npm"/"_cacache"]
@@ -1145,6 +1312,12 @@ def execute(job):
         )
         return {"exit_code":audit.returncode,"stdout":audit.stdout[-16000:],
                 "stderr":audit.stderr[-1400:]}
+    if op == "unity_batch_launch":
+        if args: raise ValueError("headless launch takes no args")
+        return unity_batch_launch()
+    if op == "unity_batch_status":
+        if args: raise ValueError("headless status takes no args")
+        return {"exit_code":0,"stdout":json.dumps(unity_batch_status(),ensure_ascii=False),"stderr":""}
     if op == "storage_audit":
         if args: raise ValueError("unexpected args")
         return {"exit_code":0,"stdout":json.dumps(storage_audit(),ensure_ascii=False),"stderr":""}
@@ -1305,6 +1478,9 @@ def main():
     print(json.dumps(result, ensure_ascii=False))
     return 0
 
+
+if len(sys.argv)==2 and sys.argv[1]=="--unity-batch-worker":
+    sys.exit(unity_batch_worker())
 
 if __name__ == "__main__":
     if len(sys.argv)==3 and sys.argv[1]=="--unity-watchdog" and sys.argv[2].isdigit():
