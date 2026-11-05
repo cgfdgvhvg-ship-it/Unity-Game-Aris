@@ -81,3 +81,14 @@ A photo is not created by this relay itself; the existing native Editor bridge m
 - There is no interactive public terminal, open SSH port, or API route taking shell strings. Worker `/health` has no secrets; agent endpoints require a separate bearer secret.
 - Only a successful deployment plus real Codespace CLI/REST state and terminal receipt will prove this works; unit tests alone are not evidence of cloud execution.
 - Cloudflare usage limits, Codespaces usage budgets, and GitHub API permissions remain applicable. A Codespaces API `402` or `403` is **not** bypassed by an external Worker.
+
+## Actual Cloudflare deployment — 2026-11-05
+
+- Connected Cloudflare account: the existing owner account (never publish its ID or tokens).
+- Worker script **`aaris-codespace-relay`** uploaded successfully to Cloudflare from this GitHub review branch, Git blob `91cf65dcd4f535bf1a4d3c20a0ea6e59629fe2d2`.
+- Account workers.dev subdomain created: `aaris-game-control-6f9c.workers.dev`. Worker route: `https://aaris-codespace-relay.aaris-game-control-6f9c.workers.dev/health` (route enabled and previews disabled by Cloudflare API; public HTTP reachability has **not** been confirmed from this runtime).
+- Scheduled cron successfully configured and read back as `* * * * *` (every minute, UTC).
+- Worker bindings successfully read back as `RELAY_ENABLED=false`; **no Worker secrets are currently configured**. The relay is therefore **inert** and cannot start, stop, or run commands in Codespaces. Do not describe it as operational.
+- The ChatGPT GitHub connector has repository operations but does not expose the account's GitHub credential for use by a different provider. The Cloudflare connector cannot read Github Actions repository secrets either. A scoped GitHub token must be installed as `GITHUB_CONTROL_TOKEN` directly through the Cloudflare dashboard, **not in chat, GitHub repo, or logs**. A distinct generated `AGENT_SHARED_SECRET` must also be configured for the Codespace agent. Do not enable the relay before those secrets and the agent startup hook are verified.
+- If Cloudflare or the GitHub Codespaces API reports the account's own billing/quota restriction, **do not** attempt to circumvent billing; use the provider's normal account remediation. GitHub Actions billing is separate from whether the Codespaces REST API can start an available Codespace.
+
