@@ -71,6 +71,24 @@ class ResidentialVehicleSafetyTests(unittest.TestCase):
         self.assertEqual(sum(bool(re.fullmatch(r"VehicleSpawnPoint_\d{2}$",n)) for n in transforms),45)
         self.assertEqual(sum(bool(re.fullmatch(r"VehicleSpawnPoint_\d{2}_Apron$",n)) for n in transforms),45)
 
+    def test_future_single_house_scale_what_if_preserves_driveway(self):
+        original=simulation(self.layout)
+        spot="VehicleSpawnPoint_03"
+        previous=next(x for x in original["relocated"] if x["spawn_name"]==spot)
+        resized=simulation(self.layout,desired_house_scales={
+            "ClockTowerTown_garage_apartment_06":1.15
+        })
+        changed=next(x for x in resized["relocated"] if x["spawn_name"]==spot)
+        self.assertGreater(changed["new_position_m"][2],previous["new_position_m"][2])
+        self.assertAlmostEqual(changed["before_clearance_m"],changed["after_clearance_m"],places=5)
+        self.assertEqual(changed["road_exit_xz_m"],previous["road_exit_xz_m"])
+        for invalid in ({"does-not-exist":1.2},
+                        {"ClockTowerTown_garage_apartment_06":2},
+                        {"ClockTowerTown_garage_apartment_06":float("nan")},
+                        {"ClockTowerTown_garage_apartment_06":"huge"}):
+            with self.assertRaises(ClearanceError):
+                simulation(self.layout,desired_house_scales=invalid)
+
     def test_vehicle_marker_or_apron_tampering_fails_closed(self):
         row=self.manifest["rows"][0]
         for part in ("marker","apron"):
