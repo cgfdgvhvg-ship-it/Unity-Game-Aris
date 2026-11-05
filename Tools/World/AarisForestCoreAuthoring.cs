@@ -18,7 +18,7 @@ namespace Aaris.WorldAutomation
         public sealed class ForestReport
         {
             public string asset, beforeSha256, afterSha256;
-            public int treeCount, changedCount, mature, young, landmark, competitionTrees, steepTrees;
+            public int treeCount, actualTrees, preservedRocks, preservedShrubs, changedCount, mature, young, landmark, competitionTrees, steepTrees;
             public float widthBefore, widthAfter, heightBefore, heightAfter;
             public float projectedCanopyBefore, projectedCanopyAfter;
         }
@@ -89,12 +89,39 @@ namespace Aaris.WorldAutomation
 
             // 11 m cells; only adjacent cells are considered for local competition.
             // This is a bounded O(N*k) spatial neighborhood, not all-pairs O(N^2).
+            var categories = new byte[original.Length]; // 1 tree, 2 rock, 3 shrub
+            for (int i = 0; i < original.Length; i++)
+            {
+                int index = original[i].prototypeIndex;
+                if (index < 0 || index >= prototypes.Length || prototypes[index].prefab == null)
+                    throw new InvalidOperationException("Unknown native terrain prototype " + index);
+                string prefabPath = AssetDatabase.GetAssetPath(prototypes[index].prefab).Replace('\\', '/');
+                if (prefabPath.StartsWith("Assets/TerrainDemoScene_URP/Prefabs/Trees/", StringComparison.Ordinal))
+                {
+                    categories[i] = 1;
+                    report.actualTrees++;
+                }
+                else if (prefabPath.Contains("/Rocks/"))
+                {
+                    categories[i] = 2;
+                    report.preservedRocks++;
+                }
+                else if (prefabPath.Contains("/Foliage/"))
+                {
+                    categories[i] = 3;
+                    report.preservedShrubs++;
+                }
+                else
+                    throw new InvalidOperationException("Unclassified native terrain prefab " + prefabPath);
+            }
             var positions = new Vector3[original.Length];
             var cells = new Dictionary<long, List<int>>();
             const float spacing = 11f;
             for (int i = 0; i < original.Length; i++)
             {
                 positions[i] = origin + Vector3.Scale(original[i].position, size);
+                // Rocks/shrubs MUST NOT create artificial tree competition.
+                if (categories[i] != 1) continue;
                 int cx = Mathf.FloorToInt(positions[i].x / spacing);
                 int cz = Mathf.FloorToInt(positions[i].z / spacing);
                 long key = Cell(cx, cz);
@@ -109,6 +136,8 @@ namespace Aaris.WorldAutomation
             var plannedWidths = new float[original.Length];
             for (int i = 0; i < original.Length; i++)
             {
+                // Keep non-tree rock/shrub TreeInstance structs completely unchanged.
+                if (categories[i] != 1) continue;
                 TreeInstance tree = original[i];
                 if ((float.IsNaN(tree.widthScale) || float.IsInfinity(tree.widthScale)) || (float.IsNaN(tree.heightScale) || float.IsInfinity(tree.heightScale))
                     || tree.widthScale <= 0f || tree.heightScale <= 0f)
@@ -184,12 +213,14 @@ namespace Aaris.WorldAutomation
             // which approximates crown envelope/overdraw, not actual FPS.
             float rawAfter = 0f;
             for (int i = 0; i < original.Length; i++)
-                rawAfter += plannedWidths[i] * plannedWidths[i] * proposed[i].heightScale;
+                if (categories[i] == 1)
+                    rawAfter += plannedWidths[i] * plannedWidths[i] * proposed[i].heightScale;
             float limit = report.projectedCanopyBefore * .985f;
             float reduction = rawAfter > limit && rawAfter > 0f
                 ? Mathf.Sqrt(limit / rawAfter) : 1f;
             for (int i = 0; i < original.Length; i++)
             {
+                if (categories[i] != 1) continue;
                 proposed[i].widthScale = Mathf.Max(.68f, plannedWidths[i] * reduction);
                 report.widthAfter += proposed[i].widthScale;
                 report.heightAfter += proposed[i].heightScale;
@@ -206,6 +237,9 @@ namespace Aaris.WorldAutomation
                 report.heightBefore /= original.Length;
                 report.heightAfter /= original.Length;
             }
+            if (report.changedCount != report.actualTrees ||
+                report.actualTrees + report.preservedRocks + report.preservedShrubs != original.Length)
+                throw new InvalidOperationException("Tree-only scaling did not cover exact native categories");
             if (report.projectedCanopyAfter > report.projectedCanopyBefore * 1.001f)
                 throw new InvalidOperationException("Forest envelope budget increased unexpectedly");
             return new Planned { report = report, proposed = proposed };
@@ -231,7 +265,7 @@ namespace Aaris.WorldAutomation
             if (candidates.Length != 4)
                 throw new InvalidOperationException("Expected 4 saved terrain data tiles");
             var reports = new List<ForestReport>();
-            int count = 0;
+            int count = 0, actualTrees = 0, rocks = 0, shrubs = 0;
             foreach (Terrain terrain in candidates)
             {
                 TerrainData data = terrain.terrainData;
@@ -245,6 +279,9 @@ namespace Aaris.WorldAutomation
                 var plan = Build(terrain, physical);
                 plan.report.asset = asset;
                 count += plan.report.treeCount;
+                actualTrees += plan.report.actualTrees;
+                rocks += plan.report.preservedRocks;
+                shrubs += plan.report.preservedShrubs;
                 if (write)
                 {
                     if (plan.report.beforeSha256 != request.expectedDigest)
@@ -267,7 +304,10 @@ namespace Aaris.WorldAutomation
                         if (a.prototypeIndex != b.prototypeIndex
                             || Vector3.Distance(a.position, b.position) > .000001f
                             || Mathf.Abs(a.widthScale - b.widthScale) > .0001f
-                            || Mathf.Abs(a.heightScale - b.heightScale) > .0001f)
+                            || Mathf.Abs(a.heightScale - b.heightScale) > .0001f
+                            || Mathf.Abs(a.rotation - b.rotation) > .000001f
+                            || !a.color.Equals(b.color)
+                            || !a.lightmapColor.Equals(b.lightmapColor))
                             throw new InvalidOperationException("Native tree readback mismatch " + i);
                     }
                     plan.report.afterSha256 = Sha256(physical);
@@ -279,8 +319,21 @@ namespace Aaris.WorldAutomation
                 }
                 reports.Add(plan.report);
             }
+            if (all && (count != 7508 || actualTrees != 1939 ||
+                rocks != 5564 || shrubs != 5))
+                throw new InvalidOperationException("Incorrect tree/rock/shrub split; refuse full-map authoring");
             if (all && count != 7508)
                 throw new InvalidOperationException("Native forest size changed; expected 7508");
+            if (write && reports.Count == 1)
+            {
+                // The four fixed terrain tiles must retain their audited species split.
+                int expectedTrees = reports[0].asset.Contains("Terrain_1_1_") ? 374 :
+                    reports[0].asset.Contains("Terrain_1_2_") ? 618 :
+                    reports[0].asset.Contains("Terrain_2_1_") ? 519 :
+                    reports[0].asset.Contains("Terrain_2_2_") ? 428 : -1;
+                if (reports[0].actualTrees != expectedTrees)
+                    throw new InvalidOperationException("Unexpected number of tree prefabs on native tile");
+            }
             if (write && reports.Count != 1)
                 throw new InvalidOperationException("Exactly one TerrainData asset per transaction");
             result.forestReports = reports.ToArray();
