@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "id": "r20261105-verify-start-a1",
+  "action": "status",
+  "recorded_utc": "2026-11-05T18:03:40.763Z",
+  "status": "observed",
+  "state": "Available",
+  "source": "cloudflare-scheduled-worker"
+}
