@@ -192,6 +192,50 @@ def reviewed_native_terrain_pr64(source, path, expected_sha):
     return len(source)==size and hashlib.sha256(source).hexdigest()==new
 
 
+def restore_reviewed_scene_far_shadow(source):
+    """Reverse exactly 101 LOD2-only scene shadow edits; preserve all other bytes.
+
+    Scene entities are expanded GameObjects, not prefab instances. Do not
+    assume modifying the source prefab changes the saved scene MeshRenderers.
+    The historical protected SHA-256 must match after this reversal AND the
+    previous reviewed screen-height LOD normalization.
+    """
+    import re
+    blocks=re.split(rb'(?=^--- !u!)',source,flags=re.M)
+    mesh_by_id={}
+    for index,block in enumerate(blocks):
+        match=re.match(rb'--- !u!(\d+) &(\d+)',block)
+        if match and match[1]==b'23':
+            if match[2] in mesh_by_id:return None
+            mesh_by_id[match[2]]=index
+    lod_groups=0
+    reverted=0
+    seen=set()
+    for group in blocks:
+        if not re.match(rb'--- !u!205 &',group):
+            continue
+        lod_groups+=1
+        ids=re.findall(rb'- renderer: \{fileID: (\d+)\}',group)
+        if len(ids)!=3 or len(set(ids))!=3:return None
+        for level,ident in enumerate(ids):
+            index=mesh_by_id.get(ident)
+            if index is None:return None
+            block=blocks[index]
+            head=b'MeshRenderer:\n'
+            if head not in block:return None
+            bits=re.findall(rb'^  m_CastShadows: (\d+)\n',block,flags=re.M)
+            if bits!=([b'1'] if level<2 else [b'0']):return None
+            if level==2:
+                if ident in seen:return None
+                seen.add(ident)
+                marker=b'  m_CastShadows: 0\n'
+                if block.count(marker)!=1:return None
+                blocks[index]=block.replace(marker,b'  m_CastShadows: 1\n',1)
+                reverted+=1
+    if lod_groups!=101 or reverted!=101:return None
+    return b''.join(blocks)
+
+
 def preserved_or_reviewed_lod_only(root,path,expected_sha):
     source=(Path(root)/path).read_bytes()
     if hashlib.sha256(source).hexdigest()==expected_sha:return True
@@ -201,7 +245,9 @@ def preserved_or_reviewed_lod_only(root,path,expected_sha):
         if source is None:return False
         if hashlib.sha256(source).hexdigest()==expected_sha:return True
     if path == SCENE_MOBILE_LOD_PATH:
-        restored = restore_scene_mobile_lod(source)
+        original_shadows=restore_reviewed_scene_far_shadow(source)
+        if original_shadows is None:return False
+        restored=restore_scene_mobile_lod(original_shadows)
         return restored is not None and hashlib.sha256(restored).hexdigest() == expected_sha
     if path in HEAVY_COMPOUND_SOURCE_PREFABS:
         marker = b'  - screenRelativeHeight: 0.11\n'

@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / 'Tools/World'))
-from verify_tree_house_upgrade import SCENE_MOBILE_LOD_PATH, restore_scene_mobile_lod
+from verify_tree_house_upgrade import (SCENE_MOBILE_LOD_PATH, restore_scene_mobile_lod, restore_reviewed_scene_far_shadow)
 
 
 class SavedSceneMobileLodIntegrity(unittest.TestCase):
@@ -22,7 +22,9 @@ class SavedSceneMobileLodIntegrity(unittest.TestCase):
         )
 
     def test_exact_original_scene_restored_by_only_reviewed_lod_changes(self):
-        original = restore_scene_mobile_lod(self.scene)
+        restored_shadows = restore_reviewed_scene_far_shadow(self.scene)
+        self.assertIsNotNone(restored_shadows)
+        original = restore_scene_mobile_lod(restored_shadows)
         self.assertIsNotNone(original, 'Unexpected scene LOD counts, identities or thresholds')
         expected = self.contract['preserved_files'][SCENE_MOBILE_LOD_PATH]
         self.assertEqual(hashlib.sha256(original).hexdigest(), expected)
@@ -59,7 +61,9 @@ class SavedSceneMobileLodIntegrity(unittest.TestCase):
     def test_modified_scene_geometry_or_metadata_cannot_pass(self):
         modified = self.scene.replace(b'  m_Fog: 1\n', b'  m_Fog: 0\n', 1)
         self.assertNotEqual(modified, self.scene)
-        restored = restore_scene_mobile_lod(modified)
+        restored_shadows = restore_reviewed_scene_far_shadow(modified)
+        self.assertIsNotNone(restored_shadows)
+        restored = restore_scene_mobile_lod(restored_shadows)
         self.assertIsNotNone(restored)
         expected = self.contract['preserved_files'][SCENE_MOBILE_LOD_PATH]
         self.assertNotEqual(hashlib.sha256(restored).hexdigest(), expected)
