@@ -37,7 +37,7 @@ def validate_job(data: dict, *, expected_file: str | None = None) -> dict:
     op = data["operation"]
     if not isinstance(ident, str) or not ID_RE.fullmatch(ident):
         raise JobError("invalid job id")
-    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "unity_diagnostics", "desktop_tools", "desktop_snapshot", "unity_terms_accept", "unity_low_disk_stop", "unity_low_disk_pause", "unity_resume_paused", "codespace_machines", "system_storage_audit", "runtime_mount_probe", "safe_archives_audit", "safe_archives_cleanup", "unity_lfs_preflight", "unity_scratch_reconcile", "unity_tree_v2_preview", "unity_forest_stage", "unity_forest_x11_probe", "unity_forest_editor_refresh", "unity_forest_menu_snapshot", "unity_forest_recompile", "unity_forest_crash_report", "unity_forest_one_shot_plan", "unity_forest_one_shot_apply", "unity_forest_baseline_probe", "unity_forest_treeonly_prepare", "unity_forest_treeonly_tune", "unity_sync_auth", "unity_sync_status", "unity_sync_arm", "unity_sync_dry_run", "unity_sync_save_session", "unity_sync_watch_start", "unity_session_status", "unity_session_stop_simulation", "unity_session_checkpoint", "unity_session_recover", "unity_batch_launch", "unity_batch_status", "unity_virtual_gui_launch", "unity_virtual_gui_status", "unity_virtual_live", "unity_virtual_result", "unity_virtual_frame", "unity_live", "unity_result", "unity_frame", "world_site", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
+    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "unity_diagnostics", "desktop_tools", "desktop_snapshot", "unity_terms_accept", "unity_low_disk_stop", "unity_low_disk_pause", "unity_resume_paused", "codespace_machines", "system_storage_audit", "runtime_mount_probe", "safe_archives_audit", "safe_archives_cleanup", "unity_lfs_preflight", "unity_scratch_reconcile", "unity_tree_v2_preview", "unity_forest_stage", "unity_forest_x11_probe", "unity_forest_editor_refresh", "unity_forest_menu_snapshot", "unity_forest_recompile", "unity_forest_crash_report", "unity_forest_one_shot_plan", "unity_forest_one_shot_apply", "unity_forest_baseline_probe", "unity_forest_treeonly_prepare", "unity_forest_treeonly_tune", "unity_map_camera_capture", "unity_sync_auth", "unity_sync_status", "unity_sync_arm", "unity_sync_dry_run", "unity_sync_save_session", "unity_sync_watch_start", "unity_session_status", "unity_session_stop_simulation", "unity_session_checkpoint", "unity_session_recover", "unity_batch_launch", "unity_batch_status", "unity_virtual_gui_launch", "unity_virtual_gui_status", "unity_virtual_live", "unity_virtual_result", "unity_virtual_frame", "unity_live", "unity_result", "unity_frame", "world_site", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
         raise JobError("unsupported operation")
     args = data["args"]
     if not isinstance(args, list) or len(args) > 16 or any(
@@ -70,6 +70,9 @@ def validate_job(data: dict, *, expected_file: str | None = None) -> dict:
             raise JobError("invalid world_site coordinates")
         if not all(math.isfinite(v) for v in (x,z,radius)) or max(abs(x),abs(z))>10000 or not 1<=radius<=150:
             raise JobError("world_site coordinates outside inspected bounds")
+    elif op == "unity_map_camera_capture":
+        if len(args)!=1 or args[0] not in {"forest-west","forest-south","mountain-east"}:
+            raise JobError("Unity capture requires a reviewed real map camera zone")
     elif op == "unity_forest_one_shot_apply":
         if (len(args)!=2 or args[0] not in {"1_1","1_2","2_1","2_2"} or
             not re.fullmatch(r"[a-f0-9]{64}",args[1])):
@@ -246,6 +249,12 @@ def execute_remote(job: dict, token: str, workspace: Path, result_file: Path, *,
                 raise JobError("Reviewed native forest staging source unavailable")
             runner(["gh","codespace","cp","-e","-c",cs,str(source),
                     f"remote:{remote}/{leaf}"],env=env,timeout=100)
+    if job["operation"] == "unity_map_camera_capture":
+        source=workspace/"Tools/World/AarisMapCameraOneShot.cs"
+        if not source.is_file() or source.is_symlink():
+            raise JobError("Reviewed scratch-only Unity camera source missing")
+        runner(["gh","codespace","cp","-e","-c",cs,str(source),
+                f"remote:{remote}/AarisMapCameraOneShot.cs"],env=env,timeout=105)
     if job["operation"] == "unity_forest_treeonly_tune":
         source=workspace/"Tools/World/AarisForestCoreAuthoring.cs"
         if not source.is_file() or source.is_symlink():
@@ -312,12 +321,12 @@ def execute_remote(job: dict, token: str, workspace: Path, result_file: Path, *,
         raise JobError("remote executor returned invalid JSON")
     if not isinstance(result, dict) or result.get("id") != job["id"] or result.get("operation") != job["operation"]:
         raise JobError("remote result identity mismatch")
-    if result.get("ok") and job["operation"] in {"unity_frame", "unity_virtual_frame", "desktop_snapshot"}:
+    if result.get("ok") and job["operation"] in {"unity_frame", "unity_virtual_frame", "desktop_snapshot", "unity_map_camera_capture"}:
         # Screenshot stays out of Git history. Copy to short-lived Actions artifact;
         # remove original only after secure remote copy and size check.
-        frame_id=job["id"] if job["operation"]=="desktop_snapshot" else job["args"][0]
+        frame_id=job["id"] if job["operation"] in {"desktop_snapshot","unity_map_camera_capture"} else job["args"][0]
         remote_frame=(f"/tmp/aaris-unity-batch/control/frames/{frame_id}.jpg"
-                      if job["operation"]=="unity_virtual_frame"
+                      if job["operation"] in {"unity_virtual_frame","unity_map_camera_capture"}
                       else f"/home/codespace/.aaris-desktop/frames/{frame_id}.jpg")
         local_frame=result_file.parent/(frame_id+".jpg")
         runner(["gh","codespace","cp","-e","-c",cs,f"remote:{remote_frame}",str(local_frame)],
