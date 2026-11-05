@@ -1,3 +1,22 @@
+## ACTIVE TERMINAL CONTROL STATUS — 2026-11-06
+
+**Owner request:** AI must execute the one-time remote Codespace bootstrap itself, rather than repeatedly asking the owner to paste Termux commands. The owner wants exactly one stable live Unity viewer URL, owner-controlled pan/orbit/zoom, and AI-assisted camera focus; no GitHub Actions or image transfers.
+
+**Verified today:**
+- The Codespace `musical-carnival-jjxp9r6vw45wfjgvg` was reported `Available` by Cloudflare's real GitHub Codespaces API status/start receipt.
+- Cloudflare Worker `aaris-codespace-relay` has a GitHub control secret, `RELAY_ENABLED=true`, and `* * * * *` Cron; Start/Stop/Status actually worked in prior independent receipts.
+- The older owner-only GitHub Issue #37 terminal bridge accepted `AARIS_JOB` messages historically, but its new `relay-legacy-ping-20261105-001` (`pwd`) and `install-new-live-github-agent-20261105` bootstrap issue comments have **no corresponding `AARIS_RESULT`**. Treat that bridge as **offline/unverified**, not an execution mechanism.
+- The new `Tools/CodespaceRelay/bootstrap_live.py`, `github_queue_agent.py`, desktop doctor and scratch-only Unity camera-focus patch are committed to `ai/codespace-jobs`, but **a Git commit is not remote execution**. No proof yet exists that new services or port 6080 are running. The browser's GitHub forwarded-port `404` is consistent with missing remote server/port forward.
+- Only the repo-connected GitHub operations and Cloudflare API operations are available in this ChatGPT runtime; GitHub connector does **not** expose a Codespace shell/SSH execution API, and Cloudflare Codespace lifecycle does not execute terminal commands. The phone Remote control connection was explicitly **offline/not sharing** at last check. The runtime's local container is **not** the owner's Codespace.
+- **NEVER claim terminal setup completed, camera moved, Unity Editor open, or a working browser screen without a new native terminal/result receipt.** Do not silently rerun unbounded jobs, send arbitrary commands, or suggest public VNC ports.
+- For owner-mediated bootstrap **without owner typing**, the only currently surfaced interactive route is explicit owner re-enabling `Aaris Remote` → `Connect Phone with AI`, after which the AI can use authorized phone screen control to enter `gh codespace ssh` in Termux, making execution run in the **remote Codespace**. The owner can alternatively open the Codespace integrated Terminal directly. Neither route has been used successfully in this turn yet.
+
+**Stable viewer URL:** https://aaris-codespace-relay.aaris-game-control-6f9c.workers.dev/live . It redirects to GitHub's owner-authenticated `PRIVATE` port 6080, not a video proxy. It does not currently guarantee one-click Codespace wake on link visit, and no viewer is yet verified working. The Unity camera-focus fix in reviewed C# uses `SceneView.LookAtDirect` but must compile in the actual running isolated scratch Unity before declaring success. All original dirty assets and `main` must remain unmodified. Do not merge PR #75.
+
+**Review branch**: `ai/codespace-jobs`; terminal-only instructions: [Docs/LIVE_UNITY_PHONE_VIEW.md](Docs/LIVE_UNITY_PHONE_VIEW.md), [Docs/CODESPACE_RELAY_NO_ACTIONS.md](Docs/CODESPACE_RELAY_NO_ACTIONS.md). Earlier "not deployed" and "RELAY_ENABLED=false" sections below are historical, superseded by this status block.
+
+---
+
 ## CURRENT live Codespace viewer state — 2026-11-06
 
 Cloudflare Worker `aaris-codespace-relay` is **deployed**, `RELAY_ENABLED=true`, and the GitHub control token exists as a Cloudflare secret. Real Cloudflare-cron receipts already verified Codespace Shutdown → Available → Shutdown → Available without GitHub Actions. Earlier sections below that claim the Worker is not deployed, RELAY_ENABLED=false or the GitHub token is absent are HISTORICAL and superseded.
