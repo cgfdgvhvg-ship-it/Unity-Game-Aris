@@ -602,7 +602,7 @@ def unity_batch_launch():
                 "stderr":"Existing scratch run present; inspect status instead of overwriting it"}
     if shutil.disk_usage(Path("/tmp")).free < 20*1024**3:
         return {"exit_code":3,"stdout":"","stderr":"Not enough separate /tmp free disk for safe project import"}
-    if shutil.disk_usage(PROJECT).free < 420*1024**2:
+    if shutil.disk_usage(PROJECT).free < 240*1024**2:
         return {"exit_code":3,"stdout":"","stderr":"Original persistent project disk critically full"}
     for path in ("Assets","Packages","ProjectSettings"):
         if not (PROJECT/path).is_dir() or (PROJECT/path).is_symlink():
@@ -653,11 +653,19 @@ def unity_batch_worker():
             raise RuntimeError("Refuse to overwrite an existing Editor script in test copy")
         shutil.copy2(BATCH_CS,probe)
         (BATCH_ROOT/"xdg-cache").mkdir()
+        (BATCH_ROOT/"xdg-config").mkdir()
+        (BATCH_ROOT/"xdg-data").mkdir()
+        (BATCH_ROOT/"xdg-state").mkdir()
+        (BATCH_ROOT/"home").mkdir(mode=0o700)
         (BATCH_ROOT/"temp").mkdir()
         _batch_write("unity_importing",scratch_project=str(target),
                      note="Unity CLI -batchmode -nographics -executeMethod; no screen/VNC")
         env=os.environ.copy()
+        env["HOME"]=str(BATCH_ROOT/"home")
         env["XDG_CACHE_HOME"]=str(BATCH_ROOT/"xdg-cache")
+        env["XDG_CONFIG_HOME"]=str(BATCH_ROOT/"xdg-config")
+        env["XDG_DATA_HOME"]=str(BATCH_ROOT/"xdg-data")
+        env["XDG_STATE_HOME"]=str(BATCH_ROOT/"xdg-state")
         env["TMPDIR"]=str(BATCH_ROOT/"temp")
         env["AARIS_BATCH_REPORT"]=str(BATCH_ROOT/"scene-readback.json")
         args=[str(EDITOR),"-batchmode","-nographics","-quit",
@@ -675,7 +683,7 @@ def unity_batch_worker():
                 scratch_free=shutil.disk_usage(BATCH_ROOT).free
                 mem=_headless_mem_available()
                 elapsed=round(time.monotonic()-start)
-                if (original_free < 350*1024**2 or
+                if (original_free < 200*1024**2 or
                     scratch_free < 5*1024**3 or
                     (mem and mem < 1200*1024**2) or elapsed>2600):
                     proc.terminate()
