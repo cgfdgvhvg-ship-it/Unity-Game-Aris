@@ -44,7 +44,7 @@ def validate_job(data: dict, *, expected_file: str | None = None) -> dict:
         not isinstance(a, str) or not (0 < len(a) < 500) for a in args
     ):
         raise JobError("args must be short strings")
-    if op == "unity_live":
+    if op in {"unity_live", "unity_virtual_live"}:
         if len(args) != 1:
             raise JobError("unity_live requires one short JSON request")
         try:
@@ -57,7 +57,7 @@ def validate_job(data: dict, *, expected_file: str | None = None) -> dict:
                 raise JobError("invalid Unity live request")
         except (ValueError, TypeError, json.JSONDecodeError) as exc:
             raise JobError("invalid live Unity request: " + str(exc)[:160])
-    elif op in {"unity_result", "unity_frame"}:
+    elif op in {"unity_result", "unity_frame", "unity_virtual_result", "unity_virtual_frame"}:
         if len(args) != 1 or not ID_RE.fullmatch(args[0]):
             raise JobError("expected one previously issued Unity job ID")
     elif op == "world_site":
