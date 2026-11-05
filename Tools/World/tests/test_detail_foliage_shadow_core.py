@@ -8,7 +8,7 @@ ROOT=Path(__file__).resolve().parents[3]
 BASE=ROOT/"Assets/TerrainDemoScene_URP/Prefabs/Details"
 APPROVED={
  "Fern_A":"6403215db0728e979eb737abf4f1d7c84009f4d4",
- "Fern_B":"e84b028b62cc8aff42db8f358051b7a2837876d9",
+ "Fern_B":"e84b028b62cc8eff42db8f358051b7a2837876d9",
  "Fern_C":"58f12f29b5b5bd07ad478584f5f2f988b2a38d0e",
  "Heather_A":"cde69a147eacc851b4fec502fd4555546f11ec37",
  "Heather_B":"a6bb9b66408ee5f3ede29d1c7ed502cf301fb8a5"
