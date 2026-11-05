@@ -2547,6 +2547,130 @@ def desktop_snapshot(job_id):
     return {"exit_code":0,"stdout":json.dumps(info),"stderr":""}
 
 
+def unity_house_gallery(job):
+    """Native Editor-only screenshot survey; never write original Unity assets."""
+    import zipfile
+    import csv
+    import io
+    op=job["operation"]
+    ident=job["id"]
+    root=BATCH_ROOT/"project"
+    stage=Path("/workspaces/.aaris-world-bridge/ondemand/AarisHousePhotoSurvey.cs")
+    target=root/"Assets/AarisWorld/Editor/AarisHousePhotoSurvey.cs"
+    requests=VIRTUAL_CONTROL/"house-requests"
+    reports=VIRTUAL_CONTROL/"house-results"
+    exports=VIRTUAL_CONTROL/"house-exports"
+    if not root.is_dir() or root.is_symlink() or len(_scratch_unity_pids())!=1:
+        return {"exit_code":3,"stdout":"","stderr":"Isolated live Unity Editor unavailable"}
+    if op=="unity_house_gallery_start":
+        if job["args"]:
+            raise ValueError("House gallery start takes no arguments")
+        if not stage.is_file() or stage.is_symlink() or stage.stat().st_size>250000:
+            return {"exit_code":3,"stdout":"","stderr":"Trusted staged house photo Editor helper missing"}
+        data=stage.read_bytes()
+        if b"public static class AarisHousePhotoSurvey" not in data or b"SubmitRenderRequest" not in data:
+            return {"exit_code":3,"stdout":"","stderr":"Unreviewed house photo helper"}
+        if not target.parent.is_dir() or target.parent.is_symlink() or target.is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"Unsafe scratch editor helper target"}
+        if target.exists() and target.read_bytes()!=data:
+            return {"exit_code":3,"stdout":"","stderr":"Existing different house helper; preserve and inspect"}
+        if not target.exists():
+            tmp=target.with_name(target.name+".aaris-staged")
+            if tmp.exists() or tmp.is_symlink():
+                return {"exit_code":3,"stdout":"","stderr":"House helper stage conflict"}
+            tmp.write_bytes(data)
+            if hashlib.sha256(tmp.read_bytes()).digest()!=hashlib.sha256(data).digest():
+                raise ValueError("House helper SHA verification failed")
+            os.replace(tmp,target)
+        for directory in (requests,reports,exports):
+            directory.mkdir(mode=0o700,parents=True,exist_ok=True)
+        req=requests/(ident+".json")
+        answer=reports/(ident+".json")
+        if req.exists() or req.is_symlink() or answer.exists() or answer.is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"House photo job already submitted"}
+        req.write_text(json.dumps({"id":ident})+"\n")
+        return {"exit_code":0,"stdout":json.dumps({
+            "job":ident,"queued":True,"isolated_unity_editor":True,
+            "scratch_only":True,"game_source_unchanged":True,
+            "expected_photos":15,"editor_helper_sha256":hashlib.sha256(data).hexdigest(),
+            "note":"Unity compiles read-only editor helper and renders real houses asynchronously"
+        }),"stderr":""}
+    if op!="unity_house_gallery_export" or len(job["args"])!=1:
+        raise ValueError("House photo export operation requires one job ID")
+    survey=job["args"][0]
+    if not re.fullmatch(r"[a-z][a-z0-9-]{3,55}",survey):
+        raise ValueError("Invalid house survey identifier")
+    info=reports/(survey+".json")
+    if not info.is_file() or info.is_symlink():
+        return {"exit_code":3,"stdout":json.dumps({"job":survey,"pending":True}),
+                "stderr":"Unity house survey is still compiling or rendering"}
+    if info.stat().st_size>300000:
+        return {"exit_code":3,"stdout":"","stderr":"Oversized survey manifest"}
+    result=json.loads(info.read_text())
+    if result.get("id")!=survey or result.get("status")!="ok":
+        return {"exit_code":3,"stdout":json.dumps({
+            "id":survey,"status":result.get("status"),"found_houses":result.get("candidatesFound"),
+            "error":result.get("error"),"pictures":result.get("picturesMade")}),
+            "stderr":"Unity native house survey failed or returned no valid report"}
+    houses=result.get("houses") or []
+    photos=result.get("photos") or []
+    if not 10<=len(photos)<=20 or not 1<=len(houses)<=3:
+        return {"exit_code":3,"stdout":"","stderr":"Expected at least ten verified shots and 1-3 real houses"}
+    gallery=VIRTUAL_CONTROL/"house-photos"/survey
+    if gallery.is_symlink() or not gallery.is_dir():
+        return {"exit_code":3,"stdout":"","stderr":"Missing house gallery photo folder"}
+    archive=exports/(survey+".zip")
+    if archive.exists() or archive.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Previous house gallery export needs review"}
+    total=0
+    seen=set()
+    entries=[]
+    for item in photos:
+        leaf=item.get("file")
+        if (not isinstance(leaf,str) or not re.fullmatch(r"[a-zA-Z0-9-]{6,100}\.jpg",leaf) or leaf in seen):
+            return {"exit_code":3,"stdout":"","stderr":"Untrusted house photo filename"}
+        seen.add(leaf)
+        path=gallery/leaf
+        if not path.is_file() or path.is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"House photo missing"}
+        data=path.read_bytes()
+        digest=hashlib.sha256(data).hexdigest()
+        if len(data)!=item.get("bytes") or digest!=item.get("sha256") or not data.startswith(b"\xff\xd8"):
+            return {"exit_code":3,"stdout":"","stderr":"House photo hash/size validation failed"}
+        total+=len(data)
+        entries.append((leaf,data))
+    if total>30*1024*1024:
+        return {"exit_code":3,"stdout":"","stderr":"Unexpectedly large house survey images"}
+    readme=[
+        "UNITY GAME ARIS - REAL HOUSE PHOTOS",
+        "Unity Editor version: "+str(result.get("unityVersion")),
+        "Scene: "+str(result.get("scene")),
+        "Measurements below are renderer world-axis AABB extents, in metres.",
+        "They do not prove interior walkability or a finished furnished room.",
+        "The 'inside-volume' camera is inside the model's external 3D bounds;",
+        "walls/roof can obstruct the camera if interiors are not implemented.",
+        "No source/game files were edited to create these screenshots.",
+        "",
+    ]
+    for i,house in enumerate(houses,1):
+        readme.append(f"House {i}: {house.get('name')}")
+        for k in ("widthXMetres","lengthZMetres","heightMetres","bottomY","topY","prefabPath","renderers","colliders"):
+            readme.append(f"  {k}: {house.get(k)}")
+    with zipfile.ZipFile(archive,"w",compression=zipfile.ZIP_DEFLATED,compresslevel=5) as z:
+        z.writestr("HOUSE_DIMENSIONS.txt","\n".join(readme)+"\n")
+        z.writestr("HOUSE_SURVEY.json",json.dumps(result,indent=2))
+        for leaf,data in entries:
+            z.writestr("photos/"+leaf,data)
+    return {"exit_code":0,"stdout":json.dumps({
+      "survey_id":survey,"status":"ok","houses":houses,"views":[
+          {"file":x["file"],"house":x["houseName"],"view":x["view"]} for x in photos],
+      "pictures":len(photos),"bytes":archive.stat().st_size,
+      "sha256":hashlib.sha256(archive.read_bytes()).hexdigest(),
+      "archive_path":str(archive),"game_source_untouched":True,
+      "note":"Gallery ZIP contains real Unity JPGs, house measurements and JSON"
+    },ensure_ascii=False),"stderr":""}
+
+
 def unity_main_core_sync(job):
     """Import precisely reviewed merged source to disposable Unity Editor only.
 
@@ -2847,6 +2971,8 @@ def execute(job):
         raise ValueError("invalid job id")
     if not isinstance(args, list):
         raise ValueError("invalid args")
+    if op in {"unity_house_gallery_start","unity_house_gallery_export"}:
+        return unity_house_gallery(job)
     if op == "unity_main_core_sync":
         if len(args)!=1 or not re.fullmatch(r"[0-9a-f]{40}",args[0]):
             raise ValueError("Exact-main sync requires one reviewed 40-hex main SHA")
