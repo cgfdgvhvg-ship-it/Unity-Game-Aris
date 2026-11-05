@@ -1,3 +1,11 @@
+# ACTUAL MAP SCENE LOD2 SHADOW CORE FIX — native serialized scene (2026-11-05)
+
+**Branch `ai/mobile-scene-far-lod-shadow-20261105`, review pending:** The prior PR #65 had updated 20 model/prop source prefabs, but the actual scene is made from **expanded GameObjects**. A saved-scene audit found **101 active LODGroups with all 3 LOD levels casting shadows**. This upgrade changes **only the 101 farthest LOD2 MeshRenderer `m_CastShadows` flags** to 0 in real `Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity`, preserving all scene objects, 202 near-LOD shadows, materials, geometry, collision, placements and four merged TerrainData LFS objects. Source scene Git blob prior `ea741c769e1f13a992d734a23b0d355eabd6541e`; modified scene blob `84af0f04fd49a90ed25a978a34db9bc3c7bbdc38`. To audit, use `Tools/World/tests/test_scene_far_shadow_core.py` and the strict historical hash restoration in `Tools/World/verify_tree_house_upgrade.py`. More details in `Docs/ANDROID_2GB_RENDER_CORE_PASS_20261105.md`.
+
+**This is actual serialized Unity map core editing, not a script that modifies meshes at runtime.** Still requires GPU-backed Editor import and 2–3 GB Android profiling. Do not claim measured mobile FPS. Keep owner Codespace original dirty worktree safe.
+
+---
+
 # CURRENT MAIN — mobile rendering core changes MERGED (2026-11-05)
 
 **Verified merge:** [PR #65](https://github.com/Aaris-khan-don/Unity-Game-Aris/pull/65) merged to `main` at `a5554018366fc68473d01eaf547c0b4c8ee4f6ff`. Exactly **21 existing serialized Unity core assets** were changed: `ProjectSettings/QualitySettings.asset` streaming memory 384→192 MB, file I/O requests 64→24, renderer updates 128→96 per frame, realtime shadow range 100→72 m; 17 `Assets/AarisWorld/Models/*/*.prefab` and 3 `Assets/AarisWorld/Props/*/*.prefab` changed only their third/farthest LOD2 `MeshRenderer.m_CastShadows: 1→0`. Near LOD0/LOD1 continue casting shadows and all distant models remain visible. **No core meshes, `.unity` scenes, tree/rock TerrainData, `.meta`, house scale, collision, doors, windows or material textures were touched.**
