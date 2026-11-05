@@ -1064,6 +1064,30 @@ def unity_forest_crash_report():
                 actual[name]=h.hexdigest()==sha
         data["all_core_tiles_unchanged"]=all(actual.values()) if actual else False
         data["core_tile_sha_matches"]=actual
+    # A GUI Editor can be terminated by the container OOM killer without a
+    # useful Unity log. Inspect cgroup counters without mutating machine state.
+    for name in ("memory.events","memory.max","memory.current","memory.peak"):
+        for candidate in (Path("/sys/fs/cgroup")/name,
+                          Path("/sys/fs/cgroup/memory")/name):
+            if candidate.is_file() and not candidate.is_symlink():
+                data["cgroup_"+name]=candidate.read_text(errors="replace")[:600]
+                break
+    for candidate in (
+        Path("/home/codespace/.config/unity3d/Editor.log"),
+        Path("/home/codespace/.local/share/unity3d/Editor.log"),
+        Path("/home/codespace/.config/unity3d/Unity/Editor.log"),
+    ):
+        if not candidate.is_file() or candidate.is_symlink(): continue
+        with candidate.open("rb") as stream:
+            stream.seek(max(0,candidate.stat().st_size-200000))
+            txt=stream.read().replace(bytes([0]),b"").decode("utf-8","replace")
+        matches=[line[-420:] for line in txt.splitlines() if any(
+            word in line.lower() for word in
+            ("error cs","assembly reload","script compilation","fatal error",
+             "exception","crash","segfault","out of memory"))]
+        data["supplemental_unity_log"]={"file":candidate.name,
+                   "hits":matches[-15:],"tail":txt[-550:]}
+        break
     proc=subprocess.run(["free","-m"],capture_output=True,text=True,timeout=10)
     data["memory"]=proc.stdout[-900:]
     return {"exit_code":0,"stdout":json.dumps(data,ensure_ascii=False),"stderr":""}
