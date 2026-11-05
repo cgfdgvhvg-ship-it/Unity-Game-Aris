@@ -740,6 +740,104 @@ def unity_batch_worker():
     return 0
 
 
+
+def _scratch_unity_pids():
+    """Only match Editor processes opening the isolated scratch copy."""
+    target=str(BATCH_ROOT/"project")
+    found=[]
+    for child in Path("/proc").iterdir():
+        if not child.name.isdigit():
+            continue
+        try:
+            argv=[a.decode("utf-8","replace") for a in
+                  (child/"cmdline").read_bytes().split(b"\x00") if a]
+            if len(argv)<4 or argv[0]!=str(EDITOR):
+                continue
+            ix=argv.index("-projectPath")
+            if ix+1<len(argv) and argv[ix+1]==target:
+                found.append(int(child.name))
+        except (OSError,ValueError,IndexError):
+            pass
+    return sorted(found)
+
+
+def unity_virtual_gui_status():
+    data=unity_batch_status()
+    data["scratch_unity_pids"]=_scratch_unity_pids()
+    log=BATCH_ROOT/"virtual-editor.log"
+    if log.is_file() and not log.is_symlink():
+        try:
+            tail=log.read_text(errors="replace")[-4500:]
+            data["virtual_unity_log_tail"]=re.sub(
+                r"(?i)(?:ghp_|github_pat_|sk-)[A-Za-z0-9_-]{8,}",
+                "[REDACTED]",tail)
+        except OSError:
+            pass
+    data["display_socket"]=Path("/tmp/.X11-unix/X12").exists()
+    data["novnc_required"]=False
+    return data
+
+
+def unity_virtual_gui_launch():
+    """Run the REAL Unity graphical Editor on isolated Xvfb; NO VNC transport."""
+    target=BATCH_ROOT/"project"
+    scene=target/"Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity"
+    if not EDITOR.is_file() or not os.access(EDITOR,os.X_OK):
+        return {"exit_code":3,"stdout":"","stderr":"Native Unity Editor unavailable"}
+    if not target.is_dir() or not scene.is_file():
+        return {"exit_code":3,"stdout":json.dumps(unity_virtual_gui_status()),
+                "stderr":"Isolated scratch project/scene missing"}
+    if _scratch_unity_pids():
+        return {"exit_code":0,"stdout":json.dumps(unity_virtual_gui_status()),
+                "stderr":""}
+    if shutil.disk_usage(PROJECT).free < 250*1024**2:
+        return {"exit_code":3,"stdout":"","stderr":"Less than 250 MiB protected original disk headroom"}
+    if shutil.disk_usage(BATCH_ROOT).free < 20*1024**3:
+        return {"exit_code":3,"stdout":"","stderr":"Scratch disk lacks 20 GiB headroom"}
+    if not shutil.which("Xvfb"):
+        return {"exit_code":3,"stdout":"","stderr":"Xvfb virtual display not installed"}
+    BATCH_ROOT.mkdir(mode=0o700,parents=True,exist_ok=True)
+    env=os.environ.copy()
+    env["DISPLAY"]=":12"
+    env["XDG_CACHE_HOME"]=str(BATCH_ROOT/"xdg-cache")
+    env["TMPDIR"]=str(BATCH_ROOT/"temp")
+    env["UPM_CACHE_ROOT"]=str(BATCH_ROOT/"upm-cache")
+    env["AARIS_BATCH_REPORT"]=str(BATCH_ROOT/"scene-readback.json")
+    # Keep the genuine user's HOME & Unity Hub licensing state for Personal
+    # authorization; redirect only disposable cache and temporary writes.
+    for dirname in ("xdg-cache","temp","upm-cache"):
+        (BATCH_ROOT/dirname).mkdir(mode=0o700,exist_ok=True)
+    socket=Path("/tmp/.X11-unix/X12")
+    if not socket.exists():
+        with (BATCH_ROOT/"xvfb.log").open("a") as out:
+            subprocess.Popen(
+                ["Xvfb",":12","-screen","0","1600x900x24",
+                 "-nolisten","tcp","-noreset"],
+                cwd=BATCH_ROOT,stdin=subprocess.DEVNULL,stdout=out,
+                stderr=out,start_new_session=True)
+    for _ in range(25):
+        if socket.exists():
+            break
+        time.sleep(0.2)
+    if not socket.exists():
+        return {"exit_code":3,"stdout":"","stderr":"Xvfb :12 did not open; see scratch xvfb.log"}
+    # Normal Unity Editor on virtual display, not batch/headless entitlement.
+    # The Editor remains alive for the existing file-based AI bridge.
+    args=[str(EDITOR),"-projectPath",str(target),
+          "-executeMethod","AarisBatchProbe.OpenMapAndAudit",
+          "-logFile",str(BATCH_ROOT/"virtual-editor.log"),
+          "-job-worker-count","2"]
+    with (BATCH_ROOT/"virtual-launch.log").open("a") as out:
+        proc=subprocess.Popen(args,cwd=BATCH_ROOT,env=env,
+                              stdin=subprocess.DEVNULL,stdout=out,
+                              stderr=out,start_new_session=True)
+    _batch_write("virtual_unity_started",unity_pid=proc.pid,
+                 scratch_project=str(target),display=":12",
+                 note="Virtual-only Xvfb; no noVNC launched; original assets unchanged")
+    return {"exit_code":0,"stdout":json.dumps(unity_virtual_gui_status(),
+                                              ensure_ascii=False),"stderr":""}
+
+
 def prune_caches(home=Path("/home/codespace")):
     """Delete only two named re-downloadable caches, never project or Unity."""
     paths=[home/".cache"/"copilot"/"pkg", home/".npm"/"_cacache"]
@@ -1341,6 +1439,12 @@ def execute(job):
         )
         return {"exit_code":audit.returncode,"stdout":audit.stdout[-16000:],
                 "stderr":audit.stderr[-1400:]}
+    if op == "unity_virtual_gui_launch":
+        if args: raise ValueError("virtual Editor start accepts no arguments")
+        return unity_virtual_gui_launch()
+    if op == "unity_virtual_gui_status":
+        if args: raise ValueError("virtual Editor status accepts no arguments")
+        return {"exit_code":0,"stdout":json.dumps(unity_virtual_gui_status(),ensure_ascii=False),"stderr":""}
     if op == "unity_batch_launch":
         if args: raise ValueError("headless launch takes no args")
         return unity_batch_launch()
