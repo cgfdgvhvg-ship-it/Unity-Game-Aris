@@ -838,6 +838,99 @@ def unity_virtual_gui_launch():
                                               ensure_ascii=False),"stderr":""}
 
 
+
+VIRTUAL_CONTROL=BATCH_ROOT/"control"
+
+
+def _virtual_bridge_path():
+    return BATCH_ROOT/"project/Assets/AarisWorld/Editor/AarisLiveEditorBridge.cs"
+
+
+def virtual_bridge_isolate():
+    """The scratch Unity Editor must NEVER consume original Editor's jobs."""
+    source=_virtual_bridge_path()
+    if not source.is_file() or source.is_symlink():
+        raise ValueError("Native Unity live bridge missing from scratch project")
+    old='private static readonly string Root = "/home/codespace/.aaris-desktop";'
+    new='private static readonly string Root = "/tmp/aaris-unity-batch/control";'
+    code=source.read_text(encoding="utf-8")
+    if new not in code:
+        if code.count(old)!=1:
+            raise ValueError("Live bridge root differs; refuse scratch-only patch")
+        backup=BATCH_ROOT/"original-scratch-bridge.cs"
+        if backup.exists():
+            raise ValueError("Scratch bridge backup already exists; inspect manually")
+        shutil.copy2(source,backup)
+        temp=source.with_suffix(".cs.aaris-tmp")
+        temp.write_text(code.replace(old,new),encoding="utf-8")
+        os.replace(temp,source)
+    for dirname in ("unity-commands","unity-results","frames"):
+        (VIRTUAL_CONTROL/dirname).mkdir(mode=0o700,parents=True,exist_ok=True)
+    return str(VIRTUAL_CONTROL)
+
+
+def _virtual_response(ident,seconds=0):
+    if not re.fullmatch(r"[a-z][a-z0-9-]{3,55}",ident):
+        raise ValueError("Bad virtual Unity result ID")
+    file=VIRTUAL_CONTROL/"unity-results"/(ident+".json")
+    until=time.monotonic()+seconds
+    while time.monotonic()<until and not file.is_file():
+        time.sleep(0.6)
+    if not file.is_file():
+        return {"exit_code":0,"stdout":json.dumps({
+            "job":ident,"pending":True,
+            "virtual_unity_running":bool(_scratch_unity_pids()),
+            "scratch_scene_readback":(BATCH_ROOT/"scene-readback.json").is_file(),
+            "note":"Awaiting native Unity AssetDatabase and bridge compilation"
+        }),"stderr":""}
+    if file.is_symlink() or file.stat().st_size>150000:
+        return {"exit_code":3,"stdout":"","stderr":"Unsafe virtual response"}
+    obj=json.loads(file.read_text())
+    if obj.get("id")!=ident:
+        return {"exit_code":3,"stdout":"","stderr":"Virtual result ID mismatch"}
+    return {"exit_code":0 if obj.get("status")=="ok" else 3,
+            "stdout":json.dumps(obj,ensure_ascii=False)[:16000],
+            "stderr":(obj.get("error") or "")[:350]}
+
+
+def unity_virtual_live_job(job):
+    if len(job["args"])!=1 or len(job["args"][0])>550:
+        raise ValueError("One bounded JSON action required")
+    payload=validate_live_payload(json.loads(job["args"][0]))
+    if not _scratch_unity_pids():
+        return {"exit_code":3,"stdout":json.dumps(unity_virtual_gui_status()),
+                "stderr":"Scratch Unity GUI Editor not running"}
+    root=virtual_bridge_isolate()
+    ident=job["id"]
+    command=VIRTUAL_CONTROL/"unity-commands"/(ident+".json")
+    result=VIRTUAL_CONTROL/"unity-results"/(ident+".json")
+    if not command.exists() and not result.exists():
+        info=dict(payload,id=ident)
+        if payload["action"] in ("move_tree","scale_tree"):
+            info["hasExpectedPosition"]=True
+        tmp=command.with_suffix(".new")
+        if tmp.exists() or command.is_symlink():
+            raise ValueError("Unsafe virtual command staging")
+        tmp.write_text(json.dumps(info,separators=(",",":"),allow_nan=False))
+        os.replace(tmp,command)
+    return _virtual_response(ident,seconds=17)
+
+
+def unity_virtual_frame(ident):
+    if not re.fullmatch(r"[a-z][a-z0-9-]{3,55}",ident):
+        raise ValueError("Invalid frame command")
+    frame=VIRTUAL_CONTROL/"frames"/(ident+".jpg")
+    if not frame.is_file() or frame.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Virtual Unity screenshot not yet generated"}
+    size=frame.stat().st_size
+    if not 100 <= size <= 3*1024*1024:
+        return {"exit_code":3,"stdout":"","stderr":"Unexpected screenshot size"}
+    return {"exit_code":0,"stdout":json.dumps({
+        "frame_job":ident,"bytes":size,"sha256":hashlib.sha256(frame.read_bytes()).hexdigest(),
+        "format":"jpg","retention":"temporary 1 day GitHub Actions artifact"
+    }),"stderr":""}
+
+
 def prune_caches(home=Path("/home/codespace")):
     """Delete only two named re-downloadable caches, never project or Unity."""
     paths=[home/".cache"/"copilot"/"pkg", home/".npm"/"_cacache"]
@@ -1439,6 +1532,14 @@ def execute(job):
         )
         return {"exit_code":audit.returncode,"stdout":audit.stdout[-16000:],
                 "stderr":audit.stderr[-1400:]}
+    if op == "unity_virtual_live":
+        return unity_virtual_live_job(job)
+    if op == "unity_virtual_result":
+        if len(args)!=1: raise ValueError("Expected virtual Unity result ID")
+        return _virtual_response(args[0],seconds=5)
+    if op == "unity_virtual_frame":
+        if len(args)!=1: raise ValueError("Expected virtual screenshot job ID")
+        return unity_virtual_frame(args[0])
     if op == "unity_virtual_gui_launch":
         if args: raise ValueError("virtual Editor start accepts no arguments")
         return unity_virtual_gui_launch()
