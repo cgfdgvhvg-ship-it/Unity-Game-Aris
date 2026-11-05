@@ -168,6 +168,18 @@ def plan(original=ORIGINAL,scratch=SCRATCH,editor=EDITOR,checkpoint=CHECKPOINT,
                     data.get("scenePath")==SCENE)
         except (ValueError,OSError,AttributeError):
             loaded=False
+    copy_marker=scratch.parent/".aaris-scratch-copy-complete.json"
+    copy_complete=False
+    if scratch_ok and copy_marker.is_file() and not copy_marker.is_symlink() and copy_marker.stat().st_size<=8192:
+        try:
+            proof=json.loads(copy_marker.read_text())
+            copy_complete=(isinstance(proof,dict) and
+                           proof.get("schema")==SCHEMA and
+                           proof.get("scene")==SCENE and
+                           proof.get("source_sha256")==original_hashes)
+        except (OSError,ValueError):
+            copy_complete=False
+    scratch_ready=bool(scratch_ok and (loaded or copy_complete))
     pids=scratch_unity_pids(editor,scratch,proc)
     saved=load_checkpoint(checkpoint)
     origfree=disk_free(original) if core_ok else None
@@ -195,10 +207,12 @@ def plan(original=ORIGINAL,scratch=SCRATCH,editor=EDITOR,checkpoint=CHECKPOINT,
         step="blocked_low_persistent_disk"
     elif scratchfree is None or scratchfree<MIN_SCRATCH_FREE:
         step="blocked_low_temporary_disk"
-    elif scratch_ok and saved and saved.get("source_sha256")!=original_hashes:
+    elif saved and saved.get("source_sha256")!=original_hashes:
         step="blocked_original_changed_since_checkpoint"
     elif scratch_ok and not source_matches and not saved:
         step="blocked_scratch_core_mismatch"
+    elif scratch_ok and not scratch_ready:
+        step="blocked_incomplete_scratch_copy"
     elif scratch_ok:
         step="reopen_existing_scratch"
     else:
@@ -208,6 +222,8 @@ def plan(original=ORIGINAL,scratch=SCRATCH,editor=EDITOR,checkpoint=CHECKPOINT,
         "editor_present":editor_ok,"scene":SCENE,"source_sha256":original_hashes,
         "scratch_core_matches":source_matches,"scratch_core_differences":mismatched,
         "scratch_source_sha256":scratch_hashes,"scratch_loaded":loaded,
+        "scratch_copy_complete":copy_complete,
+        "scratch_ready_for_reopen":scratch_ready,
         "scratch_exists":scratch_ok,"scratch_unity_pids":pids,
         "scratch_terrain_differs":scratch_diff,
         "last_camera_target":(last_camera_target(scratch) if scratch_ok else None) or (saved.get("last_camera_target") if saved else None),
@@ -220,6 +236,19 @@ def plan(original=ORIGINAL,scratch=SCRATCH,editor=EDITOR,checkpoint=CHECKPOINT,
         "no_vnc_required":False,
         "writes_performed":0,
     }
+
+
+def simulate_codespace_stop(original=ORIGINAL,editor=EDITOR,checkpoint=CHECKPOINT):
+    """Read-only hypothetical STOP. Never stops Unity or clears /tmp."""
+    fake=Path("/tmp/__aaris_stop_simulation_do_not_create_83719/project")
+    if fake.parent.exists() or fake.exists():
+        raise ValueError("Simulation sentinel path unexpectedly exists")
+    state=plan(original,fake,editor,checkpoint,proc=Path("/proc/__aaris_offline"))
+    state["simulation_only"]=True
+    state["note"]="Treat /tmp as cleared; this command did NOT stop Codespace or delete Unity."
+    state["real_running_editor_not_touched"]=True
+    state["writes_performed"]=0
+    return state
 
 
 def write_checkpoint(report, path=CHECKPOINT):
@@ -269,13 +298,18 @@ def write_checkpoint(report, path=CHECKPOINT):
 def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--checkpoint",action="store_true",help="Write small durable session manifest (does NOT copy Library)")
+    p.add_argument("--simulate-stop",action="store_true",help="Read-only dry-run of Codespace /tmp clearing; never stops Codespace")
     p.add_argument("--original",type=Path,default=ORIGINAL)
     p.add_argument("--scratch",type=Path,default=SCRATCH)
     p.add_argument("--editor",type=Path,default=EDITOR)
     p.add_argument("--state-file",type=Path,default=CHECKPOINT)
     args=p.parse_args(argv)
     try:
-        data=plan(args.original,args.scratch,args.editor,args.state_file)
+        if args.simulate_stop and args.checkpoint:
+            raise ValueError("Do not combine simulation with checkpoint write")
+        data=(simulate_codespace_stop(args.original,args.editor,args.state_file)
+              if args.simulate_stop else
+              plan(args.original,args.scratch,args.editor,args.state_file))
         if args.checkpoint:
             data["checkpoint"]=write_checkpoint(data,args.state_file)
             data["writes_performed"]=1
