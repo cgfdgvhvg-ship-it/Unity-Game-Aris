@@ -1665,6 +1665,18 @@ def execute(job):
     if op == "system_storage_audit":
         if args: raise ValueError("system storage audit takes no arguments")
         return {"exit_code":0,"stdout":json.dumps(system_storage_audit(),ensure_ascii=False),"stderr":""}
+    if op == "unity_session_stop_simulation":
+        if args: raise ValueError("Stop simulation takes no arguments")
+        if not RECOVERY_SCRIPT.is_file() or RECOVERY_SCRIPT.is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"Reviewed Unity checkpoint not staged"}
+        result=subprocess.run(
+            ["python3",str(RECOVERY_SCRIPT),
+             "--original",str(PROJECT),"--editor",str(EDITOR),
+             "--state-file",str(RECOVERY_STATE),"--simulate-stop"],
+            text=True,capture_output=True,timeout=60,check=False
+        )
+        return {"exit_code":result.returncode,"stdout":result.stdout[-12000:],
+                "stderr":result.stderr[-900:]}
     if op == "unity_session_status":
         if args: raise ValueError("Session status takes no arguments")
         return {"exit_code":0,"stdout":json.dumps(_session_plan(),
