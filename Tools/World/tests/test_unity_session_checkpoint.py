@@ -106,6 +106,29 @@ class RestartTests(unittest.TestCase):
         self.assertTrue(now["previous_checkpoint_present"])
         self.assertTrue(any("may have been lost" in w for w in now["warnings"]))
 
+    def test_last_successful_camera_view_is_retained(self):
+        command_dir=self.scratch.parent/"control"/"unity-commands"
+        result_dir=self.scratch.parent/"control"/"unity-results"
+        command_dir.mkdir(parents=True)
+        result_dir.mkdir(parents=True)
+        payload={"action":"inspect","cameraTarget":{"x":102.307,"y":-10.85,"z":62.974}}
+        (command_dir/"my-view.json").write_text(json.dumps(payload))
+        (result_dir/"my-view.json").write_text(json.dumps({"status":"ok"}))
+        report=self.plan()
+        self.assertAlmostEqual(report["last_camera_target"]["x"],102.307)
+        saved=cp.write_checkpoint(report,self.state)
+        self.assertAlmostEqual(saved["last_camera_target"]["z"],62.974)
+
+    def test_failed_camera_action_is_not_saved(self):
+        command_dir=self.scratch.parent/"control"/"unity-commands"
+        result_dir=self.scratch.parent/"control"/"unity-results"
+        command_dir.mkdir(parents=True)
+        result_dir.mkdir(parents=True)
+        (command_dir/"bad.json").write_text(json.dumps(
+            {"action":"capture","cameraTarget":{"x":5,"y":6,"z":7}}))
+        (result_dir/"bad.json").write_text(json.dumps({"status":"error"}))
+        self.assertIsNone(self.plan()["last_camera_target"])
+
     def test_refuse_checkpoint_on_unsafe_symlink(self):
         report=self.plan()
         self.state.symlink_to(self.original/cp.SCENE)
