@@ -32,9 +32,9 @@ class SweptVehicleEnvelopeTests(unittest.TestCase):
                          {r["spawn_name"] for r in self.manifest["rows"]})
         self.assertGreater(result["minimum_envelope_to_building_gap_m"],1.0)
 
-    def test_wide_vehicle_cannot_silently_pass(self):
+    def test_oversized_vehicle_cannot_silently_pass(self):
         with self.assertRaisesRegex(ClearanceError,"intersects building"):
-            audit(self.layout,vehicle_width_m=12)
+            audit(self.layout,vehicle_length_m=20)
 
     def test_future_house_scale_what_if_and_bad_inputs(self):
         report=audit(self.layout,desired_house_scales={
