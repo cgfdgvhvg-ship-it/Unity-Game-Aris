@@ -1,3 +1,43 @@
+## 2026-11-05 VERIFIED — AI-controlled native Unity Editor without noVNC
+
+**Read this newer result before the historical 2026-11-04 blocked-import notes below.**
+The actual Unity **6000.3.26f1 graphical Editor** was launched with an
+invisible Xvfb display :12 (NOT headless `-batchmode`, no phone/noVNC).
+On the existing Codespace, the **scratch project copy**
+`/tmp/aaris-unity-batch/project` loaded
+`Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity` in Unity:
+**4 Terrains, 7,508 native terrain trees, 84 Prefabs, 256 Materials**.
+The Editor Bridge's `inspect` returned real terrain/nearby-tree positions,
+slope and native IDs; `move_tree` saved an exact 1m change to the native
+TerrainData, independently verified it and reversed it. `scale_tree` saved
++10% tree width, reversed it and independently verified original scale.
+A **real URP Camera JPG** was rendered, downloaded from a 1-day
+private GitHub Actions artifact, and visually inspected by AI.
+**ALL edits and imports were on /tmp scratch only**, not on the original
+dirty /workspaces game project; test edits were restored.
+
+The tested controller operations currently reside on the dedicated
+`ai/codespace-jobs` branch, NOT all merged to main:
+`unity_virtual_gui_launch`, `unity_virtual_gui_status`,
+`unity_virtual_live`, `unity_virtual_result`, `unity_virtual_frame`.
+Wait for each Actions run + result before submitting the next unique
+`.aaris/jobs/*.json` job. A virtual X11 display is needed for normal
+Unity Personal licensing but **VNC is not needed**. The `-batchmode
+-nographics` experiment failed with missing
+`com.unity.editor.headless` entitlement; do not repeat it.
+
+**CRITICAL LIMITATION:** /tmp is NONPERSISTENT and the original Codespace
+persistent disk had only 0.355 GiB free. If Codespace stops, the
+successful scratch Unity import cache disappears. Do NOT claim
+restart-safe caching, do NOT write promoted core assets into the original
+working tree, and do NOT reset its modified/untracked files. Permanent
+Git LFS PR promotion from scratch is not yet implemented/verified.
+
+**Full verified audit, run links and API examples:**
+`Docs/UNITY_AI_NO_VNC_VERIFIED_20261105.md`.
+
+---
+
 ## Unity full-Editor image and targeted LFS sync (2026-11-04)
 
 **No graphics downgrade:** keep complete official Unity 6000.3.26f1,
