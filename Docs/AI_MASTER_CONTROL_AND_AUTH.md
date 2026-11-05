@@ -58,6 +58,12 @@ Do **not** expect this command to report repository read ready when run inside C
 - If a third-party AI needs unattended independent GitHub access beyond its existing connector, install a **GitHub App only on this repository** with the minimum required permissions (Contents: read/write as necessary, Pull requests: write if PR creation is needed, Actions: read only if run logs needed). Store its private key in GitHub Actions Secrets, not the game repo. Use short-lived installation tokens minted per job. Do not use a permanent "all scopes" PAT to grant "anything anywhere" access.
 - No AI agent can obtain someone else's GitHub credential merely by reading instructions. A user must authorize each new integration; if it isn't connected, it cannot operate this private repo.
 
+## Verified regression test gate (2026-11-05)
+
+Every owner-only job pushed to `ai/codespace-jobs` now performs **Python syntax validation and the eight master GitHub authentication unit tests** before the privileged Codespace step. This prevents running a later unintended/broken auth helper in the current workflow. The **real** GitHub Actions run [42027193573](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/42027193573) reported `Ran 8 tests ... OK`; its Codespace job then fetched **current main** `c37d49c52e63ef80684c0a876d8e2df5b3e96f72` with the ephemeral read-only GitHub token and returned a successful SHA-verified report with **0 new game changes**. Its six scratch tree prefab conflicts and scene/settings differences were deliberately preserved. No additional PAT is required for this workflow, but this does **not** grant arbitrary external AIs authenticated GitHub access without their own authorized connector/installation.
+
+Only the dedicated queue branch `.github/workflows/ai-codespace-on-demand.yml` is used by these owner jobs; its source/test guard is updated there, not the default `main` branch workflow. If a preflight test fails, do not interpret the resulting job failure as an expired credential without reading the test step.
+
 ## Failure handling
 
 - **GitHub repo read fails**: check job's GITHUB_TOKEN presence, contents:read, GITHUB_REPOSITORY, Actions checkout and pinned ref; do not ask user to send a PAT in chat.
