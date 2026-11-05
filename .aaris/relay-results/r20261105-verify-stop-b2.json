@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "id": "r20261105-verify-stop-b2",
+  "action": "status",
+  "recorded_utc": "2026-11-05T18:06:41.958Z",
+  "status": "observed",
+  "state": "Shutdown",
+  "source": "cloudflare-scheduled-worker"
+}
