@@ -365,6 +365,7 @@ def flush(*,force=False,original=ORIGINAL,scratch=SCRATCH,
         state["pushed"].update(pushed)
         state["branch"]=branch
         state["last_success"]=datetime.now(timezone.utc).isoformat()
+        state["pending_assets"]={}
         state["last_error"]=None
         state["last_attempt"]=now
         store_state(state,statefile)
@@ -377,21 +378,39 @@ def flush(*,force=False,original=ORIGINAL,scratch=SCRATCH,
 
 
 def watch(poll_seconds=15,*,max_cycles=None):
+    """Poll while this Codespace is running; leave durable UNSAVED markers."""
     cycles=0
     while max_cycles is None or cycles<max_cycles:
         cycles+=1
         try:
+            state=load_state()
+            if not state:
+                raise SyncError("Sync not armed; run arm after original project review")
+            files=scan(state)["candidates"]
+            pending={name:{"sha256":item["sha256"],"first":item["first"]}
+                     for name,item in files.items()}
+            if state.get("pending_assets")!=pending:
+                state["pending_assets"]=pending
+                store_state(state)
             snapshot=status()
-            if snapshot.get("safe_to_push"):
+            last_try=state.get("last_attempt")
+            # Do not attempt a costly authenticated remote push every 15 sec
+            # after a conflict or missing credential.
+            backoff=(last_try is not None and state.get("last_error") is not None
+                     and time.time()-last_try<180)
+            if snapshot.get("safe_to_push") and not backoff:
                 flush(force=False)
         except (SyncError,OSError,ValueError) as exc:
             state=load_state()
             if state:
                 state["last_error"]=str(exc)[:300]
                 state["last_attempt"]=time.time()
-                try:store_state(state)
-                except (SyncError,OSError):pass
-        time.sleep(poll_seconds)
+                try:
+                    store_state(state)
+                except (SyncError,OSError):
+                    pass
+        if max_cycles is None or cycles<max_cycles:
+            time.sleep(poll_seconds)
 
 
 def main(argv=None):
