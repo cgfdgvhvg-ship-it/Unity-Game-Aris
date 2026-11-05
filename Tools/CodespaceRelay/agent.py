@@ -183,6 +183,19 @@ def execute(job):
         if data.get('id')!=job['id'] or data.get('operation')!=operation:
             raise ValueError('Result identity mismatch')
         code=int(data.get('exit_code',1))
+        if job['command']=='unity_camera_focus' and code==0:
+            try:
+                scene_result=json.loads(str(data.get('stdout','')))
+            except (ValueError,TypeError):
+                scene_result={}
+            if scene_result.get('pending'):
+                return {'id':job['id'],'status':'error','exit_code':3,
+                        'stdout':str(data.get('stdout',''))[-8500:],
+                        'stderr':'Unity Editor compilation/camera focus pending; recheck later with a new job'}
+            if scene_result.get('status')!='ok':
+                return {'id':job['id'],'status':'error','exit_code':3,
+                        'stdout':str(data.get('stdout',''))[-8500:],
+                        'stderr':'No confirmed SceneView camera focus result'}
         return {'id':job['id'],'status':'ok' if data.get('ok') and code==0 else 'error',
                 'exit_code':code if code in (-1,0,1,2,3,124,127) else 1,
                 'stdout':str(data.get('stdout',''))[-8500:],
