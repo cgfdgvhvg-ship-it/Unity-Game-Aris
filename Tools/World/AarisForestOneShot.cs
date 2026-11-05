@@ -47,6 +47,22 @@ namespace Aaris.WorldAutomation
                     expectedDigest = expected
                 };
                 AarisForestCoreAuthoring.Run(request, reply, mode == "apply");
+                if (reply.forestReports == null ||
+                    (mode == "plan" && reply.forestReports.Length != 4) ||
+                    (mode == "apply" && reply.forestReports.Length != 1))
+                    throw new InvalidOperationException("Missing native tree-only report");
+                int treeTotal = 0, rockTotal = 0, shrubTotal = 0;
+                foreach (var tile in reply.forestReports)
+                {
+                    treeTotal += tile.actualTrees;
+                    rockTotal += tile.preservedRocks;
+                    shrubTotal += tile.preservedShrubs;
+                    if (tile.changedCount != tile.actualTrees)
+                        throw new InvalidOperationException("Not every genuine tree was rescaled");
+                }
+                if (mode == "plan" && (treeTotal != 1939 || rockTotal != 5564 ||
+                    shrubTotal != 5 || reply.terrainTreeCount != 7508))
+                    throw new InvalidOperationException("Unexpected full-map tree category split");
                 reply.status = "ok";
                 exitCode = 0;
                 Debug.Log("AARIS_FOREST_CORE_ONESHOT_OK mode=" + mode +
