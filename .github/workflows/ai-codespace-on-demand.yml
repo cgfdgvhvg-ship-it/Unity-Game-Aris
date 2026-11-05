@@ -47,5 +47,6 @@ jobs:
           path: |
             ${{ runner.temp }}/aaris-results/*.json
             ${{ runner.temp }}/aaris-results/*.jpg
+            ${{ runner.temp }}/aaris-results/*.zip
           if-no-files-found: warn
           retention-days: 1
