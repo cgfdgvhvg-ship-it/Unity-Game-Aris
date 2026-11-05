@@ -1,3 +1,15 @@
+# AI MASTER CONTROL AND GITHUB CREDENTIALS — READ THIS FIRST (2026-11-05)
+
+**Authoritative agent entrypoint:** [Docs/AI_MASTER_CONTROL_AND_AUTH.md](Docs/AI_MASTER_CONTROL_AND_AUTH.md). This is the current GitHub/Codespace/Unity/LFS operating contract, overriding historical terminal guidance below (especially the old Issue #37 bridge). Owner/repo: `Aaris-khan-don/Unity-Game-Aris`. The default code source is `main`; the dedicated, owner-only command queue is a **different** branch, `ai/codespace-jobs`.
+
+**One straightforward route for any authorized AI:** (1) use its owner-approved GitHub connector to read this repo; (2) submit exactly one `.aaris/jobs/<unique-id>.json` on `ai/codespace-jobs` with a supported, reviewed `operation`; (3) watch the `Aaris Codespace On-Demand Terminal` Actions run; (4) parse the matching `AARIS_RESULT_JSON`, validate `ok`/exit and native Unity readback; (5) save verified native changes through the **separate** `unity-batched-github-upload.yml` LFS writer, then validate the remote branch/receipt and PR before merge. No Issue #37 command is the default. No arbitrary shell/unsafe repo mutation is permitted from job JSON.
+
+**Master auth router:** `Tools/World/ai_master_github_auth.py` uses a short-lived `GITHUB_TOKEN` (or already-minted limited GitHub App installation token) to fetch *only this repo/main* into an ephemeral GitHub Actions checkout, using temporary `GIT_ASKPASS`. `AARIS_CODESPACE_TOKEN` is a **separate GitHub Actions secret** for the existing Codespace lifecycle and SSH, not for source git writes. Git LFS commits use Actions `GITHUB_TOKEN` with narrowly scoped `contents: write` ONLY in the dedicated verified uploader. This corrects the earlier private `git fetch` password-prompt failure; the later exact-main read/sync succeeded. Original Codespace git credentials may still be unavailable, so never assume you can push directly from the dirty checkout.
+
+**No global master password:** NEVER ask the owner to send tokens in chat, store them in source/AGENTS/jobs/logs, grant an AI all GitHub account permissions, or silently change/create Codespace machines. Other AIs need their own authorized connector or an owner-installed repo-scoped GitHub App. Check `python Tools/World/ai_master_github_auth.py status` in Actions for **boolean readiness only**. User worktree and `.meta` files are protected; `/tmp` Unity scratch is disposable and does not survive shutdown.
+
+---
+
 # CURRENT POST-MERGE UNITY FOLIAGE QA — 2026-11-05
 
 The **saved PR #71 SpeedTree8 PBRLit shader fix is verified in the native Unity 6000.3.26f1 Editor against the actual merged-main material bytes**, not just an unsynced A/B preview. Frozen main `08c57c62` was read through one ephemeral read-only Actions token and 12/12 foliage/billboard `.mat` core files exactly matched the isolated Unity Editor copy. Matching 960×540 forest capture had **0 detected magenta-color pixels**, versus **8,173** in the original custom-ShaderGraph render (heuristic RGB color mask). Source evidence and image hash: [Docs/URP_FOLIAGE_POST_MERGE_EDITOR_QA_20261105.md](Docs/URP_FOLIAGE_POST_MERGE_EDITOR_QA_20261105.md).
@@ -659,14 +671,8 @@ connector without opening Termux, provided the owner has configured the
   `ok`, and `exit_code`. The old Issue #37 `AARIS_JOB/AARIS_RESULT` worker
   is a **legacy/manual fallback only**. A queued commit or running workflow is
   not proof of execution or an actual Unity screenshot.
-- Supported operations today: `diagnose`, `desktop_xterm`, `desktop_diagnose`, `unity_version`,
-  `world_doctor` (empty args), and limited `terminal_readonly` with a
-  diagnostic argv array. New mutating operations require explicit authorisation,
-  review, tests and disk/dirty-worktree protections. Do not pass arbitrary
-  shell/Python from untrusted prompts.
-- If Actions shows `SETUP_REQUIRED`, no Codespaces token is configured:
-  request the **one-time Termux** secret bootstrap documented in the runbook;
-  do not ask for credentials in chat, AGENTS.md, PRs, Issues or job files.
+- The operations listed in the older 2026-11-04 paragraphs are **historical examples**, not the current exhaustive set. For any new job, read `validate_job()` in `ai/codespace-jobs/Tools/World/ai_codespace_remote.py` AND the matching reviewed executor on that branch. Never pass arbitrary shell/Python, unreviewed paths, or credentials from prompts.
+- If Actions shows `SETUP_REQUIRED`, check the owner-managed `AARIS_CODESPACE_TOKEN` repository Actions secret in GitHub Settings; use GitHub's private Secrets UI or a local authenticated CLI for one-time setup, not a credential in chat. A working Codespace workflow already demonstrates this credential exists; do not demand a replacement token without an actual permission/expiry failure.
   A separate fine-grained token with GitHub Codespaces lifecycle permission is
   preferred. If SSHD is broken or the Codespace is deleted/out of quota, a
   stopped container cannot repair itself; present the actual error and a
@@ -709,7 +715,7 @@ The planner inspects the original and proposed locations, reports precise coordi
 
 ## AI remote Codespace access (2026-11-04)
 
-**New AI sessions: read this first.** This private repo has an owner-authorised GitHub Issue command bridge connected to Codespace `musical-carnival-jjxp9r6vw45wfjgvg`. To inspect live saved map files without copying terminal output manually, follow the complete [AI Codespace Bridge runbook](https://github.com/Aaris-khan-don/Unity-Game-Aris/blob/ai/codespace-terminal-bridge/Docs/AI_CODESPACE_BRIDGE.md) and read [the AI world sensor](https://github.com/Aaris-khan-don/Unity-Game-Aris/blob/ai/codespace-terminal-bridge/Tools/World/ai_world_observe.py). These files currently live on branch `ai/codespace-terminal-bridge`; **do not assume that branch is checked out in Codespace**.
+**HISTORICAL / DEPRECATED PRIMARY PATH:** For new AI sessions first read [the current master controller](Docs/AI_MASTER_CONTROL_AND_AUTH.md) and use the owner-only `ai/codespace-jobs` GitHub Actions queue, **not Issue #37**. The following older paragraph documents a legacy owner-authorised GitHub Issue command bridge connected to Codespace `musical-carnival-jjxp9r6vw45wfjgvg`. To inspect live saved map files without copying terminal output manually, follow the complete [AI Codespace Bridge runbook](https://github.com/Aaris-khan-don/Unity-Game-Aris/blob/ai/codespace-terminal-bridge/Docs/AI_CODESPACE_BRIDGE.md) and read [the AI world sensor](https://github.com/Aaris-khan-don/Unity-Game-Aris/blob/ai/codespace-terminal-bridge/Tools/World/ai_world_observe.py). These files currently live on branch `ai/codespace-terminal-bridge`; **do not assume that branch is checked out in Codespace**.
 
 The [authenticated command inbox is Issue #37](https://github.com/Aaris-khan-don/Unity-Game-Aris/issues/37). With permission to post as GitHub user `Aaris-khan-don`, an AI may submit a comment whose first line is `AARIS_JOB` followed by a JSON command, for example:
 
