@@ -10,6 +10,7 @@ import argparse
 import getpass
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -31,6 +32,7 @@ SUPPORTED = {
     'desktop_live_status': ('desktop_diagnose', 0),
     'unity_virtual_start': ('unity_virtual_gui_launch', 0),
     'unity_virtual_status': ('unity_virtual_gui_status', 0),
+    'unity_camera_focus': ('unity_virtual_live', 3),
     'unity_status': ('unity_session_status', 0),
     'unity_recover': ('unity_session_recover', 0),
     'unity_gallery_start': ('unity_house_bridge_gallery_start', 0),
@@ -50,7 +52,11 @@ def validate_job(job):
     expected = SUPPORTED[job['command']][1]
     if not isinstance(job['args'], list) or len(job['args']) != expected:
         raise ValueError('Wrong argument count')
-    if expected and (not isinstance(job['args'][0],str) or
+    if job['command'] == 'unity_camera_focus':
+        if any(not isinstance(n,(int,float)) or isinstance(n,bool) or
+               not math.isfinite(n) or abs(n)>20000 for n in job['args']):
+            raise ValueError('Invalid camera coordinate')
+    elif expected and (not isinstance(job['args'][0],str) or
                      not ARG_RE.fullmatch(job['args'][0])):
         raise ValueError('Invalid gallery/frame ID')
     return job
@@ -119,7 +125,11 @@ def execute(job):
                 'stderr':'Approved native Unity command runner not staged'}
     operation = SUPPORTED[job['command']][0]
     jobfile=STAGE/(job['id']+'.json')
-    payload={'id':job['id'],'operation':operation,'args':job['args']}
+    approved_args=job['args']
+    if job['command']=='unity_camera_focus':
+        v=dict(zip(('x','y','z'),job['args']))
+        approved_args=[json.dumps({'action':'inspect','cameraTarget':v,'radius':20,'limit':12},separators=(',',':'))]
+    payload={'id':job['id'],'operation':operation,'args':approved_args}
     # Keep job file append-only: do not run an overwritten or changed job.
     if jobfile.exists() or jobfile.is_symlink():
         if not jobfile.is_file() or json.loads(jobfile.read_text())!=payload:
