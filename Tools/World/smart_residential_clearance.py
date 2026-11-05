@@ -122,6 +122,12 @@ def simulation(layout):
             before = box_gap(before_bay, house_box(house))
             after = box_gap(after_bay, house_box(
                 house,HOUSE_FACTORS.get(house["model"],1.0)))
+            if before + EPS < MIN_SERVED_BAY_CLEARANCE_M:
+                raise ClearanceError("Existing spawn already intrudes into building: "+
+                                     spot["name"]+" -> "+house["name"])
+            if after + EPS < MIN_SERVED_BAY_CLEARANCE_M:
+                raise ClearanceError("Enlarged building intrudes into vehicle reservation: "+
+                                     spot["name"]+" -> "+house["name"])
             if after + EPS < min(before,SMALL_CLEARANCE_M):
                 raise ClearanceError("New reservation/building conflict: "+
                                      spot["name"]+" -> "+house["name"])
