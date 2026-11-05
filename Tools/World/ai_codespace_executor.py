@@ -1323,14 +1323,19 @@ def unity_map_camera_capture(job):
     log=BATCH_ROOT/("unity-real-camera-"+ident+".log")
     if any(x.exists() or x.is_symlink() for x in (result,image_path,log)):
         return {"exit_code":3,"stdout":"","stderr":"Existing capture result or frame ID; retry with a unique ID"}
+    vulkan_icd=Path("/usr/share/vulkan/icd.d/lvp_icd.json")
+    if not vulkan_icd.is_file() or vulkan_icd.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Software Vulkan driver not installed"}
     env=os.environ.copy()
+    env["VK_ICD_FILENAMES"]=str(vulkan_icd)
+    env["VK_DRIVER_FILES"]=str(vulkan_icd)
     env.update({"DISPLAY":":12","AARIS_SHOT_ID":ident,"AARIS_SHOT_ZONE":zone,
                 "XDG_CACHE_HOME":str(BATCH_ROOT/"xdg-cache"),
                 "TMPDIR":str(BATCH_ROOT/"temp"),
                 "UPM_CACHE_ROOT":str(BATCH_ROOT/"upm-cache")})
     for name in ("xdg-cache","temp","upm-cache"):
         (BATCH_ROOT/name).mkdir(parents=True,exist_ok=True)
-    cmd=[str(EDITOR),"-projectPath",str(project),
+    cmd=[str(EDITOR),"-batchmode","-force-vulkan","-projectPath",str(project),
          "-executeMethod","Aaris.WorldAutomation.AarisMapCameraOneShot.Execute",
          "-logFile",str(log),"-job-worker-count","2"]
     with log.open("wb") as output:
@@ -1374,7 +1379,7 @@ def unity_map_camera_capture(job):
         if proc.poll() is not None:break
         time.sleep(.4)
     return {"exit_code":0,"stdout":json.dumps({
-        "status":"verified_real_unity_scene_capture",
+        "status":"verified_real_unity_scene_capture","renderBackend":"software_vulkan",
         "zone":zone,"bytes":len(data),"sha256":report.get("jpegSha256"),
         "terrainInstances":report.get("terrainInstances"),
         "nativeAssetsMatchMergedMain":True,
