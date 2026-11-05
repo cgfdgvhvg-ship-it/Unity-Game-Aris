@@ -1,3 +1,69 @@
+# Verified native core TreeInstance edit + LFS handoff (2026-11-05)
+
+**Real successful example, not a synthetic workflow:**
+
+1. GitHub owner queue submitted `unity_virtual_gui_status` job
+   `unity-core-tree-status-20261105-r11`: Unity 6000.3.26f1 Scene
+   loaded with 7,508 native trees
+   ([run 41969663382](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41969663382)).
+   `unity_sync_dry_run` initially returned `no_changes`,
+   `pushed:false` ([41970219166](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41970219166)).
+2. `unity-native-forest-inspect-20261105-r14` used
+   `unity_virtual_live` with
+   `{"action":"inspect","cameraTarget":{"x":120,"y":0,"z":75},"radius":95,"limit":40}`
+   and returned real native `terrain-tree:GlobalObjectId...:index`
+   IDs, exact `expectedPosition`, `widthScale`, `heightScale`,
+   and `sourceAsset`. See
+   [run 41970371200](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41970371200).
+3. `unity-native-tree-710-mature-20261105-r15` invoked
+   `unity_virtual_live` using `action:"scale_tree"` with tree
+   index **710**, `scale:{"x":1.10,"y":1,"z":1}`, and
+   the exact previous position `(97.196,-11.720,75.802)`.
+   Unity reported saved
+   `Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_2_2_b6e03cf0-de91-4cae-b6af-0128d856ae43.asset`;
+   width `0.8439 -> 0.9282901`, height stayed `0.8593`.
+   Separate job `unity-native-tree-710-verify-20261105-r16`
+   independently re-read the exact value in the Unity Editor
+   ([41970674238](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41970674238)).
+   Second Unity edit `unity-native-tree-573-mature-20261105-r17`
+   saved index **573**, width `0.8609 -> 0.9555990` and
+   height unchanged `0.8896`
+   ([41970787240](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41970787240)).
+   **The second tree still needs independent inspect.** These are
+   *saved whole-tree width instance edits*, NOT selective baked trunk meshes.
+4. `unity_sync_watch_start` returned `watch_already_running`.
+   `unity_sync_status` returned `changes_pending`, 1 tracked
+   TerrainData asset, 0 queued commands, safe_to_push true
+   ([41970968091](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41970968091)).
+5. Commit exactly one job
+   `{"id":"unity-native-core-save-20261105-r20","operation":"unity_sync_save_session","args":[]}`
+   with commit title starting `Unity Batch Save:`.
+   Do NOT treat the delegate workflow as completion. The **privileged**
+   Git LFS writer completed
+   [41971035263](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41971035263)
+   with `verified_github_batch_saved`,
+   `codespace_acknowledged:true`, `original_unmodified:true`,
+   **1 native asset**, review branch
+   `ai/unity-batched-20261105-049503278c`, commit
+   `bdfd20d297475e4c01bdf8b10bd38675da404edf`.
+   Read-back GitHub LFS pointer for that tracked `.asset`:
+   new SHA256 `be8b587035c201a5b24f6bfb513201d562ae99699a0ec7a0d96f7e16290fa34e`
+   versus main `113c4b11ab5f7e6cba20f60a6b8bbc061d0f72d335827d48c98fff855a7faf07`.
+   Draft [PR #64](https://github.com/Aaris-khan-don/Unity-Game-Aris/pull/64) is
+   **not merged**; it is the native core save review, not a global tree bake.
+
+**For a new AI:** repeat the guarded native Editor inspection/edit/readback,
+explicit Save Session and verified LFS writer receipt. The **user's larger
+requirement remains unmet**: bake species-aware bark/trunk meshes into actual
+Unity mesh core assets for the full map, with preserved SpeedTree UV/wind/LOD
+semantics and exact prefab mesh references, then extend reviewed LFS
+authoring if new `.asset`/`.meta` identities are needed. Never substitute
+an importer-only PR or global TreeInstance scaling and claim it is full
+baked mesh geometry. Do not blindly merge PR #63 or #64 without native
+Unity and LFS semantic/collision validation.
+
+---
+
 # PRIMARY RULE — EDIT AND SAVE REAL UNITY TREE CORE ASSETS (2026-11-05)
 
 **User requirement (highest priority for tree geometry work):** Do not
