@@ -2725,6 +2725,111 @@ def unity_house_bridge_gallery(job):
             "original_worktree_untouched":True,
             "note":"The existing compiled Unity C# bridge handles captures without new Editor imports"
         }),"stderr":""}
+    if op=="unity_house_bridge_gallery_partial_export":
+        # Recover all verified frames even if the Unity renderer crashed
+        # before the planned 15 captures. Never invent missing pictures.
+        import zipfile
+        import csv
+        import io
+        if len(job["args"])!=1 or not re.fullmatch(r"[a-z][a-z0-9-]{3,55}",job["args"][0]):
+            raise ValueError("Partial photo export needs exact existing survey ID")
+        survey=job["args"][0]
+        planfile=marker/(survey+".json")
+        if not planfile.is_file() or planfile.is_symlink() or planfile.stat().st_size>400000:
+            return {"exit_code":3,"stdout":"","stderr":"Existing native survey manifest unavailable"}
+        plan=json.loads(planfile.read_text())
+        houses=plan.get("houses")
+        if (plan.get("id")!=survey or plan.get("expected_photo_count")!=15
+                or not isinstance(houses,list) or len(houses)!=3):
+            raise ValueError("Unreviewed source gallery; refuse partial export")
+        found=[]; pending=[]; measured=[]; ids=set(); names=set()
+        for house in houses:
+            inspect_id=house.get("inspect_id")
+            report=results/(str(inspect_id)+".json")
+            if not isinstance(inspect_id,str) or not re.fullmatch(r"[a-z][a-z0-9-]{3,55}",inspect_id):
+                raise ValueError("Invalid source inspection ID")
+            if report.is_file() and not report.is_symlink() and report.stat().st_size<=150000:
+                info=json.loads(report.read_text())
+                if (info.get("id")!=inspect_id or info.get("action")!="inspect"
+                        or info.get("status")!="ok"):
+                    raise ValueError("Native source inspection failed")
+                matches=[x for x in info.get("nearbyObjects",[])
+                         if x.get("name")==house.get("name")
+                         and x.get("rendererSize",{}).get("y",0)>1]
+                if len(matches)!=1:
+                    raise ValueError("Cannot identify renderer-backed source house")
+                measured.append({"name":house["name"],"size_m":matches[0]["rendererSize"],
+                                 "world_position":matches[0]["position"]})
+            else:
+                pending.append(inspect_id)
+            for photo in house.get("photos",[]):
+                ident=photo.get("id")
+                filename=photo.get("photo_name")
+                if (not isinstance(ident,str)
+                        or not re.fullmatch(r"[a-z][a-z0-9-]{3,55}",ident)
+                        or ident in ids or not isinstance(filename,str)
+                        or not re.fullmatch(r"[a-zA-Z0-9_-]{6,130}\.jpg",filename)
+                        or filename in names or photo.get("house")!=house.get("name")):
+                    raise ValueError("Unsafe photo identity in source manifest")
+                ids.add(ident); names.add(filename)
+                response=results/(ident+".json")
+                frame=frames/(ident+".jpg")
+                if (not response.is_file() or not frame.is_file()):
+                    pending.append(ident)
+                    continue
+                if (response.is_symlink() or frame.is_symlink()
+                        or response.stat().st_size>150000
+                        or not 3000<=frame.stat().st_size<=3*1024*1024):
+                    raise ValueError("Unsafe photo evidence")
+                reply=json.loads(response.read_text())
+                if (reply.get("id")!=ident or reply.get("action")!="capture"
+                        or reply.get("status")!="ok"):
+                    pending.append(ident)
+                    continue
+                data=frame.read_bytes()
+                if not data.startswith(b"\xff\xd8") or not data.endswith(b"\xff\xd9"):
+                    raise ValueError("Invalid native Unity JPEG")
+                found.append((filename,data,ident,photo["view"],house["name"],
+                              hashlib.sha256(data).hexdigest()))
+        if len(ids)!=15 or not found:
+            return {"exit_code":3,"stdout":"","stderr":"No verified native Unity photos to export"}
+        if len(found)>15 or sum(len(row[1]) for row in found)>30*1024*1024:
+            raise ValueError("Unbounded source photo archive")
+        exports.mkdir(mode=0o700,parents=True,exist_ok=True)
+        output=exports/(survey+"-partial.zip")
+        if output.exists() or output.is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"Previous partial archive exists; preserve it"}
+        tmp=exports/(survey+"-partial.new")
+        if tmp.exists() or tmp.is_symlink():
+            raise ValueError("Unsafe pre-existing partial archive stage")
+        summary={"survey_id":survey,"status":"incomplete_verified_native_unity_gallery",
+                 "expected_photos":15,"captured_photos":len(found),
+                 "missing_photo_jobs":pending,"measured_houses":measured,
+                 "images":[{"name":row[0],"id":row[2],"view":row[3],
+                            "house":row[4],"sha256":row[5]} for row in found],
+                 "source_game_assets_untouched":True}
+        try:
+            with zipfile.ZipFile(tmp,"w",compression=zipfile.ZIP_DEFLATED,compresslevel=5) as archive:
+                archive.writestr("README.txt",
+                    "PARTIAL REAL UNITY HOUSE GALLERY: "
+                    +str(len(found))+"/15 valid JPEGs.\n"
+                    "The source Unity Editor crashed before completing other views.\n"
+                    "Do not treat this as a completed rendering/physics validation.\n"
+                    "Images originate from the inspected real Unity terrain scene.\n")
+                archive.writestr("HOUSE_INSPECTION.json",json.dumps(summary,indent=2))
+                for filename,data,*_ in found:
+                    archive.writestr("photos/"+filename,data)
+            os.replace(tmp,output)
+        finally:
+            if tmp.is_file() and not tmp.is_symlink():
+                tmp.unlink()
+        return {"exit_code":0,"stdout":json.dumps({
+            "status":"partial_native_unity_gallery_exported","id":survey,
+            "photos":len(found),"expected_photos":15,"pending_count":len(pending),
+            "bytes":output.stat().st_size,
+            "sha256":hashlib.sha256(output.read_bytes()).hexdigest(),
+            "format":"zip","original_assets_untouched":True
+        },ensure_ascii=False),"stderr":""}
     if op!="unity_house_bridge_gallery_export" or len(job["args"])!=1:
         raise ValueError("House gallery export requires one prior job ID")
     ref=job["args"][0]
