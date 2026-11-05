@@ -2554,6 +2554,59 @@ def desktop_snapshot(job_id):
     return {"exit_code":0,"stdout":json.dumps(info),"stderr":""}
 
 
+def unity_house_helper_quarantine():
+    """Safely unstage only our new house photo helper from the disposable project.
+
+    This handles a Unity import freeze: source, .meta and pending request are
+    quarantined byte-for-byte, never deleted or copied into original worktree.
+    """
+    scratch=BATCH_ROOT/"project"
+    target=scratch/"Assets/AarisWorld/Editor/AarisHousePhotoSurvey.cs"
+    stage=Path("/workspaces/.aaris-world-bridge/ondemand/AarisHousePhotoSurvey.cs")
+    safe=BATCH_ROOT/"house-survey-cs-quarantine"
+    if _scratch_unity_pids():
+        return {"exit_code":3,"stdout":"","stderr":"Cannot change Editor scripts with Unity running"}
+    if (not scratch.is_dir() or scratch.is_symlink() or not target.is_file() or target.is_symlink()
+            or not stage.is_file() or stage.is_symlink()):
+        return {"exit_code":3,"stdout":"","stderr":"Verified helper source missing"}
+    original=target.read_bytes()
+    if original!=stage.read_bytes() or b"public static class AarisHousePhotoSurvey" not in original:
+        return {"exit_code":3,"stdout":"","stderr":"Original house helper differs; preserving it"}
+    if safe.exists() or safe.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"House helper already quarantined"}
+    safe.mkdir(mode=0o700)
+    items=[(target,safe/target.name)]
+    mate=Path(str(target)+".meta")
+    if mate.exists():
+        if mate.is_symlink() or not mate.is_file():
+            return {"exit_code":3,"stdout":"","stderr":"Unexpected helper .meta"}
+        items.append((mate,safe/mate.name))
+    pending=VIRTUAL_CONTROL/"house-requests"/"unity-house-views-20261105-h01.json"
+    if pending.exists():
+        if pending.is_symlink() or not pending.is_file():
+            return {"exit_code":3,"stdout":"","stderr":"Unsafe original survey request"}
+        items.append((pending,safe/"house-survey-request.json"))
+    moved=[]
+    try:
+        for src,dst in items:
+            digest=hashlib.sha256(src.read_bytes()).hexdigest()
+            os.replace(src,dst)
+            if hashlib.sha256(dst.read_bytes()).hexdigest()!=digest:
+                raise ValueError("Unverified house helper move")
+            moved.append((src,dst,digest))
+    except BaseException:
+        for src,dst,digest in reversed(moved):
+            if dst.exists():os.replace(dst,src)
+        raise
+    return {"exit_code":0,"stdout":json.dumps({
+        "status":"scratch_house_helper_quarantined",
+        "paths":[str(x.relative_to(BATCH_ROOT)) for _,x,_ in moved],
+        "original_worktree_untouched":True,"all_bytes_preserved":True,
+        "queued_existing_bridge_photos_untouched":True,
+        "next_step":"Native scratch Unity Editor relaunch without experimental helper"
+    }),"stderr":""}
+
+
 def unity_house_bridge_gallery(job):
     """15 genuine Unity scenes captured by the ALREADY RUNNING native bridge.
 
@@ -3211,6 +3264,9 @@ def execute(job):
     if op == "unity_house_gallery_refresh":
         if args: raise ValueError("House Editor asset refresh takes no arguments")
         return unity_forest_editor_refresh(require_forest=False)
+    if op == "unity_house_helper_quarantine":
+        if args: raise ValueError("Quarantine takes no user paths")
+        return unity_house_helper_quarantine()
     if op in {"unity_house_bridge_gallery_start","unity_house_bridge_gallery_export","unity_house_bridge_gallery_diagnose"}:
         return unity_house_bridge_gallery(job)
     if op in {"unity_house_gallery_start","unity_house_gallery_export","unity_house_gallery_diagnose"}:
