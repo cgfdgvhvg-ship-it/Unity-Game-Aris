@@ -142,7 +142,10 @@ def verified_manifest(export,folder):
         if name in paths:
             raise RunnerError("Duplicate asset in Unity transfer")
         paths.append(name)
-        total+=item.get("bytes",0)
+        length=item.get("bytes")
+        if isinstance(length,bool) or not isinstance(length,int) or not (0<length<=sync.MAX_BYTES):
+            raise RunnerError("Invalid Unity native asset size")
+        total+=length
         for key in ("sha256","original_sha256","meta_sha256"):
             if not isinstance(item.get(key),str) or not re.fullmatch(r"[a-f0-9]{64}",item[key]):
                 raise RunnerError("Invalid SHA-256 in Unity transfer")
