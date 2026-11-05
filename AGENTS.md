@@ -1,3 +1,9 @@
+# Android 2–3 GB real serialized render-core budget pass (2026-11-05)
+
+Review branch `ai/mobile-render-core-budget-20261105` directly reduces ProjectSettings texture streaming budget from 384 to 192 MB, renderer updates 128→96/frame, concurrent mip requests 64→24, shadow distance 100→72 m, while preserving full-resolution mip availability, LOD bias 1 and two shadow cascades. Across 17 existing structure prefabs and 3 existing prop prefabs, only the LOD2 MeshRenderer casts no realtime shadow; all near renderers, colliders, house dimensions, windows, doors, textures and LOD meshes stay intact. No game runtime wrapper is introduced. Full file-by-file specification and test: `Docs/ANDROID_2GB_RENDER_CORE_PASS_20261105.md` and `Tools/World/tests/test_mobile_render_core.py`. This is a proposed branch until merged; **never assert measured Android FPS / 2 GB compatibility or better visuals than commercial games without real device profiling**.
+
+---
+
 # CURRENT MAIN STATUS — PR #64 MERGED, REAL UNITY RENDER SCREENSHOTS BLOCKED (2026-11-05)
 
 **Authoritative current state:** Owner explicitly requested merge; [PR #64](https://github.com/Aaris-khan-don/Unity-Game-Aris/pull/64) was **successfully merged to `main`**, GitHub-reported merge commit `4c6d9ccc60eb1263297b0d7caadc696d7c998957`. Its four Git LFS native TerrainData files contain saved tree-only scaling for **1,939 real trees**, while **5,564 rocks and 5 shrubs retain original scales**. Historical statements below saying PR #64 is unmerged are obsolete.
