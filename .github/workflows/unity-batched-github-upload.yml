@@ -1,0 +1,47 @@
+name: Unity AI Automatic Verified Git LFS Session Save
+
+on:
+  push:
+    branches: [ai/codespace-jobs]
+    paths: ['.aaris/jobs/*.json']
+  schedule:
+    # Periodic BEST-EFFORT checkpoint while Codespace is running.
+    # Never wakes a stopped Codespace just to save vanished /tmp data.
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: aaris-unity-safe-batched-lfs-writer
+  cancel-in-progress: false
+
+jobs:
+  verified-unity-batch-upload:
+    # Manual save jobs use an explicit owner commit prefix + validated job JSON.
+    # Scheduled workflow runs on default main; no Codespace auto-wake.
+    if: >-
+      github.event_name != 'push' ||
+      (github.actor == 'Aaris-khan-don' &&
+       startsWith(github.event.head_commit.message, 'Unity Batch Save:'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' && 'ai/codespace-jobs' || 'main' }}
+          fetch-depth: 2
+          persist-credentials: false
+          lfs: false
+      - name: Validate changes and use separate authorized Actions uploader
+        env:
+          AARIS_CODESPACE_TOKEN: ${{ secrets.AARIS_CODESPACE_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 Tools/World/unity_actions_batch_sync.py \
+            --event "$GITHUB_EVENT_PATH" \
+            --event-name "$GITHUB_EVENT_NAME" \
+            --workspace "$GITHUB_WORKSPACE"
