@@ -1,3 +1,11 @@
+# Actions-free Codespace relay (2026-11-05; setup NOT YET complete)
+
+GitHub Actions on-demand jobs have been blocked by the account's runner billing/spending limit. A source-only alternative now lives in `Tools/CodespaceRelay/` with deployment and safety instructions in [Docs/CODESPACE_RELAY_NO_ACTIONS.md](Docs/CODESPACE_RELAY_NO_ACTIONS.md).
+
+**Important:** This alternative is **not yet deployed**, and no Codespace stop/start/terminal operation through it has been verified. It needs an independently hosted Cloudflare scheduled Worker (holding narrow GitHub Codespaces lifecycle credentials), and a persistent in-Codespace agent with a verified boot hook. A stopped Codespace cannot run its own scripts, and a GitHub repository commit cannot wake it without a running external service. Do not submit commands to the new `.aaris/relay-jobs/` queue as if they are live until deployment tests succeed. The system uses neither GitHub Actions runner minutes nor public arbitrary shell execution; it does not bypass Codespaces account payment restrictions. `main` and PR #75 are not changed by this queue.
+
+---
+
 # Default remote Codespace terminal for ALL future AI sessions (2026-11-04)
 
 **Use GitHub Actions on-demand controller first; DO NOT post terminal jobs to Issue #37.**
