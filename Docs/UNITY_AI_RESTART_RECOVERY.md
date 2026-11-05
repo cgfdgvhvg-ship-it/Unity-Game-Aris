@@ -80,3 +80,23 @@ persistent project location before launching Editor. Do NOT use Git
 LFS as a cache for generated `Library`; keep LFS for versioned
 game assets. Until that service is available, /tmp recovery requires
 a fresh import and cannot promise last process memory/UI state.
+
+## Actual read-only Codespace STOP rehearsal (2026-11-05)
+
+Running `python3 Tools/World/unity_session_checkpoint.py --simulate-stop`
+produces a **hypothetical**, non-destructive scenario that treats
+/tmp as cleared, without killing Unity or deleting any file.
+[Real Codespace Actions run 41954790293](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41954790293)
+reported `recreate_scratch_and_reimport`, found the persistent
+checkpoint, retained the target (102.307, -10.849, 62.974),
+and left the original Editor process untouched.
+The new `unity_session_stop_simulation` owner-only Actions operation
+runs this same rehearsal; the main `--simulate-stop` Python command
+is read-only and rejects attempts to combine with `--checkpoint`.
+If the original project's core fingerprint changed, it must
+report `blocked_original_changed_since_checkpoint` rather than
+silently opening stale previous content.
+
+The complete next-AI runbook, operation mapping and /tmp path layout
+are at `Docs/UNITY_TMP_AI_HANDOFF.md`.
+
