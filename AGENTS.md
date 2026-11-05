@@ -1,3 +1,32 @@
+## Unity restart-safe checkpoint and AI recovery (2026-11-05)
+
+**Never assume /tmp survives Codespace STOP.** GitHub clears /tmp on
+stop; the original /workspaces/Unity-Game-Aris project survives.
+Running Editor PIDs never survive stop. The successful no-VNC
+Unity session used /tmp scratch, therefore its large imported
+Library is NOT restart-persistent.
+
+New read-only preflight: `python3 Tools/World/unity_session_checkpoint.py`.
+Small durable JSON after a valid live scratch scene:
+`python3 Tools/World/unity_session_checkpoint.py --checkpoint`.
+File lives under persistent
+`/workspaces/.aaris-world-bridge/ondemand/unity-session-checkpoint.json`,
+never inside Assets/Library. It records pinned Scene and core source SHA
+fingerprints, not imported assets or token data. The reviewed queue
+operation `unity_session_recover` should, on the next authorized
+Codespace AI job, reuse an existing Unity Editor, reopen a compatible
+scratch Library if still present, or restart safe scratch copy+import
+if /tmp was cleared. It may NOT replay previous mutating commands,
+overwrite any dirty source files or claim an instant exact resume.
+
+An on-demand AI job can auto-wake the *same* stopped Codespace through
+the existing owner GitHub Actions queue, but an untriggered Codespace
+tab opening does NOT run an AI job by itself. Do not change/rebuild
+devcontainer startup hooks on the user's dirty machine.
+See `Docs/UNITY_AI_RESTART_RECOVERY.md`.
+
+---
+
 ## Verified scratch-to-original Unity core diff (2026-11-05)
 
 Run `python3 Tools/World/unity_scratch_reconcile.py` to compare the real
