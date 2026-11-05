@@ -1028,6 +1028,54 @@ def unity_forest_editor_refresh():
         "note":"Check Unity asset import and C# compiler before any forest core write"}),"stderr":""}
 
 
+def unity_forest_treeonly_tune():
+    """Replace only scratch one-time C# with confirmed broader tree silhouette plan."""
+    if _scratch_unity_pids():
+        return {"exit_code":3,"stdout":"","stderr":"Unity Editor currently running"}
+    probe=json.loads(unity_forest_baseline_probe()["stdout"])
+    if not probe["can_restore_tree_only_baseline"] or not all(
+        x["scratch"].get("sha256")==x["main_expected_sha"]
+        for x in probe["files"]
+    ):
+        return {"exit_code":3,"stdout":"","stderr":"Not at exact four-tile original baseline"}
+    quarantine=BATCH_ROOT/"forest-treeonly-quarantine"
+    proof=quarantine/"prepared.json"
+    if not proof.is_file() or proof.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Verified tree-only restoration proof unavailable"}
+    src=Path("/workspaces/.aaris-world-bridge/ondemand/AarisForestCoreAuthoring.cs")
+    dst=BATCH_ROOT/"project/Assets/AarisWorld/Editor/AarisForestCoreAuthoring.cs"
+    if not src.is_file() or src.is_symlink() or src.stat().st_size>40000 or not dst.is_file() or dst.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Tree-only C# staging identity invalid"}
+    old=dst.read_text(encoding="utf-8")
+    revised=src.read_text(encoding="utf-8")
+    if "categories[i] != 1" not in old or "oldWidth * .61f" not in old:
+        return {"exit_code":3,"stdout":"","stderr":"Unexpected current scratch tree-only source"}
+    if ("widthFactor" not in revised or
+        "report.widthIncreased" not in revised or
+        "categories[i] != 1" not in revised or
+        "float limit = report.projectedCanopyBefore * .99f;" not in revised):
+        return {"exit_code":3,"stdout":"","stderr":"Not the approved species-aware broad-trunk scaling"}
+    backup=quarantine/"AarisForestCoreAuthoring.pre-tuning.cs"
+    if backup.exists() or backup.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Prior tuning attempt already present"}
+    shutil.copy2(dst,backup)
+    if backup.read_bytes()!=dst.read_bytes():
+        raise ValueError("Unable to verify previous scratch helper backup")
+    temp=dst.with_name(dst.name+".aaris-treeonly-tuned")
+    if temp.exists() or temp.is_symlink():
+        raise ValueError("Unexpected existing scratch tuning temp")
+    shutil.copy2(src,temp)
+    os.replace(temp,dst)
+    if dst.read_bytes()!=src.read_bytes():
+        shutil.copy2(backup,dst)
+        raise ValueError("Tuned source readback mismatch; restored prior scratch helper")
+    return {"exit_code":0,"stdout":json.dumps({
+        "status":"treeonly_width_maturity_calibration_staged",
+        "four_original_core_assets_unchanged":True,
+        "scratch_only":True,"original_worktree_untouched":True
+    }),"stderr":""}
+
+
 def unity_forest_treeonly_prepare():
     """Quarantine incorrect 7508-instance edit and restore EXACT source core bytes.
 
@@ -2473,6 +2521,9 @@ def execute(job):
     if op == "unity_forest_editor_refresh":
         if args: raise ValueError("Unity refresh takes no arguments")
         return unity_forest_editor_refresh()
+    if op == "unity_forest_treeonly_tune":
+        if args: raise ValueError("Tree-only tuning takes no arguments")
+        return unity_forest_treeonly_tune()
     if op == "unity_forest_treeonly_prepare":
         if args: raise ValueError("Tree-only correction preparation takes no args")
         return unity_forest_treeonly_prepare()
