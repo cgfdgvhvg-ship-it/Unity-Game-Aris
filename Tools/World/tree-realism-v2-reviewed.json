@@ -1,0 +1,81 @@
+{
+  "schema_version": 2,
+  "transaction_id": "aaris-natural-trunks-20261105-v2",
+  "importer_version": 2,
+  "preview_only_in_code": false,
+  "notes": "Approved source-only SpeedTree taper, matching prefab BoxCollider x/z and cautious LOD bounds. Do not touch original SpeedTree .st or prefab .meta GUIDs. Existing height factor and wind/UV LOD remain unchanged.",
+  "profiles": [
+    {
+      "key": "Conifer/Conifer",
+      "prefab": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Conifer.prefab",
+      "source_meta": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Conifer.st.meta",
+      "height_factor": 0.62,
+      "previous_base_width_factor": 1.55,
+      "previous_crown_width_factor": 1.12,
+      "base_width_factor": 1.74,
+      "crown_width_factor": 1.16,
+      "reviewed_prefab_git_blob_sha1": "fa9d9cc07822b938ef5ba29bfa20eab7ce25de10",
+      "reviewed_source_meta_git_blob_sha1": "cdaeb803d1007150d9c949f405975f6da5f5f000"
+    },
+    {
+      "key": "Cypress/Cypress_Forest_Desktop",
+      "prefab": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Cypress_Forest_Desktop.prefab",
+      "source_meta": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Cypress_Forest_Desktop.st.meta",
+      "height_factor": 0.82,
+      "previous_base_width_factor": 1.4,
+      "previous_crown_width_factor": 1.1,
+      "base_width_factor": 1.55,
+      "crown_width_factor": 1.13,
+      "reviewed_prefab_git_blob_sha1": "65c18f7e3449f24240f6a52a33182991eda3d80e",
+      "reviewed_source_meta_git_blob_sha1": "f364b501ac53ae1de63c2c9f441025b220357907"
+    },
+    {
+      "key": "Pines/Pine_A/Pine_A",
+      "prefab": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_A/Pine_A.prefab",
+      "source_meta": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_A/Pine_A.st.meta",
+      "height_factor": 0.62,
+      "previous_base_width_factor": 1.55,
+      "previous_crown_width_factor": 1.12,
+      "base_width_factor": 1.74,
+      "crown_width_factor": 1.16,
+      "reviewed_prefab_git_blob_sha1": "f91d80bab50c2ef0cdc816fc0a5f0f30036b6f5f",
+      "reviewed_source_meta_git_blob_sha1": "f4a11edbc5172bdaac2aaf8e8645200ff1df87e7"
+    },
+    {
+      "key": "Pines/Pine_B/Pine_B",
+      "prefab": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_B/Pine_B.prefab",
+      "source_meta": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_B/Pine_B.st.meta",
+      "height_factor": 0.64,
+      "previous_base_width_factor": 1.55,
+      "previous_crown_width_factor": 1.12,
+      "base_width_factor": 1.71,
+      "crown_width_factor": 1.15,
+      "reviewed_prefab_git_blob_sha1": "526af9d0f166ca774cfe61b0d6906c11483929fc",
+      "reviewed_source_meta_git_blob_sha1": "6e273b86484289b1020e55ee7be1346ab9616e0a"
+    },
+    {
+      "key": "Pines/Pine_C/Pine_C",
+      "prefab": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_C/Pine_C.prefab",
+      "source_meta": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_C/Pine_C.st.meta",
+      "height_factor": 0.78,
+      "previous_base_width_factor": 1.5,
+      "previous_crown_width_factor": 1.12,
+      "base_width_factor": 1.68,
+      "crown_width_factor": 1.16,
+      "reviewed_prefab_git_blob_sha1": "959a20643bb07c39f9553623133eca7affa81ffb",
+      "reviewed_source_meta_git_blob_sha1": "1440b39ebc3ed350ac91618fb4ca914abb4b7c4d"
+    },
+    {
+      "key": "Pines/Pine_D/Pine_D",
+      "prefab": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_D/Pine_D.prefab",
+      "source_meta": "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_D/Pine_D.st.meta",
+      "height_factor": 0.78,
+      "previous_base_width_factor": 1.5,
+      "previous_crown_width_factor": 1.12,
+      "base_width_factor": 1.66,
+      "crown_width_factor": 1.15,
+      "reviewed_prefab_git_blob_sha1": "344363e72f13f909c3cca8ad036491484c2a7373",
+      "reviewed_source_meta_git_blob_sha1": "4ae3eac1c1fbf7b08cd8c6a1dcafda6d645a237d"
+    }
+  ]
+}
