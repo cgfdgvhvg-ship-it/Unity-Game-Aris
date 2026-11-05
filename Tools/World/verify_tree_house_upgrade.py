@@ -236,6 +236,82 @@ def restore_reviewed_scene_far_shadow(source):
     return b''.join(blocks)
 
 
+# House enlargement review: EXACTLY 47 existing residential root Transform
+# scale triples are the ONLY additional scene bytes accepted. Reverse them
+# before the historical protected scene hash check. Unknown/partial changes fail.
+# This does not certify meshes, interiors or a Unity/Android render.
+REVIEWED_RESIDENTIAL_SCALES = {
+    "a_frame_cabin": ("1.12", "1.344", 6),
+    "bungalow_house": ("1.12", "1.456", 5),
+    "pitched_roof_cottage": ("1.12", "1.3216", 6),
+    "detached_two_storey_house": ("1.12", "1.2544", 6),
+    "garage_apartment": ("1.12", "1.2768", 11),
+    "two_bedroom_garage_house": ("1.105", "1.31495", 7),
+    "row_three_townhouses": ("1.12", "1.232", 6),
+}
+
+
+def restore_reviewed_residential_scales(source):
+    """Undo only the reviewed full-set 47 root XYZ scales, or accept old baseline.
+
+    Every owner identity, field spelling, component count and unrelated scene
+    byte remains subject to the protected historical source SHA check.
+    """
+    import re
+    try:
+        source.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+    blocks = re.split(rb"(?=^--- !u!)", source, flags=re.M)
+    owners = {}
+    for block in blocks:
+        m = re.match(rb"--- !u!1 &(\d+)\nGameObject:\n", block)
+        if m:
+            name = re.search(rb"^  m_Name: ([^\r\n]+)", block, flags=re.M)
+            if name:
+                if m[1] in owners:
+                    return None
+                owners[m[1]] = name[1].decode("utf-8")
+    counts = {name: [0, 0] for name in REVIEWED_RESIDENTIAL_SCALES}
+    output = []
+    for block in blocks:
+        if not re.match(rb"--- !u!4 &\d+\nTransform:\n", block):
+            output.append(block)
+            continue
+        match = re.search(rb"^  m_GameObject: \{fileID: (\d+)\}$", block, flags=re.M)
+        name = owners.get(match[1], "") if match else ""
+        model = next(
+            (kind for kind in REVIEWED_RESIDENTIAL_SCALES
+             if re.search(r"_" + re.escape(kind) + r"_\d+$", name)),
+            None,
+        )
+        if model is None:
+            output.append(block)
+            continue
+        old, new, _ = REVIEWED_RESIDENTIAL_SCALES[model]
+        def scalar_line(value):
+            s = value.encode("ascii")
+            return b"  m_LocalScale: {x: " + s + b", y: " + s + b", z: " + s + b"}"
+        old_line, new_line = scalar_line(old), scalar_line(new)
+        if block.count(new_line) == 1 and block.count(old_line) == 0:
+            block = block.replace(new_line, old_line, 1)
+            counts[model][1] += 1
+        elif block.count(old_line) == 1 and block.count(new_line) == 0:
+            counts[model][0] += 1
+        else:
+            return None
+        output.append(block)
+    for model, (old, new, expected_count) in REVIEWED_RESIDENTIAL_SCALES.items():
+        if sum(counts[model]) != expected_count:
+            return None
+    # Do not permit mixed old/new state, even across different model types.
+    total_old = sum(v[0] for v in counts.values())
+    total_new = sum(v[1] for v in counts.values())
+    if (total_old, total_new) not in ((47, 0), (0, 47)):
+        return None
+    return b"".join(output)
+
+
 def preserved_or_reviewed_lod_only(root,path,expected_sha):
     source=(Path(root)/path).read_bytes()
     if hashlib.sha256(source).hexdigest()==expected_sha:return True
@@ -245,7 +321,9 @@ def preserved_or_reviewed_lod_only(root,path,expected_sha):
         if source is None:return False
         if hashlib.sha256(source).hexdigest()==expected_sha:return True
     if path == SCENE_MOBILE_LOD_PATH:
-        original_shadows=restore_reviewed_scene_far_shadow(source)
+        reviewed_scales=restore_reviewed_residential_scales(source)
+        if reviewed_scales is None:return False
+        original_shadows=restore_reviewed_scene_far_shadow(reviewed_scales)
         if original_shadows is None:return False
         restored=restore_scene_mobile_lod(original_shadows)
         return restored is not None and hashlib.sha256(restored).hexdigest() == expected_sha
