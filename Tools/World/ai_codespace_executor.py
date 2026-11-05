@@ -767,12 +767,28 @@ def unity_virtual_gui_status():
     log=BATCH_ROOT/"virtual-editor.log"
     if log.is_file() and not log.is_symlink():
         try:
-            tail=log.read_text(errors="replace")[-4500:]
+            with log.open("rb") as stream:
+                stream.seek(0,2)
+                size=stream.tell()
+                stream.seek(max(0,size-128*1024))
+                tail=stream.read().decode("utf-8","replace")
+            data["virtual_unity_log_bytes"]=size
             data["virtual_unity_log_tail"]=re.sub(
                 r"(?i)(?:ghp_|github_pat_|sk-)[A-Za-z0-9_-]{8,}",
-                "[REDACTED]",tail)
+                "[REDACTED]",tail[-4500:])
+            markers=("AARIS_LIVE_EDITOR_READY","AARIS_LIVE_RESTORE_FAILED",
+                     "AARIS_LIVE_POLL_ERROR","error CS","Compilation failed",
+                     "Application.AssetDatabase Initial Refresh Start",
+                     "AssetDatabase Initial Refresh Done","AARIS_BATCH_MAP_OPENED")
+            data["import_log_markers"]={m:tail.count(m) for m in markers if m in tail}
         except OSError:
             pass
+    control=BATCH_ROOT/"control"
+    for folder,key in (("unity-commands","queued_virtual_commands"),
+                       ("unity-results","virtual_completed_results")):
+        p=control/folder
+        if p.is_dir():
+            data[key]=sum(1 for f in p.iterdir() if f.is_file() and f.suffix==".json")
     data["display_socket"]=Path("/tmp/.X11-unix/X12").exists()
     data["novnc_required"]=False
     return data
