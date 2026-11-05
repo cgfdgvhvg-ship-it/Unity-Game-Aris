@@ -166,6 +166,31 @@ class RestartTests(unittest.TestCase):
         (result_dir/"bad.json").write_text(json.dumps({"status":"error"}))
         self.assertIsNone(self.plan()["last_camera_target"])
 
+    def test_stop_simulation_preserves_real_scratch_and_checkpoint_view(self):
+        report=self.plan()
+        report["last_camera_target"]={"x":102.3,"y":-10.8,"z":62.97}
+        cp.write_checkpoint(report,self.state)
+        original_bytes=(self.original/cp.SCENE).read_bytes()
+        scratch_bytes=(self.scratch/cp.SCENE).read_bytes()
+        with patch.object(cp,"disk_free",return_value=40*1024**3):
+            hypothetical=cp.simulate_codespace_stop(self.original,self.editor,self.state)
+        self.assertEqual(hypothetical["step"],"recreate_scratch_and_reimport")
+        self.assertTrue(hypothetical["simulation_only"])
+        self.assertEqual(hypothetical["writes_performed"],0)
+        self.assertEqual(hypothetical["last_camera_target"]["x"],102.3)
+        self.assertTrue(self.scratch.is_dir())
+        self.assertEqual((self.scratch/cp.SCENE).read_bytes(),scratch_bytes)
+        self.assertEqual((self.original/cp.SCENE).read_bytes(),original_bytes)
+
+    def test_stop_simulation_blocks_changed_original_core(self):
+        report=self.plan()
+        cp.write_checkpoint(report,self.state)
+        (self.original/cp.SCENE).write_bytes(b"new owner scene revision")
+        with patch.object(cp,"disk_free",return_value=40*1024**3):
+            hypothetical=cp.simulate_codespace_stop(self.original,self.editor,self.state)
+        self.assertEqual(hypothetical["step"],"blocked_original_changed_since_checkpoint")
+        self.assertTrue(hypothetical["previous_checkpoint_present"])
+
     def test_refuse_checkpoint_on_unsafe_symlink(self):
         report=self.plan()
         self.state.symlink_to(self.original/cp.SCENE)
