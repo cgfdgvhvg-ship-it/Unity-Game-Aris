@@ -1,3 +1,5 @@
+> **Current master instructions (2026-11-05):** Read [AI_MASTER_CONTROL_AND_AUTH.md](AI_MASTER_CONTROL_AND_AUTH.md) and root [AGENTS.md](../AGENTS.md) first. The command queue here remains valid, but the old 2026-11-04 setup observations (e.g. Unity GUI not verified or only a handful of operations) were superseded by 2026-11-05 real Unity Editor runs. Repository main reads now use the shared ephemeral Actions `GITHUB_TOKEN` authentication bridge (`Tools/World/ai_master_github_auth.py`); Codespace lifecycle uses a **different**, owner-managed `AARIS_CODESPACE_TOKEN` Actions secret; durable native Unity Git LFS writes use a separate, narrowly scoped Actions uploader. Do not request or paste a new personal GitHub credential when an authorized workflow already works.
+
 # Aaris Codespace On-Demand Terminal (Issue #37 is NOT the primary inbox)
 
 **Repository:** `Aaris-khan-don/Unity-Game-Aris` (private); **Codespace:**
