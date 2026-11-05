@@ -27,6 +27,10 @@ ID_RE = re.compile(r'r[a-z0-9][a-z0-9-]{5,51}\Z')
 ARG_RE = re.compile(r'[a-z][a-z0-9-]{3,55}\Z')
 SUPPORTED = {
     'system_status': ('system', 0),
+    'desktop_live_start': ('desktop_xterm', 0),
+    'desktop_live_status': ('desktop_diagnose', 0),
+    'unity_virtual_start': ('unity_virtual_gui_launch', 0),
+    'unity_virtual_status': ('unity_virtual_gui_status', 0),
     'unity_status': ('unity_session_status', 0),
     'unity_recover': ('unity_session_recover', 0),
     'unity_gallery_start': ('unity_house_bridge_gallery_start', 0),
