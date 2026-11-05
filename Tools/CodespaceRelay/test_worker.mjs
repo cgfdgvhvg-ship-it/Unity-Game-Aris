@@ -80,3 +80,19 @@ test('agent endpoint enforces secret and no arbitrary command result',async()=>{
   r=await handleAgent(new Request('https://relay.example/v1/result',{method:'POST',headers:{authorization:'Bearer '+env.AGENT_SHARED_SECRET},body:JSON.stringify({id:JOB,status:'ok',exit_code:0,stdout:'ok',stderr:''})}),env,f.api);
   assert.equal(r.status,403);
 });
+
+test('start waits during ShuttingDown then safely retries after Shutdown',async()=>{
+  const job={id:JOB,action:'start'};const f=fakeApi(job,'ShuttingDown');
+  await handleCron({RELAY_ENABLED:'true'},f.api);
+  assert.equal(f.records.size,0);
+  assert.equal(f.calls.filter(x=>x.includes('/start')).length,0);
+  f.setState('Shutdown');
+  await handleCron({RELAY_ENABLED:'true'},f.api);
+  assert.equal(f.records.get(JOB).status,'start_requested');
+  assert.equal(f.calls.filter(x=>x.includes('/start')).length,1);
+});
+test('disabled relay cannot act on Codespace',async()=>{
+  const job={id:JOB,action:'stop'};const f=fakeApi(job,'Available');
+  assert.deepEqual(await handleCron({RELAY_ENABLED:'false'},f.api),{status:'disabled'});
+  assert.equal(f.calls.length,0);
+});
