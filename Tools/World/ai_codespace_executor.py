@@ -3372,7 +3372,7 @@ def execute(job):
     if op == "unity_house_helper_quarantine":
         if args: raise ValueError("Quarantine takes no user paths")
         return unity_house_helper_quarantine()
-    if op in {"unity_house_bridge_gallery_start","unity_house_bridge_gallery_export","unity_house_bridge_gallery_diagnose"}:
+    if op in {"unity_house_bridge_gallery_start","unity_house_bridge_gallery_export","unity_house_bridge_gallery_partial_export","unity_house_bridge_gallery_diagnose"}:
         return unity_house_bridge_gallery(job)
     if op in {"unity_house_gallery_start","unity_house_gallery_export","unity_house_gallery_diagnose"}:
         return unity_house_gallery(job)
