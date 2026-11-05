@@ -940,7 +940,7 @@ def unity_forest_menu_snapshot():
     env=os.environ.copy()
     env["DISPLAY"]=":12"
     try:
-        cmd=["scrot","-z","-q","28","-a","390,185,1050,210",str(path)]
+        cmd=["scrot","-z","-q","12","-a","390,185,620,150",str(path)]
         r=subprocess.run(cmd,env=env,capture_output=True,text=True,timeout=20,check=False)
         if r.returncode!=0 or not path.is_file():
             return {"exit_code":3,"stdout":"","stderr":"Xvfb menu capture failed"}
