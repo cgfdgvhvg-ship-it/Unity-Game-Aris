@@ -1,3 +1,26 @@
+## Tree trunk realism v2 — six reviewed native SpeedTree prototypes (2026-11-05)
+
+**See `Docs/TREE_REALISM_V2.md` and
+`Tools/World/tree-realism-v2-reviewed.json` before editing trees.**
+Six existing SpeedTree import profiles now use stronger natural lower-trunk
+taper (+10-12% horizontal base width), only 3-4% crown broadening,
+unchanged heights and four LOD transitions. Their prefab BoxColliders
+and LOD bounds were adjusted together to avoid mismatched visual
+trunks and physics. `AarisTreeShapeImporter.GetVersion()=2` causes
+Unity to reimport source SpeedTrees while preserving wind/morph UVs
+and normals/tangents. **Source .st files, native TerrainData
+instances, scenes, materials and prefab .meta GUIDs are untouched.**
+
+The standalone `verify_tree_realism_v2.py` and unchanged historical
+tree/house checks must pass before merging. A SOURCE check does
+NOT replace real native Unity Editor import, camera rendering,
+collision and mobile FPS checks; do not claim those before testing.
+Avoid making all 7,508 TreeInstances globally wider: that fattens
+crowns as much as trunks. Use the existing import-time graduated
+mesh taper plus species-aware prefab colliders.
+
+---
+
 ## START HERE — Unity AI Safe Batched Git LFS Save (2026-11-05)
 
 **New AI workflow:** `Docs/UNITY_BATCHED_AUTOSYNC.md`.
