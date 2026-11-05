@@ -1,3 +1,101 @@
+# PRIMARY RULE — EDIT AND SAVE REAL UNITY TREE CORE ASSETS (2026-11-05)
+
+**User requirement (highest priority for tree geometry work):** Do not
+deliver a code-only/importer-only change and call it a map tree upgrade.
+Perform authoring inside the **real running Unity Editor**, save actual
+native **core asset** bytes, verify Unity readback and then Git LFS-sync
+those reviewed bytes to GitHub. A Python/C# helper may orchestrate a
+one-time editor operation, but the delivered art must remain in
+`.asset` / `.prefab` / `.unity` or original editable SpeedTree source
+files, not depend on a new compile/import-time "make trunk thicker"
+script. Do not change the game at runtime just to simulate a baked mesh.
+
+## Existing AI-to-Unity route (read carefully; no phone/noVNC needed)
+
+- Owner repo: `Aaris-khan-don/Unity-Game-Aris`, branch `main`.
+  The owner-only job queue is **separate** branch `ai/codespace-jobs`;
+  `.github/workflows/ai-codespace-on-demand.yml` stages the reviewed
+  executor and uses owner Codespace `musical-carnival-jjxp9r6vw45wfjgvg`.
+  No arbitrary shell command is authorized through this queue.
+- Editor tested **2026-11-05**: Unity `6000.3.26f1`, normal licensed GUI
+  on Xvfb `:12`, scratch copy
+  `/tmp/aaris-unity-batch/project`, working scene
+  `Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity`,
+  **4 Terrains, 7,508 native Terrain TreeInstances**. This is a
+  timestamped observation, not a promise the Editor still runs later.
+- The original `/workspaces/Unity-Game-Aris` contains important
+  owner-modified/untracked files and very little persistent free disk.
+  Never reset, clean, overwrite, copy scratch blindly into it, move the
+  project to /tmp by symlink, delete Unity Library, force-push, rehydrate
+  all Git LFS, change paid machine type or rebuild it without a verified
+  recovery plan. Scratch /tmp **disappears on Codespace STOP**.
+- Exactly **one** JSON job per GitHub commit:
+  `.aaris/jobs/<new-unique-id>.json` on `ai/codespace-jobs`.
+  Format: `{"id":"new-unique-id","operation":"unity_virtual_gui_status","args":[]}`.
+  Wait for the matching "Aaris Codespace On-Demand Terminal" Actions
+  run and parse its `AARIS_RESULT_JSON` before posting the next job;
+  queue concurrency does not mean multiple edits are safe.
+- Read-only checks: `unity_virtual_gui_status`, `unity_session_status`,
+  `unity_sync_status`, `unity_sync_dry_run`, `unity_scratch_reconcile`.
+  `unity_session_recover` can re-open/re-import scratch when safe.
+  A native `unity_virtual_live` request uses a **single short JSON
+  argument**. Supported actions include `inspect`, `move_tree`,
+  `scale_tree`, `capture`; use exact native tree ID and
+  `expectedPosition` from a *fresh* inspect for mutations.
+  After every write, get `unity_virtual_result` if pending, and
+  separately `inspect` exact saved coordinates before trusting success.
+- **Critical distinction:** `scale_tree` saves a native TerrainData
+  `.asset` width/height-scale change, which ALSO changes canopy width.
+  It is **not** selective bark/trunk mesh geometry authoring. Existing
+  `AarisTreeShapeImporter.cs` + six reviewed `.st.meta` profiles
+  thicken bark at import time; a version bump in that importer by
+  itself is **NOT** the user's requested persistent core geometry bake.
+  Code-only draft PR **#63** is not evidence of a saved mesh upgrade.
+- For genuine selective trunk shape, use the Unity Editor to create and
+  validate persistent *mesh asset geometry* (or change true original
+  SpeedTree source) and link matching LODs/prefabs, preserving material
+  slots, vertex attributes, SpeedTree 8 UV wind/LOD morph channels,
+  collider, hierarchy, tree prototype references and GUID integrity.
+  **Do not claim a baked mesh until the actual mesh bytes and prefab
+  references are committed and reloaded successfully in Unity.**
+  New `.asset` + `.meta` pairs are NOT supported by the current
+  strict batched writer: add a separately reviewed, fail-closed writer
+  path with exact GUID/allowlist/backup/source SHA validation before
+  trying to upload them. Do not bypass this by committing fake
+  pointers, transient Library meshes or an Editor-only script.
+- Save sequence for **currently supported tracked** native core files:
+  run `unity_sync_arm` / `unity_sync_watch_start` as needed; verify
+  `unity_sync_status`, `unity_sync_dry_run`; then send
+  `unity_sync_save_session` in one job with commit message starting
+  exactly `Unity Batch Save:`. The first workflow only **delegates**;
+  verify the separate privileged "Unity AI Automatic Verified Git LFS
+  Session Save" workflow's
+  `verified_github_batch_saved` receipt, remote branch SHA, LFS OIDs
+  and intended changed-file diff before reporting GitHub sync success.
+  It pushes to a **separate review branch**, never overwrites dirty
+  original files and does **not** auto-merge.
+- Read `Docs/UNITY_TMP_AI_HANDOFF.md`,
+  `Docs/UNITY_AI_NO_VNC_VERIFIED_20261105.md`,
+  `Docs/UNITY_BATCHED_AUTOSYNC.md`,
+  `Tools/World/unity_batched_autosync.py`, and the strict workflow
+  `.github/workflows/unity-batched-github-upload.yml`.
+  Test before/after camera images at the same positions, native
+  save/readback, tree collision and 4 SpeedTree LOD transitions; report
+  Android GPU/FPS only after an actual device test. Prefer controlled
+  mature-tree variation over multiplying all 7,508 widths globally.
+
+**Evidence at handoff:** Native Editor live/scene loaded, PID 5599,
+original untouched: GitHub Actions
+[41969663382](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41969663382).
+Batch sync status clean, no pending assets:
+[41969849999](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41969849999).
+Native core dry-run returned `no_changes` and `pushed:false`:
+[41970219166](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41970219166).
+**Those checks prove a working control route, not that a new baked
+tree-geometry core file has been produced or synced.**
+
+---
+
 ## Tree trunk realism v2 — six reviewed native SpeedTree prototypes (2026-11-05)
 
 **See `Docs/TREE_REALISM_V2.md` and
