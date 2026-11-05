@@ -1,3 +1,9 @@
+# FOLIAGE MAGENTA SHADER REMEDY — NATIVE MATERIALS (2026-11-05)
+
+**Read [Docs/FOLIAGE_MAGENTA_URP_SHADER_FIX_20261105.md](Docs/FOLIAGE_MAGENTA_URP_SHADER_FIX_20261105.md) before touching tree colors.** Twelve original foliage/billboard `.mat` files (Conifer, Cypress, Pines A–D) have one reviewed `m_Shader.guid` change from project-local `SpeedTreeURP_Branch` to the package's stock URP 17.3 `SpeedTree8_PBRLit`, GUID `9920c1f1781549a46ba081a2a15a16ec`. This exact fix was A/B-tested in the licensed Unity Editor on an isolated scratch copy: same-camera magenta-mask pixels 8,173→0 and visible green trees, with true before/after JPEG readback. Do **not** change `_Color` arbitrarily: original tint, textures, alpha, billboard/wind, collider, LOD, tree geometry, TerrainData LFS and all material `.meta` identities are preserved. The old local Shader Graph remains available and is not deleted. CI: `Tools/World/tests/test_foliage_magenta_shader_core.py`, workflow `foliage-magenta-urp-core.yml`. This proves the **software-GL Editor** rendering result, not Android graphics, thermal, FPS or complete ShaderGraph compatibility. Reimport merged files and test 2/3 GB Android devices before release.
+
+---
+
 # CURRENT MOBILE CORE AND UNITY EDITOR EVIDENCE — 2026-11-05, PR #68 / #69 MERGED
 
 **These are newer than the older status sections below.** Both updates are saved on `main`; neither is a claim of measured Android FPS or a new native tree mesh bake.

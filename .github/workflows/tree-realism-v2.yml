@@ -52,15 +52,25 @@ jobs:
           changed=subprocess.check_output(['git','diff','--name-only','origin/main...HEAD'],text=True).splitlines()
           tree_paths=[p for p in changed if p.startswith('Assets/TerrainDemoScene_URP/Prefabs/Trees/')]
           allowed={r['prefab'] for r in reviewed['profiles']}|{r['source_meta'] for r in reviewed['profiles']}
-          assert set(tree_paths)<=allowed,'Unexpected tree asset edited: '+repr(set(tree_paths)-allowed)
-          # Original v2 geometry+import-profile transaction must remain atomic (12).
-          # A separate precise 6-prefab shadow-only operation is permitted ONLY
-          # if each far-shadow reversal reconstructs the current-main old blob.
-          if len(tree_paths)==6:
-              assert set(tree_paths)=={row['prefab'] for row in reviewed['profiles']}, 'Non-prefab or partial shadow edit'
+          # The reviewed six-species MATERIAL-only URP repair is disjoint from
+          # existing shape/prefab transactions. Never allow a mixture.
+          sys_path=str(pathlib.Path('Tools/World/tests').resolve())
+          import sys
+          sys.path.insert(0,sys_path)
+          from test_foliage_magenta_shader_core import OLD,TREE
+          material_paths={TREE+rel for rel in OLD}
+          if set(tree_paths)==material_paths:
               subprocess.run(['python','-m','unittest','discover','-s','Tools/World/tests',
-                              '-p','test_speedtree_far_shadow_current_core.py','-v'],check=True)
+                              '-p','test_foliage_magenta_shader_core.py','-v'],check=True)
           else:
-              assert len(tree_paths) in (0,12), 'Partial v2 geometry source modification forbidden'
+              assert set(tree_paths)<=allowed,'Unexpected tree asset edited: '+repr(set(tree_paths)-allowed)
+              # Original v2 geometry/import-profile transaction stays atomic (12).
+              # Existing 6-prefab far shadow transaction retains exact blob checks.
+              if len(tree_paths)==6:
+                  assert set(tree_paths)=={row['prefab'] for row in reviewed['profiles']}, 'Non-prefab or partial shadow edit'
+                  subprocess.run(['python','-m','unittest','discover','-s','Tools/World/tests',
+                                  '-p','test_speedtree_far_shadow_current_core.py','-v'],check=True)
+              else:
+                  assert len(tree_paths) in (0,12), 'Partial v2 geometry source modification forbidden'
           print(f'SpeedTree integrity: {len(tree_paths)} protected changes; GUIDs and .st binaries untouched')
           PY
