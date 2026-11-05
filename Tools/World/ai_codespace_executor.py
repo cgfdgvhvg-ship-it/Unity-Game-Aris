@@ -2647,6 +2647,7 @@ def unity_main_core_sync(job):
         return {"exit_code":3,"stdout":json.dumps({"read_only_snapshot_errors":mismatches}),
                 "stderr":"Unexpected non-target baseline drift; no source writes"}
     changes=[]
+    conflicts=[]
     for rel in required:
         dst=scratch/rel
         owner=PROJECT/rel
@@ -2666,8 +2667,11 @@ def unity_main_core_sync(job):
             if desired.count(new_shader)!=1 or len(expected)!=len(desired) or current!=expected:
                 return {"exit_code":3,"stdout":"","stderr":"Unreviewed tree material preview modification: "+rel}
         elif blob(current)!=original_prefab_sha[rel]:
-            return {"exit_code":3,"stdout":json.dumps({"rel":rel,"found_blob":blob(current)}),
-                    "stderr":"Preserving unreviewed scratch prefab or C# modifications"}
+            # Existing scratch Unity data is not an approved historical baseline.
+            # Do not overwrite it and do not claim a full-main reimport.
+            conflicts.append({"file":rel,"scratch_blob":blob(current),
+                              "expected_historical_blob":original_prefab_sha[rel]})
+            continue
         changes.append((rel,dst,current,desired))
     backup.mkdir(parents=True,mode=0o700)
     backup_manifest={"commit":commit,"paths":{},"read_only_checks":manifest["checks"]}
@@ -2690,7 +2694,9 @@ def unity_main_core_sync(job):
                 raise ValueError("Scratch staging readback mismatch: "+rel)
             os.replace(tmp,dst)
             done.append((dst,old))
+        conflict_paths={row["file"] for row in conflicts}
         for rel in required:
+            if rel in conflict_paths: continue
             if sha256((scratch/rel).read_bytes())!=manifest["files"][rel]:
                 raise ValueError("Merged main sync readback mismatch: "+rel)
     except BaseException:
@@ -2702,7 +2708,11 @@ def unity_main_core_sync(job):
       "source_main_commit":commit,"scratch_only":True,"owner_worktree_untouched":True,
       "total_reviewed_core_files":len(required),"changed_core_count":len(changes),
       "changed_paths":[rel for rel,_,_,_ in changes],
-      "all_19_exact_main_bytes":True,
+      "all_19_exact_main_bytes":not bool(conflicts),
+      "all_12_foliage_materials_exact_main":all(
+          sha256((scratch/p).read_bytes())==manifest["files"][p] for p in leaves),
+      "conflicts_preserved_unchanged":conflicts,
+      "verified_current_main_core_count":len(required)-len(conflicts),
       "scene_pipeline_unchanged":True,
       "scene_pipeline_preexisting_drift":mismatches,
       "full_project_matches_main":not bool(mismatches),
