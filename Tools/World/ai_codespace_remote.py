@@ -25,6 +25,35 @@ ID_RE = re.compile(r"[a-z][a-z0-9-]{3,55}\Z")
 API = f"https://api.github.com/user/codespaces/{CODESPACE}"
 MAX_OUTPUT = 18000
 
+# Frozen, reviewed Github main source for the actual merged Android/URP fixes.
+# This queue action is a single audited snapshot sync; later mains need new review.
+MAIN_CORE_COMMIT = "08c57c62a64f99ed0745deae3c44f189f9ec711c"
+MAIN_TREE_ROOT = "Assets/TerrainDemoScene_URP/Prefabs/Trees/"
+MAIN_SHADER_MATERIALS = tuple(
+    MAIN_TREE_ROOT + folder + "/Materials/" + name + ".mat"
+    for folder, names in (
+        ("Conifer", ("Conifer_Branches", "Conifer_Billboard")),
+        ("Cypress", ("Cypress_Forest_Desktop", "Cypress_Forest_Desktop_Billboard")),
+        *((f"Pines/Pine_{letter}", (f"Pine_{letter}", f"Pine_{letter}_Billboard"))
+          for letter in "ABCD"),
+    ) for name in names
+)
+MAIN_TREE_PREFABS = tuple(
+    MAIN_TREE_ROOT + stem + ".prefab"
+    for stem in ("Conifer/Conifer", "Cypress/Cypress_Forest_Desktop",
+                 *(f"Pines/Pine_{letter}/Pine_{letter}" for letter in "ABCD"))
+)
+MAIN_RUNTIME_FILES = ("Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs",)
+MAIN_EDITOR_CHECKS = (
+    "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity",
+    "ProjectSettings/QualitySettings.asset",
+    "ProjectSettings/GraphicsSettings.asset",
+    "Packages/manifest.json",
+)
+MAIN_CORE_PATHS = MAIN_SHADER_MATERIALS + MAIN_TREE_PREFABS + MAIN_RUNTIME_FILES
+
+
+
 
 class JobError(Exception):
     pass
@@ -37,7 +66,7 @@ def validate_job(data: dict, *, expected_file: str | None = None) -> dict:
     op = data["operation"]
     if not isinstance(ident, str) or not ID_RE.fullmatch(ident):
         raise JobError("invalid job id")
-    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "unity_diagnostics", "desktop_tools", "desktop_snapshot", "unity_terms_accept", "unity_low_disk_stop", "unity_low_disk_pause", "unity_resume_paused", "codespace_machines", "system_storage_audit", "runtime_mount_probe", "safe_archives_audit", "safe_archives_cleanup", "unity_lfs_preflight", "unity_scratch_reconcile", "unity_tree_v2_preview", "unity_forest_stage", "unity_forest_x11_probe", "unity_forest_editor_refresh", "unity_forest_menu_snapshot", "unity_forest_recompile", "unity_forest_crash_report", "unity_forest_one_shot_plan", "unity_forest_one_shot_apply", "unity_forest_baseline_probe", "unity_forest_treeonly_prepare", "unity_forest_treeonly_tune", "unity_map_camera_capture", "unity_render_backend_probe", "unity_shader_ab_preflight", "unity_shader_ab_apply", "unity_shader_ab_restore", "unity_sync_auth", "unity_sync_status", "unity_sync_arm", "unity_sync_dry_run", "unity_sync_save_session", "unity_sync_watch_start", "unity_session_status", "unity_session_stop_simulation", "unity_session_checkpoint", "unity_session_recover", "unity_batch_launch", "unity_batch_status", "unity_virtual_gui_launch", "unity_virtual_gui_status", "unity_virtual_live", "unity_virtual_result", "unity_virtual_frame", "unity_live", "unity_result", "unity_frame", "world_site", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
+    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "unity_diagnostics", "desktop_tools", "desktop_snapshot", "unity_terms_accept", "unity_low_disk_stop", "unity_low_disk_pause", "unity_resume_paused", "codespace_machines", "system_storage_audit", "runtime_mount_probe", "safe_archives_audit", "safe_archives_cleanup", "unity_lfs_preflight", "unity_scratch_reconcile", "unity_tree_v2_preview", "unity_forest_stage", "unity_forest_x11_probe", "unity_forest_editor_refresh", "unity_forest_menu_snapshot", "unity_forest_recompile", "unity_forest_crash_report", "unity_forest_one_shot_plan", "unity_forest_one_shot_apply", "unity_forest_baseline_probe", "unity_forest_treeonly_prepare", "unity_forest_treeonly_tune", "unity_map_camera_capture", "unity_render_backend_probe", "unity_shader_ab_preflight", "unity_shader_ab_apply", "unity_shader_ab_restore", "unity_main_core_sync", "unity_sync_auth", "unity_sync_status", "unity_sync_arm", "unity_sync_dry_run", "unity_sync_save_session", "unity_sync_watch_start", "unity_session_status", "unity_session_stop_simulation", "unity_session_checkpoint", "unity_session_recover", "unity_batch_launch", "unity_batch_status", "unity_virtual_gui_launch", "unity_virtual_gui_status", "unity_virtual_live", "unity_virtual_result", "unity_virtual_frame", "unity_live", "unity_result", "unity_frame", "world_site", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
         raise JobError("unsupported operation")
     args = data["args"]
     if not isinstance(args, list) or len(args) > 16 or any(
@@ -210,6 +239,58 @@ def execute_remote(job: dict, token: str, workspace: Path, result_file: Path, *,
     runner(["gh", "codespace", "ssh", "-c", cs, "--", f"mkdir -p {remote}"], env=env, timeout=70)
     runner(["gh", "codespace", "cp", "-e", "-c", cs, str(local_script), f"remote:{remote}/ai_codespace_executor.py"], env=env, timeout=90)
     runner(["gh", "codespace", "cp", "-e", "-c", cs, str(local_job), f"remote:{remote}/{job['id']}.json"], env=env, timeout=90)
+    if job["operation"] == "unity_main_core_sync":
+        # Source is frozen by exact commit and an allowlisted path list, fetched
+        # only in the GitHub Actions ephemeral checkout, not the owner's worktree.
+        import tarfile
+        import hashlib
+        import io
+        import tempfile
+        fetch = subprocess.run(
+            ["git", "fetch", "--no-tags", "--depth=1", "origin", "main"],
+            cwd=workspace, capture_output=True, text=True, timeout=65,
+            check=False, stdin=subprocess.DEVNULL)
+        if fetch.returncode:
+            raise JobError("Cannot fetch reviewed main source: " + fetch.stderr[-350:])
+        head = subprocess.run(
+            ["git", "rev-parse", "FETCH_HEAD"], cwd=workspace, text=True,
+            capture_output=True, check=True, timeout=8).stdout.strip()
+        if head != MAIN_CORE_COMMIT:
+            raise JobError("Main has advanced; refuse stale source snapshot")
+        def source_data(path):
+            result=subprocess.run(
+                ["git","show",MAIN_CORE_COMMIT+":"+path],cwd=workspace,
+                capture_output=True,timeout=22,check=False)
+            if result.returncode or len(result.stdout)>8*1024*1024:
+                raise JobError("Reviewed source file missing/oversized: "+path)
+            return result.stdout
+        paths = MAIN_CORE_PATHS + MAIN_EDITOR_CHECKS
+        manifest = {"commit":MAIN_CORE_COMMIT,"files":{},"checks":{}}
+        archive = Path(tempfile.gettempdir()) / ("aaris-verified-core-"+job["id"]+".tar")
+        if archive.exists() or archive.is_symlink():
+            raise JobError("Existing verified core bundle")
+        with tarfile.open(archive,"w") as pack:
+            for path in paths:
+                buf=source_data(path)
+                digest=hashlib.sha256(buf).hexdigest()
+                if path in MAIN_CORE_PATHS:
+                    manifest["files"][path]=digest
+                    info=tarfile.TarInfo("source/"+path)
+                    info.size=len(buf)
+                    info.mode=0o600
+                    pack.addfile(info,io.BytesIO(buf))
+                else:
+                    manifest["checks"][path]=digest
+            info=tarfile.TarInfo("manifest.json")
+            content=json.dumps(manifest,sort_keys=True).encode()
+            info.size=len(content)
+            info.mode=0o600
+            pack.addfile(info,io.BytesIO(content))
+        if archive.stat().st_size > 8*1024*1024:
+            raise JobError("Unexpectedly large reviewed source bundle")
+        runner(["gh","codespace","cp","-e","-c",cs,str(archive),
+                f"remote:{remote}/main-core-{job['id']}.tar"],env=env,timeout=115)
+        archive.unlink()
     if job["operation"] == "unity_batch_launch":
         source = workspace / "Tools/World/AarisBatchProbe.cs"
         if not source.is_file():
