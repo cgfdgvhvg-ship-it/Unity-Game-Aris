@@ -1,3 +1,15 @@
+## BLOCKER: GITHUB CODESPACES HTTP 402 BILLING — 2026-11-06
+
+The owner tested actual remote SSH from Android Termux:
+`gh codespace ssh -c musical-carnival-jjxp9r6vw45wfjgvg -- -tt "...bootstrap_live.py..."`
+and GitHub returned **HTTP 402**: `Usage of this codespace is currently disallowed: There is a billing issue that is preventing you from starting this codespace.` The SSH command did **NOT** reach Codespace, so Python bootstrap, noVNC and live camera are **not installed or verified**. Previous `x11vnc not installed` and `/workspaces/... not found` messages came from commands inadvertently executed in **phone Termux** and are not evidence about the remote Codespace.
+
+**Do not repeatedly queue Codespace start operations, rerun GitHub Actions or attempt to bypass GitHub billing using Cloudflare.** The Cloudflare control relay remains a valid API controller when GitHub allows lifecycle actions, but it cannot override a 402. GitHub account owner must resolve any overdue/failed payment or exhausted Codespaces included usage / Codespaces spending budget at https://github.com/settings/billing (Billing & licensing → Overview, Usage, Budgets and alerts, Payment information). If free quota is exhausted and a payment method is not configured, wait for the next monthly included-usage renewal or explicitly authorize paid usage by setting payment method and budget; user controls any billing commitment. Do not increase spending automatically.
+
+After billing is remedied, independently verify Codespace can Start and connect via `gh codespace ssh` before trying the ONE-TIME remote bootstrap. Preserve existing Codespace and uncommitted Unity assets, and keep the single stable Cloudflare /live link; **an HTTP 404 from the viewer cannot be fixed while the Codespace is blocked/stopped**. Never claim a working screen or terminal until verified with real receipts.
+
+---
+
 ## ACTIVE TERMINAL CONTROL STATUS — 2026-11-06
 
 **Owner request:** AI must execute the one-time remote Codespace bootstrap itself, rather than repeatedly asking the owner to paste Termux commands. The owner wants exactly one stable live Unity viewer URL, owner-controlled pan/orbit/zoom, and AI-assisted camera focus; no GitHub Actions or image transfers.
