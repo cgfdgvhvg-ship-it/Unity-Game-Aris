@@ -151,3 +151,25 @@ The native Editor writes TerrainData directly and calls
 - Keep snapshots ephemeral; inspect output/scene for visual issues
   (thin/sparse trees, modest ground detail) and address mobile
   collisions/LOD/performance separately after functional tests.
+
+## Read-only native core reconciliation result (November 5, 2026)
+
+The new `Tools/World/unity_scratch_reconcile.py` calculates the SHA-256
+of explicitly selected native source assets in original versus scratch,
+including each file's `.meta`. It is **not** a merge or promotion utility.
+
+The [real Codespace result](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41950632194)
+is 4 same, 2 different, 2 missing among 8 compared paths.
+The exact native TerrainData `Terrain_2_2_b6e03cf0-de91-4cae-b6af-0128d856ae43.asset`
+is 53,568,016 bytes in the protected original and 53,568,876 bytes
+in scratch. Its .meta is byte-identical. The `TerrainDemoScene.unity`
+and .meta are identical. The scratch bridge .cs has a deliberate
+temporary command directory change while its .meta matches.
+The scratch-only `Assets/Editor/AarisBatchProbe.cs` and .meta are absent
+from the original.
+
+Do **not** copy back that TerrainData file just because a scene inspection
+shows the original tree position/scale: Unity can reserialize parts of an
+asset file independently. Implement a tested semantic diff plus owner
+source-state backup and Git LFS preservation before any future promotion.
+

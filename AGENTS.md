@@ -1,3 +1,23 @@
+## Verified scratch-to-original Unity core diff (2026-11-05)
+
+Run `python3 Tools/World/unity_scratch_reconcile.py` to compare the real
+original project at `/workspaces/Unity-Game-Aris` against the temporary
+Unity-opened scratch project at `/tmp/aaris-unity-batch/project`.
+This **read-only** tool SHA-256 checks selected `.asset`, `.unity`,
+`.prefab`, `.mat`, `.cs` and matching `.meta` paths, marks
+owner-modified/untracked files and **never promotes or writes** changes.
+It has strict path/symlink/file-count/size guards and CI tests.
+On the original Codespace its verified output showed **4 identical,
+2 different, 2 missing** selected paths: the scene and main `.meta`
+matched, but the scratch native TerrainData `.asset` serialized differently
+even after the test tree position/scale were restored; the scratch
+AI Bridge had a deliberate isolated control-root patch; and the temporary
+`AarisBatchProbe.cs` exists only on scratch. **Never overwrite the original
+TerrainData or AI bridge with these scratch copies.**
+See [real Codespace audit](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41950632194).
+
+---
+
 ## 2026-11-05 VERIFIED — AI-controlled native Unity Editor without noVNC
 
 **Read this newer result before the historical 2026-11-04 blocked-import notes below.**
