@@ -1693,6 +1693,52 @@ def execute(job):
         )
         return {"exit_code":result.returncode,"stdout":result.stdout[-12000:],
                 "stderr":result.stderr[-900:]}
+    if op in {"unity_sync_auth","unity_sync_status","unity_sync_arm",
+              "unity_sync_dry_run","unity_sync_save_session","unity_sync_watch_start"}:
+        if args: raise ValueError("No extra arguments allowed for Unity Sync job")
+        source=Path("/workspaces/.aaris-world-bridge/ondemand/unity_batched_autosync.py")
+        if not source.is_file() or source.is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"Reviewed Unity batch sync engine not staged"}
+        commands={"unity_sync_auth":"auth-check","unity_sync_status":"status",
+                  "unity_sync_arm":"arm","unity_sync_dry_run":"dry-run",
+                  "unity_sync_save_session":"flush"}
+        if op=="unity_sync_watch_start":
+            if not _scratch_unity_pids() or not (BATCH_ROOT/"scene-readback.json").is_file():
+                return {"exit_code":3,"stdout":"","stderr":"Native Unity map Editor/scene not verified, cannot arm watcher"}
+            current=subprocess.run(["python3",str(source),"arm"],
+                                   capture_output=True,text=True,timeout=35,check=False)
+            if current.returncode!=0:
+                return {"exit_code":3,"stdout":current.stdout[-3000:],"stderr":"Autosync could not arm"}
+            # Existing watchdog is identified by exact Python argv; no duplicate.
+            for proc in Path("/proc").iterdir():
+                if not proc.name.isdigit(): continue
+                try:
+                    cmd=[a.decode(errors="replace") for a in
+                         (proc/"cmdline").read_bytes().split(b"\0") if a]
+                    if len(cmd)==3 and cmd[1]==str(source) and cmd[2]=="watch":
+                        return {"exit_code":0,"stdout":json.dumps({
+                            "status":"watch_already_running","pid":int(proc.name),
+                            "quiet_seconds":180,"max_unsaved_seconds":600}),"stderr":""}
+                except OSError: pass
+            target=BATCH_ROOT/"autosync-watch.log"
+            with target.open("a") as stream:
+                watch=subprocess.Popen(
+                    ["python3",str(source),"watch"],
+                    cwd=BATCH_ROOT,stdin=subprocess.DEVNULL,
+                    stdout=stream,stderr=stream,start_new_session=True
+                )
+            return {"exit_code":0,"stdout":json.dumps({
+                "status":"watcher_started","pid":watch.pid,"quiet_seconds":180,
+                "max_unsaved_seconds":600,
+                "note":"Best effort while Codespace runs; no guaranteed shutdown hook."}),
+                "stderr":""}
+        commandline=["python3",str(source),commands[op]]
+        if op=="unity_sync_save_session": commandline.append("--force")
+        audit=subprocess.run(commandline,text=True,capture_output=True,
+                             timeout=300 if op=="unity_sync_save_session" else 75,
+                             check=False)
+        return {"exit_code":audit.returncode,"stdout":audit.stdout[-16000:],
+                "stderr":audit.stderr[-1200:]}
     if op == "unity_session_status":
         if args: raise ValueError("Session status takes no arguments")
         return {"exit_code":0,"stdout":json.dumps(_session_plan(),
