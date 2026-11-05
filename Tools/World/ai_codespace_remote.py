@@ -66,7 +66,7 @@ def validate_job(data: dict, *, expected_file: str | None = None) -> dict:
     op = data["operation"]
     if not isinstance(ident, str) or not ID_RE.fullmatch(ident):
         raise JobError("invalid job id")
-    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "unity_diagnostics", "desktop_tools", "desktop_snapshot", "unity_terms_accept", "unity_low_disk_stop", "unity_low_disk_pause", "unity_resume_paused", "codespace_machines", "system_storage_audit", "runtime_mount_probe", "safe_archives_audit", "safe_archives_cleanup", "unity_lfs_preflight", "unity_scratch_reconcile", "unity_tree_v2_preview", "unity_forest_stage", "unity_forest_x11_probe", "unity_forest_editor_refresh", "unity_forest_menu_snapshot", "unity_forest_recompile", "unity_forest_crash_report", "unity_forest_one_shot_plan", "unity_forest_one_shot_apply", "unity_forest_baseline_probe", "unity_forest_treeonly_prepare", "unity_forest_treeonly_tune", "unity_map_camera_capture", "unity_render_backend_probe", "unity_shader_ab_preflight", "unity_shader_ab_apply", "unity_shader_ab_restore", "unity_main_core_sync", "unity_sync_auth", "unity_sync_status", "unity_sync_arm", "unity_sync_dry_run", "unity_sync_save_session", "unity_sync_watch_start", "unity_session_status", "unity_session_stop_simulation", "unity_session_checkpoint", "unity_session_recover", "unity_batch_launch", "unity_batch_status", "unity_virtual_gui_launch", "unity_virtual_gui_status", "unity_virtual_live", "unity_virtual_result", "unity_virtual_frame", "unity_live", "unity_result", "unity_frame", "world_site", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
+    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "unity_diagnostics", "desktop_tools", "desktop_snapshot", "unity_terms_accept", "unity_low_disk_stop", "unity_low_disk_pause", "unity_resume_paused", "codespace_machines", "system_storage_audit", "runtime_mount_probe", "safe_archives_audit", "safe_archives_cleanup", "unity_lfs_preflight", "unity_scratch_reconcile", "unity_tree_v2_preview", "unity_forest_stage", "unity_forest_x11_probe", "unity_forest_editor_refresh", "unity_forest_menu_snapshot", "unity_forest_recompile", "unity_forest_crash_report", "unity_forest_one_shot_plan", "unity_forest_one_shot_apply", "unity_forest_baseline_probe", "unity_forest_treeonly_prepare", "unity_forest_treeonly_tune", "unity_map_camera_capture", "unity_render_backend_probe", "unity_shader_ab_preflight", "unity_shader_ab_apply", "unity_shader_ab_restore", "unity_main_core_sync", "unity_house_gallery_start", "unity_house_gallery_export", "unity_sync_auth", "unity_sync_status", "unity_sync_arm", "unity_sync_dry_run", "unity_sync_save_session", "unity_sync_watch_start", "unity_session_status", "unity_session_stop_simulation", "unity_session_checkpoint", "unity_session_recover", "unity_batch_launch", "unity_batch_status", "unity_virtual_gui_launch", "unity_virtual_gui_status", "unity_virtual_live", "unity_virtual_result", "unity_virtual_frame", "unity_live", "unity_result", "unity_frame", "world_site", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
         raise JobError("unsupported operation")
     args = data["args"]
     if not isinstance(args, list) or len(args) > 16 or any(
@@ -106,6 +106,9 @@ def validate_job(data: dict, *, expected_file: str | None = None) -> dict:
         if (len(args)!=2 or args[0] not in {"1_1","1_2","2_1","2_2"} or
             not re.fullmatch(r"[a-f0-9]{64}",args[1])):
             raise JobError("Forest one-shot apply requires one allowed tile ID and exact SHA256")
+    elif op == "unity_house_gallery_export":
+        if len(args)!=1 or not ID_RE.fullmatch(args[0]):
+            raise JobError("Photo gallery export requires exact prior job ID")
     elif op == "lfs_verify_chunk":
         if len(args) != 1 or not re.fullmatch(r"(?:0|[1-9][0-9]{0,4})", args[0]):
             raise JobError("lfs_verify_chunk requires one numeric cursor")
@@ -242,6 +245,13 @@ def execute_remote(job: dict, token: str, workspace: Path, result_file: Path, *,
     runner(["gh", "codespace", "ssh", "-c", cs, "--", f"mkdir -p {remote}"], env=env, timeout=70)
     runner(["gh", "codespace", "cp", "-e", "-c", cs, str(local_script), f"remote:{remote}/ai_codespace_executor.py"], env=env, timeout=90)
     runner(["gh", "codespace", "cp", "-e", "-c", cs, str(local_job), f"remote:{remote}/{job['id']}.json"], env=env, timeout=90)
+    if job["operation"] == "unity_house_gallery_start":
+        # Editor-only source is staged outside the owner's original Git checkout.
+        helper=workspace/"Tools/World/AarisHousePhotoSurvey.cs"
+        if not helper.is_file() or helper.is_symlink():
+            raise JobError("Reviewed Unity house gallery authoring source unavailable")
+        runner(["gh","codespace","cp","-e","-c",cs,str(helper),
+                f"remote:{remote}/AarisHousePhotoSurvey.cs"],env=env,timeout=105)
     if job["operation"] == "unity_main_core_sync":
         # Source is frozen by exact commit and an allowlisted path list, fetched
         # only in the GitHub Actions ephemeral checkout, not the owner's worktree.
@@ -416,6 +426,21 @@ def execute_remote(job: dict, token: str, workspace: Path, result_file: Path, *,
             raise JobError("Unity screenshot transfer size check failed; retaining source")
         runner(["gh","codespace","ssh","-c",cs,"--",f"rm -f -- {remote_frame}"],env=env,timeout=65)
         print("AARIS_FRAME_STAGED=",frame_id,local_frame.stat().st_size,flush=True)
+    if result.get("ok") and job["operation"] == "unity_house_gallery_export":
+        # The validated archive is temporarily copied to a one-day Actions
+        # artifact; neither JPEG nor metadata are committed to the game repo.
+        name=job["args"][0]
+        remote_zip=f"/tmp/aaris-unity-batch/control/house-exports/{name}.zip"
+        local_zip=result_file.parent/(name+".zip")
+        runner(["gh","codespace","cp","-e","-c",cs,f"remote:{remote_zip}",
+                str(local_zip)],env=env,timeout=120)
+        import hashlib
+        info=json.loads(result.get("stdout","{}"))
+        if (not local_zip.is_file() or
+                local_zip.stat().st_size!=info.get("bytes") or
+                hashlib.sha256(local_zip.read_bytes()).hexdigest()!=info.get("sha256")):
+            raise JobError("House gallery ZIP transfer hash mismatch")
+        print("AARIS_HOUSE_GALLERY_STAGED",name,local_zip.stat().st_size,flush=True)
     result_file.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
     print("AARIS_RESULT_JSON=" + json.dumps(result, ensure_ascii=False)[:MAX_OUTPUT], flush=True)
     if not result.get("ok"):
