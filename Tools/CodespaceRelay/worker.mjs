@@ -10,7 +10,8 @@ const CODESPACE = 'musical-carnival-jjxp9r6vw45wfjgvg';
 const JOBS = '.aaris/relay-jobs';
 const RESULTS = '.aaris/relay-results';
 const ID = /^r[a-z0-9][a-z0-9-]{5,51}$/;
-const COMMANDS = new Set(['system_status', 'unity_status', 'unity_recover',
+const COMMANDS = new Set(['system_status', 'desktop_live_start', 'desktop_live_status',
+  'unity_virtual_start', 'unity_virtual_status', 'unity_status', 'unity_recover',
   'unity_gallery_start', 'unity_gallery_diagnose', 'unity_gallery_partial_export',
   'unity_frame_check']);
 const GALLERY_ID = /^[a-z][a-z0-9-]{3,55}$/;
