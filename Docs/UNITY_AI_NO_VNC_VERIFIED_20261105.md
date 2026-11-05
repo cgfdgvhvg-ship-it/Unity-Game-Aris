@@ -126,7 +126,7 @@ The native Editor writes TerrainData directly and calls
    That *promotion/sync* mechanism has NOT yet been proven.
 4. The source preflight proved **764/764 LFS tracked assets present**
    without refetch. See
-   [41975410235? incorrect - use 41875410235](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41875410235).
+   [Unity LFS preflight run 41875410235](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41875410235).
    Avoid global LFS pull/prune/reset.
 5. Repeated shader/material import and shader warnings were seen on
    llvmpipe OpenGL; the Editor still opened the scene, read native trees,
