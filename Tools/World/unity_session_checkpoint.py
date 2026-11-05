@@ -84,6 +84,46 @@ def disk_free(path: Path):
         return None
 
 
+def last_camera_target(scratch: Path):
+    """Read only the last SUCCESSFUL Unity inspect/capture view; no replay."""
+    root=scratch.parent/"control"
+    commands=root/"unity-commands"
+    results=root/"unity-results"
+    if not commands.is_dir() or not results.is_dir():
+        return None
+    try:
+        options=sorted(
+            (p for p in commands.iterdir()
+             if p.suffix==".json" and not p.is_symlink() and p.is_file()),
+            key=lambda p:p.stat().st_mtime,reverse=True
+        )[:64]
+    except OSError:
+        return None
+    for command in options:
+        response=results/command.name
+        if response.is_symlink() or not response.is_file():
+            continue
+        try:
+            if command.stat().st_size>2400 or response.stat().st_size>150000:
+                continue
+            request=json.loads(command.read_text())
+            result=json.loads(response.read_text())
+            if result.get("status")!="ok" or request.get("action") not in ("inspect","capture"):
+                continue
+            target=request.get("cameraTarget")
+            if not isinstance(target,dict) or set(target)!={"x","y","z"}:
+                continue
+            import math
+            if not all(isinstance(target[k],(int,float)) and
+                       math.isfinite(target[k]) and abs(target[k])<=10000
+                       for k in ("x","y","z")):
+                continue
+            return {k:float(target[k]) for k in ("x","y","z")}
+        except (OSError,ValueError,TypeError,AttributeError):
+            continue
+    return None
+
+
 def plan(original=ORIGINAL,scratch=SCRATCH,editor=EDITOR,checkpoint=CHECKPOINT,
          proc=Path("/proc")):
     """Never returns 'exact_resume' if /tmp is missing."""
@@ -141,6 +181,7 @@ def plan(original=ORIGINAL,scratch=SCRATCH,editor=EDITOR,checkpoint=CHECKPOINT,
         "scratch_core_matches":source_matches,"scratch_loaded":loaded,
         "scratch_exists":scratch_ok,"scratch_unity_pids":pids,
         "scratch_terrain_differs":scratch_diff,
+        "last_camera_target":last_camera_target(scratch) if scratch_ok else (saved.get("last_camera_target") if saved else None),
         "original_free_mib":round(origfree/1024**2,1) if origfree is not None else None,
         "scratch_free_gib":round(scratchfree/1024**3,2) if scratchfree is not None else None,
         "previous_checkpoint_present":bool(saved),
@@ -153,6 +194,8 @@ def plan(original=ORIGINAL,scratch=SCRATCH,editor=EDITOR,checkpoint=CHECKPOINT,
 
 
 def write_checkpoint(report, path=CHECKPOINT):
+    if any(w.startswith("Original project core hashes changed") for w in report.get("warnings",[])):
+        raise ValueError("Refuse to overwrite checkpoint after original source changed")
     if report["step"] not in {"already_running","reopen_existing_scratch"}:
         raise ValueError("Cannot checkpoint absent or incompatible scratch Editor session")
     if path.exists() and (path.is_symlink() or not path.is_file()):
@@ -171,6 +214,7 @@ def write_checkpoint(report, path=CHECKPOINT):
         "source_sha256":report["source_sha256"],
         "scratch_loaded":report["scratch_loaded"],
         "scratch_terrain_differs":report["scratch_terrain_differs"],
+        "last_camera_target":report.get("last_camera_target"),
         "recovery_note":"This is a durable state manifest, NOT a backup of /tmp Library or edited Assets.",
     }
     data=json.dumps(output,sort_keys=True,ensure_ascii=False,indent=2)+"\n"
