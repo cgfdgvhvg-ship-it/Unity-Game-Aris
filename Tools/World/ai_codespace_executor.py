@@ -608,8 +608,8 @@ def unity_batch_launch():
         if not (PROJECT/path).is_dir() or (PROJECT/path).is_symlink():
             return {"exit_code":3,"stdout":"","stderr":"Missing original project folder: "+path}
     _batch_write("launching",original_project=str(PROJECT),
-                 "scratch_project":str(BATCH_ROOT/"project"),
-                 "note":"Separate throwaway /tmp test; original paused GUI is untouched")
+                 scratch_project=str(BATCH_ROOT/"project"),
+                 note="Separate throwaway /tmp test; original paused GUI is untouched")
     env=os.environ.copy()
     out=BATCH_META.parent/"unity-batch-worker.log"
     with out.open("a") as log:
@@ -618,7 +618,7 @@ def unity_batch_launch():
             cwd=Path("/tmp"),env=env,stdin=subprocess.DEVNULL,
             stdout=log,stderr=log,start_new_session=True)
     _batch_write("worker_started",worker_pid=proc.pid,
-                 "scratch_project":str(BATCH_ROOT/"project"))
+                 scratch_project=str(BATCH_ROOT/"project"))
     return {"exit_code":0,"stdout":json.dumps(unity_batch_status()),"stderr":""}
 
 
