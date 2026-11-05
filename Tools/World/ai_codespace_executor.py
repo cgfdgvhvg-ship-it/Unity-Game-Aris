@@ -1046,7 +1046,7 @@ def unity_forest_recompile():
         return {"exit_code":3,"stdout":json.dumps({"scratch_pids":running}),
                 "stderr":"Exactly one running scratch GUI Unity process required"}
     pid=running[0]
-    argv=[x.decode("utf-8","replace") for x in (Path("/proc")/str(pid)/"cmdline").read_bytes().split(b"\\x00") if x]
+    argv=[x.decode("utf-8","replace") for x in (Path("/proc")/str(pid)/"cmdline").read_bytes().split(b"\x00") if x]
     if "-projectPath" not in argv or argv[argv.index("-projectPath")+1]!=str(target):
         return {"exit_code":3,"stdout":"","stderr":"Scratch Unity process identity mismatch"}
     inbox=VIRTUAL_CONTROL/"unity-commands"
