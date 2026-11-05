@@ -284,6 +284,22 @@ namespace Aaris.WorldAutomation
                 shrubs += plan.report.preservedShrubs;
                 if (write)
                 {
+                    int expectedTrees = asset.Contains("Terrain_1_1_") ? 374 :
+                        asset.Contains("Terrain_1_2_") ? 618 :
+                        asset.Contains("Terrain_2_1_") ? 519 :
+                        asset.Contains("Terrain_2_2_") ? 428 : -1;
+                    int expectedRocks = asset.Contains("Terrain_1_1_") ? 1330 :
+                        asset.Contains("Terrain_1_2_") ? 3442 :
+                        asset.Contains("Terrain_2_1_") ? 388 :
+                        asset.Contains("Terrain_2_2_") ? 404 : -1;
+                    int expectedShrubs = asset.Contains("Terrain_1_2_") ? 5 : 0;
+                    if (plan.report.actualTrees != expectedTrees ||
+                        plan.report.preservedRocks != expectedRocks ||
+                        plan.report.preservedShrubs != expectedShrubs)
+                        throw new InvalidOperationException("Tree-only tile category counts changed; no write");
+                }
+                if (write)
+                {
                     if (plan.report.beforeSha256 != request.expectedDigest)
                         throw new InvalidOperationException("Stale asset preflight SHA256: " + asset);
                     if (plan.report.changedCount == 0)
