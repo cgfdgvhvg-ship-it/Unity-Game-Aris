@@ -25,6 +25,7 @@ SOURCES = {
     "Tools/CodespaceRelay/agent.py": STAGE / "agent.py",
     "Tools/CodespaceRelay/github_queue_agent.py": STAGE / "github_queue_agent.py",
     "Tools/CodespaceRelay/bootstrap_live.py": STAGE / "bootstrap_live.py",
+    "Tools/CodespaceRelay/doctor_live.py": STAGE / "doctor_live.py",
     "Tools/World/ai_codespace_executor.py": STAGE / "ai_codespace_executor.py",
     "Assets/AarisWorld/Editor/AarisLiveEditorBridge.cs": STAGE / "AarisLiveEditorBridge.reviewed.cs",
 }
@@ -233,6 +234,7 @@ def run_desktop():
     if info.get("ok") and info.get("exit_code") == 0:
         print("DESKTOP_READY: noVNC port 6080, private GitHub login required")
         print("LIVE_LINK:", LIVE_URL)
+        print("LIVE_LOCAL_TEST: http://127.0.0.1:6080/vnc.html")
         return 0
     print("DESKTOP_NOT_READY:", str(info.get("stderr", "unknown"))[:250])
     return 3
@@ -263,6 +265,13 @@ def main():
     print("SINGLE_LINK:", LIVE_URL)
     print("Port 6080 must be running AND privately forwarded, otherwise GitHub displays HTTP 404.")
     print("INSTALL_FINISHED: inspect service and port status before claiming live video.")
+    doctor = STAGE / "doctor_live.py"
+    if doctor.is_file():
+        health = command([sys.executable,str(doctor)],timeout=15)
+        if health.returncode==0:
+            print("LIVE_HEALTH_REPORT:",health.stdout.strip())
+        else:
+            print("LIVE_HEALTH_REPORT_UNAVAILABLE")
 
 
 if __name__ == "__main__":
