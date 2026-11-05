@@ -1028,6 +1028,49 @@ def unity_forest_editor_refresh():
         "note":"Check Unity asset import and C# compiler before any forest core write"}),"stderr":""}
 
 
+def unity_forest_baseline_probe():
+    """Never write: compare source/main LFS-hydrated terrain assets with scratch."""
+    base=Path("Assets/TerrainDemoScene_URP/Terrain/Data")
+    expected={
+        "Terrain_1_1_4bf22c8f-eb55-436d-84e3-dedfa85665b1.asset":
+            "4798dfe0edf6cec43be1417e519271fbc4b98b99de553a981195e13c321714ae",
+        "Terrain_1_2_1694bb0f-cffe-402c-b6f9-cf47692fbb78.asset":
+            "9053935547655ccf39744e0b5ab475514598734bdffcf19f4f1760a452b559e4",
+        "Terrain_2_1_82fc4922-5564-4a18-858e-787f6d901556.asset":
+            "9aa00e637163f52f559683eb837e12799f39f499bcd16535d60838d49f8d5f65",
+        "Terrain_2_2_b6e03cf0-de91-4cae-b6af-0128d856ae43.asset":
+            "113c4b11ab5f7e6cba20f60a6b8bbc061d0f72d335827d48c98fff855a7faf07",
+    }
+    active=_scratch_unity_pids()
+    output={"scratch_editor_pids":active,
+            "scratch_free_gib":round(shutil.disk_usage(BATCH_ROOT).free/2**30,2),
+            "files":[]}
+    for name,sha in expected.items():
+        a=PROJECT/base/name
+        b=BATCH_ROOT/"project"/base/name
+        def read_digest(p):
+            if not p.is_file() or p.is_symlink():
+                return {"exists":False}
+            h=hashlib.sha256()
+            with p.open("rb") as file:
+                for chunk in iter(lambda:file.read(1024*1024),b""):h.update(chunk)
+            return {"exists":True,"bytes":p.stat().st_size,"sha256":h.hexdigest()}
+        src=read_digest(a)
+        cur=read_digest(b)
+        src_meta=read_digest(Path(str(a)+".meta"))
+        cur_meta=read_digest(Path(str(b)+".meta"))
+        output["files"].append({
+            "name":name,"main_expected_sha":sha,"source":src,"scratch":cur,
+            "source_matches_main":src.get("sha256")==sha,
+            "metas_match":src_meta.get("sha256") is not None
+                          and src_meta.get("sha256")==cur_meta.get("sha256")
+        })
+    output["can_restore_tree_only_baseline"]=(not active and
+        all(x["source_matches_main"] and x["metas_match"] for x in output["files"])
+        and output["scratch_free_gib"]>12)
+    return {"exit_code":0,"stdout":json.dumps(output,ensure_ascii=False),"stderr":""}
+
+
 def unity_forest_one_shot(job):
     """Run one fully licensed real Unity Editor startup authoring transaction.
 
@@ -2311,6 +2354,9 @@ def execute(job):
     if op == "unity_forest_editor_refresh":
         if args: raise ValueError("Unity refresh takes no arguments")
         return unity_forest_editor_refresh()
+    if op == "unity_forest_baseline_probe":
+        if args: raise ValueError("Baseline inspection takes no arguments")
+        return unity_forest_baseline_probe()
     if op in {"unity_forest_one_shot_plan","unity_forest_one_shot_apply"}:
         return unity_forest_one_shot(job)
     if op == "unity_forest_crash_report":
