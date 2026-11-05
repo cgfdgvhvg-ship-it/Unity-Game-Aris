@@ -312,6 +312,127 @@ def restore_reviewed_residential_scales(source):
     return b"".join(output)
 
 
+# A Foundation mesh stores absolute world-space rectangle vertices. Its
+# GameObject stays centered on the old foundation with a compensated scale
+# and translation; no native LFS geometry, terrain or .meta is rewritten.
+RESIDENTIAL_FOUNDATION_PLAN = "Tools/World/reviewed-residential-foundations-20261105.json"
+
+
+def restore_reviewed_residential_foundations(root, source):
+    """Reverse exactly the 47 named foundation transforms or reject drift.
+
+    The manifest's authored numbers are also checked against the preserved
+    world layout and the approved per-model house multipliers. The
+    historical exact-byte scene SHA remains the final immutable guard.
+    """
+    import re
+    root = Path(root)
+    try:
+        plan = json.loads((root / RESIDENTIAL_FOUNDATION_PLAN).read_text())
+        layout = json.loads((root / "Docs/MAP_LAYOUT.json").read_text())
+        source.decode("utf-8")
+    except (OSError, ValueError, UnicodeError):
+        return None
+    if plan.get("schema") != 1 or len(plan.get("changes", [])) != 47:
+        return None
+    houses = {b["name"]: b for b in layout["buildings"]
+              if b["model"] in REVIEWED_RESIDENTIAL_SCALES}
+    names = set(houses)
+    changes = {row.get("name"): row for row in plan["changes"]
+               if isinstance(row, dict)}
+    if len(houses) != 47 or set(changes) != names:
+        return None
+    # Prevent a changed manifest from approving unreviewed house geometry.
+    for name, b in houses.items():
+        row = changes[name]
+        if row.get("model") != b["model"]:
+            return None
+        old, new, _ = REVIEWED_RESIDENTIAL_SCALES[b["model"]]
+        factor = float(new) / float(old)
+        x, _, z = b["position_m"]
+        xmin, zmin, xmax, zmax = b["aabb_xz_m"]
+        width, depth = xmax-xmin, zmax-zmin
+        sx = (width*factor+2)/(width+2)
+        sz = (depth*factor+2)/(depth+2)
+        expected = (sx, sz, x*(1-sx), z*(1-sz))
+        keys = ("scaleX", "scaleZ", "positionX", "positionZ")
+        try:
+            actual = tuple(float(row[key]) for key in keys)
+            before = row["footprintBefore"]
+            after = row["footprintAfter"]
+        except (TypeError, ValueError, KeyError):
+            return None
+        if (any(not isinstance(row[key], str) for key in keys)
+            or any(abs(a-e)>1e-7 for a,e in zip(actual,expected))
+            or any(abs(a-e)>1e-5 for a,e in
+                   zip(before,[width,depth]))
+            or any(abs(a-e)>1e-5 for a,e in
+                   zip(after,[width*factor,depth*factor]))):
+            return None
+    blocks = re.split(rb"(?=^--- !u!)", source, flags=re.M)
+    owners = {}
+    for block in blocks:
+        match = re.match(rb"--- !u!1 &(\d+)\nGameObject:\n", block)
+        if match:
+            name = re.search(rb"^  m_Name: ([^\r\n]+)",block,flags=re.M)
+            if name:
+                if match[1] in owners:
+                    return None
+                owners[match[1]] = name[1].decode("utf-8")
+    states = {}
+    roots = {}
+    out = []
+    oldS = b"  m_LocalScale: {x: 1.0, y: 1.0, z: 1.0}"
+    oldP = b"  m_LocalPosition: {x: 0.0, y: 0.0, z: 0.0}"
+    for block in blocks:
+        if not re.match(rb"--- !u!4 &\d+\nTransform:\n", block):
+            out.append(block)
+            continue
+        match = re.search(rb"^  m_GameObject: \{fileID: (\d+)\}$",block,flags=re.M)
+        name = owners.get(match[1],"") if match else ""
+        if name in names:
+            old, new, _ = REVIEWED_RESIDENTIAL_SCALES[houses[name]["model"]]
+            o = ("  m_LocalScale: {x: "+old+", y: "+old+", z: "+old+"}").encode()
+            n = ("  m_LocalScale: {x: "+new+", y: "+new+", z: "+new+"}").encode()
+            if name in roots:
+                return None
+            if block.count(n)==1 and block.count(o)==0:
+                roots[name]=True
+            elif block.count(o)==1 and block.count(n)==0:
+                roots[name]=False
+            else:
+                return None
+        if not name.endswith("_Foundation") or name[:-11] not in names:
+            out.append(block)
+            continue
+        home = name[:-11]
+        if home in states:
+            return None
+        row = changes[home]
+        sx, sz, px, pz = (row[k] for k in
+                           ("scaleX","scaleZ","positionX","positionZ"))
+        newS = ("  m_LocalScale: {x: "+sx+", y: 1.0, z: "+sz+"}").encode()
+        newP = ("  m_LocalPosition: {x: "+px+", y: 0.0, z: "+pz+"}").encode()
+        if (block.count(newS)==1 and block.count(newP)==1
+            and block.count(oldS)==0 and block.count(oldP)==0):
+            states[home] = True
+            block = block.replace(newS,oldS,1).replace(newP,oldP,1)
+        elif (block.count(oldS)==1 and block.count(oldP)==1
+              and block.count(newS)==0 and block.count(newP)==0):
+            states[home] = False
+        else:
+            return None
+        out.append(block)
+    if set(states) != names or set(roots) != names:
+        return None
+    # An enlarged house may not silently retain a smaller foundation.
+    if any(states[name] != roots[name] for name in names):
+        return None
+    if sum(states.values()) not in (0, 47):
+        return None
+    return b"".join(out)
+
+
 def preserved_or_reviewed_lod_only(root,path,expected_sha):
     source=(Path(root)/path).read_bytes()
     if hashlib.sha256(source).hexdigest()==expected_sha:return True
@@ -321,7 +442,9 @@ def preserved_or_reviewed_lod_only(root,path,expected_sha):
         if source is None:return False
         if hashlib.sha256(source).hexdigest()==expected_sha:return True
     if path == SCENE_MOBILE_LOD_PATH:
-        reviewed_scales=restore_reviewed_residential_scales(source)
+        foundation_source=restore_reviewed_residential_foundations(root, source)
+        if foundation_source is None:return False
+        reviewed_scales=restore_reviewed_residential_scales(foundation_source)
         if reviewed_scales is None:return False
         original_shadows=restore_reviewed_scene_far_shadow(reviewed_scales)
         if original_shadows is None:return False
