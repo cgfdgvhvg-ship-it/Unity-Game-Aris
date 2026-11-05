@@ -164,10 +164,15 @@ namespace Aaris.MapReview
             Vector3 wish = Quaternion.Euler(0f, yaw, 0f) * new Vector3(moveInput.x, 0f, moveInput.y);
             wish = Vector3.ClampMagnitude(wish, 1f);
             float speed = running || Input.GetKey(KeyCode.LeftShift) ? runSpeed : walkSpeed;
-            Vector3 candidate = transform.position + wish * (speed * dt);
-            // Review mode stops at the shoreline; swimming is a separate gameplay system.
-            if (Mathf.Abs(candidate.x) > 975f || Mathf.Abs(candidate.z) > 975f || !SafeFooting(candidate))
-                wish = Vector3.zero;
+            // Zero horizontal intent never needs a terrain/bridge support query.
+            // Keep gravity, jumps and CharacterController.Move active while idle.
+            if (wish.sqrMagnitude > 0f)
+            {
+                Vector3 candidate = transform.position + wish * (speed * dt);
+                // Keep all shoreline and solid-support checks for any real movement.
+                if (Mathf.Abs(candidate.x) > 975f || Mathf.Abs(candidate.z) > 975f || !SafeFooting(candidate))
+                    wish = Vector3.zero;
+            }
             if (wish.sqrMagnitude > 0.001f)
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(wish), 1f - Mathf.Exp(-14f * dt));
             verticalVelocity = Mathf.Max(verticalVelocity - gravity * dt, -40f);
