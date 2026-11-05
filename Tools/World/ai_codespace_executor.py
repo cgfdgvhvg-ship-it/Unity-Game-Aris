@@ -946,7 +946,7 @@ def unity_forest_stage():
     for before,after in patch:
         if revised.count(before)!=1:
             return {"exit_code":3,"stdout":"","stderr":"Reviewed scratch bridge patch anchor mismatch"}
-        revised=revised.replace(before,after.replace("\\\\n","\\n"))
+        revised=revised.replace(before,after.replace("\\n","\n"))
     desired=helper.read_bytes()
     if not desired.startswith(b"// One-time *Editor-only* forest core authoring.") or len(desired)>40000:
         return {"exit_code":3,"stdout":"","stderr":"Unreviewed forest authoring source"}
