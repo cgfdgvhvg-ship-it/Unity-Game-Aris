@@ -1015,6 +1015,22 @@ def _restart_rebuild_worker():
         probe.parent.mkdir(parents=True,exist_ok=True)
         shutil.copy2(BATCH_CS,probe)
         virtual_bridge_isolate()  # BEFORE Editor compilation: never read original bridge queue
+        preflight=_session_plan()
+        if not preflight.get("scratch_core_matches"):
+            raise RuntimeError("Scratch copy differs from original core; refusing launch")
+        marker=BATCH_ROOT/".aaris-scratch-copy-complete.json"
+        if marker.exists() or marker.is_symlink():
+            raise RuntimeError("Unexpected scratch copy marker, refusing overwrite")
+        # Only after every copytree and staged bridge succeeds, atomically mark
+        # an isolated /tmp copy as complete. Never write in original Assets.
+        proof={"schema":1,
+               "scene":"Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity",
+               "source_sha256":preflight["source_sha256"]}
+        staged=marker.with_suffix(".new")
+        if staged.exists() or staged.is_symlink():
+            raise RuntimeError("Stale scratch completion marker staging")
+        staged.write_text(json.dumps(proof,ensure_ascii=False))
+        os.replace(staged,marker)
         snapshot=_session_plan()
         if snapshot["step"]!="reopen_existing_scratch":
             raise RuntimeError("Source fingerprint mismatch after scratch clone: "+snapshot["step"])
