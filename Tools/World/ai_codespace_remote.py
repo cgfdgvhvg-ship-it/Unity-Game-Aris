@@ -246,31 +246,13 @@ def execute_remote(job: dict, token: str, workspace: Path, result_file: Path, *,
         import hashlib
         import io
         import tempfile
-        # This workflow checks out source WITHOUT persistent git credentials.
-        # A one-use read-only Actions token is provided via GIT_ASKPASS.
-        token=os.environ.get("GITHUB_TOKEN","")
-        if not token or len(token)<20:
-            raise JobError("Ephemeral read-only Actions token missing")
-        with tempfile.TemporaryDirectory(prefix="aaris-main-fetch-") as temp_dir:
-            helper=Path(temp_dir)/"askpass.py"
-            helper.write_text(
-                "#!/usr/bin/env python3\nimport os,sys\n"
-                "print('x-access-token' if 'Username' in sys.argv[1] else os.environ['GITHUB_TOKEN'])\n")
-            helper.chmod(0o700)
-            auth_env=os.environ.copy()
-            auth_env["GIT_ASKPASS"]=str(helper)
-            auth_env["GIT_TERMINAL_PROMPT"]="0"
-            fetch=subprocess.run(
-                ["git", "fetch", "--no-tags", "--depth=1", "origin", "main"],
-                cwd=workspace,capture_output=True,text=True,timeout=65,
-                env=auth_env,check=False,stdin=subprocess.DEVNULL)
-        if fetch.returncode:
-            raise JobError("Cannot fetch reviewed main source: " + fetch.stderr[-350:])
-        head = subprocess.run(
-            ["git", "rev-parse", "FETCH_HEAD"], cwd=workspace, text=True,
-            capture_output=True, check=True, timeout=8).stdout.strip()
-        if head != MAIN_CORE_COMMIT:
-            raise JobError("Main has advanced; refuse stale source snapshot")
+        # One scoped, ephemeral GitHub read-credential adapter for every AI.
+        # Never reuse the Codespaces lifecycle token for repository git access.
+        from ai_master_github_auth import checked_fetch_main, MasterAuthError
+        try:
+            checked_fetch_main(workspace, MAIN_CORE_COMMIT)
+        except MasterAuthError as exc:
+            raise JobError(str(exc)) from None
         def source_data(path):
             result=subprocess.run(
                 ["git","show",MAIN_CORE_COMMIT+":"+path],cwd=workspace,
