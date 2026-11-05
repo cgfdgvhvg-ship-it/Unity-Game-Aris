@@ -607,7 +607,7 @@ def unity_batch_launch():
     for path in ("Assets","Packages","ProjectSettings"):
         if not (PROJECT/path).is_dir() or (PROJECT/path).is_symlink():
             return {"exit_code":3,"stdout":"","stderr":"Missing original project folder: "+path}
-    _batch_write("launching","original_project":str(PROJECT),
+    _batch_write("launching",original_project=str(PROJECT),
                  "scratch_project":str(BATCH_ROOT/"project"),
                  "note":"Separate throwaway /tmp test; original paused GUI is untouched")
     env=os.environ.copy()
