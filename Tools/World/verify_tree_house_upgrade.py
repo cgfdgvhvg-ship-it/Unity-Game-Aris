@@ -119,9 +119,87 @@ def restore_scene_mobile_lod(source):
     return ''.join(result).encode('utf-8')
 
 
+# Exact, reviewed 2026-11-05 mobile LOD2-only shadow omission.
+# Revert this ONE property before the historical protected byte hash check.
+REVIEWED_FAR_SHADOW_PREFABS=frozenset(
+    f'Assets/AarisWorld/Models/{n}/{n}.prefab' for n in (
+        'Airfield','CanalTown','HanokVillage','Harbour','ParcelDepot',
+        'TownHall','a_frame_cabin','bungalow_house',
+        'detached_two_storey_house','garage_apartment','lighthouse',
+        'observatory_dome','pitched_roof_cottage',
+        'row_three_townhouses','two_bedroom_garage_house',
+        'warehouse_loading_dock','watchtower')
+) | frozenset(
+    f'Assets/AarisWorld/Props/{n}/{n}.prefab'
+    for n in ('ClimbableTower','RockCover','StaticWreck')
+)
+
+
+def restore_reviewed_far_shadow(source, path):
+    """Return original source bytes or None on ANY unreviewed renderer state."""
+    import re
+    if path not in REVIEWED_FAR_SHADOW_PREFABS:
+        return source
+    blocks=re.split(rb'(?=^--- !u!)',source,flags=re.M)
+    groups=[x for x in blocks if b'\nLODGroup:\n' in x]
+    if len(groups)!=1:return None
+    ids=re.findall(rb'- renderer: \{fileID: (\d+)\}',groups[0])
+    if len(ids)!=3 or len(set(ids))!=3:return None
+    for index,ident in enumerate(ids):
+        header=b'--- !u!23 &'+ident+b'\nMeshRenderer:\n'
+        locations=[j for j,b in enumerate(blocks) if b.startswith(header)]
+        if len(locations)!=1:return None
+        j=locations[0]
+        matches=re.findall(rb'^  m_CastShadows: (\d+)\n',blocks[j],flags=re.M)
+        if matches!=([b'1'] if index<2 else [b'0']):return None
+        if index==2:
+            blocks[j]=blocks[j].replace(b'  m_CastShadows: 0\n',b'  m_CastShadows: 1\n',1)
+    return b''.join(blocks)
+
+
+# Exact, owner-verified PR #64 tree-only native TerrainData updates.
+# Preserve the old v1 house contract and source mesh checks. Approve ONLY
+# these four LFS blobs, never arbitrary terrain data or altered .meta files.
+APPROVED_20261105_NATIVE_TERRAINS={
+    'Terrain_1_1_4bf22c8f-eb55-436d-84e3-dedfa85665b1.asset':
+      ('4798dfe0edf6cec43be1417e519271fbc4b98b99de553a981195e13c321714ae',
+       '896b2d29b2d5b71afffe1f64a17863c8fa99cd06104c833b679ca117dd4d4609',53668572),
+    'Terrain_1_2_1694bb0f-cffe-402c-b6f9-cf47692fbb78.asset':
+      ('9053935547655ccf39744e0b5ab475514598734bdffcf19f4f1760a452b559e4',
+       'b92e9099868cabd8040db632d0cfac3c38075b2e292519b0edd8629723edecf8',54074780),
+    'Terrain_2_1_82fc4922-5564-4a18-858e-787f6d901556.asset':
+      ('9aa00e637163f52f559683eb837e12799f39f499bcd16535d60838d49f8d5f65',
+       'd26aa11e1e6bb8edc65ca52c8c3210d477711b091e86e7ead42e75407dcc29a3',53509804),
+    'Terrain_2_2_b6e03cf0-de91-4cae-b6af-0128d856ae43.asset':
+      ('113c4b11ab5f7e6cba20f60a6b8bbc061d0f72d335827d48c98fff855a7faf07',
+       'cfd96176947a1e75da285458ad6198ebf56a80195aa2138a5f202f5dc7f814e6',53568876),
+}
+
+
+def reviewed_native_terrain_pr64(source, path, expected_sha):
+    import re
+    prefix='Assets/TerrainDemoScene_URP/Terrain/Data/'
+    if not path.startswith(prefix):return False
+    entry=APPROVED_20261105_NATIVE_TERRAINS.get(path[len(prefix):])
+    if entry is None or expected_sha!=entry[0]:return False
+    new,size=entry[1:]
+    if source.startswith(b'version https://git-lfs.github.com/spec/v1\n'):
+        matched=re.fullmatch(
+            rb'version https://git-lfs.github.com/spec/v1\n'
+            rb'oid sha256:([a-f0-9]{64})\nsize ([0-9]+)\n?',source)
+        return (matched is not None and matched[1].decode()==new and
+                int(matched[2])==size)
+    return len(source)==size and hashlib.sha256(source).hexdigest()==new
+
+
 def preserved_or_reviewed_lod_only(root,path,expected_sha):
     source=(Path(root)/path).read_bytes()
     if hashlib.sha256(source).hexdigest()==expected_sha:return True
+    if reviewed_native_terrain_pr64(source,path,expected_sha):return True
+    if path in REVIEWED_FAR_SHADOW_PREFABS:
+        source=restore_reviewed_far_shadow(source,path)
+        if source is None:return False
+        if hashlib.sha256(source).hexdigest()==expected_sha:return True
     if path == SCENE_MOBILE_LOD_PATH:
         restored = restore_scene_mobile_lod(source)
         return restored is not None and hashlib.sha256(restored).hexdigest() == expected_sha
