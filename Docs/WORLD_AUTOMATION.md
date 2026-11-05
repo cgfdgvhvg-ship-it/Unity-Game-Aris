@@ -27,6 +27,21 @@ other trial sizes. For a future proposed house-size change, pass the **same**
 steering, gearbox, chassis mesh collision, ground contact, obstruction shape,
 terrain collider and real Android driving remain engine-level merge blockers.
 
+A new **read-only Unity Editor physics probe** can be run in the **actual reviewed
+PR #75 scene after a fully hydrated native Unity import** from the menu
+`AarisEngine > QA > Read-Only Garage Physics Probe` (or via Unity's approved
+`-executeMethod Aaris.WorldAutomation.AarisResidentialRoutePhysicsAudit.Run`).
+It confirms the 45 scene markers and 17 saved translations match the reviewed
+manifest, samples terrain at 0.8-m steps on the 17 garage-to-road links and
+queries enabled physics Colliders via `Physics.OverlapBoxNonAlloc` using a
+**hypothetical** 2.2 × 5.0 × 1.8-m car envelope (plus a 0.5-m side/length
+margin and a 0.15-m ground gap). It prints an
+`AARIS_EDITOR_GARAGE_ROUTE_PHYSICS_AUDIT=` JSON result to the Unity log and
+fails on obstacles/terrain offset. It never saves/opens scenes, creates cars,
+updates .meta, or touches original project files. **Adding this test is not
+proof that it ran**: an actual Editor import/execute/readback and real vehicle
+Prefab, wheels, steering sweeps and Android gameplay validation remain required.
+
 To preview a **future single-house resize** without editing the project, provide a
 local JSON file containing exact GameObject-name keys and **absolute target
 multipliers relative to the historical `Docs/MAP_LAYOUT.json`**, for example:
