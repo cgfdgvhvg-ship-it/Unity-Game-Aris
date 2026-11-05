@@ -1238,6 +1238,32 @@ def unity_forest_baseline_probe():
     return {"exit_code":0,"stdout":json.dumps(output,ensure_ascii=False),"stderr":""}
 
 
+def unity_render_backend_probe():
+    """Read-only software Vulkan/OpenGL capability probe for Unity screenshots."""
+    info={"display_exists":Path("/tmp/.X11-unix/X12").exists(),
+          "scratch_unity_pids":_scratch_unity_pids(),
+          "binaries":{n:bool(shutil.which(n))
+            for n in ("vulkaninfo","glxinfo","vkcube","eglinfo","scrot")}}
+    for dir_name in ("/usr/share/vulkan/icd.d","/etc/vulkan/icd.d",
+                     "/usr/share/glvnd/egl_vendor.d"):
+        directory=Path(dir_name)
+        info[dir_name]=[x.name for x in directory.iterdir()
+                         if x.is_file() and not x.is_symlink()][:16] if directory.is_dir() else []
+    env=os.environ.copy()
+    env["DISPLAY"]=":12"
+    env["VK_LOADER_DEBUG"]="error"
+    for cmd in (("glxinfo","-B"),("vulkaninfo","--summary")):
+        if not shutil.which(cmd[0]):continue
+        try:
+            ret=subprocess.run(list(cmd),env=env,capture_output=True,text=True,
+                               timeout=15,check=False,stdin=subprocess.DEVNULL)
+            info[cmd[0]]={"exit":ret.returncode,
+                          "stdout":ret.stdout[-2200:],"stderr":ret.stderr[-600:]}
+        except (OSError,subprocess.TimeoutExpired) as exc:
+            info[cmd[0]]={"error":str(exc)[:300]}
+    return {"exit_code":0,"stdout":json.dumps(info,ensure_ascii=False),"stderr":""}
+
+
 def unity_map_camera_capture(job):
     """One-shot real Unity URP screenshot, saved ONLY as a short-lived artifact.
 
@@ -2648,6 +2674,9 @@ def execute(job):
     if op == "unity_forest_baseline_probe":
         if args: raise ValueError("Baseline inspection takes no arguments")
         return unity_forest_baseline_probe()
+    if op == "unity_render_backend_probe":
+        if args: raise ValueError("Backend probe needs no args")
+        return unity_render_backend_probe()
     if op == "unity_map_camera_capture":
         if len(args)!=1 or args[0] not in {"forest-west","forest-south","mountain-east"}:
             raise ValueError("Only reviewed Unity scene camera zones are allowed")
