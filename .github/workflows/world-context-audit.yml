@@ -32,6 +32,8 @@ jobs:
         env:
           WORLD_REQUEST: '{"command":"inspect","x":0,"y":0,"z":0,"native":true,"geometry":true}'
         run: python Tools/World/fetch_assets.py
+      - name: Diagnose residential meshes from hydrated Git LFS (read-only)
+        run: python Tools/World/diagnose_house_geometry.py
       - name: Inspect seeded random points and preview move and color edits in temporary copies
         run: python Tools/World/audit_context.py
 
