@@ -1,3 +1,9 @@
+# SECOND MOBILE RENDER CORE PASS — foliage detail shadow casters (2026-11-05)
+
+Branch `ai/mobile-foliage-shadow-core-20261105`: *five true existing Unity prefab core files* `Fern_A`, `Fern_B`, `Fern_C`, `Heather_A`, `Heather_B` each changed **exactly one renderer shadow flag 1→0**, leaving meshes, leaves, materials, colliders, transforms, GUIDs, and shadow receiving untouched. All 20 detail prefabs audited: only prominent `Bush_A` and `Bush_Red` retain realtime shadow casting. Verify `Tools/World/tests/test_detail_foliage_shadow_core.py`, which reverses the flag and proves historical source Git blob SHA1 byte equality. Additional report: `Docs/MOBILE_FOLIAGE_SHADOW_CORE_20261105.md`. **No device FPS or actual Unity render verified yet; do not claim guaranteed 2 GB smoothness.** Do not change the prior main scene or merged PR #65.
+
+---
+
 # ACTUAL MAP SCENE LOD2 SHADOW CORE FIX — native serialized scene (2026-11-05)
 
 **Branch `ai/mobile-scene-far-lod-shadow-20261105`, review pending:** The prior PR #65 had updated 20 model/prop source prefabs, but the actual scene is made from **expanded GameObjects**. A saved-scene audit found **101 active LODGroups with all 3 LOD levels casting shadows**. This upgrade changes **only the 101 farthest LOD2 MeshRenderer `m_CastShadows` flags** to 0 in real `Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity`, preserving all scene objects, 202 near-LOD shadows, materials, geometry, collision, placements and four merged TerrainData LFS objects. Source scene Git blob prior `ea741c769e1f13a992d734a23b0d355eabd6541e`; modified scene blob `84af0f04fd49a90ed25a978a34db9bc3c7bbdc38`. To audit, use `Tools/World/tests/test_scene_far_shadow_core.py` and the strict historical hash restoration in `Tools/World/verify_tree_house_upgrade.py`. More details in `Docs/ANDROID_2GB_RENDER_CORE_PASS_20261105.md`.
