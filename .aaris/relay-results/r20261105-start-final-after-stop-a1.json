@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "id": "r20261105-start-final-after-stop-a1",
+  "action": "start",
+  "recorded_utc": "2026-11-05T18:07:43.802Z",
+  "status": "start_requested",
+  "state_before": "Shutdown"
+}
