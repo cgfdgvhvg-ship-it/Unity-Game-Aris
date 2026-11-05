@@ -100,6 +100,54 @@ class ActionsSyncTests(unittest.TestCase):
         with self.assertRaises(runner.RunnerError):
             runner.verified_manifest(export,folder)
 
+    def test_actions_runner_real_local_git_lfs_branch_commit(self):
+        import subprocess
+        if subprocess.run(["git","lfs","version"],capture_output=True).returncode:
+            self.skipTest("git lfs unavailable")
+        folder,export,data=self.valid_export()
+        source=self.root/"source"
+        source.mkdir()
+        subprocess.run(["git","init","-b","main"],cwd=source,
+                       check=True,capture_output=True)
+        for key,value in (("user.email","test@example.com"),
+                          ("user.name","Test")):
+            subprocess.run(["git","config",key,value],cwd=source,
+                           check=True,capture_output=True)
+        subprocess.run(["git","lfs","install","--local"],cwd=source,
+                       check=True,capture_output=True)
+        item=data["files"][0]
+        native=source/item["path"]
+        native.parent.mkdir(parents=True)
+        native.write_bytes(b"original native asset")
+        (source/(item["path"]+".meta")).write_bytes(b"guid: preserved")
+        (source/".gitattributes").write_text(
+            item["path"]+" filter=lfs diff=lfs merge=lfs -text\n")
+        item["original_sha256"]=runner.sync.sha(native)
+        item["meta_sha256"]=runner.sync.sha(source/(item["path"]+".meta"))
+        Path(export["manifest"]).write_text(json.dumps(data))
+        subprocess.run(["git","add","."],cwd=source,
+                       check=True,capture_output=True)
+        subprocess.run(["git","commit","-m","base"],cwd=source,
+                       check=True,capture_output=True)
+        bare=self.root/"remote.git"
+        subprocess.run(["git","init","--bare",str(bare)],
+                       check=True,capture_output=True)
+        subprocess.run(["git","remote","add","origin",str(bare)],
+                       cwd=source,check=True,capture_output=True)
+        subprocess.run(["git","push","origin","main"],cwd=source,
+                       check=True,capture_output=True)
+        with patch.object(runner.sync,"URL",str(bare)), \
+             patch.object(runner,"call") as auth:
+            receipt=runner.write_git_batch(data,Path(export["tar"]),"test")
+        self.assertEqual(receipt["repo"],runner.REPO)
+        self.assertEqual(receipt["pushed"][item["path"]],item["sha256"])
+        self.assertTrue(receipt["branch"].startswith("ai/unity-batched-"))
+        after=subprocess.run(["git","--git-dir",str(bare),"show",
+                              receipt["branch"]+":"+item["path"]],
+                             capture_output=True,check=True).stdout
+        self.assertTrue(runner.sync.match_remote_blob(after,item["sha256"]))
+        self.assertEqual(native.read_bytes(),b"original native asset")
+
     def test_no_credentials_in_app_status(self):
         self.assertNotIn("GH_TOKEN",json.dumps({
             "status":"codespace_stopped_no_tmp_to_sync"}))
