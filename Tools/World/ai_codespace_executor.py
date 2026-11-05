@@ -909,6 +909,79 @@ def _virtual_response(ident,seconds=0):
             "stderr":(obj.get("error") or "")[:350]}
 
 
+def unity_forest_stage():
+    """Stage reviewed one-time forest authoring into *scratch Unity Editor only*.
+
+    Never write owner original or commit the editor helper as the map result.
+    Checked exact bridge source and /tmp backup permit rollback on failed stage.
+    """
+    if not _scratch_unity_pids() or not (BATCH_ROOT/"scene-readback.json").is_file():
+        return {"exit_code":3,"stdout":"","stderr":"Live scratch Unity scene not confirmed"}
+    stage=Path("/workspaces/.aaris-world-bridge/ondemand")
+    bridge_reference=stage/"AarisLiveEditorBridge.cs"
+    helper=stage/"AarisForestCoreAuthoring.cs"
+    target=_virtual_bridge_path()
+    helper_target=target.with_name("AarisForestCoreAuthoring.cs")
+    if not all(x.is_file() and not x.is_symlink() for x in (bridge_reference,helper,target)):
+        return {"exit_code":3,"stdout":"","stderr":"Reviewed staging sources or scratch Unity bridge unavailable"}
+    if helper_target.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Unsafe scratch helper symlink"}
+    old_root='private static readonly string Root = "/home/codespace/.aaris-desktop";'
+    scratch_root='private static readonly string Root = "/tmp/aaris-unity-batch/control";'
+    baseline=bridge_reference.read_text(encoding="utf-8")
+    if baseline.count(old_root)!=1:
+        return {"exit_code":3,"stdout":"","stderr":"Unexpected reviewed bridge source"}
+    expected=baseline.replace(old_root,scratch_root)
+    saved=target.read_text(encoding="utf-8")
+    patch=[
+      ('public string id, action, target;','public string id, action, target, expectedDigest;'),
+      ('public Item[] nearbyObjects, nearbyTerrainTrees;',
+       'public Item[] nearbyObjects, nearbyTerrainTrees;\\n            public AarisForestCoreAuthoring.ForestReport[] forestReports;'),
+      ('case "capture": Capture(request, result); break;',
+       'case "forest_plan": AarisForestCoreAuthoring.Run(request, result, false); break;\\n'
+       '                    case "forest_apply": AarisForestCoreAuthoring.Run(request, result, true); break;\\n'
+       '                    case "capture": Capture(request, result); break;'),
+    ]
+    revised=expected
+    for before,after in patch:
+        if revised.count(before)!=1:
+            return {"exit_code":3,"stdout":"","stderr":"Reviewed scratch bridge patch anchor mismatch"}
+        revised=revised.replace(before,after.replace("\\\\n","\\n"))
+    desired=helper.read_bytes()
+    if not desired.startswith(b"// One-time *Editor-only* forest core authoring.") or len(desired)>40000:
+        return {"exit_code":3,"stdout":"","stderr":"Unreviewed forest authoring source"}
+    if saved==revised and helper_target.is_file() and helper_target.read_bytes()==desired:
+        return {"exit_code":0,"stdout":json.dumps({"status":"forest_helper_already_staged",
+                "source_original_untouched":True,"scratch_only":True}),"stderr":""}
+    if saved!=expected or helper_target.exists():
+        return {"exit_code":3,"stdout":"","stderr":"Scratch Editor sources differ from approved baseline; refuse overwrite"}
+    backup=BATCH_ROOT/"forest-native-authoring-backup"
+    if backup.exists() or backup.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Prior forest stage backup needs inspection"}
+    backup.mkdir(mode=0o700)
+    backup_bridge=backup/target.name
+    shutil.copy2(target,backup_bridge)
+    updated=False
+    try:
+        fresh=target.with_suffix(".cs.aaris-forest-new")
+        if fresh.exists() or fresh.is_symlink(): raise ValueError("Scratch temp already exists")
+        fresh.write_text(revised,encoding="utf-8")
+        os.replace(fresh,target)
+        updated=True
+        helper_target.write_bytes(desired)
+        if target.read_text(encoding="utf-8")!=revised or helper_target.read_bytes()!=desired:
+            raise ValueError("Staged Unity Editor source readback mismatch")
+    except BaseException:
+        if helper_target.exists(): helper_target.unlink()
+        if updated: shutil.copy2(backup_bridge,target)
+        raise
+    return {"exit_code":0,"stdout":json.dumps({
+        "status":"forest_authoring_staged_in_running_scratch_editor",
+        "helper":"Assets/AarisWorld/Editor/AarisForestCoreAuthoring.cs",
+        "source_original_untouched":True,"scratch_only":True,
+        "note":"Unity auto compilation must complete before forest_plan"}),"stderr":""}
+
+
 def unity_virtual_live_job(job):
     if len(job["args"])!=1 or len(job["args"][0])>550:
         raise ValueError("One bounded JSON action required")
@@ -1286,6 +1359,8 @@ def validate_live_payload(value):
         "move_tree":{"target","delta","expectedPosition"},
         "scale_tree":{"target","scale","expectedPosition"},
         "capture":{"cameraPosition","cameraTarget"},
+        "forest_plan":{"target"},
+        "forest_apply":{"target","expectedDigest"},
     }
     if action not in allowed or set(value)-({"action"}|allowed[action]):
         raise ValueError("unsupported Unity request action or fields")
@@ -1308,6 +1383,18 @@ def validate_live_payload(value):
         raise ValueError("scale vector required")
     if action in ("move_tree","scale_tree") and "expectedPosition" not in value:
         raise ValueError("expected terrain tree position required")
+    if action=="forest_plan" and value.get("target")!="all":
+        raise ValueError("Only whole-map native forest plan is allowed")
+    if action=="forest_apply":
+        asset=value.get("target")
+        if not isinstance(asset,str) or not re.fullmatch(
+            r"Assets/TerrainDemoScene_URP/Terrain/Data/Terrain_[a-zA-Z0-9_-]+\.asset", asset
+        ):
+            raise ValueError("Forest writes are restricted to existing TerrainData .asset")
+        if not isinstance(value.get("expectedDigest"),str) or not re.fullmatch(
+            r"[a-f0-9]{64}",value["expectedDigest"]
+        ):
+            raise ValueError("Exact fresh Unity SHA256 required for forest write")
     if action=="capture" and not {"cameraPosition","cameraTarget"}<=set(value):
         raise ValueError("camera position and target required")
     if action=="inspect" and not value.get("target") and "cameraTarget" not in value:
@@ -1786,6 +1873,9 @@ def execute(job):
         )
         return {"exit_code":audit.returncode,"stdout":audit.stdout[-16000:],
                 "stderr":audit.stderr[-1400:]}
+    if op == "unity_forest_stage":
+        if args: raise ValueError("Forest stage does not accept parameters")
+        return unity_forest_stage()
     if op == "unity_virtual_live":
         return unity_virtual_live_job(job)
     if op == "unity_virtual_result":
