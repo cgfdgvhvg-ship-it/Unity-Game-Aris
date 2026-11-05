@@ -1,0 +1,10 @@
+name = "aaris-codespace-relay"
+main = "worker.mjs"
+compatibility_date = "2026-10-31"
+
+[triggers]
+crons = ["* * * * *"]
+
+[vars]
+# Fail closed until GitHub API secret and agent shared secret are configured.
+RELAY_ENABLED = "false"
