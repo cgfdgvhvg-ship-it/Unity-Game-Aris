@@ -1,3 +1,9 @@
+## New live viewer and GitHub-direct agent (2026-11-05)
+
+The new preferred terminal path is documented in **Docs/LIVE_UNITY_PHONE_VIEW.md**. It runs `github_queue_agent.py` inside Codespace using its existing GitHub CLI authentication and DOES NOT need `AGENT_SHARED_SECRET`; that second secret applies only to the earlier Worker `/v1/next` polling design. Cloudflare is still used for lifecycle and the `/live` entry redirect. The new installer has been committed to the review branch, but there is **no confirmed receipt that the Codespace boot service was installed or that noVNC port 6080 is live**. One-time installation in the Codespace terminal is still required if the old Issue #37 bridge does not resume. Until then do not queue persistent `terminal` jobs, because a pending job can repeatedly wake a sleeping Codespace and consume quota.
+
+---
+
 # AI → GitHub → Codespace relay without GitHub Actions
 
 **State:** source is ready for one-time external deployment. **Not active until a Cloudflare Worker and an in-Codespace startup agent have been installed and tested.** This is not a workaround for a *Codespaces* account-payment block; it removes the dependency on **GitHub Actions runner minutes** only.
