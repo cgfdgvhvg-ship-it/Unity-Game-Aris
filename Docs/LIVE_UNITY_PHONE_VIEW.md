@@ -58,3 +58,26 @@ Supported built-in terminal commands after bootstrap: `system_status`, `desktop_
 - The earlier Unity camera capture SIGSEGV remains a separate native Editor issue; this live WebSocket transport removes repeated JPG transfers but is not a fix for a crash.
 - If user systemd is absent, the `~/.bashrc` fallback starts when the terminal is opened, not guaranteed immediately on unattended Codespace boot.
 - The Cloudflare Worker `/live` link is just an authenticated redirect; Cloudflare does NOT receive the image stream. A true Cloudflare Tunnel would need a domain with proper Cloudflare Access policy; no Cloudflare DNS zone was present when inspected, so this safe GitHub-private route was chosen.
+
+## Fix for the 2026-11-06 Termux error / permanent viewer setup
+
+The owner previously pasted the installer into Android Termux. That is **not** the Codespace; `/workspaces/Unity-Game-Aris` does not exist there, and installing `x11vnc` in Termux cannot show the remote Unity Editor. The installer now detects this and prints a clear error. The viewer's Cloudflare link is already stable but currently returned GitHub HTTP 404 because the remote server/forwarded port had not been initialized.
+
+**One-time bootstrap directly from Termux using its existing authenticated `gh` CLI** (the commands run by SSH inside the real Codespace, not on the phone):
+
+```bash
+gh codespace ssh -c musical-carnival-jjxp9r6vw45wfjgvg -- -tt "gh api 'repos/Aaris-khan-don/Unity-Game-Aris/contents/Tools/CodespaceRelay/bootstrap_live.py?ref=ai/codespace-jobs' --jq .content | base64 -d | python3 -"
+```
+
+The script checks the expected remote project, stages the reviewed Python scripts and Unity camera bridge in the persistent bridge folder, asks **once** on the remote terminal to create the private VNC password (8 character VNC password compatibility), attempts user systemd services, and starts/revives the desktop. It outputs a **read-only LIVE_HEALTH_REPORT** including whether 6080 is listening; no credentials are printed or stored in Git. It stages the new C# focus code for the isolated scratch Unity scene and saves a backup before replacing that scratch-only Editor bridge. The original checked-out Unity scene and assets are unchanged.
+
+One-time in Codespace web editor: forward port `6080` in **PORTS**, and confirm **Private** visibility. A forwarded port and a listening remote `websockify` are both required. The GitHub URL `https://musical-carnival-jjxp9r6vw45wfjgvg-6080.app.github.dev/vnc.html` returns HTTP 404 while the server/forwarding is absent. The Cloudflare `/live` entry link is unchanged.
+
+### AI's place and manual navigation
+
+The earlier Unity bridge `Inspect` action only returned nearby entities and **did not move the SceneView camera**. A reviewed C# patch now focuses `SceneView.LookAtDirect(center,...)`, repaints and saves the session when the AI queues `unity_camera_focus`. The patch must be staged and compiled in the **actual running scratch Unity Editor** before this can be considered working. A persisted focus is restored when the Editor can reopen the same scratch/session context; `/tmp` and unsaved scene state may be wiped on Codespace stop. Avoid claiming that every scene or camera state survives an unclean shutdown.
+
+The phone can use noVNC touch gestures for mouse interaction, drag, scroll and zoom. Which gesture actually pans/rotates the **3D map camera** depends on Unity Scene View and noVNC mouse mode; pinch-to-zoom may scale the *viewer* instead. User interaction must be tested on the live Unity scene, not inferred from the protocol alone.
+
+**Important limits:** a stable URL does not itself wake a stopped Codespace. The Worker must first start it through an authorized AI job (which has been verified). Auto-starting Codespace merely because anyone visits the public Cloudflare `/live` link would permit unauthenticated visitors to incur Codespaces charges. Cloudflare Access is not enabled in this account as of the last API read. Do **not** add unauthenticated wakeup-on-GET. If user-authenticated one-link wakeup is required, first enable Cloudflare Access and enforce an owner-only Access policy; then implement and independently test that route. This is a one-time additional authentication setup, not a per-frame transfer.
+
