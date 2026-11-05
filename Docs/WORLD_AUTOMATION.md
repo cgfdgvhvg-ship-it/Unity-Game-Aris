@@ -9,6 +9,24 @@ neighbours will move. Run the deterministic source simulation first:
 python Tools/World/smart_residential_clearance.py
 ```
 
+Additionally check the **entire projected car body**, rather than just the
+spawn-marker centre, along every straight spawn-to-road route:
+
+```bash
+python Tools/World/vehicle_swept_clearance.py
+```
+
+This read-only conservative XZ sweep uses a **configurable example car** 2.2 m
+wide × 5.0 m long, plus 0.5 m clearance on every edge. It expands the
+hypothetical vehicle footprint along all 45 saved straight-line routes and
+checks against all 59 current building AABBs; intersections fail closed.
+`--vehicle-width-m`, `--vehicle-length-m`, and `--vehicle-margin-m` allow
+other trial sizes. For a future proposed house-size change, pass the **same**
+`--house-scales-json` to both planners. These dimensions are test assumptions,
+**not** measured vehicle prefab/WheelCollider data. Actual car turning radius,
+steering, gearbox, chassis mesh collision, ground contact, obstruction shape,
+terrain collider and real Android driving remain engine-level merge blockers.
+
 To preview a **future single-house resize** without editing the project, provide a
 local JSON file containing exact GameObject-name keys and **absolute target
 multipliers relative to the historical `Docs/MAP_LAYOUT.json`**, for example:
