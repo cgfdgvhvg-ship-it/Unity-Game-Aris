@@ -1,6 +1,38 @@
-# CRITICAL QA HOLD — Terrain TreeInstances include ROCKS (2026-11-05)
+# VERIFIED TREE-ONLY CORE ASSET FIX — CURRENT LATEST (2026-11-05)
 
-**Do not merge draft PR #64 at current commit `1c327d9`.** A read of the existing saved `Docs/TERRAIN_INDEX.json` discovered that the 7,508 `TerrainData.m_TreeInstances` are **not all trees**: 1,939 are true tree prefabs (`/Trees/`), 5,564 are rock prefabs (`/Rocks/`), and 5 are shrubs (`/Foliage/`). Tile breakdown: 1_1 = 374 trees + 1,330 rocks; 1_2 = 618 trees + 3,442 rocks + 5 shrubs; 2_1 = 519 trees + 388 rocks; 2_2 = 428 trees + 404 rocks. Previous bulk editor pass incorrectly scaled all 7,508; its four verified Git LFS blobs are a **quarantined review attempt, not a production-ready tree upgrade**. The user asked to scale **every tree**, not to resize rocks/shrubs.
+**Use this section as authoritative for forest tree scale.** Previous notes about “all 7,508 trees” were discovered to be incorrect: Unity's TerrainData TreeInstance container holds **1,939 real trees, 5,564 rocks, and 5 shrubs**. The earlier whole-instance pass was quarantined; it was **replaced**, not merged.
+
+## Verified deliverable
+Unity **6000.3.26f1** in the owner's isolated `/tmp/aaris-unity-batch/project` ran an audited `AarisForestOneShot` *editor-only* authoring pass against the exact original LFS-hydrated baseline. It saved actual native Unity `TerrainData .asset` bytes for **all 1,939 real trees**, via species-aware, world-coordinate deterministic scaling. No runtime/compiler-time “make tree thicker” script is part of the delivered branch. `main` still has the old baseline; the updated native assets are on the review branch until PR is merged.
+
+- Review branch: `ai/unity-batched-20261105-049503278c`
+- Verified remote commit: `d2b827c7815e7b3027d23265f1477a84ce28d47a`
+- Draft [PR #64](https://github.com/Aaris-khan-don/Unity-Game-Aris/pull/64), not merged; diff versus main is **exactly four LFS native TerrainData `.asset` files**, not scripts, metadata, scenes or materials.
+- Licensed Unity saved each tile, checked native TreeInstance readback, and verified exact new SHA-256. Independent GitHub LFS pointer readback matched all four after the privileged uploader [run #41984006426](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41984006426), which returned `verified_github_batch_saved`, `count:4`, `codespace_acknowledged:true`, and `original_unmodified:true`.
+
+| Tile | Actual trees saved | Rocks untouched | Shrubs untouched | New native .asset Git LFS SHA256 |
+|---|---:|---:|---:|---|
+| `Terrain_1_1` | 374 | 1,330 | 0 | `896b2d29b2d5b71afffe1f64a17863c8fa99cd06104c833b679ca117dd4d4609` |
+| `Terrain_1_2` | 618 | 3,442 | 5 | `b92e9099868cabd8040db632d0cfac3c38075b2e292519b0edd8629723edecf8` |
+| `Terrain_2_1` | 519 | 388 | 0 | `d26aa11e1e6bb8edc65ca52c8c3210d477711b091e86e7ead42e75407dcc29a3` |
+| `Terrain_2_2` | 428 | 404 | 0 | `cfd96176947a1e75da285458ad6198ebf56a80195aa2138a5f202f5dc7f814e6` |
+| **Total** | **1,939** | **5,564** | **5** | **4 verified LFS assets** |
+
+The tree-only Unity plan [run #41982858123](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41982858123) classified prefab assets under `/Trees/`, `/Rocks/`, and `/Foliage/` and applied changes **only to tree indices**. **1,622 trees became wider** (mostly mature), **317 became slightly narrower** (younger/variation). Width/height factors are controlled by species, local tree-only neighbor competition, slope, and a deterministic per-tree hash. The total `sum(widthScale² × heightScale)` canopy-envelope proxy decreased approximately **2.1%** (approx. 8,949 → 8,760 across 1,939 trees). This is an approximate volume/overdraw *proxy*, NOT a verified 2 GB Android FPS improvement. Tree mesh topology, leaf materials, LOD/wind prefabs, tree count, coordinates, and GUIDs were kept intact. TreeInstance width scales the whole crown too; **selective trunk vertex baking has still not been completed**.
+
+## Reproduce safely / QA remaining
+1. Read `Docs/TERRAIN_INDEX.json` for **category inventory**, but be aware `Docs/TerrainInstances/*.jsonl` contain historical pre-upgrade width/height values; the **four new native LFS assets are authoritative** for final scaling. Regenerate those indexes only after a validated, fully LFS-hydrated remote Unity readback.
+2. Owner-only staging/queue branch `ai/codespace-jobs` contains one-time, scratch-only `Tools/World/AarisForestCoreAuthoring.cs`, `AarisForestOneShot.cs`, and guarded job functions. The corrected actor knows `actualTrees`, `preservedRocks`, `preservedShrubs` and refuses a write on unexpected per-tile tree/rock/shrub counts. Source original `/workspaces/Unity-Game-Aris` is dirty and **must never be reset or overwritten**. Do not run a non-idempotent scaling pass again on the saved review assets.
+3. The corrected Unity preview used queue job `unity-forest-1939-wide-trunks-plan-20261105-f33`, with final tile jobs `unity-forest-treeonly-apply-11-20261105-f34`, `...-12-20261105-f35`, `...-21-20261105-f36`, `...-22-20261105-f37`. `unity_sync_status` job `...-final-status-20261105-f38` returned `pending:4`, `pending_unity_commands:0`, `safe_to_push:true`. `unity_sync_save_session` job `unity-forest-treeonly-gitlfs-save-20261105-f39` delegated to the *separate* privileged Git LFS workflow above.
+4. **Release gate not yet passed:** in a clean scratch/hydrated review-branch Unity project, verify final four native assets again, matched camera screenshots for forests/roads/hills, wind+four LOD transitions, physics/colliders, mobile device GPU frame times, memory and thermals, particularly a real 2 GB Android phone. GitHub PR audit workflow may show `action_required` because GitHub has not approved running it. Keep PR draft until visual/functional/device QA completes. Do not claim the result is visually better than any particular commercial game or guaranteed smooth on 2 GB phones.
+
+**Older text below is retained as an audit trail, not the current tree-count or release status.**
+
+---
+
+# HISTORICAL QA HOLD — incorrect 7,508-instance attempt (now superseded)
+
+**Historical only: Do not merge the invalid attempt at old commit `1c327d9`. That attempt is now superseded by verified tree-only commit `d2b827c`.** A read of the existing saved `Docs/TERRAIN_INDEX.json` discovered that the 7,508 `TerrainData.m_TreeInstances` are **not all trees**: 1,939 are true tree prefabs (`/Trees/`), 5,564 are rock prefabs (`/Rocks/`), and 5 are shrubs (`/Foliage/`). Tile breakdown: 1_1 = 374 trees + 1,330 rocks; 1_2 = 618 trees + 3,442 rocks + 5 shrubs; 2_1 = 519 trees + 388 rocks; 2_2 = 428 trees + 404 rocks. Previous bulk editor pass incorrectly scaled all 7,508; its four verified Git LFS blobs are a **quarantined review attempt, not a production-ready tree upgrade**. The user asked to scale **every tree**, not to resize rocks/shrubs.
 
 **Required before release:** restore the original four TerrainData baseline blobs in a guarded scratch Unity project, run a corrected species/prefab-aware plan *only* on the 1,939 actual trees, prove all 5,569 other instances retain their previous exact numeric scales/positions/prototype identities, and save four new verified LFS native assets on PR #64. Do **not** blindly rerun non-idempotent scaling on already-mutated review assets. `main` currently has not received these bad bulk core files. The 7,508-tree assertions in the historical handoff immediately below describe the **discovered error**, not an accepted result; do not use them as planning counts.
 
