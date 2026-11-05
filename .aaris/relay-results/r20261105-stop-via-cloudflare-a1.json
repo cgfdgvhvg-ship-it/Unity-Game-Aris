@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "id": "r20261105-stop-via-cloudflare-a1",
+  "action": "stop",
+  "recorded_utc": "2026-11-05T18:04:42.387Z",
+  "status": "stop_requested",
+  "state_before": "Available"
+}
