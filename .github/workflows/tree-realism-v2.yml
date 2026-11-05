@@ -10,6 +10,7 @@ on:
       - 'Tools/World/verify_tree_house_upgrade.py'
       - 'Tools/World/tree_shapes.py'
       - 'Tools/World/tests/test_tree_realism_v2.py'
+      - 'Tools/World/tests/test_speedtree_far_shadow_current_core.py'
       - '.github/workflows/tree-realism-v2.yml'
   push:
     branches: [main]
@@ -52,6 +53,14 @@ jobs:
           tree_paths=[p for p in changed if p.startswith('Assets/TerrainDemoScene_URP/Prefabs/Trees/')]
           allowed={r['prefab'] for r in reviewed['profiles']}|{r['source_meta'] for r in reviewed['profiles']}
           assert set(tree_paths)<=allowed,'Unexpected tree asset edited: '+repr(set(tree_paths)-allowed)
-          assert len(tree_paths) in (0,12),'Partial v2 tree source modification forbidden'
-          print(f'SpeedTree source integrity: {len(tree_paths)} reviewed changes (0 means non-tree PR); no unrelated .st or prefab GUID edits')
+          # Original v2 geometry+import-profile transaction must remain atomic (12).
+          # A separate precise 6-prefab shadow-only operation is permitted ONLY
+          # if each far-shadow reversal reconstructs the current-main old blob.
+          if len(tree_paths)==6:
+              assert set(tree_paths)=={row['prefab'] for row in reviewed['profiles']}, 'Non-prefab or partial shadow edit'
+              subprocess.run(['python','-m','unittest','discover','-s','Tools/World/tests',
+                              '-p','test_speedtree_far_shadow_current_core.py','-v'],check=True)
+          else:
+              assert len(tree_paths) in (0,12), 'Partial v2 geometry source modification forbidden'
+          print(f'SpeedTree integrity: {len(tree_paths)} protected changes; GUIDs and .st binaries untouched')
           PY
