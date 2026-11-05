@@ -2554,6 +2554,191 @@ def desktop_snapshot(job_id):
     return {"exit_code":0,"stdout":json.dumps(info),"stderr":""}
 
 
+def unity_house_bridge_gallery(job):
+    """15 genuine Unity scenes captured by the ALREADY RUNNING native bridge.
+
+    Avoid adding new Editor C# scripts or restarting a dirty owner Unity session.
+    Read exact approved house transforms from the saved Unity map. All bridge
+    capture commands are non-mutating, and ZIP/hash validation is fail-closed.
+    """
+    import zipfile
+    import io
+    import csv
+    op=job["operation"]
+    root=VIRTUAL_CONTROL
+    name=job["id"]
+    marker=root/"house-bridge-gallery"
+    exports=root/"house-exports"
+    commands=root/"unity-commands"
+    results=root/"unity-results"
+    frames=root/"frames"
+    if len(_scratch_unity_pids())!=1 or not (BATCH_ROOT/"scene-readback.json").is_file():
+        return {"exit_code":3,"stdout":"","stderr":"Native scratch Unity Editor not verified"}
+    if op=="unity_house_bridge_gallery_start":
+        if job["args"]: raise ValueError("House gallery accepts no arbitrary inputs")
+        if not commands.is_dir() or commands.is_symlink() or not results.is_dir():
+            return {"exit_code":3,"stdout":"","stderr":"Native live bridge unavailable"}
+        if any(p.is_file() and p.suffix==".json" for p in commands.iterdir()):
+            return {"exit_code":3,"stdout":"","stderr":"Other Unity requests pending; preserving their order"}
+        for folder in (marker,exports):folder.mkdir(parents=True,mode=0o700,exist_ok=True)
+        manifest=marker/(name+".json")
+        if manifest.exists() or manifest.is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"Duplicate house gallery job"}
+        # These are explicit root Transform coordinates read from the actual
+        # saved 1.8-MB Unity .unity scene, not guessed model catalog positions.
+        specs=[
+          ("ClockTowerTown_bungalow_house_03",(410.8,-11.936767578125,245.0),6.67,14.45,0),
+          ("LakesideHamlet_detached_two_storey_house_05",(-678.4,-2.6588516235351562,30.9),10.5,16.0,180),
+          ("CoastalHamlet_pitched_roof_cottage_05",(698.0,-18.211563110351562,606.6),6.5,15.0,180)
+        ]
+        jobs=[]
+        houses=[]
+        for i,(house,xyz,h,spread,yaw) in enumerate(specs,1):
+            x,y,z=xyz
+            forward=1 if yaw==0 else -1
+            right=forward
+            height=max(1.0,h)
+            dist=max(22.0,spread*1.7)
+            aim={"x":x,"y":y+height*.53,"z":z}
+            views=[
+              ("front",{"x":x,"y":y+height*.65,"z":z-forward*dist},aim),
+              ("side",{"x":x-right*dist,"y":y+height*.65,"z":z},aim),
+              ("rear",{"x":x,"y":y+height*.65,"z":z+forward*dist},aim),
+              ("roof",{"x":x+3,"y":y+max(23,height*2.7),"z":z-forward*6},
+                {"x":x,"y":y+height*.5,"z":z}),
+              ("inside-volume",{"x":x,"y":y+height*.4,"z":z},
+                {"x":x+1,"y":y+height*.4,"z":z+forward*3})
+            ]
+            inspect_id=name+f"-i{i}"
+            if len(inspect_id)>55:raise ValueError("Survey job ID too long")
+            jobs.append((inspect_id,{"id":inspect_id,"action":"inspect","target":house,
+                                     "cameraTarget":{"x":x,"y":y,"z":z},"radius":35,"limit":16}))
+            photo_ids=[]
+            for k,(view,from_,toward) in enumerate(views,1):
+                ident=name+f"-p{i}{k}"
+                if len(ident)>55:raise ValueError("Survey photo ID too long")
+                jobs.append((ident,{"id":ident,"action":"capture","cameraPosition":from_,"cameraTarget":toward}))
+                photo_ids.append({"id":ident,"house":house,"view":view,
+                                  "photo_name":f"{i:02d}-{k:02d}-{house}-{view}.jpg"})
+            houses.append({"name":house,"savedRootPosition":{"x":x,"y":y,"z":z},
+                           "savedYawDegrees":yaw,"inspect_id":inspect_id,"photos":photo_ids})
+        for ident,payload in jobs:
+            if (commands/(ident+".json")).exists() or (results/(ident+".json")).exists():
+                return {"exit_code":3,"stdout":"","stderr":"Pre-existing bridge job ID"}
+        plan={"id":name,"scene":"Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity",
+              "mode":"existing_verified_unity_live_bridge",
+              "houses":houses,"expected_photo_count":15}
+        manifest.write_text(json.dumps(plan,indent=2))
+        staged=[]
+        try:
+            for ident,payload in jobs:
+                path=commands/(ident+".json")
+                tmp=commands/(ident+".new")
+                if path.exists() or tmp.exists():raise ValueError("Bridge queue file conflict")
+                tmp.write_text(json.dumps(payload,separators=(",",":")))
+                os.replace(tmp,path)
+                staged.append(path)
+        except BaseException:
+            for path in staged:
+                if path.is_file():path.unlink()
+            manifest.unlink()
+            raise
+        return {"exit_code":0,"stdout":json.dumps({
+            "id":name,"status":"queued","native_live_editor":True,
+            "house_count":len(houses),"photos_queued":15,"inspect_jobs":3,
+            "original_worktree_untouched":True,
+            "note":"The existing compiled Unity C# bridge handles captures without new Editor imports"
+        }),"stderr":""}
+    if op!="unity_house_bridge_gallery_export" or len(job["args"])!=1:
+        raise ValueError("House gallery export requires one prior job ID")
+    ref=job["args"][0]
+    if not re.fullmatch(r"[a-z][a-z0-9-]{3,55}",ref):
+        raise ValueError("Invalid gallery reference ID")
+    planfile=marker/(ref+".json")
+    if not planfile.is_file() or planfile.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Native bridge gallery manifest missing"}
+    plan=json.loads(planfile.read_text())
+    if plan.get("id")!=ref or plan.get("expected_photo_count")!=15:
+        raise ValueError("Gallery source manifest mismatch")
+    entries=[]
+    report=[]
+    seen=set()
+    pending=[]
+    for item in plan["houses"]:
+        inspect=results/(item["inspect_id"]+".json")
+        if not inspect.is_file() or inspect.is_symlink():
+            pending.append(item["inspect_id"])
+            continue
+        obj=json.loads(inspect.read_text())
+        if obj.get("status")!="ok" or obj.get("action")!="inspect" or obj.get("id")!=item["inspect_id"]:
+            return {"exit_code":3,"stdout":"","stderr":"Native Unity house inspection failed"}
+        house_matches=[x for x in obj.get("nearbyObjects",[])
+                       if x.get("name")==item["name"] and x.get("rendererSize",{}).get("y",0)>1]
+        if len(house_matches)!=1:
+            return {"exit_code":3,"stdout":json.dumps({"house":item["name"],"match_count":len(house_matches)}),
+                    "stderr":"Expected one renderer-backed measured house in Unity scene"}
+        match=house_matches[0]
+        size=match["rendererSize"]
+        report.append({"house":item["name"],"center_position":match["position"],
+                      "widthX_metres":round(size["x"],3),"height_metres":round(size["y"],3),
+                      "depthZ_metres":round(size["z"],3),
+                      "measurement":"Unity MeshRenderer.bounds world-aligned extents",
+                      "saved_yaw_degrees":item["savedYawDegrees"]})
+        for photo in item["photos"]:
+            ident=photo["id"]
+            if ident in seen:raise ValueError("Duplicate photo job ID")
+            seen.add(ident)
+            response=results/(ident+".json")
+            frame=frames/(ident+".jpg")
+            if not response.is_file() or not frame.is_file():
+                pending.append(ident)
+                continue
+            if response.is_symlink() or frame.is_symlink() or frame.stat().st_size>3*1024*1024:
+                raise ValueError("Unsafe Unity screenshot")
+            reply=json.loads(response.read_text())
+            if reply.get("id")!=ident or reply.get("action")!="capture" or reply.get("status")!="ok":
+                return {"exit_code":3,"stdout":json.dumps({"photo":ident,"error":reply.get("error")}),
+                        "stderr":"Real native Unity camera capture failed"}
+            data=frame.read_bytes()
+            if not data.startswith(b"\xff\xd8") or len(data)<3000:
+                raise ValueError("Invalid JPEG image readback")
+            entries.append((photo["photo_name"],data,photo["house"],photo["view"],hashlib.sha256(data).hexdigest()))
+    if pending:
+        return {"exit_code":3,"stdout":json.dumps({"status":"pending","completed_photos":len(entries),
+                        "remaining":len(pending),"pending_ids":pending[:10]}),
+                "stderr":"Unity is still rendering the verified house camera views"}
+    if len(entries)!=15 or len(report)!=3:
+        raise ValueError("Missing real house views")
+    exports.mkdir(parents=True,mode=0o700,exist_ok=True)
+    output=exports/(ref+".zip")
+    if output.exists() or output.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Gallery ZIP already exported"}
+    dimensions=io.StringIO()
+    writer=csv.writer(dimensions)
+    writer.writerow(("house","width_x_metres","height_metres","depth_z_metres","saved_yaw_degrees","measurement_method"))
+    for x in report:
+        writer.writerow((x["house"],x["widthX_metres"],x["height_metres"],
+                         x["depthZ_metres"],x["saved_yaw_degrees"],x["measurement"]))
+    with zipfile.ZipFile(output,"w",compression=zipfile.ZIP_DEFLATED,compresslevel=5) as zip:
+        zip.writestr("HOUSE_DIMENSIONS.csv",dimensions.getvalue())
+        zip.writestr("HOUSE_INSPECTION.json",json.dumps(report,indent=2))
+        zip.writestr("README.txt","Real Unity Editor screenshots from three residential homes.\n"
+            "VIEWS: front, side, rear, roof, inside-volume for each house.\n"
+            "Inside-volume is a virtual camera within the model bounds; may be blocked by real walls,\n"
+            "and does not prove a furnished or traversable interior.\n"
+            "All measurements are native Renderer.bounds extents, not room measurements.\n"
+            "Game source, .meta, native terrain and Git LFS were not modified.\n")
+        for fn,data,house,view,digest in entries:
+            zip.writestr("photos/"+fn,data)
+    return {"exit_code":0,"stdout":json.dumps({
+        "source":ref,"photos":len(entries),"houses":report,
+        "photos_list":[{"file":fn,"house":h,"view":v,"sha256":d} for fn,_,h,v,d in entries],
+        "bytes":output.stat().st_size,"sha256":hashlib.sha256(output.read_bytes()).hexdigest(),
+        "original_assets_untouched":True,"format":"zip",
+        "note":"Contains 15 native camera JPEGs, measured house CSV and original Unity report"
+    },ensure_ascii=False),"stderr":""}
+
+
 def unity_house_gallery(job):
     """Native Editor-only screenshot survey; never write original Unity assets."""
     import zipfile
@@ -3003,6 +3188,8 @@ def execute(job):
     if op == "unity_house_gallery_refresh":
         if args: raise ValueError("House Editor asset refresh takes no arguments")
         return unity_forest_editor_refresh(require_forest=False)
+    if op in {"unity_house_bridge_gallery_start","unity_house_bridge_gallery_export"}:
+        return unity_house_bridge_gallery(job)
     if op in {"unity_house_gallery_start","unity_house_gallery_export","unity_house_gallery_diagnose"}:
         return unity_house_gallery(job)
     if op == "unity_main_core_sync":
