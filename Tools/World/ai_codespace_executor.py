@@ -929,6 +929,32 @@ def _virtual_response(ident,seconds=0):
             "stderr":(obj.get("error") or "")[:350]}
 
 
+def unity_forest_menu_snapshot():
+    """Small read-only screenshot snippet to inspect Unity Editor menu placement."""
+    import base64
+    if not _scratch_unity_pids() or not Path("/tmp/.X11-unix/X12").exists() or not shutil.which("scrot"):
+        return {"exit_code":3,"stdout":"","stderr":"Scratch Editor or screenshot tool unavailable"}
+    path=BATCH_ROOT/"unity-forest-menubar-diagnostic.jpg"
+    if path.exists() or path.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Existing menu capture needs review"}
+    env=os.environ.copy()
+    env["DISPLAY"]=":12"
+    try:
+        cmd=["scrot","-z","-q","28","-a","390,185,1050,210",str(path)]
+        r=subprocess.run(cmd,env=env,capture_output=True,text=True,timeout=20,check=False)
+        if r.returncode!=0 or not path.is_file():
+            return {"exit_code":3,"stdout":"","stderr":"Xvfb menu capture failed"}
+        b=path.read_bytes()
+        if not 150<len(b)<11000:
+            return {"exit_code":3,"stdout":json.dumps({"bytes":len(b)}),
+                    "stderr":"Screenshot not bounded for private diagnostic"}
+        return {"exit_code":0,"stdout":json.dumps({
+            "status":"unity_top_menu_snapshot", "bytes":len(b),
+            "jpeg_b64":base64.b64encode(b).decode("ascii")}),"stderr":""}
+    finally:
+        if path.exists() and not path.is_symlink(): path.unlink()
+
+
 def unity_forest_editor_refresh():
     """One focused Assets > Refresh keyboard shortcut in PID-verified scratch Unity."""
     import ctypes
@@ -1990,6 +2016,9 @@ def execute(job):
         )
         return {"exit_code":audit.returncode,"stdout":audit.stdout[-16000:],
                 "stderr":audit.stderr[-1400:]}
+    if op == "unity_forest_menu_snapshot":
+        if args: raise ValueError("Snapshot takes no args")
+        return unity_forest_menu_snapshot()
     if op == "unity_forest_editor_refresh":
         if args: raise ValueError("Unity refresh takes no arguments")
         return unity_forest_editor_refresh()
