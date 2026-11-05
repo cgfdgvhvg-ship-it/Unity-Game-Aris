@@ -947,6 +947,134 @@ def unity_virtual_frame(ident):
     }),"stderr":""}
 
 
+
+RECOVERY_SCRIPT=Path("/workspaces/.aaris-world-bridge/ondemand/unity_session_checkpoint.py")
+RECOVERY_STATE=Path("/workspaces/.aaris-world-bridge/ondemand/unity-session-checkpoint.json")
+
+
+def _session_plan(save=False):
+    if RECOVERY_SCRIPT.is_symlink() or not RECOVERY_SCRIPT.is_file():
+        raise ValueError("Reviewed restart checkpoint script not staged")
+    cmd=["python3",str(RECOVERY_SCRIPT),"--original",str(PROJECT),
+         "--scratch",str(BATCH_ROOT/"project"),
+         "--editor",str(EDITOR),"--state-file",str(RECOVERY_STATE)]
+    if save:
+        cmd.append("--checkpoint")
+    result=subprocess.run(cmd,text=True,capture_output=True,
+                          timeout=40,check=False)
+    if result.returncode:
+        raise ValueError("Unity restart checkpoint failed: "+result.stdout[-300:])
+    return json.loads(result.stdout)
+
+
+def _stage_resume_camera(target):
+    if not isinstance(target,dict) or set(target)!={"x","y","z"}:
+        return None
+    if not all(isinstance(target[k],(int,float)) and
+               abs(target[k])<=10000 for k in ("x","y","z")):
+        return None
+    virtual_bridge_isolate()
+    info={"action":"inspect","cameraTarget":target,"radius":20,"limit":12}
+    validate_live_payload(info)
+    ident="unity-resume-view-"+str(int(time.time()))
+    file=VIRTUAL_CONTROL/"unity-commands"/(ident+".json")
+    if file.exists():
+        return None
+    with file.open("x") as stream:
+        stream.write(json.dumps(dict(info,id=ident),separators=(",",":")))
+    return ident
+
+
+def _restart_rebuild_worker():
+    """Recreate only a lost /tmp scratch project; never run licensed headless mode."""
+    try:
+        if BATCH_ROOT.exists():
+            raise RuntimeError("Existing scratch root could contain edits; do not overwrite")
+        if shutil.disk_usage(PROJECT).free < 250*1024**2:
+            raise RuntimeError("Original persistent disk below guarded free-space threshold")
+        if shutil.disk_usage(Path("/tmp")).free < 20*1024**3:
+            raise RuntimeError("Separate /tmp lacks safe reimport headroom")
+        BATCH_ROOT.mkdir(mode=0o700)
+        _batch_write("recreating_scratch_after_codespace_stop")
+        target=BATCH_ROOT/"project"
+        target.mkdir()
+        for folder in ("Assets","Packages","ProjectSettings"):
+            src=PROJECT/folder
+            if src.is_symlink() or not src.is_dir():
+                raise RuntimeError("Source directory unavailable or symlinked: "+folder)
+            for base,dirs,files in os.walk(src,followlinks=False):
+                for entry in dirs+files:
+                    if (Path(base)/entry).is_symlink():
+                        raise RuntimeError("Unexpected source symlink, refuse scratch copy")
+            shutil.copytree(src,target/folder,symlinks=False)
+        if shutil.disk_usage(BATCH_ROOT).free < 20*1024**3:
+            raise RuntimeError("Insufficient scratch headroom after copying")
+        probe=target/"Assets/Editor/AarisBatchProbe.cs"
+        if not BATCH_CS.is_file() or BATCH_CS.is_symlink() or probe.exists():
+            raise RuntimeError("Reviewed Unity scene probe unavailable or conflicting")
+        probe.parent.mkdir(parents=True,exist_ok=True)
+        shutil.copy2(BATCH_CS,probe)
+        virtual_bridge_isolate()  # BEFORE Editor compilation: never read original bridge queue
+        snapshot=_session_plan()
+        if snapshot["step"]!="reopen_existing_scratch":
+            raise RuntimeError("Source fingerprint mismatch after scratch clone: "+snapshot["step"])
+        view=_stage_resume_camera(snapshot.get("last_camera_target"))
+        _batch_write("scratch_recreated",resume_view_job=view,
+                     note="New Unity Library import required: Codespace cleared /tmp")
+        launch=unity_virtual_gui_launch() # licensed normal GUI, hidden Xvfb, no noVNC
+        if launch["exit_code"]!=0:
+            raise RuntimeError("Unity virtual Editor restart refused: "+launch["stderr"][:400])
+    except Exception as exc:
+        _batch_write("recovery_failed",error=type(exc).__name__+": "+str(exc)[:450])
+    return 0
+
+
+def unity_session_recover():
+    """Idempotent owner-only restore when a GitHub AI job wakes the Codespace."""
+    snapshot=_session_plan()
+    step=snapshot.get("step")
+    if step=="already_running":
+        try:
+            updated=_session_plan(save=True)
+        except ValueError as exc:
+            return {"exit_code":3,"stdout":json.dumps(snapshot),
+                    "stderr":"Live Editor exists but checkpoint failed: "+str(exc)}
+        return {"exit_code":0,"stdout":json.dumps({
+            "status":"already_running","checkpoint_saved":True,
+            "original_untouched":True,"details":updated}),"stderr":""}
+    if step=="reopen_existing_scratch":
+        try:
+            virtual_bridge_isolate()
+            view=_stage_resume_camera(snapshot.get("last_camera_target"))
+            result=unity_virtual_gui_launch()
+            if result["exit_code"]!=0:
+                return result
+            return {"exit_code":0,"stdout":json.dumps({
+                "status":"reopened_existing_scratch","resume_view_job":view,
+                "original_untouched":True,"details":unity_virtual_gui_status()}),"stderr":""}
+        except (OSError,ValueError) as exc:
+            return {"exit_code":3,"stdout":json.dumps(snapshot),
+                    "stderr":"Existing scratch restore blocked: "+str(exc)[:350]}
+    if step=="recreate_scratch_and_reimport":
+        if BATCH_ROOT.exists():
+            return {"exit_code":3,"stdout":json.dumps(snapshot),
+                    "stderr":"Partial scratch root exists; requires inspection, not deletion"}
+        out=BATCH_META.parent/"unity-rebuild-worker.log"
+        with out.open("a") as stream:
+            worker=subprocess.Popen(
+                [sys.executable,str(Path(__file__).resolve()),"--unity-rebuild-worker"],
+                cwd=Path("/tmp"),stdin=subprocess.DEVNULL,
+                stdout=stream,stderr=stream,start_new_session=True)
+        return {"exit_code":0,"stdout":json.dumps({
+            "status":"scratch_reimport_started","worker_pid":worker.pid,
+            "reason":"Codespace /tmp cleared; old imported Library cannot be resumed",
+            "original_untouched":True,
+            "previous_checkpoint":snapshot.get("previous_checkpoint_at"),
+            "last_camera_target":snapshot.get("last_camera_target")}),"stderr":""}
+    return {"exit_code":3,"stdout":json.dumps(snapshot),
+            "stderr":"Recovery guard refused to launch: "+str(step)}
+
+
 def prune_caches(home=Path("/home/codespace")):
     """Delete only two named re-downloadable caches, never project or Unity."""
     paths=[home/".cache"/"copilot"/"pkg", home/".npm"/"_cacache"]
@@ -1537,6 +1665,13 @@ def execute(job):
     if op == "system_storage_audit":
         if args: raise ValueError("system storage audit takes no arguments")
         return {"exit_code":0,"stdout":json.dumps(system_storage_audit(),ensure_ascii=False),"stderr":""}
+    if op == "unity_session_checkpoint":
+        if args: raise ValueError("Session checkpoint takes no arguments")
+        return {"exit_code":0,"stdout":json.dumps(_session_plan(save=True),
+                                                  ensure_ascii=False),"stderr":""}
+    if op == "unity_session_recover":
+        if args: raise ValueError("Session recovery takes no arguments")
+        return unity_session_recover()
     if op == "unity_scratch_reconcile":
         if args: raise ValueError("scratch reconciliation takes no arguments")
         source = Path("/workspaces/.aaris-world-bridge/ondemand/unity_scratch_reconcile.py")
@@ -1739,6 +1874,9 @@ def main():
     print(json.dumps(result, ensure_ascii=False))
     return 0
 
+
+if len(sys.argv)==2 and sys.argv[1]=="--unity-rebuild-worker":
+    sys.exit(_restart_rebuild_worker())
 
 if len(sys.argv)==2 and sys.argv[1]=="--unity-batch-worker":
     sys.exit(unity_batch_worker())
