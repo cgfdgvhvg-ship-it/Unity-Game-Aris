@@ -455,6 +455,105 @@ def restore_synced_scratch(*,original=ORIGINAL,scratch=SCRATCH,
             "note":"Only prior Git LFS committed data was restored; latest AI edits must be independently inspected."}
 
 
+def export_for_actions(*,force=False,original=ORIGINAL,scratch=SCRATCH,
+                       control=CONTROL,statefile=STATE,now=None):
+    """Prepare validated scratch files for GitHub Actions; NO Git credentials."""
+    import tarfile
+    now=time.time() if now is None else now
+    state=load_state(statefile)
+    if not state:
+        raise SyncError("Autosync not armed")
+    data=scan(state,scratch,control)
+    candidates=data["candidates"]
+    if not candidates:
+        return {"status":"no_changes","exported":False}
+    if data["pending_commands"]:
+        return {"status":"unity_busy","exported":False}
+    first=min(item["first"] for item in candidates.values())
+    last=max(item["latest"] for item in candidates.values())
+    if not force and (now-last)<QUIET_SECONDS and (now-first)<MAX_UNSAVED_SECONDS:
+        return {"status":"debouncing","exported":False,
+                "seconds_to_quiet":round(QUIET_SECONDS-(now-last),1)}
+    paths=sorted(candidates)
+    size=sum(x["bytes"] for x in candidates.values())
+    if len(paths)>MAX_FILES or size>MAX_BYTES:
+        raise SyncError("Unity batch exceeds guarded size/file limits")
+    if shutil.disk_usage(original).free<MIN_ORIGINAL_FREE or (
+        shutil.disk_usage(scratch).free<MIN_SCRATCH_FREE):
+        raise SyncError("Insufficient disk for safe export")
+    ensure_original_clean(original,paths)
+    check_meta(original,scratch,paths)
+    identity=scratch_identity(scratch)
+    result_dir=scratch.parent/"sync-export"
+    result_dir.mkdir(mode=0o700,parents=True,exist_ok=True)
+    manifest={"schema":1,"repo":REPO,"scratch_identity":identity,
+              "branch":state["branch"],"created_at":now,
+              "files":[{
+                  "path":name,"sha256":candidates[name]["sha256"],
+                  "original_sha256":sha(original/name),
+                  "meta_sha256":sha(original/(name+".meta"),2*1024**2),
+                  "bytes":candidates[name]["bytes"],
+                  "previously_pushed_sha256":state["pushed"].get(name)
+              } for name in paths]}
+    label=hashlib.sha256(os.urandom(16)).hexdigest()[:14]
+    filename=result_dir/("batch-"+label+".tar")
+    manifest_file=result_dir/("batch-"+label+".json")
+    with tarfile.open(filename,"w") as archive:
+        for entry in manifest["files"]:
+            current=entry["path"]
+            source=scratch/current
+            if source.is_symlink() or not source.is_file():
+                raise SyncError("Unsafe Unity asset during transfer packaging")
+            archive.add(source,arcname=current,recursive=False)
+            if sha(source)!=entry["sha256"]:
+                raise SyncError("Unity changed asset while package was being prepared")
+    manifest_file.write_text(json.dumps(manifest,sort_keys=True,indent=2))
+    if manifest_file.stat().st_size>18000:
+        raise SyncError("Transfer manifest exceeded cap")
+    return {"status":"ready_for_actions_upload","exported":True,
+            "tar":str(filename),"manifest":str(manifest_file),
+            "bytes":size,"count":len(paths),"branch":state["branch"]}
+
+
+def acknowledge_actions_receipt(receipt_path: Path,*,statefile=STATE,scratch=SCRATCH):
+    """Acknowledge ONLY after runner verified both Git LFS and Git remote ref."""
+    if receipt_path.is_symlink() or not receipt_path.is_file() or (
+        receipt_path.stat().st_size>16000):
+        raise SyncError("Unsafe Actions receipt")
+    obj=json.loads(receipt_path.read_text())
+    state=load_state(statefile)
+    if not state or obj.get("schema")!=1 or obj.get("repo")!=REPO:
+        raise SyncError("Unrecognized GitHub Actions sync receipt")
+    if obj.get("scratch_identity")!=state.get("scratch_identity"):
+        raise SyncError("Receipt is from another Unity scratch session")
+    branch=obj.get("branch")
+    if not isinstance(branch,str) or not re.fullmatch(r"ai/unity-batched-[A-Za-z0-9-]+",branch):
+        raise SyncError("Untrusted Git branch in receipt")
+    if state.get("branch") and state["branch"]!=branch:
+        raise SyncError("GitHub Actions receipt branch differs from existing AI session")
+    commit=obj.get("commit")
+    if not isinstance(commit,str) or not re.fullmatch(r"[0-9a-f]{40}",commit):
+        raise SyncError("Invalid Git commit in sync receipt")
+    hashes=obj.get("pushed")
+    if not isinstance(hashes,dict) or not hashes or len(hashes)>MAX_FILES:
+        raise SyncError("No validated Unity assets in receipt")
+    for name,value in hashes.items():
+        relative_asset(name)
+        if not isinstance(value,str) or not re.fullmatch(r"[0-9a-f]{64}",value):
+            raise SyncError("Invalid native file checksum in receipt")
+    state["branch"]=branch
+    state["pushed"].update(hashes)
+    # Any newer Unity edits remain candidates on the next scan.
+    state["pending_assets"]={}
+    state["last_success"]=datetime.now(timezone.utc).isoformat()
+    state["last_error"]=None
+    state["last_attempt"]=time.time()
+    store_state(state,statefile)
+    return {"status":"actions_remote_verified_and_acknowledged",
+            "branch":branch,"commit":commit,"files":sorted(hashes),
+            "original_untouched":True}
+
+
 def watch(poll_seconds=15,*,max_cycles=None):
     """Poll while this Codespace is running; leave durable UNSAVED markers."""
     cycles=0
@@ -470,14 +569,10 @@ def watch(poll_seconds=15,*,max_cycles=None):
             if state.get("pending_assets")!=pending:
                 state["pending_assets"]=pending
                 store_state(state)
+            # GitHub Actions is the only automatic uploader: the Codespace
+            # does not have private-repository Git Push credentials. The
+            # watcher journals changed assets, never performs uploads.
             snapshot=status()
-            last_try=state.get("last_attempt")
-            # Do not attempt a costly authenticated remote push every 15 sec
-            # after a conflict or missing credential.
-            backoff=(last_try is not None and state.get("last_error") is not None
-                     and time.time()-last_try<180)
-            if snapshot.get("safe_to_push") and not backoff:
-                flush(force=False)
         except (SyncError,OSError,ValueError) as exc:
             state=load_state()
             if state:
@@ -493,9 +588,10 @@ def watch(poll_seconds=15,*,max_cycles=None):
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation",choices=["status","arm","flush","dry-run","watch","auth-check","restore"])
+    parser.add_argument("operation",choices=["status","arm","flush","dry-run","watch","auth-check","restore","export","ack"])
     parser.add_argument("--force",action="store_true",help="Explicit Save Session; never omit conflict checks")
     parser.add_argument("--cycles",type=int,default=None)
+    parser.add_argument("--receipt",type=Path,help="Trusted GitHub Actions remote push receipt path")
     opts=parser.parse_args(argv)
     try:
         if opts.operation=="status":
@@ -508,6 +604,12 @@ def main(argv=None):
             result=flush(force=True,dry_run=True)
         elif opts.operation=="flush":
             result=flush(force=opts.force)
+        elif opts.operation=="export":
+            result=export_for_actions(force=opts.force)
+        elif opts.operation=="ack":
+            if opts.receipt is None:
+                raise SyncError("GitHub Actions receipt path required")
+            result=acknowledge_actions_receipt(opts.receipt)
         elif opts.operation=="restore":
             result=restore_synced_scratch()
         elif opts.operation=="watch":
