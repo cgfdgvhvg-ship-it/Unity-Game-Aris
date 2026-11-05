@@ -929,6 +929,76 @@ def _virtual_response(ident,seconds=0):
             "stderr":(obj.get("error") or "")[:350]}
 
 
+def unity_forest_editor_refresh():
+    """One focused Assets > Refresh keyboard shortcut in PID-verified scratch Unity."""
+    import ctypes
+    import ctypes.util
+    pids=set(_scratch_unity_pids())
+    if not pids or not Path("/tmp/.X11-unix/X12").exists():
+        return {"exit_code":3,"stdout":"","stderr":"No live scratch Editor"}
+    helper=BATCH_ROOT/"project/Assets/AarisWorld/Editor/AarisForestCoreAuthoring.cs"
+    bridge=_virtual_bridge_path()
+    if not helper.is_file() or not bridge.is_file() or 'case "forest_plan":' not in bridge.read_text():
+        return {"exit_code":3,"stdout":"","stderr":"Reviewed scratch forest authoring not staged"}
+    x=subprocess.run(["xwininfo","-display",":12","-root","-tree"],
+                     capture_output=True,text=True,timeout=12,check=False)
+    if x.returncode:
+        return {"exit_code":3,"stdout":"","stderr":"No X11 Unity window inventory"}
+    eligible=[]
+    for line in x.stdout.splitlines():
+        if "Unity - project - TerrainDemoScene" not in line: continue
+        match=re.search(r"0x[0-9a-fA-F]+",line)
+        if not match: continue
+        win=match.group(0)
+        p=subprocess.run(["xprop","-display",":12","-id",win,
+                          "_NET_WM_PID","WM_NAME"],capture_output=True,
+                         text=True,timeout=8,check=False)
+        pid=re.search(r"_NET_WM_PID\(CARDINAL\) = (\d+)",p.stdout)
+        if p.returncode==0 and pid and int(pid.group(1)) in pids:
+            eligible.append((win,int(pid.group(1))))
+    if len(eligible)!=1:
+        return {"exit_code":3,"stdout":json.dumps({"eligible":eligible}),
+                "stderr":"Expected precisely one X11 Unity map window with scratch PID"}
+    x11=ctypes.util.find_library("X11")
+    xtst=ctypes.util.find_library("Xtst")
+    if not x11 or not xtst: raise ValueError("XTest/X11 libraries not available")
+    lib=ctypes.CDLL(x11)
+    test=ctypes.CDLL(xtst)
+    lib.XOpenDisplay.argtypes=[ctypes.c_char_p]
+    lib.XOpenDisplay.restype=ctypes.c_void_p
+    lib.XCloseDisplay.argtypes=[ctypes.c_void_p]
+    lib.XSetInputFocus.argtypes=[ctypes.c_void_p,ctypes.c_ulong,ctypes.c_int,ctypes.c_ulong]
+    lib.XKeysymToKeycode.argtypes=[ctypes.c_void_p,ctypes.c_ulong]
+    lib.XKeysymToKeycode.restype=ctypes.c_uint
+    lib.XFlush.argtypes=[ctypes.c_void_p]
+    lib.XSync.argtypes=[ctypes.c_void_p,ctypes.c_int]
+    test.XTestFakeKeyEvent.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_int,ctypes.c_ulong]
+    test.XTestFakeKeyEvent.restype=ctypes.c_int
+    dpy=lib.XOpenDisplay(b":12")
+    if not dpy: raise ValueError("Failed to open verified Unity display")
+    try:
+        window=int(eligible[0][0],16)
+        ctrl=lib.XKeysymToKeycode(dpy,0xffe3)
+        r=lib.XKeysymToKeycode(dpy,ord("r"))
+        if not ctrl or not r: raise ValueError("Unity refresh shortcut keymaps unavailable")
+        lib.XSetInputFocus(dpy,window,1,0)
+        lib.XSync(dpy,0)
+        try:
+            if not test.XTestFakeKeyEvent(dpy,ctrl,1,0): raise ValueError("XTest control-down failed")
+            if not test.XTestFakeKeyEvent(dpy,r,1,0): raise ValueError("XTest r-down failed")
+            test.XTestFakeKeyEvent(dpy,r,0,0)
+        finally:
+            test.XTestFakeKeyEvent(dpy,ctrl,0,0)
+        lib.XSync(dpy,0)
+    finally:
+        lib.XCloseDisplay(dpy)
+    return {"exit_code":0,"stdout":json.dumps({
+        "status":"unity_assets_refresh_shortcut_sent",
+        "verified_scratch_pid":eligible[0][1],
+        "scratch_only":True,
+        "note":"Check Unity asset import and C# compiler before any forest core write"}),"stderr":""}
+
+
 def unity_forest_x11_probe():
     if not _scratch_unity_pids() or not Path("/tmp/.X11-unix/X12").exists():
         return {"exit_code":3,"stdout":"","stderr":"No verified scratch Unity process/display"}
@@ -1920,6 +1990,9 @@ def execute(job):
         )
         return {"exit_code":audit.returncode,"stdout":audit.stdout[-16000:],
                 "stderr":audit.stderr[-1400:]}
+    if op == "unity_forest_editor_refresh":
+        if args: raise ValueError("Unity refresh takes no arguments")
+        return unity_forest_editor_refresh()
     if op == "unity_forest_x11_probe":
         if args: raise ValueError("X11 probe takes no args")
         return unity_forest_x11_probe()
