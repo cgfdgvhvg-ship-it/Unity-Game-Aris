@@ -28,6 +28,7 @@ jobs:
       - name: Validate job, start Codespace if stopped, execute via SSH
         env:
           AARIS_CODESPACE_TOKEN: ${{ secrets.AARIS_CODESPACE_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           python3 Tools/World/ai_codespace_remote.py \
             --event "$GITHUB_EVENT_PATH" \
