@@ -37,7 +37,7 @@ def validate_job(data: dict, *, expected_file: str | None = None) -> dict:
     op = data["operation"]
     if not isinstance(ident, str) or not ID_RE.fullmatch(ident):
         raise JobError("invalid job id")
-    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "unity_diagnostics", "desktop_tools", "desktop_snapshot", "unity_terms_accept", "unity_low_disk_stop", "unity_low_disk_pause", "unity_resume_paused", "codespace_machines", "system_storage_audit", "runtime_mount_probe", "safe_archives_audit", "safe_archives_cleanup", "unity_lfs_preflight", "unity_scratch_reconcile", "unity_tree_v2_preview", "unity_forest_stage", "unity_forest_x11_probe", "unity_forest_editor_refresh", "unity_forest_menu_snapshot", "unity_forest_recompile", "unity_forest_crash_report", "unity_sync_auth", "unity_sync_status", "unity_sync_arm", "unity_sync_dry_run", "unity_sync_save_session", "unity_sync_watch_start", "unity_session_status", "unity_session_stop_simulation", "unity_session_checkpoint", "unity_session_recover", "unity_batch_launch", "unity_batch_status", "unity_virtual_gui_launch", "unity_virtual_gui_status", "unity_virtual_live", "unity_virtual_result", "unity_virtual_frame", "unity_live", "unity_result", "unity_frame", "world_site", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
+    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "unity_diagnostics", "desktop_tools", "desktop_snapshot", "unity_terms_accept", "unity_low_disk_stop", "unity_low_disk_pause", "unity_resume_paused", "codespace_machines", "system_storage_audit", "runtime_mount_probe", "safe_archives_audit", "safe_archives_cleanup", "unity_lfs_preflight", "unity_scratch_reconcile", "unity_tree_v2_preview", "unity_forest_stage", "unity_forest_x11_probe", "unity_forest_editor_refresh", "unity_forest_menu_snapshot", "unity_forest_recompile", "unity_forest_crash_report", "unity_forest_one_shot_plan", "unity_forest_one_shot_apply", "unity_sync_auth", "unity_sync_status", "unity_sync_arm", "unity_sync_dry_run", "unity_sync_save_session", "unity_sync_watch_start", "unity_session_status", "unity_session_stop_simulation", "unity_session_checkpoint", "unity_session_recover", "unity_batch_launch", "unity_batch_status", "unity_virtual_gui_launch", "unity_virtual_gui_status", "unity_virtual_live", "unity_virtual_result", "unity_virtual_frame", "unity_live", "unity_result", "unity_frame", "world_site", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
         raise JobError("unsupported operation")
     args = data["args"]
     if not isinstance(args, list) or len(args) > 16 or any(
@@ -70,6 +70,10 @@ def validate_job(data: dict, *, expected_file: str | None = None) -> dict:
             raise JobError("invalid world_site coordinates")
         if not all(math.isfinite(v) for v in (x,z,radius)) or max(abs(x),abs(z))>10000 or not 1<=radius<=150:
             raise JobError("world_site coordinates outside inspected bounds")
+    elif op == "unity_forest_one_shot_apply":
+        if (len(args)!=2 or args[0] not in {"1_1","1_2","2_1","2_2"} or
+            not re.fullmatch(r"[a-f0-9]{64}",args[1])):
+            raise JobError("Forest one-shot apply requires one allowed tile ID and exact SHA256")
     elif op == "lfs_verify_chunk":
         if len(args) != 1 or not re.fullmatch(r"(?:0|[1-9][0-9]{0,4})", args[0]):
             raise JobError("lfs_verify_chunk requires one numeric cursor")
@@ -242,6 +246,12 @@ def execute_remote(job: dict, token: str, workspace: Path, result_file: Path, *,
                 raise JobError("Reviewed native forest staging source unavailable")
             runner(["gh","codespace","cp","-e","-c",cs,str(source),
                     f"remote:{remote}/{leaf}"],env=env,timeout=100)
+    if job["operation"] in {"unity_forest_one_shot_plan","unity_forest_one_shot_apply"}:
+        source=workspace/"Tools/World/AarisForestOneShot.cs"
+        if not source.is_file() or source.is_symlink():
+            raise JobError("Reviewed scratch-only Unity one-shot authoring source not found")
+        runner(["gh","codespace","cp","-e","-c",cs,str(source),
+                f"remote:{remote}/AarisForestOneShot.cs"],env=env,timeout=110)
     if job["operation"] == "unity_tree_v2_preview":
         source = workspace / "Tools/World/unity_tree_v2_preview.py"
         if not source.is_file() or source.is_symlink():
