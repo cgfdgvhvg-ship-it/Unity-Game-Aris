@@ -237,6 +237,26 @@ def run_desktop():
         print("DESKTOP_READY: noVNC port 6080, private GitHub login required")
         print("LIVE_LINK:", LIVE_URL)
         print("LIVE_LOCAL_TEST: http://127.0.0.1:6080/vnc.html")
+        # The video desktop is usable now. Restore the *isolated* Unity scene
+        # asynchronously, never run a destructive reset or edit owner assets.
+        if (STAGE / "unity_session_checkpoint.py").is_file() and (STAGE / "AarisBatchProbe.cs").is_file():
+            resume = STAGE / "rdesktopautorestore20261106.json"
+            body = {"id":"rdesktopautorestore20261106","operation":"unity_session_recover","args":[]}
+            if not resume.is_symlink() and (not resume.exists() or
+               json.loads(resume.read_text()) == body):
+                if not resume.exists():
+                    with resume.open("x",encoding="utf-8") as output:
+                        json.dump(body,output)
+                try:
+                    revived = command([sys.executable,str(executor),str(resume)],timeout=95)
+                    state = json.loads(revived.stdout)
+                    summary = state.get("stdout","")
+                    if state.get("exit_code")==0:
+                        print("UNITY_RECOVERY_ACCEPTED:",str(summary)[-500:])
+                    else:
+                        print("UNITY_RECOVERY_GUARD_BLOCKED:",str(state.get("stderr",""))[-280:])
+                except (OSError,ValueError,subprocess.TimeoutExpired):
+                    print("UNITY_RECOVERY_CHECK_UNAVAILABLE: desktop remains accessible")
         return 0
     print("DESKTOP_NOT_READY:", str(info.get("stderr", "unknown"))[:250])
     return 3
