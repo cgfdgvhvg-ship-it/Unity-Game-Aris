@@ -27,6 +27,8 @@ SOURCES = {
     "Tools/CodespaceRelay/bootstrap_live.py": STAGE / "bootstrap_live.py",
     "Tools/CodespaceRelay/doctor_live.py": STAGE / "doctor_live.py",
     "Tools/World/ai_codespace_executor.py": STAGE / "ai_codespace_executor.py",
+    "Tools/World/unity_session_checkpoint.py": STAGE / "unity_session_checkpoint.py",
+    "Tools/World/AarisBatchProbe.cs": STAGE / "AarisBatchProbe.cs",
     "Assets/AarisWorld/Editor/AarisLiveEditorBridge.cs": STAGE / "AarisLiveEditorBridge.reviewed.cs",
 }
 LIVE_URL = ("https://aaris-codespace-relay."
