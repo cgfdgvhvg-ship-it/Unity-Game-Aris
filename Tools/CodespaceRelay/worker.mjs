@@ -215,6 +215,14 @@ export default {
   async scheduled(_event, env, ctx) { ctx.waitUntil(handleCron(env)); },
   async fetch(request, env) {
     if (new URL(request.url).pathname==='/health') return json({service:'aaris-codespace-relay',version:1});
+    const pathname = new URL(request.url).pathname;
+    if (pathname === '/live') {
+      // GitHub's PRIVATE forwarded port enforces owner sign-in; Cloudflare does
+      // not proxy video or make the Codespace desktop publicly reachable.
+      const target = `https://${CODESPACE}-6080.app.github.dev/vnc.html?autoconnect=true&resize=scale`;
+      return new Response(null, {status:302,headers:{location:target,'cache-control':'no-store','referrer-policy':'no-referrer'}});
+    }
+    if (pathname === '/live-info') return json({mode:'github-private-forwarded-port',port:6080,needs_codespace_online:true,needs_novnc_server:true,requires_github_owner_login:true,redirect_path:'/live'});
     return handleAgent(request,env);
   }
 };
