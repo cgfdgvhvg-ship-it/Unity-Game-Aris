@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "id": "r20261105-verify-final-a1",
+  "action": "status",
+  "recorded_utc": "2026-11-05T18:07:46.806Z",
+  "status": "observed",
+  "state": "Shutdown",
+  "source": "cloudflare-scheduled-worker"
+}
