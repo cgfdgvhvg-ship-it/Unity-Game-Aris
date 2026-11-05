@@ -15,6 +15,15 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(agent.validate_job(j),j)
         for bad in (dict(j,command='sh'),dict(j,args=['; rm -rf /']),dict(j,action='stop')):
             with self.assertRaises(ValueError):agent.validate_job(bad)
+
+    def test_safe_unity_camera_focus_validation(self):
+        j={'id':'r20261105-camera-a','action':'terminal','command':'unity_camera_focus',
+           'args':[102.307,-10.849,62.974]}
+        self.assertEqual(agent.validate_job(j),j)
+        for values in ([0,0],[0,float('nan'),0],[20001,0,0],[True,0,0],['bash',0,0]):
+            with self.assertRaises(ValueError):
+                agent.validate_job(dict(j,args=values))
+
     def test_private_config(self):
         with tempfile.TemporaryDirectory() as td:
             p=Path(td)/'config.json'
