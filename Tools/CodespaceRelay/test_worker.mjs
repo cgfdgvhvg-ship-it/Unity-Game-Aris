@@ -96,3 +96,12 @@ test('disabled relay cannot act on Codespace',async()=>{
   assert.deepEqual(await handleCron({RELAY_ENABLED:'false'},f.api),{status:'disabled'});
   assert.equal(f.calls.length,0);
 });
+
+test('camera focus schema rejects arbitrary shell and unsafe coordinates',()=>{
+  const id='r20261105-cameratest-01';
+  const safe={id,action:'terminal',command:'unity_camera_focus',args:[102.307,-10.849,62.974]};
+  assert.equal(validateJob(safe,id+'.json').command,'unity_camera_focus');
+  for(const args of [[1,2],['x',2,3],[NaN,0,0],[Infinity,1,2],[20001,0,0]]) {
+    assert.throws(()=>validateJob({...safe,args},id+'.json'));
+  }
+});
