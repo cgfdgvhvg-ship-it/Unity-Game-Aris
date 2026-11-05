@@ -10,7 +10,9 @@ Official GitHub behavior: **/workspaces persists** across
 stop/start and rebuild, but **/tmp is wiped on Codespace STOP**,
 and all running Unity processes end. Existing Unity Personal
 Editor is installed in the container's /home and survives stop/start
-but not necessarily a container rebuild. The checkpoint JSON
+but not necessarily a container rebuild. On restart, refuse to reopen **partially copied /tmp assets** without
+verified Unity scene readback or an atomic, original-source-fingerprint
+scratch-copy completion marker. The checkpoint JSON
 under /workspaces saves scene/version/source fingerprints and last
 AI-inspected camera target; it is NOT an imported Library backup.
 
