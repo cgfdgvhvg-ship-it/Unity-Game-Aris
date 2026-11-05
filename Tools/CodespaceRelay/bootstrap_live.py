@@ -26,6 +26,7 @@ SOURCES = {
     "Tools/CodespaceRelay/github_queue_agent.py": STAGE / "github_queue_agent.py",
     "Tools/CodespaceRelay/bootstrap_live.py": STAGE / "bootstrap_live.py",
     "Tools/World/ai_codespace_executor.py": STAGE / "ai_codespace_executor.py",
+    "Assets/AarisWorld/Editor/AarisLiveEditorBridge.cs": STAGE / "AarisLiveEditorBridge.reviewed.cs",
 }
 LIVE_URL = ("https://aaris-codespace-relay."
             "aaris-game-control-6f9c.workers.dev/live")
@@ -71,7 +72,12 @@ def install_sources():
         if target.exists() and target.read_bytes() == incoming:
             print("ALREADY_INSTALLED:", target.name)
             continue
-        compile(incoming, str(target), "exec")
+        if target.suffix == ".py":
+            compile(incoming, str(target), "exec")
+        elif target.name == "AarisLiveEditorBridge.reviewed.cs" and (
+            b"view.LookAtDirect(center, view.rotation, focusSize);" not in incoming or
+            b'private static readonly string Root = "/home/codespace/.aaris-desktop";' not in incoming):
+            raise RuntimeError("Unexpected Unity camera focus bridge source")
         if target.exists():
             # The native Unity runner may contain newer local recovery fixes.
             # Keep it untouched instead of silently replacing it.
