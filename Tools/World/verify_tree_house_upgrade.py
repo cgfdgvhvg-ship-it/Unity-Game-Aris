@@ -101,6 +101,9 @@ def preserved_or_reviewed_lod_only(root,path,expected_sha):
     source=(Path(root)/path).read_bytes()
     if hashlib.sha256(source).hexdigest()==expected_sha:return True
     if path == SCENE_MOBILE_LOD_PATH:
+        from foliage_core import restore_foliage_additions
+        source = restore_foliage_additions(root, source)
+        if source is None:return False
         restored = restore_scene_mobile_lod(source)
         return restored is not None and hashlib.sha256(restored).hexdigest() == expected_sha
     if path not in RESIDENTIAL_MOBILE_LOD_PREFABS:return False

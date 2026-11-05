@@ -89,14 +89,17 @@ namespace Aaris.WorldAutomation
                 else AssetDatabase.AddObjectToAsset(clone, source.output);
                 first = false;
             }
-            AssetDatabase.SaveAssets();
+            // Flush this container only; global SaveAssets also rewrites unrelated imported materials.
+            AssetDatabase.SaveAssetIfDirty(AssetDatabase.LoadMainAssetAtPath(source.output));
             AssetDatabase.ImportAsset(source.output, ImportAssetOptions.ForceSynchronousImport);
             var saved = AssetDatabase.LoadAllAssetsAtPath(source.output).OfType<Mesh>().ToArray();
             Require(saved.Length == 4, "Four saved native meshes required");
             var consumed = new HashSet<Mesh>();
             foreach (Binding binding in source.bindings)
             {
-                Mesh mesh = saved.Single(m => m.name == meshes[binding.sourceId].name && !consumed.Contains(m));
+                // Unity may rename the main asset to the container filename. Match the
+                // complete geometry fingerprint, never the mutable display name.
+                Mesh mesh = saved.Single(m => !consumed.Contains(m) && Fingerprint(m) == binding.fingerprint);
                 consumed.Add(mesh);
                 Require(Fingerprint(mesh) == binding.fingerprint, "Saved geometry/attributes changed");
                 Require(AssetDatabase.TryGetGUIDAndLocalFileIdentifier(mesh, out string guid, out long id), "Saved mesh identity missing");

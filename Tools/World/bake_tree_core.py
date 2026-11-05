@@ -103,7 +103,10 @@ def launch(project, request, temp, editor):
     output_path.unlink(missing_ok=True)
     log_path = temp/(mode+'-unity.log')
     env = dict(os.environ, AARIS_TREE_BAKE_REQUEST=str(input_path), AARIS_TREE_BAKE_RESPONSE=str(output_path))
-    args = [editor, '-batchmode', '-nographics', '-quit', '-projectPath', str(project),
+    # Unity URP's MaterialPostprocessor explicitly avoids its global material
+    # upgrade save in validation sessions with -testResults. We execute our
+    # own bake verifier, not the Unity Test Runner, and make no XML-test claim.
+    args = [editor, '-batchmode', '-nographics', '-quit', '-testResults', str(temp/'validation.xml'), '-projectPath', str(project),
             '-executeMethod', 'Aaris.WorldAutomation.TreeCoreBake.Run', '-logFile', str(log_path)]
     process = None
     old_handler = signal.getsignal(signal.SIGTERM)
@@ -161,6 +164,16 @@ def validate_sources(expected, actual):
             raise WorldError('Fresh import changed baked evidence')
 
 
+def restore_disposable_editor_settings(root, project):
+    # Unity expands minimal settings and records its revision while opening a
+    # project. These settings are outside this mesh-only transaction. Restore
+    # their exact input bytes in the disposable copy; source bytes never change.
+    for path in ('ProjectSettings/ProjectVersion.txt', 'ProjectSettings/GraphicsSettings.asset',
+                 'ProjectSettings/ProjectSettings.asset'):
+        if (root/path).is_file():
+            shutil.copy2(root/path, project/path)
+
+
 def prepare(root, output):
     root, output = Path(root).resolve(), Path(output).resolve()
     if output == root or root in output.parents or output.exists():
@@ -182,8 +195,12 @@ def prepare(root, output):
         temp = Path(directory); project = temp/'project'
         for folder in ('Assets', 'Packages', 'ProjectSettings'):
             shutil.copytree(root/folder, project/folder)
+        seed = os.environ.get('AARIS_TREE_BAKE_SEED_LIBRARY')
+        if seed:
+            shutil.copytree(Path(seed), project/'Library')
         shutil.copy2(Path(__file__).with_name('UnityTreeCoreBake.cs'), project/HELPER)
         baked = launch(project, {'mode': 'bake', 'unityVersion': version, 'sources': request_sources}, temp, os.environ['UNITY_EDITOR_PATH'])
+        restore_disposable_editor_settings(root, project)
         for request_row, row in zip(request_sources, baked['sources']):
             row['sourceGuid'] = request_row['sourceGuid']
             (project/row['prefab']).write_bytes(rewire((root/row['prefab']).read_bytes(), row))
@@ -195,6 +212,7 @@ def prepare(root, output):
         for folder in ('Library', 'Temp', 'obj', 'Logs'):
             shutil.rmtree(project/folder, ignore_errors=True)
         launch(project, {**baked, 'mode': 'verify'}, temp, os.environ['UNITY_EDITOR_PATH'])
+        restore_disposable_editor_settings(root, project)
         writes = {row[k] + suffix for row in baked['sources'] for k in ('output',) for suffix in ('', '.meta')}
         writes.update(row[k] + suffix for row in baked['sources'] for k, suffix in (('prefab', ''), ('source', '.meta')))
         deletes = {IMPORTER, IMPORTER+'.meta'}

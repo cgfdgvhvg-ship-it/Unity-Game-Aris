@@ -16,7 +16,9 @@ from verify_tree_house_upgrade import SCENE_MOBILE_LOD_PATH, restore_scene_mobil
 class SavedSceneMobileLodIntegrity(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.scene = (ROOT / SCENE_MOBILE_LOD_PATH).read_bytes()
+        from foliage_core import restore_foliage_additions
+        cls.scene = restore_foliage_additions(ROOT, (ROOT / SCENE_MOBILE_LOD_PATH).read_bytes())
+        assert cls.scene is not None, "Unreviewed foliage/scene change"
         cls.contract = json.loads(
             (ROOT / 'Tools/World/tree-house-20261103.postconditions.json').read_text()
         )
