@@ -105,6 +105,42 @@ def _run(command, timeout=35, max_stdout=8500):
         return {'status':'error','exit_code':127,'stdout':'','stderr':'Reviewed command unavailable'}
 
 
+def stage_scratch_camera_bridge():
+    """Update only the disposable scratch Editor bridge, never the owner's Git worktree."""
+    approved=STAGE/'AarisLiveEditorBridge.reviewed.cs'
+    target=Path('/tmp/aaris-unity-batch/project/Assets/AarisWorld/Editor/AarisLiveEditorBridge.cs')
+    if not target.is_file():
+        return False  # scratch may need safe native Unity recovery first
+    if approved.is_symlink() or target.is_symlink() or not approved.is_file():
+        raise ValueError('Unsafe scratch camera bridge file')
+    source=approved.read_text(encoding='utf-8')
+    old='private static readonly string Root = "/home/codespace/.aaris-desktop";'
+    new='private static readonly string Root = "/tmp/aaris-unity-batch/control";'
+    if old not in source or 'view.LookAtDirect(center, view.rotation, focusSize);' not in source:
+        raise ValueError('Review-branch camera focus source verification failed')
+    desired=source.replace(old,new,1)
+    current=target.read_text(encoding='utf-8')
+    if current==desired:
+        return True
+    if old not in current and new not in current:
+        raise ValueError('Scratch bridge has unknown control root; refusing modification')
+    # Keep a byte-perfect rollback of any scratch bridge before replacing it.
+    backup=STAGE/('AarisLiveEditorBridge.pre-focus-'+hashlib.sha256(current.encode()).hexdigest()[:12]+'.cs')
+    if backup.is_symlink():
+        raise ValueError('Unsafe scratch bridge backup')
+    if not backup.exists():
+        with backup.open('x',encoding='utf-8') as f:
+            f.write(current)
+        backup.chmod(0o600)
+    pending=target.with_name(target.name+'.ai-focus-pending')
+    if pending.exists() or pending.is_symlink():
+        raise ValueError('Unsafe pending scratch bridge')
+    with pending.open('x',encoding='utf-8') as f:
+        f.write(desired)
+    os.replace(pending,target)
+    return True
+
+
 def execute(job):
     validate_job(job)
     if job['command']=='system_status':
@@ -124,6 +160,8 @@ def execute(job):
         return {'id':job['id'],'status':'error','exit_code':3,'stdout':'',
                 'stderr':'Approved native Unity command runner not staged'}
     operation = SUPPORTED[job['command']][0]
+    if job['command'] in ('unity_virtual_start','unity_camera_focus'):
+        stage_scratch_camera_bridge()
     jobfile=STAGE/(job['id']+'.json')
     approved_args=job['args']
     if job['command']=='unity_camera_focus':
