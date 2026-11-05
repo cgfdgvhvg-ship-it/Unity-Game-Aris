@@ -29,8 +29,12 @@
    saved index **573**, width `0.8609 -> 0.9555990` and
    height unchanged `0.8896`
    ([41970787240](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41970787240)).
-   **The second tree still needs independent inspect.** These are
-   *saved whole-tree width instance edits*, NOT selective baked trunk meshes.
+   Independent `unity-native-tree-573-verify-20261105-r21` readback
+   confirmed the saved width `0.9555990`, original position and
+   height `0.8896` in the real Editor
+   ([41971374870](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41971374870)).
+   These are *saved whole-tree width instance edits*, NOT selective
+   baked trunk meshes.
 4. `unity_sync_watch_start` returned `watch_already_running`.
    `unity_sync_status` returned `changes_pending`, 1 tracked
    TerrainData asset, 0 queued commands, safe_to_push true
