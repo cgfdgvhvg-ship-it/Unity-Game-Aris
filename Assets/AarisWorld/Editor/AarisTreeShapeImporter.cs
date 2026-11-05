@@ -13,13 +13,17 @@ namespace Aaris.WorldAutomation
     // into the crown. Bark, branches and foliage receive the same continuous deformation.
     public sealed class AarisTreeShapeImporter : AssetPostprocessor
     {
-        public override uint GetVersion() { return 1; }
+        public override uint GetVersion() { return 2; }
 
         private void OnPostprocessSpeedTree(GameObject root)
         {
             if (!assetPath.StartsWith("Assets/TerrainDemoScene_URP/Prefabs/Trees/", StringComparison.Ordinal)) return;
             string[] fields = (assetImporter.userData ?? "").Split('|');
-            if (fields.Length == 0 || fields[0] != "aaris-tree-shape-v1") return;
+            // v1 remains valid for old imported prototypes; v2 is the reviewed
+            // stronger lower-trunk taper with only modest crown widening.
+            if (fields.Length == 0 ||
+                (fields[0] != "aaris-tree-shape-v1" &&
+                 fields[0] != "aaris-tree-shape-v2")) return;
             if (fields.Length != 3 ||
                 !float.TryParse(fields[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float baseScale) ||
                 !float.TryParse(fields[2], NumberStyles.Float, CultureInfo.InvariantCulture, out float crownScale) ||

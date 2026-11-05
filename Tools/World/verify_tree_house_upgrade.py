@@ -149,8 +149,17 @@ def verify(root):
         assert facts['vertex_buffer_sha256']==row['vertex_buffer_sha256'],path+' vertex attributes changed'
         assert facts['triangles_by_submesh']==row['triangles_by_submesh'],path+' material slots changed'
     from lod_profiles import preserved_tree_lod_only
+    reviewed_v2 = set()
+    v2 = root / 'Tools/World/tree-realism-v2-reviewed.json'
+    if v2.exists():
+        from verify_tree_realism_v2 import verify as verify_v2
+        validated = verify_v2(root)
+        assert validated['approved_files'] == 12
+        from verify_tree_realism_v2 import authorized_tree_blobs
+        reviewed_v2 = set(authorized_tree_blobs(root))
     for path,sha in contract['tree_source_files'].items():
-        assert preserved_tree_lod_only(root,path,sha),path+' tree source changed outside the reviewed LOD scalars'
+        if path not in reviewed_v2:
+            assert preserved_tree_lod_only(root,path,sha),path+' tree source changed outside the reviewed LOD scalars'
     for path,sha in contract['preserved_files'].items():
         assert preserved_or_reviewed_lod_only(root,path,sha),path+' protected source changed outside reviewed LOD fields'
     for probe in contract['doorway_samples']:

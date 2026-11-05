@@ -38,7 +38,7 @@ def plan(root, patch):
         if any(type(v)not in (int,float)for v in (h,b,c))or not .5<=h<=1 or not 1<=c<=b<=1.8:
             raise WorldError('Invalid explicit tree proportions')
         metadata=(root/source_meta).read_text()
-        if 'aaris-tree-shape-v1' in metadata:raise WorldError('Tree profile is already authored; inspect current factors before a new edit')
+        if re.search(r'aaris-tree-shape-v[0-9]+',metadata):raise WorldError('Tree profile is already authored; inspect current factors before a new edit')
         scale=re.search(r'(?m)^  scaleFactor: ([0-9.eE+-]+)$',metadata)
         if not scale:raise WorldError('Expected SpeedTreeImporter scaleFactor')
         old_scale=float(scale[1]);new_scale=old_scale*h
