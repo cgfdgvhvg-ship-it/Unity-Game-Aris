@@ -2547,6 +2547,121 @@ def desktop_snapshot(job_id):
     return {"exit_code":0,"stdout":json.dumps(info),"stderr":""}
 
 
+def unity_shader_ab_probe(operation):
+    """Bounded A/B: change only twelve isolated scratch leaf material shader GUIDs.
+
+    Never write owner source, scene, .meta, imported tree meshes, TerrainData or git.
+    Exact material bytes and per-file SHA256 are retained for an atomic restore.
+    """
+    import hashlib
+    if operation not in ("preflight", "apply", "restore"):
+        raise ValueError("Unsupported shader A/B action")
+    root = BATCH_ROOT/"project"
+    stage = BATCH_ROOT/"shader-foliage-ab"
+    prior = "m_Shader: {fileID: -6465566751694194690, guid: d4fdc026464a42041be7fe785babd90e, type: 3}"
+    candidate = "m_Shader: {fileID: -6465566751694194690, guid: 9920c1f1781549a46ba081a2a15a16ec, type: 3}"
+    groups = (
+      ("Conifer", ("Conifer_Branches", "Conifer_Billboard")),
+      ("Cypress", ("Cypress_Forest_Desktop", "Cypress_Forest_Desktop_Billboard")),
+      ("Pines/Pine_A", ("Pine_A", "Pine_A_Billboard")),
+      ("Pines/Pine_B", ("Pine_B", "Pine_B_Billboard")),
+      ("Pines/Pine_C", ("Pine_C", "Pine_C_Billboard")),
+      ("Pines/Pine_D", ("Pine_D", "Pine_D_Billboard")),
+    )
+    names = ["Assets/TerrainDemoScene_URP/Prefabs/Trees/" + folder +
+             "/Materials/" + name + ".mat" for folder, leaves in groups for name in leaves]
+    if len(names) != 12 or len(_scratch_unity_pids()) != 1 or not (BATCH_ROOT/"scene-readback.json").is_file():
+        return {"exit_code":3, "stdout":"", "stderr":"One verified scratch Unity Editor/scene required"}
+    if root.is_symlink() or not root.is_dir() or shutil.disk_usage(root).free < 10*1024**3:
+        return {"exit_code":3, "stdout":"", "stderr":"Invalid scratch or less than 10 GiB temporary headroom"}
+    def sha(b):
+        return hashlib.sha256(b).hexdigest()
+    pairs = []
+    for rel in names:
+        path, source = root/rel, PROJECT/rel
+        if not path.is_file() or path.is_symlink() or not source.is_file() or source.is_symlink():
+            return {"exit_code":3, "stdout":"", "stderr":"Missing/symlinked material: "+rel}
+        a, b = path.read_bytes(), source.read_bytes()
+        if not (a == b and a.count(prior.encode())==1 and b.count(prior.encode())==1) and operation=="preflight":
+            return {"exit_code":3, "stdout":"", "stderr":"Scratch differs from approved original material: "+rel}
+        if operation=="apply" and (a!=b or a.count(prior.encode())!=1):
+            return {"exit_code":3, "stdout":"", "stderr":"Unreviewed material before A/B: "+rel}
+        if not (root/(rel+".meta")).is_file() or (root/(rel+".meta")).read_bytes() != (PROJECT/(rel+".meta")).read_bytes():
+            return {"exit_code":3, "stdout":"", "stderr":"Original material GUID mismatch: "+rel}
+        pairs.append((rel,path,a,b))
+    pkg = list((root/"Library/PackageCache").glob("com.unity.render-pipelines.universal@*/Shaders/Nature/SpeedTree8_PBRLit.shadergraph.meta"))
+    candidate_meta = [x for x in pkg if x.is_file() and not x.is_symlink() and "guid: 9920c1f1781549a46ba081a2a15a16ec" in x.read_text(errors="replace")]
+    details = {"operation":operation, "scratch_only":True, "original_untouched":True,
+               "source_materials":len(pairs), "target":"URP17/SpeedTree8_PBRLit",
+               "candidate_shader_guid_verified":bool(candidate_meta),
+               "package_meta_matches":len(candidate_meta),
+               "material_paths":names}
+    if operation=="preflight":
+        return {"exit_code":0,"stdout":json.dumps(details),"stderr":""}
+    if operation=="apply":
+        if not candidate_meta:
+            return {"exit_code":3,"stdout":json.dumps(details),
+                    "stderr":"Installed URP SpeedTree8 shader GUID not verified"}
+        if stage.exists() or stage.is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"Prior shader A/B backup exists; restore first"}
+        stage.mkdir(mode=0o700)
+        manifest=[]
+        written=[]
+        try:
+            for rel,path,original,src in pairs:
+                backup=stage/rel
+                backup.parent.mkdir(parents=True,exist_ok=True)
+                backup.write_bytes(original)
+                if sha(backup.read_bytes())!=sha(original):
+                    raise ValueError("Unverified shader A/B backup: "+rel)
+                after=original.replace(prior.encode(),candidate.encode())
+                if len(after)!=len(original) or after.count(candidate.encode())!=1:
+                    raise ValueError("Unexpected shader A/B replacement: "+rel)
+                manifest.append({"path":rel,"before_sha256":sha(original),"after_sha256":sha(after)})
+                tmp=path.with_suffix(".mat.aaris-shader-preview")
+                if tmp.exists() or tmp.is_symlink():
+                    raise ValueError("Existing shader temporary material: "+rel)
+                tmp.write_bytes(after)
+                os.replace(tmp,path)
+                written.append((path,original))
+                if sha(path.read_bytes())!=sha(after):
+                    raise ValueError("Shader preview material readback mismatch: "+rel)
+            (stage/"manifest.json").write_text(json.dumps(manifest,indent=2))
+        except BaseException:
+            for path,original in reversed(written):
+                path.write_bytes(original)
+            raise
+        details["edited_scratch_materials"]=len(written)
+        details["backup"]=str(stage)
+        return {"exit_code":0,"stdout":json.dumps(details),"stderr":""}
+    # restore operation verifies the exact backup and preview byte identities
+    manifest_file=stage/"manifest.json"
+    if not manifest_file.is_file() or manifest_file.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Original A/B backup manifest unavailable"}
+    records=json.loads(manifest_file.read_text())
+    if [x.get("path") for x in records]!=names:
+        return {"exit_code":3,"stdout":"","stderr":"Shader A/B backup path mismatch"}
+    for rec in records:
+        path=root/rec["path"]
+        original=(stage/rec["path"]).read_bytes()
+        if sha(original)!=rec["before_sha256"] or sha((PROJECT/rec["path"]).read_bytes())!=rec["before_sha256"]:
+            return {"exit_code":3,"stdout":"","stderr":"Original shader A/B baseline drift"}
+        if sha(path.read_bytes())!=rec["after_sha256"]:
+            return {"exit_code":3,"stdout":"","stderr":"Scratch shader A/B material changed unexpectedly"}
+    for rec in records:
+        dst=root/rec["path"]
+        before=(stage/rec["path"]).read_bytes()
+        tmp=dst.with_suffix(".mat.aaris-shader-restore")
+        if tmp.exists() or tmp.is_symlink():
+            raise ValueError("Unexpected restore temp")
+        tmp.write_bytes(before)
+        os.replace(tmp,dst)
+    details["restored_scratch_materials"]=len(records)
+    details["all_restored"]=all((root/x["path"]).read_bytes()==(PROJECT/x["path"]).read_bytes() for x in records)
+    return {"exit_code":0 if details["all_restored"] else 3,
+            "stdout":json.dumps(details),"stderr":""}
+
+
 def execute(job):
     # Validate independently from Actions, where an untrusted queue file travels.
     if set(job) != {"id", "operation", "args"}:
@@ -2556,6 +2671,9 @@ def execute(job):
         raise ValueError("invalid job id")
     if not isinstance(args, list):
         raise ValueError("invalid args")
+    if op in {"unity_shader_ab_preflight", "unity_shader_ab_apply", "unity_shader_ab_restore"}:
+        if args: raise ValueError("Shader A/B operation takes no args")
+        return unity_shader_ab_probe(op.removeprefix("unity_shader_ab_"))
     if op == "prune_caches":
         if args: raise ValueError("unexpected arguments")
         return {"exit_code":0,"stdout":json.dumps(prune_caches(),ensure_ascii=False),"stderr":""}
