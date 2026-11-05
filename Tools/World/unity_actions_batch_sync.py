@@ -66,6 +66,25 @@ def choose_mode(event,event_name,workspace):
     head=event.get("head_commit") or {}
     for field in ("added","modified","removed"):
         paths.extend(head.get(field) or [])
+    if not paths:
+        # GitHub Actions push event omits head_commit.added/modified
+        # for repository webhooks; trust checked-out commit's diff instead.
+        sha=event.get("after")
+        if not isinstance(sha,str) or not re.fullmatch(r"[0-9a-f]{40}",sha):
+            raise RunnerError("Push commit SHA unavailable")
+        head_sha=subprocess.run(["git","rev-parse","HEAD"],cwd=workspace,
+                                text=True,capture_output=True,timeout=20)
+        if head_sha.returncode or head_sha.stdout.strip()!=sha:
+            raise RunnerError("Checked out HEAD differs from owner queue push")
+        diff=subprocess.run(["git","diff-tree","--no-commit-id",
+                             "--name-status","-r",sha],cwd=workspace,
+                            text=True,capture_output=True,timeout=20)
+        if diff.returncode:
+            raise RunnerError("Cannot verify the submitted queue commit diff")
+        changes=[line.split("\t",1) for line in diff.stdout.splitlines()]
+        if len(changes)!=1 or changes[0][0]!="A" or len(changes[0])!=2:
+            return "skip"
+        paths=[changes[0][1]]
     selected=[n for n in paths if re.fullmatch(r"\.aaris/jobs/[a-z][a-z0-9-]{3,55}\.json",n)]
     if len(selected)!=1 or len(paths)!=1:
         return "skip"
