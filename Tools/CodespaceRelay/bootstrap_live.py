@@ -7,6 +7,7 @@ Worker manages lifecycle; this agent runs commands INSIDE the Codespace.
 from __future__ import annotations
 import argparse
 import base64
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -53,7 +54,11 @@ def fetch(path):
 
 def install_sources():
     if not PROJECT.is_dir() or PROJECT.is_symlink():
-        raise RuntimeError("Expected Codespace Unity project directory not found")
+        raise RuntimeError(
+            "This is the PHONE/TERMUX terminal, not the GitHub Codespace. "
+            "Open github.com/codespaces -> your Codespace -> Open in browser "
+            "-> TERMINAL and run the installation there once. "
+            "Do NOT install x11vnc into Termux.")
     if not shutil.which("gh"):
         raise RuntimeError("GitHub CLI not installed inside Codespace")
     STAGE.mkdir(parents=True, exist_ok=True)
@@ -63,23 +68,69 @@ def install_sources():
         incoming = fetch(path)
         if target.is_symlink():
             raise RuntimeError("Unsafe staged symlink: " + target.name)
-        if target.exists():
-            if target.read_bytes() != incoming:
-                # Do not overwrite prior locally reviewed tools while Unity is dirty.
-                print("PRESERVED_EXISTING_DIFFERENT_FILE:", target.name)
-            else:
-                print("ALREADY_INSTALLED:", target.name)
+        if target.exists() and target.read_bytes() == incoming:
+            print("ALREADY_INSTALLED:", target.name)
             continue
-        with target.open("xb") as out:
+        compile(incoming, str(target), "exec")
+        if target.exists():
+            # The native Unity runner may contain newer local recovery fixes.
+            # Keep it untouched instead of silently replacing it.
+            if target.name == "ai_codespace_executor.py":
+                print("PRESERVED_LOCAL_NATIVE_EXECUTOR:", target.name)
+                continue
+            old = target.read_bytes()
+            backup = target.with_name(target.name + ".backup-" +
+                                      hashlib.sha256(old).hexdigest()[:12])
+            if not backup.exists():
+                with backup.open("xb") as stream:
+                    stream.write(old)
+                backup.chmod(0o600)
+            print("BACKED_UP_OLD_AGENT:", target.name)
+        staging = target.with_name(target.name + ".install-tmp")
+        if staging.exists() or staging.is_symlink():
+            raise RuntimeError("Unreviewed staging file: " + staging.name)
+        with staging.open("xb") as out:
             out.write(incoming)
-        target.chmod(0o600)
-        print("STAGED:", target.name, len(incoming))
+        staging.chmod(0o600)
+        os.replace(staging, target)
+        print("STAGED_CURRENT_AGENT:", target.name, len(incoming))
     issue = ROOT / "issue.txt"
     if issue.exists() and issue.read_text().strip() != "37":
         raise RuntimeError("Existing GitHub issue bridge target differs")
     ROOT.mkdir(parents=True, exist_ok=True)
     if not issue.exists():
         issue.write_text("37\n")
+
+
+def ensure_vnc_password():
+    """Ask exactly once inside Codespace; never echo or commit VNC credentials."""
+    directory = Path.home() / ".aaris-desktop"
+    passwd = directory / "vnc.pass"
+    if directory.is_symlink() or passwd.is_symlink():
+        raise RuntimeError("Unsafe VNC password location")
+    if passwd.is_file() and passwd.stat().st_size:
+        passwd.chmod(0o600)
+        print("SAVED_VNC_PASSWORD_REUSED")
+        return
+    if not shutil.which("x11vnc"):
+        raise RuntimeError("x11vnc is missing INSIDE Codespace; do not install it on the phone")
+    directory.mkdir(mode=0o700,parents=True,exist_ok=True)
+    directory.chmod(0o700)
+    print("ONE_TIME_VNC_PASSWORD: enter a private password at the prompt.",flush=True)
+    print("The VNC protocol uses at most 8 password characters; choose 8 strong characters.",flush=True)
+    try:
+        with open("/dev/tty","r+") as terminal:
+            task = subprocess.run(
+                ["x11vnc","-storepasswd",str(passwd)],stdin=terminal,
+                stdout=terminal,stderr=terminal,timeout=100,check=False)
+    except (OSError,subprocess.TimeoutExpired):
+        raise RuntimeError(
+            "Cannot prompt for a password here. Run the installer in the actual Codespace "
+            "integrated Terminal, not Termux or a noninteractive runner.")
+    if task.returncode != 0 or not passwd.is_file() or passwd.stat().st_size == 0:
+        raise RuntimeError("VNC password was not saved")
+    passwd.chmod(0o600)
+    print("VNC_PASSWORD_SAVED_ONCE; keep it private",flush=True)
 
 
 def unit_file(name, body):
@@ -189,6 +240,7 @@ def main():
     if args.desktop_once:
         raise SystemExit(run_desktop())
     install_sources()
+    ensure_vnc_password()
     if not setup_units():
         fallback_shell_hook()
         subprocess.Popen([sys.executable, "-u", str(STAGE / "github_queue_agent.py")],
@@ -201,9 +253,15 @@ def main():
         print("NEXT: configure VNC password privately in Codespace terminal.")
     else:
         run_desktop()
-    print("NOTE: Use Codespaces PORTS tab to forward 6080 as PRIVATE (never public).")
+    print("NOTE: In the Codespace PORTS tab, forward 6080 as PRIVATE (never Public).")
+    print("SINGLE_LINK:", LIVE_URL)
+    print("Port 6080 must be running AND privately forwarded, otherwise GitHub displays HTTP 404.")
     print("INSTALL_FINISHED: inspect service and port status before claiming live video.")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except (RuntimeError, ValueError, OSError) as exc:
+        print("SETUP_BLOCKED:", str(exc), file=sys.stderr)
+        raise SystemExit(2)
