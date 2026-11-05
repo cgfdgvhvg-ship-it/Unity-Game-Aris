@@ -209,6 +209,12 @@ def execute_remote(job: dict, token: str, workspace: Path, result_file: Path, *,
             raise JobError("Reviewed headless Scene audit C# script not available")
         runner(["gh","codespace","cp","-e","-c",cs,str(source),
                 f"remote:{remote}/AarisBatchProbe.cs"],env=env,timeout=90)
+    if job["operation"] == "unity_session_recover":
+        probe = workspace / "Tools/World/AarisBatchProbe.cs"
+        if not probe.is_file():
+            raise JobError("Reviewed native Unity Editor scene probe not found")
+        runner(["gh","codespace","cp","-e","-c",cs,str(probe),
+                f"remote:{remote}/AarisBatchProbe.cs"],env=env,timeout=90)
     if job["operation"] in {"unity_session_checkpoint","unity_session_recover"}:
         source = workspace / "Tools/World/unity_session_checkpoint.py"
         if not source.is_file():
