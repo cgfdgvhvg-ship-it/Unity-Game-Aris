@@ -2572,9 +2572,32 @@ def unity_house_bridge_gallery(job):
     commands=root/"unity-commands"
     results=root/"unity-results"
     frames=root/"frames"
-    if len(_scratch_unity_pids())!=1 or not (BATCH_ROOT/"scene-readback.json").is_file():
-        return {"exit_code":3,"stdout":"","stderr":"Native scratch Unity Editor not verified"}
+    if op=="unity_house_bridge_gallery_diagnose":
+        if len(job["args"])!=1 or not re.fullmatch(r"[a-z][a-z0-9-]{3,55}",job["args"][0]):
+            raise ValueError("House photo gallery diagnosis requires prior gallery ID")
+        survey=job["args"][0]
+        file=marker/(survey+".json")
+        if not file.is_file() or file.is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"House gallery manifest unavailable"}
+        plan=json.loads(file.read_text())
+        items=[h["inspect_id"] for h in plan["houses"]]+[p["id"] for h in plan["houses"] for p in h["photos"]]
+        recorded=[]
+        for ident in items:
+            response=results/(ident+".json")
+            if response.is_file() and not response.is_symlink():
+                obj=json.loads(response.read_text())
+                recorded.append({"id":ident,"status":obj.get("status"),"error":obj.get("error"),
+                                 "action":obj.get("action"),"frame":(frames/(ident+".jpg")).is_file()})
+        return {"exit_code":0,"stdout":json.dumps({
+            "gallery":survey,"unity_pid":_scratch_unity_pids(),
+            "total_jobs":len(items),"completed":len(recorded),
+            "photo_count":sum(bool(x.get("frame")) for x in recorded),
+            "pending_ids":[i for i in items if i not in {x["id"] for x in recorded}],
+            "results":recorded
+        }),"stderr":""}
     if op=="unity_house_bridge_gallery_start":
+        if len(_scratch_unity_pids())!=1 or not (BATCH_ROOT/"scene-readback.json").is_file():
+            return {"exit_code":3,"stdout":"","stderr":"Native scratch Unity Editor not verified"}
         if job["args"]: raise ValueError("House gallery accepts no arbitrary inputs")
         if not commands.is_dir() or commands.is_symlink() or not results.is_dir():
             return {"exit_code":3,"stdout":"","stderr":"Native live bridge unavailable"}
@@ -3188,7 +3211,7 @@ def execute(job):
     if op == "unity_house_gallery_refresh":
         if args: raise ValueError("House Editor asset refresh takes no arguments")
         return unity_forest_editor_refresh(require_forest=False)
-    if op in {"unity_house_bridge_gallery_start","unity_house_bridge_gallery_export"}:
+    if op in {"unity_house_bridge_gallery_start","unity_house_bridge_gallery_export","unity_house_bridge_gallery_diagnose"}:
         return unity_house_bridge_gallery(job)
     if op in {"unity_house_gallery_start","unity_house_gallery_export","unity_house_gallery_diagnose"}:
         return unity_house_gallery(job)
