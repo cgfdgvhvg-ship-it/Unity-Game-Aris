@@ -294,7 +294,16 @@ def main(argv=None):
         event=json.loads(a.event.read_text()) if a.event.is_file() else {}
         mode=choose_mode(event,a.event_name,a.workspace)
         if mode=="skip":
-            print(json.dumps({"status":"skipped_non_save_job"}))
+            head=event.get("head_commit") or {}
+            changes=[p for key in ("added","modified","removed")
+                     for p in (head.get(key) or [])]
+            print(json.dumps({"status":"skipped_non_save_job",
+                              "event_name":a.event_name,
+                              "event_ref":event.get("ref"),
+                              "event_sender":(event.get("sender") or {}).get("login"),
+                              "changed_job_paths":[x for x in changes
+                                                   if x.startswith(".aaris/jobs/")][:3],
+                              "changed_count":len(changes)}))
             return 0
         owner_token=os.getenv("AARIS_CODESPACE_TOKEN","")
         git_token=os.getenv("GITHUB_TOKEN","")
