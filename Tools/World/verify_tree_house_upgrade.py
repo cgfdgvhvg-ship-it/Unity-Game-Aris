@@ -119,9 +119,50 @@ def restore_scene_mobile_lod(source):
     return ''.join(result).encode('utf-8')
 
 
+# Exact, reviewed 2026-11-05 mobile LOD2-only shadow omission.
+# Revert this ONE property before the historical protected byte hash check.
+REVIEWED_FAR_SHADOW_PREFABS=frozenset(
+    f'Assets/AarisWorld/Models/{n}/{n}.prefab' for n in (
+        'Airfield','CanalTown','HanokVillage','Harbour','ParcelDepot',
+        'TownHall','a_frame_cabin','bungalow_house',
+        'detached_two_storey_house','garage_apartment','lighthouse',
+        'observatory_dome','pitched_roof_cottage',
+        'row_three_townhouses','two_bedroom_garage_house',
+        'warehouse_loading_dock','watchtower')
+) | frozenset(
+    f'Assets/AarisWorld/Props/{n}/{n}.prefab'
+    for n in ('ClimbableTower','RockCover','StaticWreck')
+)
+
+
+def restore_reviewed_far_shadow(source, path):
+    """Return original source bytes or None on ANY unreviewed renderer state."""
+    import re
+    if path not in REVIEWED_FAR_SHADOW_PREFABS:
+        return source
+    blocks=re.split(rb'(?=^--- !u!)',source,flags=re.M)
+    groups=[x for x in blocks if b'\nLODGroup:\n' in x]
+    if len(groups)!=1:return None
+    ids=re.findall(rb'- renderer: \{fileID: (\d+)\}',groups[0])
+    if len(ids)!=3 or len(set(ids))!=3:return None
+    for index,ident in enumerate(ids):
+        header=b'--- !u!23 &'+ident+b'\nMeshRenderer:\n'
+        locations=[j for j,b in enumerate(blocks) if b.startswith(header)]
+        if len(locations)!=1:return None
+        j=locations[0]
+        matches=re.findall(rb'^  m_CastShadows: (\d+)\n',blocks[j],flags=re.M)
+        if matches!=([b'1'] if index<2 else [b'0']):return None
+        if index==2:
+            blocks[j]=blocks[j].replace(b'  m_CastShadows: 0\n',b'  m_CastShadows: 1\n',1)
+    return b''.join(blocks)
+
+
 def preserved_or_reviewed_lod_only(root,path,expected_sha):
     source=(Path(root)/path).read_bytes()
     if hashlib.sha256(source).hexdigest()==expected_sha:return True
+    if path in REVIEWED_FAR_SHADOW_PREFABS:
+        source=restore_reviewed_far_shadow(source,path)
+        if source is None:return False
     if path == SCENE_MOBILE_LOD_PATH:
         restored = restore_scene_mobile_lod(source)
         return restored is not None and hashlib.sha256(restored).hexdigest() == expected_sha

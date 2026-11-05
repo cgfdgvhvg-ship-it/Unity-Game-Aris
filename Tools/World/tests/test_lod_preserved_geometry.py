@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[3]
 sys.path.insert(0,str(ROOT/'Tools/World'))
-from verify_tree_house_upgrade import RESIDENTIAL_MOBILE_LOD_PREFABS,preserved_or_reviewed_lod_only
+from verify_tree_house_upgrade import RESIDENTIAL_MOBILE_LOD_PREFABS,preserved_or_reviewed_lod_only,restore_reviewed_far_shadow
 
 
 class ReviewedMobileLodIntegrity(unittest.TestCase):
@@ -23,7 +23,9 @@ class ReviewedMobileLodIntegrity(unittest.TestCase):
                 self.assertEqual(content.count(b'  - screenRelativeHeight: 0.28\n'),1)
                 self.assertEqual(content.count(b'  - screenRelativeHeight: 0.095\n'),1)
                 self.assertTrue(preserved_or_reviewed_lod_only(ROOT,path,contract['preserved_files'][path]))
-                original=(content.replace(b'  - screenRelativeHeight: 0.28\n',b'  - screenRelativeHeight: 0.22\n')
+                historical=restore_reviewed_far_shadow(content,path)
+                self.assertIsNotNone(historical)
+                original=(historical.replace(b'  - screenRelativeHeight: 0.28\n',b'  - screenRelativeHeight: 0.22\n')
                     .replace(b'  - screenRelativeHeight: 0.095\n',b'  - screenRelativeHeight: 0.07\n'))
                 self.assertEqual(hashlib.sha256(original).hexdigest(),contract['preserved_files'][path])
 
