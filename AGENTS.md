@@ -1,3 +1,11 @@
+# CRITICAL QA HOLD — Terrain TreeInstances include ROCKS (2026-11-05)
+
+**Do not merge draft PR #64 at current commit `1c327d9`.** A read of the existing saved `Docs/TERRAIN_INDEX.json` discovered that the 7,508 `TerrainData.m_TreeInstances` are **not all trees**: 1,939 are true tree prefabs (`/Trees/`), 5,564 are rock prefabs (`/Rocks/`), and 5 are shrubs (`/Foliage/`). Tile breakdown: 1_1 = 374 trees + 1,330 rocks; 1_2 = 618 trees + 3,442 rocks + 5 shrubs; 2_1 = 519 trees + 388 rocks; 2_2 = 428 trees + 404 rocks. Previous bulk editor pass incorrectly scaled all 7,508; its four verified Git LFS blobs are a **quarantined review attempt, not a production-ready tree upgrade**. The user asked to scale **every tree**, not to resize rocks/shrubs.
+
+**Required before release:** restore the original four TerrainData baseline blobs in a guarded scratch Unity project, run a corrected species/prefab-aware plan *only* on the 1,939 actual trees, prove all 5,569 other instances retain their previous exact numeric scales/positions/prototype identities, and save four new verified LFS native assets on PR #64. Do **not** blindly rerun non-idempotent scaling on already-mutated review assets. `main` currently has not received these bad bulk core files. The 7,508-tree assertions in the historical handoff immediately below describe the **discovered error**, not an accepted result; do not use them as planning counts.
+
+---
+
 # Verified FULL-MAP native tree scaling handoff — 7,508 trees (2026-11-05)
 
 **IMPORTANT latest state:** Unity 6000.3.26f1 successfully edited **all 7,508 existing Terrain TreeInstances in all four native TerrainData `.asset` files** inside the owner's isolated scratch Unity project, *not merely one or two example trees*. Native SaveAssets, post-write in-Editor readback, exact SHA-256 and Git LFS upload of **all four** core files were independently verified. GitHub **review branch** `ai/unity-batched-20261105-049503278c` at commit `1c327d978d82d3647194c41ac32eb1bb169c9282` contains the four changed core assets; [draft PR #64](https://github.com/Aaris-khan-don/Unity-Game-Aris/pull/64) is **NOT merged to main**. Do not falsely treat main as updated, and do not rerun a non-idempotent forest scaling pass onto an already scaled branch.
