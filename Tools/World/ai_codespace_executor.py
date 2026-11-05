@@ -2547,6 +2547,159 @@ def desktop_snapshot(job_id):
     return {"exit_code":0,"stdout":json.dumps(info),"stderr":""}
 
 
+def unity_main_core_sync(job):
+    """Import precisely reviewed merged source to disposable Unity Editor only.
+
+    Actions stages files pinned to a single main commit; never run git in the
+    owner's dirty checkout or overwrite anything under /workspaces/Unity-Game-Aris.
+    Reject any unexpected scratch changes. SHA-verify inputs and final readback.
+    """
+    import tarfile
+    from pathlib import PurePosixPath
+    import io
+    commit="08c57c62a64f99ed0745deae3c44f189f9ec711c"
+    stage=Path("/workspaces/.aaris-world-bridge/ondemand")/("main-core-"+job["id"]+".tar")
+    scratch=BATCH_ROOT/"project"
+    backup=BATCH_ROOT/("main-core-backup-"+job["id"])
+    source_root="Assets/TerrainDemoScene_URP/Prefabs/Trees/"
+    leaves=tuple(
+        source_root+folder+"/Materials/"+name+".mat"
+        for folder,items in (
+          ("Conifer",("Conifer_Branches","Conifer_Billboard")),
+          ("Cypress",("Cypress_Forest_Desktop","Cypress_Forest_Desktop_Billboard")),
+          *((f"Pines/Pine_{x}",(f"Pine_{x}",f"Pine_{x}_Billboard")) for x in "ABCD"),
+        ) for name in items
+    )
+    prefabs=tuple(source_root+stem+".prefab" for stem in
+        ("Conifer/Conifer","Cypress/Cypress_Forest_Desktop",
+         *(f"Pines/Pine_{x}/Pine_{x}" for x in "ABCD")))
+    player="Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs"
+    required=leaves+prefabs+(player,)
+    checks=(
+        "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity",
+        "ProjectSettings/QualitySettings.asset",
+        "ProjectSettings/GraphicsSettings.asset",
+        "Packages/manifest.json",
+    )
+    original_prefab_sha={
+      prefabs[0]:"fa9d9cc07822b938ef5ba29bfa20eab7ce25de10",
+      prefabs[1]:"65c18f7e3449f24240f6a52a33182991eda3d80e",
+      prefabs[2]:"f91d80bab50c2ef0cdc816fc0a5f0f30036b6f5f",
+      prefabs[3]:"526af9d0f166ca774cfe61b0d6906c11483929fc",
+      prefabs[4]:"959a20643bb07c39f9553623133eca7affa81ffb",
+      prefabs[5]:"344363e72f13f909c3cca8ad036491484c2a7373",
+      player:"c3f07233825b9ca94ef2f19b3a63f78c9e54e318",
+    }
+    old_shader=b"d4fdc026464a42041be7fe785babd90e"
+    new_shader=b"9920c1f1781549a46ba081a2a15a16ec"
+    def sha256(data): return hashlib.sha256(data).hexdigest()
+    def blob(data):
+        return hashlib.sha1(b"blob "+str(len(data)).encode()+b"\\0"+data).hexdigest()
+    if not stage.is_file() or stage.is_symlink() or stage.stat().st_size>8*1024*1024:
+        return {"exit_code":3,"stdout":"","stderr":"Trusted exact-main core bundle missing or oversized"}
+    if not scratch.is_dir() or scratch.is_symlink() or backup.exists() or backup.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Scratch identity or backup conflict"}
+    if len(_scratch_unity_pids())!=1 or not (BATCH_ROOT/"scene-readback.json").is_file():
+        return {"exit_code":3,"stdout":"","stderr":"Exactly one live isolated Unity Editor and loaded scene required"}
+    if shutil.disk_usage(scratch).free<12*1024**3:
+        return {"exit_code":3,"stdout":"","stderr":"Insufficient temporary Unity disk headroom"}
+    # Verify source files and all project-level snapshot checks before ANY write.
+    files={}
+    try:
+        with tarfile.open(stage,"r") as tar:
+            members=tar.getmembers()
+            allowed={"manifest.json"}|{"source/"+p for p in required}
+            if {m.name for m in members} != allowed or len(members)!=len(allowed):
+                raise ValueError("Bundle contains unreviewed files")
+            if any(not m.isfile() or m.size>8*1024*1024 or m.name.startswith("/")
+                   or ".." in PurePosixPath(m.name).parts for m in members):
+                raise ValueError("Invalid bundle member")
+            manifest=json.load(tar.extractfile("manifest.json"))
+            if manifest.get("commit")!=commit or set(manifest.get("files",{}))!=set(required) or set(manifest.get("checks",{}))!=set(checks):
+                raise ValueError("Unexpected main core commit or path manifest")
+            for rel in required:
+                data=tar.extractfile("source/"+rel).read()
+                if sha256(data)!=manifest["files"][rel]:
+                    raise ValueError("Bundle hash mismatch: "+rel)
+                files[rel]=data
+    except (OSError,tarfile.TarError,ValueError,KeyError,TypeError) as e:
+        return {"exit_code":3,"stdout":"","stderr":"Invalid approved main bundle: "+str(e)[:180]}
+    mismatches=[]
+    for rel in checks:
+        candidate=scratch/rel
+        if candidate.is_symlink() or not candidate.is_file():
+            mismatches.append(rel+":missing")
+        else:
+            with candidate.open("rb") as stream:
+                h=hashlib.sha256()
+                for chunk in iter(lambda:stream.read(1024*1024),b""):h.update(chunk)
+            if h.hexdigest()!=manifest["checks"][rel]:
+                mismatches.append(rel+":snapshot-drift")
+    if mismatches:
+        return {"exit_code":3,"stdout":json.dumps({"read_only_snapshot_errors":mismatches}),
+                "stderr":"Cannot assert merged main scene/pipeline baseline; no files changed"}
+    changes=[]
+    for rel in required:
+        dst=scratch/rel
+        owner=PROJECT/rel
+        if (not dst.is_file() or dst.is_symlink() or not owner.is_file() or owner.is_symlink()):
+            return {"exit_code":3,"stdout":"","stderr":"Missing/symlinked core destination: "+rel}
+        if rel.startswith("Assets/"):
+            meta=rel+".meta"
+            a=scratch/meta
+            b=PROJECT/meta
+            if not a.is_file() or a.is_symlink() or not b.is_file() or b.is_symlink() or a.read_bytes()!=b.read_bytes():
+                return {"exit_code":3,"stdout":"","stderr":"Core GUID meta drift: "+rel}
+        current=dst.read_bytes()
+        desired=files[rel]
+        if current==desired: continue
+        if rel in leaves:
+            expected=desired.replace(new_shader,old_shader)
+            if desired.count(new_shader)!=1 or len(expected)!=len(desired) or current!=expected:
+                return {"exit_code":3,"stdout":"","stderr":"Unreviewed tree material preview modification: "+rel}
+        elif blob(current)!=original_prefab_sha[rel]:
+            return {"exit_code":3,"stdout":json.dumps({"rel":rel,"found_blob":blob(current)}),
+                    "stderr":"Preserving unreviewed scratch prefab or C# modifications"}
+        changes.append((rel,dst,current,desired))
+    backup.mkdir(parents=True,mode=0o700)
+    backup_manifest={"commit":commit,"paths":{},"read_only_checks":manifest["checks"]}
+    for rel,dst,before,after in changes:
+        output=backup/rel
+        output.parent.mkdir(parents=True,exist_ok=True)
+        output.write_bytes(before)
+        if sha256(output.read_bytes())!=sha256(before):
+            return {"exit_code":3,"stdout":"","stderr":"Backup verification failed: "+rel}
+        backup_manifest["paths"][rel]={"old_sha256":sha256(before),"new_sha256":sha256(after)}
+    (backup/"manifest.json").write_text(json.dumps(backup_manifest,indent=2))
+    done=[]
+    try:
+        for rel,dst,old,updated in changes:
+            tmp=dst.with_name(dst.name+".aaris-main-sync")
+            if tmp.exists() or tmp.is_symlink():
+                raise ValueError("Existing temp target: "+rel)
+            tmp.write_bytes(updated)
+            if sha256(tmp.read_bytes())!=sha256(updated):
+                raise ValueError("Scratch staging readback mismatch: "+rel)
+            os.replace(tmp,dst)
+            done.append((dst,old))
+        for rel in required:
+            if sha256((scratch/rel).read_bytes())!=manifest["files"][rel]:
+                raise ValueError("Merged main sync readback mismatch: "+rel)
+    except BaseException:
+        for dst,previous in reversed(done):
+            dst.write_bytes(previous)
+        raise
+    stage.unlink()
+    return {"exit_code":0,"stdout":json.dumps({
+      "source_main_commit":commit,"scratch_only":True,"owner_worktree_untouched":True,
+      "total_reviewed_core_files":len(required),"changed_core_count":len(changes),
+      "changed_paths":[rel for rel,_,_,_ in changes],
+      "all_19_exact_main_bytes":True,"verified_scene_pipeline_package":True,
+      "backup_path":str(backup),
+      "next_gate":"Unity Editor asset reimport, shader material check and matched camera capture"
+    },ensure_ascii=False),"stderr":""}
+
+
 def unity_shader_ab_probe(operation):
     """Bounded A/B: change only twelve isolated scratch leaf material shader GUIDs.
 
@@ -2671,6 +2824,9 @@ def execute(job):
         raise ValueError("invalid job id")
     if not isinstance(args, list):
         raise ValueError("invalid args")
+    if op == "unity_main_core_sync":
+        if args: raise ValueError("Exact-main source sync takes no arguments")
+        return unity_main_core_sync(job)
     if op in {"unity_shader_ab_preflight", "unity_shader_ab_apply", "unity_shader_ab_restore"}:
         if args: raise ValueError("Shader A/B operation takes no args")
         return unity_shader_ab_probe(op.removeprefix("unity_shader_ab_"))
