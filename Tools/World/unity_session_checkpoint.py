@@ -121,6 +121,27 @@ def last_camera_target(scratch: Path):
             return {k:float(target[k]) for k in ("x","y","z")}
         except (OSError,ValueError,TypeError,AttributeError):
             continue
+    try:
+        finished=sorted(
+            (p for p in results.iterdir() if p.is_file() and
+             not p.is_symlink() and p.suffix==".json"),
+            key=lambda p:p.stat().st_mtime,reverse=True
+        )[:64]
+        for item in finished:
+            if item.stat().st_size>150000:
+                continue
+            obj=json.loads(item.read_text())
+            if obj.get("status")!="ok" or obj.get("action")!="inspect":
+                continue
+            point=obj.get("position")
+            if not isinstance(point,dict) or not all(k in point for k in ("x","y","z")):
+                continue
+            import math
+            if all(isinstance(point[k],(int,float)) and math.isfinite(point[k])
+                   and abs(point[k])<=10000 for k in ("x","y","z")):
+                return {k:float(point[k]) for k in ("x","y","z")}
+    except (OSError,ValueError,TypeError):
+        pass
     return None
 
 
@@ -161,7 +182,12 @@ def plan(original=ORIGINAL,scratch=SCRATCH,editor=EDITOR,checkpoint=CHECKPOINT,
         warnings.append("Previous imported /tmp Unity Library and any unpromoted scratch-only edits may have been lost at Codespace stop.")
     if scratch_diff:
         warnings.append("Scratch TerrainData bytes differ from original; never copy back automatically, even if tree transforms were restored.")
-    if pids and source_matches:
+    mismatched=[name for name,value in original_hashes.items()
+                if scratch_ok and value != scratch_hashes.get(name)]
+    if mismatched:
+        warnings.append("Unity scratch core differs from original: "+
+                        ", ".join(mismatched)+". Never overwrite owner source.")
+    if pids and source_ok and editor_ok:
         step="already_running"
     elif not source_ok or not editor_ok:
         step="blocked_missing_core_or_editor"
@@ -169,7 +195,9 @@ def plan(original=ORIGINAL,scratch=SCRATCH,editor=EDITOR,checkpoint=CHECKPOINT,
         step="blocked_low_persistent_disk"
     elif scratchfree is None or scratchfree<MIN_SCRATCH_FREE:
         step="blocked_low_temporary_disk"
-    elif scratch_ok and not source_matches:
+    elif scratch_ok and saved and saved.get("source_sha256")!=original_hashes:
+        step="blocked_original_changed_since_checkpoint"
+    elif scratch_ok and not source_matches and not saved:
         step="blocked_scratch_core_mismatch"
     elif scratch_ok:
         step="reopen_existing_scratch"
@@ -178,7 +206,8 @@ def plan(original=ORIGINAL,scratch=SCRATCH,editor=EDITOR,checkpoint=CHECKPOINT,
     return {
         "schema":SCHEMA,"step":step,"project":str(original),"scratch":str(scratch),
         "editor_present":editor_ok,"scene":SCENE,"source_sha256":original_hashes,
-        "scratch_core_matches":source_matches,"scratch_loaded":loaded,
+        "scratch_core_matches":source_matches,"scratch_core_differences":mismatched,
+        "scratch_source_sha256":scratch_hashes,"scratch_loaded":loaded,
         "scratch_exists":scratch_ok,"scratch_unity_pids":pids,
         "scratch_terrain_differs":scratch_diff,
         "last_camera_target":(last_camera_target(scratch) if scratch_ok else None) or (saved.get("last_camera_target") if saved else None),
@@ -212,6 +241,7 @@ def write_checkpoint(report, path=CHECKPOINT):
         "scene":SCENE,
         "editor_version":VERSION,
         "source_sha256":report["source_sha256"],
+        "scratch_source_sha256":report["scratch_source_sha256"],
         "scratch_loaded":report["scratch_loaded"],
         "scratch_terrain_differs":report["scratch_terrain_differs"],
         "last_camera_target":report.get("last_camera_target"),
