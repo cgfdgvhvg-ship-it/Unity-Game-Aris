@@ -789,6 +789,26 @@ def unity_virtual_gui_status():
         p=control/folder
         if p.is_dir():
             data[key]=sum(1 for f in p.iterdir() if f.is_file() and f.suffix==".json")
+    helper=BATCH_ROOT/"project/Assets/AarisWorld/Editor/AarisForestCoreAuthoring.cs"
+    bridge=_virtual_bridge_path()
+    data["forest_authoring_scratch_files"]={
+        "helper_staged":helper.is_file(),"bridge_patched":
+        bridge.is_file() and "case \\"forest_plan\\"".replace("\\\\"","\\\"") in bridge.read_text(encoding="utf-8"),
+        "helper_unity_meta_created":Path(str(helper)+".meta").is_file(),
+    }
+    data["x11_tools"]={name:bool(shutil.which(name)) for name in
+        ("xwininfo","xprop","wmctrl","xdotool","xte")}
+    # Search backward within bound, without exposing arbitrary Editor logs.
+    if log.is_file():
+        with log.open("rb") as file:
+            file.seek(max(0,log.stat().st_size-600000))
+            recent=file.read().decode("utf-8","replace")
+        found=[line[-400:] for line in recent.splitlines()
+               if any(key in line for key in
+                 ("AarisForestCoreAuthoring.cs","AarisLiveEditorBridge.cs",
+                  "error CS","Scripts have compiler errors",
+                  "script compilation failed","Script compilation failed"))]
+        data["forest_editor_compiler_evidence"]=found[-12:]
     data["display_socket"]=Path("/tmp/.X11-unix/X12").exists()
     data["novnc_required"]=False
     return data
