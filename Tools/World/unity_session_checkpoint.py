@@ -168,6 +168,18 @@ def plan(original=ORIGINAL,scratch=SCRATCH,editor=EDITOR,checkpoint=CHECKPOINT,
                     data.get("scenePath")==SCENE)
         except (ValueError,OSError,AttributeError):
             loaded=False
+    copy_marker=scratch.parent/".aaris-scratch-copy-complete.json"
+    copy_complete=False
+    if scratch_ok and copy_marker.is_file() and not copy_marker.is_symlink() and copy_marker.stat().st_size<=8192:
+        try:
+            proof=json.loads(copy_marker.read_text())
+            copy_complete=(isinstance(proof,dict) and
+                           proof.get("schema")==SCHEMA and
+                           proof.get("scene")==SCENE and
+                           proof.get("source_sha256")==original_hashes)
+        except (OSError,ValueError):
+            copy_complete=False
+    scratch_ready=bool(scratch_ok and (loaded or copy_complete))
     pids=scratch_unity_pids(editor,scratch,proc)
     saved=load_checkpoint(checkpoint)
     origfree=disk_free(original) if core_ok else None
@@ -199,6 +211,8 @@ def plan(original=ORIGINAL,scratch=SCRATCH,editor=EDITOR,checkpoint=CHECKPOINT,
         step="blocked_original_changed_since_checkpoint"
     elif scratch_ok and not source_matches and not saved:
         step="blocked_scratch_core_mismatch"
+    elif scratch_ok and not scratch_ready:
+        step="blocked_incomplete_scratch_copy"
     elif scratch_ok:
         step="reopen_existing_scratch"
     else:
@@ -208,6 +222,8 @@ def plan(original=ORIGINAL,scratch=SCRATCH,editor=EDITOR,checkpoint=CHECKPOINT,
         "editor_present":editor_ok,"scene":SCENE,"source_sha256":original_hashes,
         "scratch_core_matches":source_matches,"scratch_core_differences":mismatched,
         "scratch_source_sha256":scratch_hashes,"scratch_loaded":loaded,
+        "scratch_copy_complete":copy_complete,
+        "scratch_ready_for_reopen":scratch_ready,
         "scratch_exists":scratch_ok,"scratch_unity_pids":pids,
         "scratch_terrain_differs":scratch_diff,
         "last_camera_target":(last_camera_target(scratch) if scratch_ok else None) or (saved.get("last_camera_target") if saved else None),
