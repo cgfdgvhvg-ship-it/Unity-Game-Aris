@@ -1,3 +1,34 @@
+## START HERE — Unity AI Safe Batched Git LFS Save (2026-11-05)
+
+**New AI workflow:** `Docs/UNITY_BATCHED_AUTOSYNC.md`.
+Unity Editor C# commands save native `.asset` / `.unity` data in
+`/tmp/aaris-unity-batch/project`; this does NOT survive Codespace STOP.
+GitHub saving is done in BATCHES: 180 seconds of edit silence
+or 600 seconds of continuous work, never per individual tree.
+AI can invoke `unity_sync_save_session` via a new owner job
+under `.aaris/jobs/<id>.json` on branch `ai/codespace-jobs` with
+Git commit message starting exactly `Unity Batch Save:`.
+The privileged workflow `.github/workflows/unity-batched-github-upload.yml`
+uses GitHub Actions `GITHUB_TOKEN` to copy only SHA-256-verified
+Unity saved Assets from TMP and commit to a separate Git LFS review
+branch, not the dirty original `/workspaces/Unity-Game-Aris`.
+Verify the privileged workflow's remote commit and receipt;
+the ordinary terminal action merely delegates the upload.
+
+Codespace Git auth probe returned `git_credentials_unavailable`;
+the Codespace watcher journals pending data but does not Push.
+A scheduled Actions writer checks approximately every ten minutes
+ONLY if the same Codespace is already running. No stop hook is a
+guaranteed last-minute backup. Send Save Session explicitly before
+finishing valuable edits or risking Codespace stop.
+
+**Restart caveat:** An unmerged review branch must be restored
+to the new Unity TMP project or merged through normal Git LFS.
+Do not claim automatic restoration of unmerged assets has been
+proven while Codespace lacks Git read credentials. Never delete
+or overwrite the owner's existing source Assets or `.meta` files.
+
+---
 ## START HERE — Unity /tmp and Codespace shutdown handoff (2026-11-05)
 
 **Read `Docs/UNITY_TMP_AI_HANDOFF.md` before touching the Unity
