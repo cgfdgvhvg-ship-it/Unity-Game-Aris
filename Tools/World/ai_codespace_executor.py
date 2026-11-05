@@ -1537,6 +1537,17 @@ def execute(job):
     if op == "system_storage_audit":
         if args: raise ValueError("system storage audit takes no arguments")
         return {"exit_code":0,"stdout":json.dumps(system_storage_audit(),ensure_ascii=False),"stderr":""}
+    if op == "unity_scratch_reconcile":
+        if args: raise ValueError("scratch reconciliation takes no arguments")
+        source = Path("/workspaces/.aaris-world-bridge/ondemand/unity_scratch_reconcile.py")
+        if not source.is_file() or source.is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"Reviewed scratch reconciliation missing"}
+        audit = subprocess.run(
+            ["python3",str(source),"--original",str(PROJECT),
+             "--scratch",str(BATCH_ROOT/"project")],
+            text=True,capture_output=True,timeout=120,check=False)
+        return {"exit_code":audit.returncode,"stdout":audit.stdout[-25000:],
+                "stderr":audit.stderr[-1400:]}
     if op == "unity_lfs_preflight":
         if args: raise ValueError("read-only LFS preflight takes no arguments")
         source = Path("/workspaces/.aaris-world-bridge/ondemand/unity_lfs_preflight.py")
