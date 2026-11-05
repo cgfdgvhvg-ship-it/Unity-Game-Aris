@@ -81,14 +81,14 @@ def exchange(config, method, route, payload=None):
     return json.loads(blob)
 
 
-def _run(command, timeout=35):
+def _run(command, timeout=35, max_stdout=8500):
     try:
         p=subprocess.run(command, cwd=CODESPACE_PROJECT,
             stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,
             text=True,timeout=timeout,check=False)
         return {'status':'ok' if p.returncode==0 else 'error',
                 'exit_code':p.returncode if p.returncode in (-1,0,1,2,3,124,127) else 1,
-                'stdout':p.stdout[-8500:], 'stderr':p.stderr[-2500:]}
+                'stdout':p.stdout[-max_stdout:], 'stderr':p.stderr[-2500:]}
     except subprocess.TimeoutExpired:
         return {'status':'error','exit_code':124,'stdout':'','stderr':'Reviewed command timed out'}
     except OSError:
@@ -123,7 +123,7 @@ def execute(job):
     else:
         with jobfile.open('x',encoding='utf-8') as stream:
             json.dump(payload,stream)
-    result=_run([sys.executable,str(executor),str(jobfile)],timeout=140)
+    result=_run([sys.executable,str(executor),str(jobfile)],timeout=140,max_stdout=40000)
     if result['exit_code']!=0:
         return {'id':job['id'],**result}
     try:
