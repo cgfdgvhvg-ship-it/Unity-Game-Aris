@@ -377,6 +377,77 @@ def flush(*,force=False,original=ORIGINAL,scratch=SCRATCH,
                 "note":"Main is NOT overwritten. Review/merge session branch after CI."}
 
 
+def restore_synced_scratch(*,original=ORIGINAL,scratch=SCRATCH,
+                           statefile=STATE):
+    """Reapply ONLY already remote-verified LFS source edits to a new /tmp copy.
+
+    The game source in /workspaces is never written. This is used before Unity
+    starts after the Codespace wiped /tmp, not while an Editor is editing.
+    The previous unpushed changes CANNOT be restored and are reported.
+    """
+    state=load_state(statefile)
+    if not state or not state.get("branch") or not state.get("pushed"):
+        return {"status":"no_verified_session_edits_to_restore",
+                "restored":[], "unsaved_was_lost":bool(state and state.get("pending_assets"))}
+    if not scratch.is_dir() or scratch.is_symlink():
+        raise SyncError("Scratch copy must be completely recreated before restore")
+    if shutil.disk_usage(scratch).free<MIN_SCRATCH_FREE:
+        raise SyncError("Insufficient scratch disk for verified session replay")
+    files=sorted(state["pushed"])
+    if len(files)>MAX_FILES or any(relative_asset(n)!=n for n in files):
+        raise SyncError("Unsafe previously saved asset inventory")
+    ensure_original_clean(original,files)
+    check_meta(original,scratch,files)
+    if state.get("pending_assets"):
+        # A saved batch is durable, but pending changes at stop were not.
+        # Do not silently present the restored scene as the latest edit.
+        raise SyncError("Unpushed mutations are recorded in persistent journal; manual conflict review required")
+    with tempfile.TemporaryDirectory(prefix="aaris-restore-verified-",dir="/tmp") as root:
+        clone=Path(root)/"repo"
+        branch=state["branch"]
+        if not re.fullmatch(r"ai/unity-batched-[a-zA-Z0-9-]+",branch):
+            raise SyncError("Unsafe saved Git branch")
+        command(["git","clone","--no-checkout","--depth=1","--filter=blob:none",
+                 "--branch",branch,URL,str(clone)],timeout=200)
+        patterns=[".gitattributes"]+files+[n+".meta" for n in files]
+        command(["git","-C",str(clone),"sparse-checkout","init","--no-cone"])
+        command(["git","-C",str(clone),"sparse-checkout","set","--no-cone",
+                 "--",*patterns],timeout=180)
+        command(["git","-C",str(clone),"checkout",branch],timeout=150)
+        for name in files:
+            pointer=command(["git","-C",str(clone),"show","HEAD:"+name],timeout=60).stdout
+            if not match_remote_blob(pointer,state["pushed"][name]):
+                raise SyncError("Saved remote branch has been changed: "+name)
+            remote_meta=command(["git","-C",str(clone),"show","HEAD:"+name+".meta"]).stdout
+            if hashlib.sha256(remote_meta).hexdigest()!=sha(original/(name+".meta"),2*1024**2):
+                raise SyncError("Saved .meta GUID conflicts with original: "+name)
+        includes=",".join(files)
+        # This touches only /tmp checkout; never Git LFS sources in /workspaces.
+        command(["git","-C",str(clone),"lfs","pull","--include="+includes,
+                 "--exclude="],timeout=300)
+        staging=[]
+        for name in files:
+            hydrated=clone/name
+            if sha(hydrated)!=state["pushed"][name]:
+                raise SyncError("Hydrated saved Git LFS content mismatch: "+name)
+            destination=scratch/name
+            if destination.is_symlink() or sha(destination)!=sha(original/name):
+                raise SyncError("Scratch already has unsaved or conflicting native content")
+            temp=destination.with_name(destination.name+".aaris-sync-new")
+            if temp.exists() or temp.is_symlink():
+                raise SyncError("Unsafe preexisting scratch restore temp path")
+            shutil.copy2(hydrated,temp)
+            if sha(temp)!=state["pushed"][name]:
+                raise SyncError("Temporary restore hash mismatch")
+            staging.append((temp,destination))
+        # Commit validated copies into the *scratch* tree. Original untouched.
+        for temp,destination in staging:
+            os.replace(temp,destination)
+    return {"status":"verified_synced_edits_restored_to_scratch",
+            "restored":files,"branch":branch,"original_untouched":True,
+            "note":"Only prior Git LFS committed data was restored; latest AI edits must be independently inspected."}
+
+
 def watch(poll_seconds=15,*,max_cycles=None):
     """Poll while this Codespace is running; leave durable UNSAVED markers."""
     cycles=0
@@ -415,7 +486,7 @@ def watch(poll_seconds=15,*,max_cycles=None):
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation",choices=["status","arm","flush","dry-run","watch","auth-check"])
+    parser.add_argument("operation",choices=["status","arm","flush","dry-run","watch","auth-check","restore"])
     parser.add_argument("--force",action="store_true",help="Explicit Save Session; never omit conflict checks")
     parser.add_argument("--cycles",type=int,default=None)
     opts=parser.parse_args(argv)
@@ -430,6 +501,8 @@ def main(argv=None):
             result=flush(force=True,dry_run=True)
         elif opts.operation=="flush":
             result=flush(force=opts.force)
+        elif opts.operation=="restore":
+            result=restore_synced_scratch()
         elif opts.operation=="watch":
             watch(max_cycles=opts.cycles)
             result={"status":"watch_exited"}
