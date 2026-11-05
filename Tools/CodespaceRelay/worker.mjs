@@ -11,7 +11,7 @@ const JOBS = '.aaris/relay-jobs';
 const RESULTS = '.aaris/relay-results';
 const ID = /^r[a-z0-9][a-z0-9-]{5,51}$/;
 const COMMANDS = new Set(['system_status', 'desktop_live_start', 'desktop_live_status',
-  'unity_virtual_start', 'unity_virtual_status', 'unity_status', 'unity_recover',
+  'unity_virtual_start', 'unity_virtual_status', 'unity_camera_focus', 'unity_status', 'unity_recover',
   'unity_gallery_start', 'unity_gallery_diagnose', 'unity_gallery_partial_export',
   'unity_frame_check']);
 const GALLERY_ID = /^[a-z][a-z0-9-]{3,55}$/;
@@ -28,9 +28,13 @@ export function validateJob(input, file) {
     if (keys !== 'action,args,command,id') throw Error('invalid terminal schema');
     if (!COMMANDS.has(job.command) || !Array.isArray(job.args)) throw Error('unsupported command');
     const needsArg = ['unity_gallery_diagnose','unity_gallery_partial_export','unity_frame_check'].includes(job.command);
-    if (job.args.length !== (needsArg ? 1 : 0)) throw Error('bad command argument count');
+    const camera = job.command === 'unity_camera_focus';
+    if (job.args.length !== (camera ? 3 : needsArg ? 1 : 0)) throw Error('bad command argument count');
     if (needsArg && (typeof job.args[0] !== 'string' || !GALLERY_ID.test(job.args[0]))) {
       throw Error('unsafe gallery/frame identifier');
+    }
+    if (camera && job.args.some(n => typeof n !== 'number' || !Number.isFinite(n) || Math.abs(n)>20000)) {
+      throw Error('invalid camera coordinates');
     }
   }
   return job;
