@@ -29,7 +29,7 @@ public static class AarisBatchProbe
         const string scenePath = "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity";
         string output = Environment.GetEnvironmentVariable("AARIS_BATCH_REPORT");
         if (String.IsNullOrEmpty(output)) throw new Exception("Missing AARIS_BATCH_REPORT");
-        if (!File.Exists(scenePath)) throw new Exception("Missing scene file: " + scenePath);
+        if (AssetDatabase.LoadAssetAtPath<SceneAsset>(scenePath) == null) throw new Exception("Scene asset not imported: " + scenePath);
         var scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
         if (!scene.IsValid() || !scene.isLoaded) throw new Exception("Scene not loaded");
         var roots = scene.GetRootGameObjects();
