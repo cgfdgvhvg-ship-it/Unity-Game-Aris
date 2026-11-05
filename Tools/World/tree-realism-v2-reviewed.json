@@ -14,7 +14,7 @@
       "previous_crown_width_factor": 1.12,
       "base_width_factor": 1.74,
       "crown_width_factor": 1.16,
-      "reviewed_prefab_git_blob_sha1": "fa9d9cc07822b938ef5ba29bfa20eab7ce25de10",
+      "reviewed_prefab_git_blob_sha1": "d4ba9a1489a6d0a104246fd4005f25f12bfdd44f",
       "reviewed_source_meta_git_blob_sha1": "cdaeb803d1007150d9c949f405975f6da5f5f000"
     },
     {
@@ -26,7 +26,7 @@
       "previous_crown_width_factor": 1.1,
       "base_width_factor": 1.55,
       "crown_width_factor": 1.13,
-      "reviewed_prefab_git_blob_sha1": "65c18f7e3449f24240f6a52a33182991eda3d80e",
+      "reviewed_prefab_git_blob_sha1": "cfe37eb5645b9c98e5b3d6d6a709a44d9eb8d878",
       "reviewed_source_meta_git_blob_sha1": "f364b501ac53ae1de63c2c9f441025b220357907"
     },
     {
@@ -38,7 +38,7 @@
       "previous_crown_width_factor": 1.12,
       "base_width_factor": 1.74,
       "crown_width_factor": 1.16,
-      "reviewed_prefab_git_blob_sha1": "f91d80bab50c2ef0cdc816fc0a5f0f30036b6f5f",
+      "reviewed_prefab_git_blob_sha1": "a14343ba23dba97bc6311eddb74270ada66861b4",
       "reviewed_source_meta_git_blob_sha1": "f4a11edbc5172bdaac2aaf8e8645200ff1df87e7"
     },
     {
@@ -50,7 +50,7 @@
       "previous_crown_width_factor": 1.12,
       "base_width_factor": 1.71,
       "crown_width_factor": 1.15,
-      "reviewed_prefab_git_blob_sha1": "526af9d0f166ca774cfe61b0d6906c11483929fc",
+      "reviewed_prefab_git_blob_sha1": "0fc89f0fdcf3c046d6d7781bbb9e4b61db0d5a4b",
       "reviewed_source_meta_git_blob_sha1": "6e273b86484289b1020e55ee7be1346ab9616e0a"
     },
     {
@@ -62,7 +62,7 @@
       "previous_crown_width_factor": 1.12,
       "base_width_factor": 1.68,
       "crown_width_factor": 1.16,
-      "reviewed_prefab_git_blob_sha1": "959a20643bb07c39f9553623133eca7affa81ffb",
+      "reviewed_prefab_git_blob_sha1": "3e8a9a43f849dbce87fd68a34ab9ef823498137c",
       "reviewed_source_meta_git_blob_sha1": "1440b39ebc3ed350ac91618fb4ca914abb4b7c4d"
     },
     {
@@ -74,7 +74,7 @@
       "previous_crown_width_factor": 1.12,
       "base_width_factor": 1.66,
       "crown_width_factor": 1.15,
-      "reviewed_prefab_git_blob_sha1": "344363e72f13f909c3cca8ad036491484c2a7373",
+      "reviewed_prefab_git_blob_sha1": "c8d57ae01c942daeaab6b5b93e66b823d08ea509",
       "reviewed_source_meta_git_blob_sha1": "4ae3eac1c1fbf7b08cd8c6a1dcafda6d645a237d"
     }
   ]
