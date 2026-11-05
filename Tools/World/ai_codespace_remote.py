@@ -246,10 +246,24 @@ def execute_remote(job: dict, token: str, workspace: Path, result_file: Path, *,
         import hashlib
         import io
         import tempfile
-        fetch = subprocess.run(
-            ["git", "fetch", "--no-tags", "--depth=1", "origin", "main"],
-            cwd=workspace, capture_output=True, text=True, timeout=65,
-            check=False, stdin=subprocess.DEVNULL)
+        # This workflow checks out source WITHOUT persistent git credentials.
+        # A one-use read-only Actions token is provided via GIT_ASKPASS.
+        token=os.environ.get("GITHUB_TOKEN","")
+        if not token or len(token)<20:
+            raise JobError("Ephemeral read-only Actions token missing")
+        with tempfile.TemporaryDirectory(prefix="aaris-main-fetch-") as temp_dir:
+            helper=Path(temp_dir)/"askpass.py"
+            helper.write_text(
+                "#!/usr/bin/env python3\nimport os,sys\n"
+                "print('x-access-token' if 'Username' in sys.argv[1] else os.environ['GITHUB_TOKEN'])\n")
+            helper.chmod(0o700)
+            auth_env=os.environ.copy()
+            auth_env["GIT_ASKPASS"]=str(helper)
+            auth_env["GIT_TERMINAL_PROMPT"]="0"
+            fetch=subprocess.run(
+                ["git", "fetch", "--no-tags", "--depth=1", "origin", "main"],
+                cwd=workspace,capture_output=True,text=True,timeout=65,
+                env=auth_env,check=False,stdin=subprocess.DEVNULL)
         if fetch.returncode:
             raise JobError("Cannot fetch reviewed main source: " + fetch.stderr[-350:])
         head = subprocess.run(
