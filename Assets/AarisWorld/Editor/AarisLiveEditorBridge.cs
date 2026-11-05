@@ -211,6 +211,18 @@ namespace Aaris.WorldAutomation
             if (!string.IsNullOrEmpty(request.target) && go == null)
                 throw new InvalidOperationException("Unknown target");
             Vector3 center = go != null ? go.transform.position : request.cameraTarget;
+            if (!Finite(center))
+                throw new InvalidOperationException("Camera focus coordinates must be finite");
+            // Keep the human-readable SceneView at the inspected world location.
+            // Important: the old Inspect implementation only reported objects;
+            // it never changed the viewport the phone's noVNC viewer sees.
+            SceneView view = SceneView.lastActiveSceneView;
+            if (view == null)
+                throw new InvalidOperationException("No Unity Scene View available for camera focus");
+            float focusSize = Mathf.Clamp(view.size, 9f, 28f);
+            view.LookAtDirect(center, view.rotation, focusSize);
+            view.Repaint();
+            SaveSession(); // persist focus between viewer reconnects/restarts
             result.targetId = go != null ? Id(go) : null;
             result.position = center;
             if (go != null) result.scale = go.transform.localScale;
