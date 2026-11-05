@@ -96,6 +96,43 @@ class RestartTests(unittest.TestCase):
         self.assertTrue(cp.load_checkpoint(self.state)["scratch_loaded"])
         self.assertEqual((self.original/cp.SCENE).read_text(),cp.SCENE+" content")
 
+    def test_running_native_editor_with_unity_reserialization_can_checkpoint(self):
+        proc=self.proc/"7831"
+        proc.mkdir()
+        (proc/"cmdline").write_bytes(
+            (str(self.editor)+"\0-projectPath\0"+str(self.scratch)+"\0").encode())
+        (self.scratch/"Packages/manifest.json").write_text(
+            "Unity updated package manifest during real import")
+        report=self.plan()
+        self.assertEqual(report["step"],"already_running")
+        self.assertFalse(report["scratch_core_matches"])
+        self.assertEqual(report["scratch_core_differences"],["Packages/manifest.json"])
+        saved=cp.write_checkpoint(report,self.state)
+        self.assertIn("Packages/manifest.json",saved["scratch_source_sha256"])
+
+    def test_reopen_checkpointed_unity_with_known_scratch_package_drift(self):
+        proc=self.proc/"7831"
+        proc.mkdir()
+        (proc/"cmdline").write_bytes(
+            (str(self.editor)+"\0-projectPath\0"+str(self.scratch)+"\0").encode())
+        (self.scratch/"Packages/manifest.json").write_text(
+            "Unity updated package manifest during real import")
+        cp.write_checkpoint(self.plan(),self.state)
+        (proc/"cmdline").write_bytes(b"")
+        self.assertEqual(self.plan()["step"],"reopen_existing_scratch")
+
+    def test_camera_view_fallback_to_successful_inspect_response(self):
+        command_dir=self.scratch.parent/"control"/"unity-commands"
+        result_dir=self.scratch.parent/"control"/"unity-results"
+        command_dir.mkdir(parents=True)
+        result_dir.mkdir(parents=True)
+        (result_dir/"inspect.json").write_text(json.dumps({
+            "status":"ok","action":"inspect",
+            "position":{"x":102.307,"y":-10.849,"z":62.974}
+        }))
+        report=self.plan()
+        self.assertAlmostEqual(report["last_camera_target"]["x"],102.307)
+
     def test_stopped_with_checkpoint_warns_about_lost_tmp(self):
         report=self.plan()
         cp.write_checkpoint(report,self.state)
