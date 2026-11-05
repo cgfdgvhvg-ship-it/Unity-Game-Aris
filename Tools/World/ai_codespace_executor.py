@@ -2562,6 +2562,28 @@ def unity_house_gallery(job):
     exports=VIRTUAL_CONTROL/"house-exports"
     if not root.is_dir() or root.is_symlink() or len(_scratch_unity_pids())!=1:
         return {"exit_code":3,"stdout":"","stderr":"Isolated live Unity Editor unavailable"}
+    if op=="unity_house_gallery_diagnose":
+        info=VIRTUAL_CONTROL/"house-results"/(job["args"][0]+".json")
+        query=VIRTUAL_CONTROL/"house-requests"/(job["args"][0]+".json")
+        log=BATCH_ROOT/"virtual-editor-forest.log"
+        if not log.exists(): log=BATCH_ROOT/"virtual-editor.log"
+        matched=[]
+        if log.is_file() and not log.is_symlink():
+            with log.open("rb") as stream:
+                stream.seek(max(0,log.stat().st_size-18*1024*1024))
+                data=stream.read().decode("utf-8","replace")
+            matched=[x[:400] for x in data.splitlines() if
+                     any(w in x for w in ("AarisHousePhotoSurvey","AARIS_HOUSE_","error CS","Compilation failed","Script Compilation"))][-30:]
+        source=stage.read_bytes() if stage.is_file() else b""
+        dest=target.read_bytes() if target.is_file() else b""
+        return {"exit_code":0,"stdout":json.dumps({
+            "queued_house_request":query.exists(),"house_result":info.exists(),
+            "house_result_text":info.read_text()[:4500] if info.is_file() else None,
+            "house_editor_source_installed":target.is_file(),"source_match":source==dest,
+            "photos_dir_exists":(VIRTUAL_CONTROL/"house-photos"/job["args"][0]).is_dir(),
+            "photos_so_far":len(list((VIRTUAL_CONTROL/"house-photos"/job["args"][0]).glob("*.jpg"))) if (VIRTUAL_CONTROL/"house-photos"/job["args"][0]).is_dir() else 0,
+            "unity_pids":_scratch_unity_pids(),"editor_compiler_evidence":matched
+        }),"stderr":""}
     if op=="unity_house_gallery_start":
         if job["args"]:
             raise ValueError("House gallery start takes no arguments")
@@ -2971,7 +2993,7 @@ def execute(job):
         raise ValueError("invalid job id")
     if not isinstance(args, list):
         raise ValueError("invalid args")
-    if op in {"unity_house_gallery_start","unity_house_gallery_export"}:
+    if op in {"unity_house_gallery_start","unity_house_gallery_export","unity_house_gallery_diagnose"}:
         return unity_house_gallery(job)
     if op == "unity_main_core_sync":
         if len(args)!=1 or not re.fullmatch(r"[0-9a-f]{40}",args[0]):
