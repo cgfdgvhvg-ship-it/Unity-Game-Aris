@@ -929,6 +929,33 @@ def _virtual_response(ident,seconds=0):
             "stderr":(obj.get("error") or "")[:350]}
 
 
+def unity_forest_x11_probe():
+    if not _scratch_unity_pids() or not Path("/tmp/.X11-unix/X12").exists():
+        return {"exit_code":3,"stdout":"","stderr":"No verified scratch Unity process/display"}
+    import ctypes.util
+    info={"scratch_pids":_scratch_unity_pids(),
+          "x11_library_available":bool(ctypes.util.find_library("X11")),
+          "xtest_library_available":bool(ctypes.util.find_library("Xtst"))}
+    if not shutil.which("xwininfo"):
+        return {"exit_code":3,"stdout":"","stderr":"No xwininfo"}
+    x=subprocess.run(["xwininfo","-display",":12","-root","-tree"],
+                     capture_output=True,text=True,timeout=12,check=False)
+    info["xwininfo_exit"]=x.returncode
+    interesting=[line.strip()[-400:] for line in x.stdout.splitlines()
+                 if "Unity" in line or "unity" in line]
+    info["possible_unity_windows"]=interesting[:15]
+    info["window_count"]=len(x.stdout.splitlines())
+    for line in interesting[:8]:
+        match=re.search(r"0x[0-9a-fA-F]+",line)
+        if not match or not shutil.which("xprop"): continue
+        p=subprocess.run(["xprop","-display",":12","-id",match.group(0),
+                          "_NET_WM_PID","WM_NAME"],capture_output=True,
+                         text=True,timeout=8,check=False)
+        info.setdefault("window_properties",[]).append({
+            "id":match.group(0),"properties":p.stdout[-500:]})
+    return {"exit_code":0,"stdout":json.dumps(info,ensure_ascii=False),"stderr":""}
+
+
 def unity_forest_stage():
     """Stage reviewed one-time forest authoring into *scratch Unity Editor only*.
 
@@ -1893,6 +1920,9 @@ def execute(job):
         )
         return {"exit_code":audit.returncode,"stdout":audit.stdout[-16000:],
                 "stderr":audit.stderr[-1400:]}
+    if op == "unity_forest_x11_probe":
+        if args: raise ValueError("X11 probe takes no args")
+        return unity_forest_x11_probe()
     if op == "unity_forest_stage":
         if args: raise ValueError("Forest stage does not accept parameters")
         return unity_forest_stage()
