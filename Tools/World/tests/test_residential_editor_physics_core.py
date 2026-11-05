@@ -27,6 +27,8 @@ class ResidentialPhysicsEditorSourceTests(unittest.TestCase):
         self.assertIn("Vector3.Distance(position,", self.code)
         self.assertIn("MinRoadLink = 5.0f", self.code)
         self.assertIn("GroundClearance = 0.15f", self.code)
+        self.assertIn("t.terrainData.GetInterpolatedHeight(u, v)", self.code)
+        self.assertNotIn("t.SampleHeight(", self.code)
         self.assertIn("AARIS_EDITOR_GARAGE_ROUTE_PHYSICS_AUDIT=", self.code)
         self.assertIn("QueryTriggerInteraction.Ignore", self.code)
 
