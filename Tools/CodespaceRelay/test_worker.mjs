@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateJob,processJob,handleCron,handleAgent} from './worker.mjs';
+import worker,{validateJob,processJob,handleCron,handleAgent} from './worker.mjs';
 
 const JOB = 'r20261105-test-a';
 const repo = '/repos/Aaris-khan-don/Unity-Game-Aris';
@@ -104,4 +104,13 @@ test('camera focus schema rejects arbitrary shell and unsafe coordinates',()=>{
   for(const args of [[1,2],['x',2,3],[NaN,0,0],[Infinity,1,2],[20001,0,0]]) {
     assert.throws(()=>validateJob({...safe,args},id+'.json'));
   }
+});
+
+test('live view redirects only to GitHub owner-authenticated Codespace private port',async()=>{
+  const response=await worker.fetch(new Request('https://example.workers.dev/live'),{RELAY_ENABLED:'true'});
+  assert.equal(response.status,302);
+  assert.equal(response.headers.get('location'),
+    'https://musical-carnival-jjxp9r6vw45wfjgvg-6080.app.github.dev/vnc.html?autoconnect=true&resize=scale');
+  assert.equal(response.headers.get('cache-control'),'no-store');
+  assert.equal(response.headers.get('referrer-policy'),'no-referrer');
 });
