@@ -1238,6 +1238,124 @@ def unity_forest_baseline_probe():
     return {"exit_code":0,"stdout":json.dumps(output,ensure_ascii=False),"stderr":""}
 
 
+def unity_map_camera_capture(job):
+    """One-shot real Unity URP screenshot, saved ONLY as a short-lived artifact.
+
+    Fail closed unless the four scratch TerrainData assets have the exact SHA256
+    already merged to main. The owner worktree and game code are never edited.
+    """
+    ident=job["id"]
+    zone=job["args"][0]
+    if zone not in {"forest-west","forest-south","mountain-east"}:
+        return {"exit_code":3,"stdout":"","stderr":"Unsupported camera location"}
+    if _scratch_unity_pids():
+        return {"exit_code":3,"stdout":"","stderr":"Existing scratch Unity Editor; cannot launch simultaneous renderer"}
+    project=BATCH_ROOT/"project"
+    source=Path("/workspaces/.aaris-world-bridge/ondemand/AarisMapCameraOneShot.cs")
+    destination=project/"Assets/AarisWorld/Editor/AarisMapCameraOneShot.cs"
+    if (not project.is_dir() or project.is_symlink() or not source.is_file()
+        or source.is_symlink() or source.stat().st_size>15000
+        or not EDITOR.is_file() or not Path("/tmp/.X11-unix/X12").exists()):
+        return {"exit_code":3,"stdout":"","stderr":"Trusted scratch Unity camera environment unavailable"}
+    expected={
+      "Terrain_1_1_4bf22c8f-eb55-436d-84e3-dedfa85665b1.asset":
+        "896b2d29b2d5b71afffe1f64a17863c8fa99cd06104c833b679ca117dd4d4609",
+      "Terrain_1_2_1694bb0f-cffe-402c-b6f9-cf47692fbb78.asset":
+        "b92e9099868cabd8040db632d0cfac3c38075b2e292519b0edd8629723edecf8",
+      "Terrain_2_1_82fc4922-5564-4a18-858e-787f6d901556.asset":
+        "d26aa11e1e6bb8edc65ca52c8c3210d477711b091e86e7ead42e75407dcc29a3",
+      "Terrain_2_2_b6e03cf0-de91-4cae-b6af-0128d856ae43.asset":
+        "cfd96176947a1e75da285458ad6198ebf56a80195aa2138a5f202f5dc7f814e6",
+    }
+    root=project/"Assets/TerrainDemoScene_URP/Terrain/Data"
+    for name,sha in expected.items():
+        obj=root/name
+        if not obj.is_file() or obj.is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"Merged native TerrainData missing: "+name}
+        digest=hashlib.sha256()
+        with obj.open("rb") as stream:
+            for chunk in iter(lambda:stream.read(1024*1024),b""):
+                digest.update(chunk)
+        if digest.hexdigest()!=sha:
+            return {"exit_code":3,"stdout":"","stderr":"Scratch scene not from merged 1939-tree assets"}
+    if shutil.disk_usage(project).free<14*1024**3 or shutil.disk_usage(PROJECT).free<250*1024**2:
+        return {"exit_code":3,"stdout":"","stderr":"Not enough scratch or owner disk headroom"}
+    if destination.is_symlink() or source.stat().st_size>15000:
+        return {"exit_code":3,"stdout":"","stderr":"Unsafe scratch camera script"}
+    content=source.read_bytes()
+    if b"public static class AarisMapCameraOneShot" not in content or b"SubmitRenderRequest" not in content:
+        return {"exit_code":3,"stdout":"","stderr":"Unreviewed native Unity camera script"}
+    if destination.exists():
+        if destination.read_bytes()!=content:
+            return {"exit_code":3,"stdout":"","stderr":"Scratch screenshot source changed unexpectedly"}
+    else:
+        destination.write_bytes(content)
+        if destination.read_bytes()!=content:
+            return {"exit_code":3,"stdout":"","stderr":"Scratch capture staging failed"}
+    result=VIRTUAL_CONTROL/"unity-results"/(ident+".json")
+    image_path=VIRTUAL_CONTROL/"frames"/(ident+".jpg")
+    log=BATCH_ROOT/("unity-real-camera-"+ident+".log")
+    if any(x.exists() or x.is_symlink() for x in (result,image_path,log)):
+        return {"exit_code":3,"stdout":"","stderr":"Existing capture result or frame ID; retry with a unique ID"}
+    env=os.environ.copy()
+    env.update({"DISPLAY":":12","AARIS_SHOT_ID":ident,"AARIS_SHOT_ZONE":zone,
+                "XDG_CACHE_HOME":str(BATCH_ROOT/"xdg-cache"),
+                "TMPDIR":str(BATCH_ROOT/"temp"),
+                "UPM_CACHE_ROOT":str(BATCH_ROOT/"upm-cache")})
+    for name in ("xdg-cache","temp","upm-cache"):
+        (BATCH_ROOT/name).mkdir(parents=True,exist_ok=True)
+    cmd=[str(EDITOR),"-projectPath",str(project),
+         "-executeMethod","Aaris.WorldAutomation.AarisMapCameraOneShot.Execute",
+         "-logFile",str(log),"-job-worker-count","2"]
+    with log.open("wb") as output:
+        proc=subprocess.Popen(cmd,env=env,cwd=BATCH_ROOT,stdin=subprocess.DEVNULL,
+                              stdout=output,stderr=output,start_new_session=True)
+    deadline=time.monotonic()+120
+    while time.monotonic()<deadline and not result.is_file():
+        if proc.poll() is not None:
+            break
+        time.sleep(.7)
+    if not result.is_file():
+        with log.open("rb") as stream:
+            stream.seek(max(0,log.stat().st_size-20000))
+            logtext=stream.read().decode("utf-8","replace")
+        errors=[x[-350:] for x in logtext.splitlines()
+                if any(y in x for y in ("error CS","AARIS_UNITY_CAPTURE",
+                    "Caught fatal signal","Segmentation fault","Exception"))]
+        return {"exit_code":3,"stdout":json.dumps({
+            "status":"unity_camera_no_capture","zone":zone,
+            "unity_exit":proc.poll(),"diagnostics":errors[-12:],
+            "last_log_lines":logtext[-850:]}),
+            "stderr":"Unity could not render a verified authentic scene screenshot"}
+    if result.is_symlink() or result.stat().st_size>11000:
+        return {"exit_code":3,"stdout":"","stderr":"Invalid Unity capture metadata"}
+    report=json.loads(result.read_text(encoding="utf-8"))
+    if report.get("id")!=ident or report.get("zone")!=zone:
+        return {"exit_code":3,"stdout":"","stderr":"Unity screenshot metadata identity mismatch"}
+    if report.get("status")!="ok":
+        return {"exit_code":3,"stdout":json.dumps(report)[:4000],
+                "stderr":"Real Unity screenshot camera render failed"}
+    if report.get("terrainComponents")!=4 or report.get("terrainInstances")!=7508:
+        return {"exit_code":3,"stdout":"","stderr":"Screenshot does not show validated Unity terrain"}
+    if not image_path.is_file() or image_path.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Unity-rendered JPEG not found"}
+    data=image_path.read_bytes()
+    if (len(data)!=report.get("jpegBytes") or len(data)<8000 or len(data)>1800000
+        or hashlib.sha256(data).hexdigest()!=report.get("jpegSha256")
+        or data[:3]!=bytes([255,216,255])):
+        return {"exit_code":3,"stdout":"","stderr":"Unity JPEG bytes failed readback and SHA verification"}
+    for _ in range(12):
+        if proc.poll() is not None:break
+        time.sleep(.4)
+    return {"exit_code":0,"stdout":json.dumps({
+        "status":"verified_real_unity_scene_capture",
+        "zone":zone,"bytes":len(data),"sha256":report.get("jpegSha256"),
+        "terrainInstances":report.get("terrainInstances"),
+        "nativeAssetsMatchMergedMain":True,
+        "imageFileName":image_path.name,"unityProcessExit":proc.poll()
+    }),"stderr":""}
+
+
 def unity_forest_one_shot(job):
     """Run one fully licensed real Unity Editor startup authoring transaction.
 
@@ -2530,6 +2648,10 @@ def execute(job):
     if op == "unity_forest_baseline_probe":
         if args: raise ValueError("Baseline inspection takes no arguments")
         return unity_forest_baseline_probe()
+    if op == "unity_map_camera_capture":
+        if len(args)!=1 or args[0] not in {"forest-west","forest-south","mountain-east"}:
+            raise ValueError("Only reviewed Unity scene camera zones are allowed")
+        return unity_map_camera_capture(job)
     if op in {"unity_forest_one_shot_plan","unity_forest_one_shot_apply"}:
         return unity_forest_one_shot(job)
     if op == "unity_forest_crash_report":
