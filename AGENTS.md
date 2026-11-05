@@ -1,3 +1,36 @@
+## START HERE — Unity /tmp and Codespace shutdown handoff (2026-11-05)
+
+**Read `Docs/UNITY_TMP_AI_HANDOFF.md` before touching the Unity
+Editor, /tmp, original assets or Codespace lifecycle.** This is the
+single concise operational map for the next AI, including actual
+working directories, job JSON schema, license-safe hidden Xvfb
+Editor, 7,508 trees, screenshot retrieval and Git LFS safety.
+
+Official GitHub behavior: **/workspaces persists** across
+stop/start and rebuild, but **/tmp is wiped on Codespace STOP**,
+and all running Unity processes end. Existing Unity Personal
+Editor is installed in the container's /home and survives stop/start
+but not necessarily a container rebuild. The checkpoint JSON
+under /workspaces saves scene/version/source fingerprints and last
+AI-inspected camera target; it is NOT an imported Library backup.
+
+For a previously stopped Codespace, the owner-authorized GitHub
+Actions workflow on `ai/codespace-jobs` can wake the SAME named
+Codespace, then `unity_session_recover` safely reopens or recreates
+the TMP Unity copy. Run `unity_session_stop_simulation` if a
+nondestructive rehearsal is needed: actual
+[41954790293](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41954790293)
+returned `recreate_scratch_and_reimport` and remembered the
+camera position without stopping the live process.
+
+**Do not assume immediate, cache-preserving restart until adequate
+persistent disk or an authenticated external Unity Library cache
+exists.** Do not stop a working Editor to test this, replay past
+tree mutations, overwrite original Core Files, rebuild a dirty
+Codespace or modify charged machine type without approval.
+
+---
+
 ## Unity restart-safe checkpoint and AI recovery (2026-11-05)
 
 **Never assume /tmp survives Codespace STOP.** GitHub clears /tmp on
