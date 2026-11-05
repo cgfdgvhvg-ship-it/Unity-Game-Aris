@@ -42,6 +42,7 @@ binary Unity assets. All source checking is read-only.
 | Existing Unity process is running on identical scratch project | Reuse process; do not launch duplicate |
 | Unity stopped but compatible scratch Library remains | Launch normal Unity Editor on private Xvfb :12 and reuse existing import |
 | Scratch /tmp cleared on Codespace stop | Recreate copy from ORIGINAL unchanged Assets/Packages/ProjectSettings on /tmp; full Unity import required |
+| Interrupted scratch copy without completion marker or successful scene readback | Stop; do not launch Unity against incomplete Assets. Preserve copy for diagnosis |
 | Original core changed since scratch was imported | Refuse stale scratch reuse; report conflict for safe review |
 | Unity executable missing, original disk <250 MiB, scratch disk <20 GiB | Refuse launch; report exact blocker |
 | Old scratch has pending/unpromoted edits | Do NOT replay mutating actions automatically or overwrite owner source |
