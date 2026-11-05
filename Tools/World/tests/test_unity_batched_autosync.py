@@ -162,6 +162,43 @@ class UnityAutosyncTests(unittest.TestCase):
         self.assertTrue(sync.match_remote_blob(raw,digest))
         self.assertFalse(sync.match_remote_blob(raw,"b"*64))
 
+    def test_export_after_idle_contains_only_verified_latest_core_asset(self):
+        self.reply("tree-update-101",offset=1)
+        self.reply("tree-update-102",offset=3)
+        (self.scratch/self.asset).write_bytes(b"twice-edited latest terrain")
+        result=sync.export_for_actions(force=False,original=self.original,
+                                       scratch=self.scratch,control=self.control,
+                                       statefile=self.statefile,
+                                       now=self.st["armed_at"]+200)
+        self.assertEqual(result["status"],"ready_for_actions_upload")
+        manifest=json.loads(Path(result["manifest"]).read_text())
+        self.assertEqual(len(manifest["files"]),1)
+        self.assertEqual(manifest["files"][0]["path"],self.asset)
+        import tarfile
+        with tarfile.open(result["tar"],"r") as archive:
+            self.assertEqual(archive.getnames(),[self.asset])
+            self.assertEqual(archive.extractfile(self.asset).read(),
+                             b"twice-edited latest terrain")
+
+    def test_acknowledged_push_keeps_later_edits_pending(self):
+        self.reply("tree-save-201",offset=2)
+        (self.scratch/self.asset).write_bytes(b"first saved version")
+        old=sync.sha(self.scratch/self.asset)
+        receipt=self.root/"receipt.json"
+        receipt.write_text(json.dumps({
+            "schema":1,"repo":sync.REPO,
+            "scratch_identity":sync.scratch_identity(self.scratch),
+            "branch":"ai/unity-batched-test1",
+            "commit":"a"*40,"pushed":{self.asset:old}
+        }))
+        result=sync.acknowledge_actions_receipt(receipt,statefile=self.statefile,
+                                                 scratch=self.scratch)
+        self.assertEqual(result["status"],"actions_remote_verified_and_acknowledged")
+        (self.scratch/self.asset).write_bytes(b"later unsaved version")
+        self.reply("tree-save-202",offset=8)
+        self.assertEqual(self.report()["pending"],1)
+        self.assertEqual(sync.load_state(self.statefile)["pushed"][self.asset],old)
+
     def test_real_local_git_and_lfs_branch_upload_then_single_branch_update(self):
         if subprocess.run(["git","lfs","version"],capture_output=True).returncode:
             self.skipTest("git lfs unavailable")
