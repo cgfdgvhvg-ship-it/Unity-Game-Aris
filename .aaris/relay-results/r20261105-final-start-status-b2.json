@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "id": "r20261105-final-start-status-b2",
+  "action": "status",
+  "recorded_utc": "2026-11-05T18:09:41.074Z",
+  "status": "observed",
+  "state": "Available",
+  "source": "cloudflare-scheduled-worker"
+}
