@@ -1,3 +1,15 @@
+## CURRENT live Codespace viewer state — 2026-11-06
+
+Cloudflare Worker `aaris-codespace-relay` is **deployed**, `RELAY_ENABLED=true`, and the GitHub control token exists as a Cloudflare secret. Real Cloudflare-cron receipts already verified Codespace Shutdown → Available → Shutdown → Available without GitHub Actions. Earlier sections below that claim the Worker is not deployed, RELAY_ENABLED=false or the GitHub token is absent are HISTORICAL and superseded.
+
+The single stable viewer URL is https://aaris-codespace-relay.aaris-game-control-6f9c.workers.dev/live . It redirects to the GitHub Codespace's **Private** noVNC forwarded port 6080; it does not transfer frames through GitHub Actions or Cloudflare. Its previous HTTP 404 was because the remote noVNC service / port had not been bootstrapped, NOT because a new URL is needed. Never make port 6080 public.
+
+Important: the owner attempted installation in **Android Termux**, not in the remote Codespace. Installer now fails with an explanatory message there. The one-time Codespace bootstrap is `Tools/CodespaceRelay/bootstrap_live.py`, preferably invoked over `gh codespace ssh` from Termux with a remote pseudo-TTY for the VNC password prompt. It stages approved scripts, guarded scratch-only Unity camera focus, a private VNC password, a GitHub-polling Python agent, desktop services, status doctor and a guarded scratch Unity recovery. See [Docs/LIVE_UNITY_PHONE_VIEW.md](Docs/LIVE_UNITY_PHONE_VIEW.md) for the exact remote-SSH command and security details.
+
+DO NOT claim that the new in-Codespace agent, browser video or AI camera location has passed live end-to-end validation until the installer is actually executed in Codespace and a real terminal result receipt appears in `.aaris/relay-results/`. Legacy GitHub Issue #37 stopped responding after restart. The camera now calls `SceneView.LookAtDirect` in the reviewed isolated bridge; that new bridge must still compile in the actual scratch Editor. A persisted focus is possible, but `/tmp` scratch/Unity import may be lost on shutdown and require guarded reimport. The viewer link will not wake a stopped Codespace by itself; safely enabling wake-on-visit requires owner authentication such as Cloudflare Access (not yet enabled in this account), to avoid unauthenticated billing abuse. Never merge PR #75 or change main or dirty original Unity assets for this setup.
+
+---
+
 ## Actions-free Cloudflare Codespace relay (deployment state, 2026-11-05)
 
 The owner requested a fallback because GitHub Actions fails **before the runner starts** with an account billing/spending-limit error. An external Cloudflare Worker named `aaris-codespace-relay` is now uploaded, with a `* * * * *` Cron and enabled workers.dev route. Its current binding is deliberately **`RELAY_ENABLED=false`** and **`GITHUB_CONTROL_TOKEN` / `AGENT_SHARED_SECRET` do not exist yet**, so it is **not live**; no start, stop, or terminal command has run through this route. Configure the two secrets through the owner's Cloudflare dashboard, stage the reviewed in-Codespace agent and confirm a real boot hook before enabling. Do not send tokens in this repo, chat, or issues.
