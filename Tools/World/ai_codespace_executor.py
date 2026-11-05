@@ -1693,6 +1693,11 @@ def execute(job):
         )
         return {"exit_code":result.returncode,"stdout":result.stdout[-12000:],
                 "stderr":result.stderr[-900:]}
+    if op == "unity_sync_save_session":
+        if args: raise ValueError("Save Session takes no extra arguments")
+        return {"exit_code":0,"stdout":json.dumps({
+            "status":"delegated_to_github_actions_writer",
+            "note":"Separate owner-only workflow with contents:write performs Git LFS upload. This Codespace worker never pushes."}),"stderr":""}
     if op in {"unity_sync_auth","unity_sync_status","unity_sync_arm",
               "unity_sync_dry_run","unity_sync_save_session","unity_sync_watch_start"}:
         if args: raise ValueError("No extra arguments allowed for Unity Sync job")
