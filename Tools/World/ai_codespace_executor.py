@@ -2557,7 +2557,9 @@ def unity_main_core_sync(job):
     import tarfile
     from pathlib import PurePosixPath
     import io
-    commit="08c57c62a64f99ed0745deae3c44f189f9ec711c"
+    commit=job["args"][0]
+    if not re.fullmatch(r"[0-9a-f]{40}",commit):
+        raise ValueError("Expected reviewed main 40-character SHA")
     stage=Path("/workspaces/.aaris-world-bridge/ondemand")/("main-core-"+job["id"]+".tar")
     scratch=BATCH_ROOT/"project"
     backup=BATCH_ROOT/("main-core-backup-"+job["id"])
@@ -2846,7 +2848,8 @@ def execute(job):
     if not isinstance(args, list):
         raise ValueError("invalid args")
     if op == "unity_main_core_sync":
-        if args: raise ValueError("Exact-main source sync takes no arguments")
+        if len(args)!=1 or not re.fullmatch(r"[0-9a-f]{40}",args[0]):
+            raise ValueError("Exact-main sync requires one reviewed 40-hex main SHA")
         return unity_main_core_sync(job)
     if op in {"unity_shader_ab_preflight", "unity_shader_ab_apply", "unity_shader_ab_restore"}:
         if args: raise ValueError("Shader A/B operation takes no args")
