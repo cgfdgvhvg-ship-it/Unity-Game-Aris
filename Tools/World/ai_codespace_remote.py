@@ -25,9 +25,9 @@ ID_RE = re.compile(r"[a-z][a-z0-9-]{3,55}\Z")
 API = f"https://api.github.com/user/codespaces/{CODESPACE}"
 MAX_OUTPUT = 18000
 
-# Frozen, reviewed Github main source for the actual merged Android/URP fixes.
-# This queue action is a single audited snapshot sync; later mains need new review.
-MAIN_CORE_COMMIT = "08c57c62a64f99ed0745deae3c44f189f9ec711c"
+# Every core source read is pinned to the expected full HEAD supplied by the AI.
+# GitHub Actions verifies that this SHA is the actual main ref at fetch time.
+# The Unity destination remains a guarded disposable scratch copy.
 MAIN_TREE_ROOT = "Assets/TerrainDemoScene_URP/Prefabs/Trees/"
 MAIN_SHADER_MATERIALS = tuple(
     MAIN_TREE_ROOT + folder + "/Materials/" + name + ".mat"
@@ -109,6 +109,9 @@ def validate_job(data: dict, *, expected_file: str | None = None) -> dict:
     elif op == "lfs_verify_chunk":
         if len(args) != 1 or not re.fullmatch(r"(?:0|[1-9][0-9]{0,4})", args[0]):
             raise JobError("lfs_verify_chunk requires one numeric cursor")
+    elif op == "unity_main_core_sync":
+        if len(args) != 1 or not re.fullmatch(r"[0-9a-f]{40}", args[0]):
+            raise JobError("unity_main_core_sync requires reviewed exact main HEAD SHA")
     elif op != "terminal_readonly" and args:
         raise JobError("this operation takes no arguments")
     if op == "terminal_readonly":
@@ -250,18 +253,18 @@ def execute_remote(job: dict, token: str, workspace: Path, result_file: Path, *,
         # Never reuse the Codespaces lifecycle token for repository git access.
         from ai_master_github_auth import checked_fetch_main, MasterAuthError
         try:
-            checked_fetch_main(workspace, MAIN_CORE_COMMIT)
+            checked_fetch_main(workspace, job["args"][0])
         except MasterAuthError as exc:
             raise JobError(str(exc)) from None
         def source_data(path):
             result=subprocess.run(
-                ["git","show",MAIN_CORE_COMMIT+":"+path],cwd=workspace,
+                ["git","show",job["args"][0]+":"+path],cwd=workspace,
                 capture_output=True,timeout=22,check=False)
             if result.returncode or len(result.stdout)>8*1024*1024:
                 raise JobError("Reviewed source file missing/oversized: "+path)
             return result.stdout
         paths = MAIN_CORE_PATHS + MAIN_EDITOR_CHECKS
-        manifest = {"commit":MAIN_CORE_COMMIT,"files":{},"checks":{}}
+        manifest = {"commit":job["args"][0],"files":{},"checks":{}}
         archive = Path(tempfile.gettempdir()) / ("aaris-verified-core-"+job["id"]+".tar")
         if archive.exists() or archive.is_symlink():
             raise JobError("Existing verified core bundle")
