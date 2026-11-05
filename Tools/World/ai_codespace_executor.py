@@ -1063,8 +1063,8 @@ def unity_forest_treeonly_prepare():
     for src in (helper,one):
         if not src.is_file() or src.is_symlink() or src.stat().st_size>40000:
             return {"exit_code":3,"stdout":"","stderr":"Reviewed one-shot C# source missing/unsafe"}
-    if "categories[i] != 1" not in helper.read_text() or
-       "report.actualTrees" not in helper.read_text():
+    if ("categories[i] != 1" not in helper.read_text() or
+        "report.actualTrees" not in helper.read_text()):
         return {"exit_code":3,"stdout":"","stderr":"Tree-only corrected source not staged"}
     if "treeTotal != 1939" not in one.read_text():
         return {"exit_code":3,"stdout":"","stderr":"Tree-only one-shot audit missing"}
