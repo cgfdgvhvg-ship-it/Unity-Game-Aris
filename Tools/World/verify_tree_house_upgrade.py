@@ -199,6 +199,7 @@ def preserved_or_reviewed_lod_only(root,path,expected_sha):
     if path in REVIEWED_FAR_SHADOW_PREFABS:
         source=restore_reviewed_far_shadow(source,path)
         if source is None:return False
+        if hashlib.sha256(source).hexdigest()==expected_sha:return True
     if path == SCENE_MOBILE_LOD_PATH:
         restored = restore_scene_mobile_lod(source)
         return restored is not None and hashlib.sha256(restored).hexdigest() == expected_sha
