@@ -1,5 +1,76 @@
 # AI inspection and core editing
 
+## Clearance-aware house enlargement and parking access (review PR #75)
+
+When enlarging a residential home, do **not** edit `m_LocalScale` alone and assume its
+neighbours will move. Run the deterministic source simulation first:
+
+```bash
+python Tools/World/smart_residential_clearance.py
+```
+
+To preview a **future single-house resize** without editing the project, provide a
+local JSON file containing exact GameObject-name keys and **absolute target
+multipliers relative to the historical `Docs/MAP_LAYOUT.json`**, for example:
+
+```json
+{"ClockTowerTown_garage_apartment_06": 1.15}
+```
+
+Then run:
+
+```bash
+python Tools/World/smart_residential_clearance.py --house-scales-json my-house-scales.json
+```
+
+This checks all **45 reserved vehicle-spawn bays** against **59 building/landmark
+AABBs**, all pairwise 6x12-m parking-pad envelopes, and the fixed road exit
+of each of the garage-served access routes. Existing conflicts fail closed;
+after enlargement the previous clearance is preserved for close pairs and
+all previously more-distant pairs retain at least 2 m of horizontal
+clearance. When the straight garage access cannot be maintained or the
+remaining route to the exit becomes shorter than 5 m, the planner rejects
+the proposed change. It does not blindly teleport the house, roads or cars.
+
+In review PR #75, 47 homes and their 47 flat foundations expand together.
+Exactly **17** garage-served `VehicleSpawnPoint_XX` marker positions and their
+**17 matching `VehicleSpawnPoint_XX_Apron` scene transforms** translate
+roadward by approximately **0.703–1.475 m**; the other 28 markers and all
+road-exit locations remain fixed. Apron meshes use world-space vertices:
+their local translation is intentional. Exact-byte restoration of the
+historical scene and strict reviewed manifest checks forbid partial
+marker/apron changes, other object mutations, altered .meta GUIDs or
+unreviewed TerrainData modifications.
+
+If the four native TerrainData files are fully hydrated from Git LFS, run:
+
+```bash
+python Tools/World/smart_residential_clearance.py --native
+```
+
+This additionally reads the real native rock/tree/shrub **instance centers**,
+checks 3-m vicinity of the enlarged house envelopes, reports centers in
+the 17 affected garage corridors, and samples genuine native terrain
+heights/slopes across a 4.8-m-wide roadward strip. Missing LFS must fail:
+a pointer is not valid native geometry. The initial inspected source had
+**5,564 rocks, 1,939 trees and 5 shrubs**, with no native instance center
+within 3 m of any enlarged residential AABB. This is not a statement
+about the objects' full physical collider extents.
+
+**The simulation is not Unity vehicle physics.** Current
+`Docs/MAP_LAYOUT.json` describes empty vehicle markers rather than
+fully spawned drivable cars. Before approving a change, open the **exact
+reviewed scene commit** in an isolated matching Unity Editor, verify
+import/compilation, terrain-footprint support, all relevant mesh/collider
+radii, actual vehicle prefab and navigation path from spawn to road,
+entrance walkability, and before/after screenshot views. If a native rock
+must move, first measure its actual bounds and terrain support, then use
+a version-pinned native Unity operation with LFS readback and a separate
+review PR. Never assume that moving the tree/rock pivot guarantees
+clearance; never reset the owner's dirty Codespace checkout. Keep PR #75
+as a draft until visual/physics QA is complete.
+
+
 The tree/house migration in `Tools/World/house-openings-20261103.json` and `tree-proportions-20261103.json` authors actual saved mesh/importer/prefab core files. `apply_tree_house_upgrade.py` previews the hash-bound request, compares it to the authored target contract, writes the source, and rolls back on a failed source check. It never merges a PR or builds/deploys an APK. The dedicated task workflow pushes only the enumerated core assets to its own branch after native/source checks.
 
 Renderer slots now include `submesh_geometry` with the exact saved index/triangle count where decoded. An empty slot can retain a material called door or glass; it is marked `empty` and excluded from live surface-role counts. `site`, `describe` and edit observation deltas carry that distinction. Unknown/imported geometry remains unavailable rather than empty. Unity-backed edits stage typed Python mesh edits in their disposable project before launching the Editor.
