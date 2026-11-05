@@ -92,3 +92,17 @@ A photo is not created by this relay itself; the existing native Editor bridge m
 - The ChatGPT GitHub connector has repository operations but does not expose the account's GitHub credential for use by a different provider. The Cloudflare connector cannot read Github Actions repository secrets either. A scoped GitHub token must be installed as `GITHUB_CONTROL_TOKEN` directly through the Cloudflare dashboard, **not in chat, GitHub repo, or logs**. A distinct generated `AGENT_SHARED_SECRET` must also be configured for the Codespace agent. Do not enable the relay before those secrets and the agent startup hook are verified.
 - If Cloudflare or the GitHub Codespaces API reports the account's own billing/quota restriction, **do not** attempt to circumvent billing; use the provider's normal account remediation. GitHub Actions billing is separate from whether the Codespaces REST API can start an available Codespace.
 
+## Verified GitHub Actions-free lifecycle — 2026-11-05
+
+Cloudflare account `aaris-codespace-relay` uses the protected `ai/codespace-jobs` queue. Direct GitHub connector-written relay jobs and independent Cloudflare-cron receipts verified:
+
+- `r20261105-initial-status-a1`: `Shutdown` (18:01:40 UTC).
+- `r20261105-start-after-shutdown-a1`: `start_requested` from `Shutdown` (18:02:42 UTC).
+- `r20261105-verify-start-a1`: `Available` (18:03:40 UTC), confirming an actual wake.
+- `r20261105-stop-via-cloudflare-a1`: `stop_requested` from `Available` (18:04:42 UTC).
+- `r20261105-verify-stop-a1`: `ShuttingDown` (18:05:41 UTC).
+- `r20261105-verify-stop-b2`: `Shutdown` (18:06:41 UTC), confirming an actual stop.
+- `r20261105-start-final-after-stop-a1`: `start_requested` from `Shutdown` (18:07:43 UTC); a status receipt in the same cron tick still showed `Shutdown`, so require a **later** independent observation to certify the final boot.
+
+The Worker now has `RELAY_ENABLED=true` and `GITHUB_CONTROL_TOKEN` stored as a Cloudflare Secret. Do not commit or reveal its value. `AGENT_SHARED_SECRET` and an in-Codespace agent autostart hook are **not yet configured**. Therefore remote **terminal command execution has not been demonstrated**, even though lifecycle is working. Preserve the original dirty Unity worktree and keep PR #75 unmerged.
+
