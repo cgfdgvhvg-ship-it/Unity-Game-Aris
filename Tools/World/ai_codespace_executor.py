@@ -1028,6 +1028,125 @@ def unity_forest_editor_refresh():
         "note":"Check Unity asset import and C# compiler before any forest core write"}),"stderr":""}
 
 
+def unity_forest_treeonly_prepare():
+    """Quarantine incorrect 7508-instance edit and restore EXACT source core bytes.
+
+    Never modify owner checkout, Git refs, GUIDs, user files outside isolated
+    /tmp scratch. Stages reviewed tree-only authoring and retains rollback.
+    """
+    base=Path("Assets/TerrainDemoScene_URP/Terrain/Data")
+    expected={
+      "Terrain_1_1_4bf22c8f-eb55-436d-84e3-dedfa85665b1.asset":
+        ("4798dfe0edf6cec43be1417e519271fbc4b98b99de553a981195e13c321714ae",
+         "17522c8e230240894e76d08fd483992e63ebd06a2a767486ab1a91a404820857"),
+      "Terrain_1_2_1694bb0f-cffe-402c-b6f9-cf47692fbb78.asset":
+        ("9053935547655ccf39744e0b5ab475514598734bdffcf19f4f1760a452b559e4",
+         "4a1c4577f690a0bfea4748e38b4049dec6c3d49137149b601fa3fd162e543d2c"),
+      "Terrain_2_1_82fc4922-5564-4a18-858e-787f6d901556.asset":
+        ("9aa00e637163f52f559683eb837e12799f39f499bcd16535d60838d49f8d5f65",
+         "d10d4cb2a92f86ab8718c5f27cdfb1a750a90a0fcc9fdf1ad1e1897a5fe3631b"),
+      "Terrain_2_2_b6e03cf0-de91-4cae-b6af-0128d856ae43.asset":
+        ("113c4b11ab5f7e6cba20f60a6b8bbc061d0f72d335827d48c98fff855a7faf07",
+         "0a6c967a5bd1e0a73c05f759b1d599ec26d370759d399d5152f2180eab9051cc")
+    }
+    probe=json.loads(unity_forest_baseline_probe()["stdout"])
+    if not probe["can_restore_tree_only_baseline"] or _scratch_unity_pids():
+        return {"exit_code":3,"stdout":json.dumps(probe)[:2500],
+                "stderr":"Source baseline SHA/metas not verified or scratch Editor running"}
+    root=BATCH_ROOT/"project"
+    directory=root/base
+    staging=Path("/workspaces/.aaris-world-bridge/ondemand")
+    helper=staging/"AarisForestCoreAuthoring.cs"
+    one=staging/"AarisForestOneShot.cs"
+    dest_helper=root/"Assets/AarisWorld/Editor/AarisForestCoreAuthoring.cs"
+    dest_one=root/"Assets/AarisWorld/Editor/AarisForestOneShot.cs"
+    for src in (helper,one):
+        if not src.is_file() or src.is_symlink() or src.stat().st_size>40000:
+            return {"exit_code":3,"stdout":"","stderr":"Reviewed one-shot C# source missing/unsafe"}
+    if "categories[i] != 1" not in helper.read_text() or
+       "report.actualTrees" not in helper.read_text():
+        return {"exit_code":3,"stdout":"","stderr":"Tree-only corrected source not staged"}
+    if "treeTotal != 1939" not in one.read_text():
+        return {"exit_code":3,"stdout":"","stderr":"Tree-only one-shot audit missing"}
+    for dest in (dest_helper,dest_one):
+        if not dest.is_file() or dest.is_symlink():
+            return {"exit_code":3,"stdout":"","stderr":"Existing scratch C# script identity invalid"}
+    queued=VIRTUAL_CONTROL/"unity-commands"
+    if queued.is_dir() and any(x.is_file() and x.suffix==".json" for x in queued.iterdir()):
+        return {"exit_code":3,"stdout":"","stderr":"Pending Unity command; cannot restore"}
+    def digest(path):
+        h=hashlib.sha256()
+        with path.open("rb") as file:
+            for chunk in iter(lambda:file.read(1024*1024),b""):h.update(chunk)
+        return h.hexdigest()
+    for name,(baseline,wrong) in expected.items():
+        o=PROJECT/base/name
+        w=directory/name
+        if digest(o)!=baseline or digest(w)!=wrong:
+            return {"exit_code":3,"stdout":"","stderr":"Unexpected native source/wrong bulk bytes: "+name}
+        if digest(Path(str(o)+".meta"))!=digest(Path(str(w)+".meta")):
+            return {"exit_code":3,"stdout":"","stderr":"Native metadata mismatch: "+name}
+    quarantine=BATCH_ROOT/"forest-treeonly-quarantine"
+    if quarantine.exists() or quarantine.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Existing quarantine requires review; refusing repeat"}
+    if shutil.disk_usage(BATCH_ROOT).free<2*1024**3:
+        return {"exit_code":3,"stdout":"","stderr":"Scratch cannot safely retain rollback"}
+    quarantine.mkdir(mode=0o700)
+    # Backup every incorrect asset and original scratch C# authoring before writes.
+    for name,(_,wrong) in expected.items():
+        backup=quarantine/name
+        shutil.copy2(directory/name,backup)
+        if digest(backup)!=wrong: raise ValueError("Quarantine SHA verification failed")
+    for item in (dest_helper,dest_one):
+        shutil.copy2(item,quarantine/item.name)
+        if digest(item)!=digest(quarantine/item.name):
+            raise ValueError("Editor script backup mismatch")
+    written=[]
+    try:
+        for name,(baseline,_) in expected.items():
+            original=PROJECT/base/name
+            dest=directory/name
+            temp=dest.with_name(name+".aaris-treeonly-new")
+            if temp.exists() or temp.is_symlink():
+                raise ValueError("Unsafe leftover TerrainData restore temp")
+            shutil.copy2(original,temp)
+            if digest(temp)!=baseline:
+                raise ValueError("Source baseline copy digest mismatch")
+            os.replace(temp,dest)
+            written.append(dest)
+            if digest(dest)!=baseline:
+                raise ValueError("Native restored TerrainData SHA mismatch")
+        for source,dest in ((helper,dest_helper),(one,dest_one)):
+            temp=dest.with_suffix(".cs.aaris-treeonly-new")
+            if temp.exists() or temp.is_symlink():
+                raise ValueError("Scratch C# restore temp already exists")
+            shutil.copy2(source,temp)
+            os.replace(temp,dest)
+            written.append(dest)
+            if digest(dest)!=digest(source):
+                raise ValueError("Staged tree-only C# readback mismatch")
+    except Exception:
+        for dest in reversed(written):
+            backup=quarantine/dest.name
+            if backup.is_file() and not backup.is_symlink():
+                rollback=dest.with_name(dest.name+".aaris-treeonly-rollback")
+                shutil.copy2(backup,rollback)
+                os.replace(rollback,dest)
+        raise
+    details={
+        "status":"baseline_restored_treeonly_corrected_authoring_staged",
+        "scratch_only":True,"original_source_untouched":True,
+        "bad_bulk_backed_up":list(expected),
+        "restored_sha256":{name:sha for name,(sha,_) in expected.items()},
+        "editor_scripts":["AarisForestCoreAuthoring.cs","AarisForestOneShot.cs"],
+        "expected_counts":{"trees":1939,"rocks":5564,"shrubs":5},
+        "note":"The next one-shot plan must show changedCount=actualTrees, non-trees preserved"
+    }
+    proof=quarantine/"prepared.json"
+    proof.write_text(json.dumps(details,indent=2,sort_keys=True))
+    return {"exit_code":0,"stdout":json.dumps(details),"stderr":""}
+
+
 def unity_forest_baseline_probe():
     """Never write: compare source/main LFS-hydrated terrain assets with scratch."""
     base=Path("Assets/TerrainDemoScene_URP/Terrain/Data")
@@ -2354,6 +2473,9 @@ def execute(job):
     if op == "unity_forest_editor_refresh":
         if args: raise ValueError("Unity refresh takes no arguments")
         return unity_forest_editor_refresh()
+    if op == "unity_forest_treeonly_prepare":
+        if args: raise ValueError("Tree-only correction preparation takes no args")
+        return unity_forest_treeonly_prepare()
     if op == "unity_forest_baseline_probe":
         if args: raise ValueError("Baseline inspection takes no arguments")
         return unity_forest_baseline_probe()
