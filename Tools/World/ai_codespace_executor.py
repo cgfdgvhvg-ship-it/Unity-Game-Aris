@@ -974,7 +974,7 @@ def unity_forest_menu_snapshot():
         if path.exists() and not path.is_symlink(): path.unlink()
 
 
-def unity_forest_editor_refresh():
+def unity_forest_editor_refresh(require_forest=True):
     """One focused Assets > Refresh keyboard shortcut in PID-verified scratch Unity."""
     import ctypes
     import ctypes.util
@@ -983,8 +983,15 @@ def unity_forest_editor_refresh():
         return {"exit_code":3,"stdout":"","stderr":"No live scratch Editor"}
     helper=BATCH_ROOT/"project/Assets/AarisWorld/Editor/AarisForestCoreAuthoring.cs"
     bridge=_virtual_bridge_path()
-    if not helper.is_file() or not bridge.is_file() or 'case "forest_plan":' not in bridge.read_text():
-        return {"exit_code":3,"stdout":"","stderr":"Reviewed scratch forest authoring not staged"}
+    if require_forest:
+        if not helper.is_file() or not bridge.is_file() or 'case "forest_plan":' not in bridge.read_text():
+            return {"exit_code":3,"stdout":"","stderr":"Reviewed scratch forest authoring not staged"}
+    else:
+        house=BATCH_ROOT/"project/Assets/AarisWorld/Editor/AarisHousePhotoSurvey.cs"
+        source=Path("/workspaces/.aaris-world-bridge/ondemand/AarisHousePhotoSurvey.cs")
+        if (not house.is_file() or house.is_symlink() or not source.is_file()
+                or source.is_symlink() or house.read_bytes()!=source.read_bytes()):
+            return {"exit_code":3,"stdout":"","stderr":"Reviewed scratch house helper not staged"}
     x=subprocess.run(["xwininfo","-display",":12","-root","-tree"],
                      capture_output=True,text=True,timeout=12,check=False)
     if x.returncode:
@@ -2993,6 +3000,9 @@ def execute(job):
         raise ValueError("invalid job id")
     if not isinstance(args, list):
         raise ValueError("invalid args")
+    if op == "unity_house_gallery_refresh":
+        if args: raise ValueError("House Editor asset refresh takes no arguments")
+        return unity_forest_editor_refresh(require_forest=False)
     if op in {"unity_house_gallery_start","unity_house_gallery_export","unity_house_gallery_diagnose"}:
         return unity_house_gallery(job)
     if op == "unity_main_core_sync":
