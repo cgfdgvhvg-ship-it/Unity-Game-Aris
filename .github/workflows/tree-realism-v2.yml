@@ -52,6 +52,6 @@ jobs:
           tree_paths=[p for p in changed if p.startswith('Assets/TerrainDemoScene_URP/Prefabs/Trees/')]
           allowed={r['prefab'] for r in reviewed['profiles']}|{r['source_meta'] for r in reviewed['profiles']}
           assert set(tree_paths)<=allowed,'Unexpected tree asset edited: '+repr(set(tree_paths)-allowed)
-          assert len(tree_paths)==12,'Incomplete v2 prototype set'
-          print('Six source trees reviewed, no SpeedTree .st binary or .prefab.meta touched')
+          assert len(tree_paths) in (0,12),'Partial v2 tree source modification forbidden'
+          print(f'SpeedTree source integrity: {len(tree_paths)} reviewed changes (0 means non-tree PR); no unrelated .st or prefab GUID edits')
           PY

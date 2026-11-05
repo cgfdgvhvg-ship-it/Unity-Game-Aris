@@ -35,7 +35,7 @@ class SavedSceneMobileLodIntegrity(unittest.TestCase):
 
     def test_three_heavy_compound_prefabs_restore_to_exact_protected_sources(self):
         from verify_tree_house_upgrade import (
-            HEAVY_COMPOUND_SOURCE_PREFABS, preserved_or_reviewed_lod_only
+            HEAVY_COMPOUND_SOURCE_PREFABS, preserved_or_reviewed_lod_only, restore_reviewed_far_shadow
         )
         self.assertEqual(len(HEAVY_COMPOUND_SOURCE_PREFABS), 3)
         for path in sorted(HEAVY_COMPOUND_SOURCE_PREFABS):
@@ -44,7 +44,9 @@ class SavedSceneMobileLodIntegrity(unittest.TestCase):
                 self.assertEqual(source.count(b'  - screenRelativeHeight: 0.11\n'), 1)
                 self.assertEqual(source.count(b'  - screenRelativeHeight: 0.22\n'), 1)
                 self.assertEqual(source.count(b'  - screenRelativeHeight: 0.0025\n'), 1)
-                old = source.replace(b'  - screenRelativeHeight: 0.11\n',
+                before_shadow=restore_reviewed_far_shadow(source,path)
+                self.assertIsNotNone(before_shadow)
+                old = before_shadow.replace(b'  - screenRelativeHeight: 0.11\n',
                                      b'  - screenRelativeHeight: 0.07\n', 1)
                 self.assertEqual(hashlib.sha256(old).hexdigest(),
                                  self.contract['preserved_files'][path])
