@@ -1025,6 +1025,50 @@ def unity_forest_editor_refresh():
         "note":"Check Unity asset import and C# compiler before any forest core write"}),"stderr":""}
 
 
+def unity_forest_crash_report():
+    """Read-only, redacted, bounded Unity compiler/crash and core-hash evidence."""
+    data={"scratch_pids":_scratch_unity_pids(),
+          "scene_readback":(BATCH_ROOT/"scene-readback.json").is_file(),
+          "scratch_free_gib":round(shutil.disk_usage(BATCH_ROOT).free/2**30,2)}
+    import hashlib
+    import re
+    import os
+    markers=("error CS","AarisForestCoreAuthoring","AarisLiveEditorBridge",
+             "Compilation failed","script compilation","Fatal","SIGSEGV",
+             "Aborting batchmode","Asset Pipeline","Exception","crash","Exit")
+    for leaf in ("virtual-editor.log","virtual-launch.log","xvfb.log"):
+        p=BATCH_ROOT/leaf
+        if not p.is_file() or p.is_symlink() or p.stat().st_size > 40*1024**2:
+            data[leaf]={"available":False}
+            continue
+        with p.open("rb") as file:
+            file.seek(max(0,p.stat().st_size-3*1024**2))
+            fragment=file.read().replace(bytes([0]),b"")
+        raw=fragment.decode("utf-8","replace")
+        relevant=[line[-400:] for line in raw.splitlines() if any(x.lower() in line.lower() for x in markers)]
+        data[leaf]={"bytes":p.stat().st_size,"markers":relevant[-35:],
+                    "tail":raw[-1500:]}
+    old=Path("/workspaces/.aaris-world-bridge/ondemand/unity-forest-recompile-proof.json")
+    if old.is_file() and not old.is_symlink():
+        proof=json.loads(old.read_text(encoding="utf-8"))
+        data["recompile_phase"]=proof.get("phase")
+        actual={}
+        for name,sha in proof.get("tile_sha256",{}).items():
+            p=BATCH_ROOT/"project/Assets/TerrainDemoScene_URP/Terrain/Data"/name
+            if not p.is_file() or p.is_symlink():
+                actual[name]="missing"
+            else:
+                h=hashlib.sha256()
+                with p.open("rb") as file:
+                    for part in iter(lambda:file.read(1024*1024),b""):h.update(part)
+                actual[name]=h.hexdigest()==sha
+        data["all_core_tiles_unchanged"]=all(actual.values()) if actual else False
+        data["core_tile_sha_matches"]=actual
+    proc=subprocess.run(["free","-m"],capture_output=True,text=True,timeout=10)
+    data["memory"]=proc.stdout[-900:]
+    return {"exit_code":0,"stdout":json.dumps(data,ensure_ascii=False),"stderr":""}
+
+
 def unity_forest_recompile():
     """Graceful restart only of the disposable scratch Unity GUI after verified save."""
     import signal
@@ -2103,6 +2147,9 @@ def execute(job):
     if op == "unity_forest_editor_refresh":
         if args: raise ValueError("Unity refresh takes no arguments")
         return unity_forest_editor_refresh()
+    if op == "unity_forest_crash_report":
+        if args: raise ValueError("Crash inspection takes no parameters")
+        return unity_forest_crash_report()
     if op == "unity_forest_recompile":
         if args: raise ValueError("Forest recompile takes no args")
         return unity_forest_recompile()
