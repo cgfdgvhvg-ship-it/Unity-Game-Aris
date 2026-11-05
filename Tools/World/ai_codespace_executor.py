@@ -1025,6 +1025,87 @@ def unity_forest_editor_refresh():
         "note":"Check Unity asset import and C# compiler before any forest core write"}),"stderr":""}
 
 
+def unity_forest_recompile():
+    """Graceful restart only of the disposable scratch Unity GUI after verified save."""
+    import signal
+    from pathlib import Path
+    target=BATCH_ROOT/"project"
+    bridge=_virtual_bridge_path()
+    helper=bridge.with_name("AarisForestCoreAuthoring.cs")
+    if not all(x.is_file() and not x.is_symlink() for x in (bridge,helper)):
+        return {"exit_code":3,"stdout":"","stderr":"Reviewed scratch forest sources missing"}
+    source=bridge.read_text(encoding="utf-8")
+    if 'case "forest_plan":' not in source or 'case "forest_apply":' not in source:
+        return {"exit_code":3,"stdout":"","stderr":"Forest bridge not staged"}
+    if not target.is_dir() or target.is_symlink() or not PROJECT.is_dir():
+        return {"exit_code":3,"stdout":"","stderr":"Scratch and owner project identities missing"}
+    if shutil.disk_usage(target).free < 20*1024**3:
+        return {"exit_code":3,"stdout":"","stderr":"Scratch disk headroom below 20 GiB"}
+    running=_scratch_unity_pids()
+    if len(running)!=1:
+        return {"exit_code":3,"stdout":json.dumps({"scratch_pids":running}),
+                "stderr":"Exactly one running scratch GUI Unity process required"}
+    pid=running[0]
+    argv=[x.decode("utf-8","replace") for x in (Path("/proc")/str(pid)/"cmdline").read_bytes().split(b"\\x00") if x]
+    if "-projectPath" not in argv or argv[argv.index("-projectPath")+1]!=str(target):
+        return {"exit_code":3,"stdout":"","stderr":"Scratch Unity process identity mismatch"}
+    inbox=VIRTUAL_CONTROL/"unity-commands"
+    if inbox.is_dir() and any(x.suffix==".json" and x.is_file() for x in inbox.iterdir()):
+        return {"exit_code":3,"stdout":"","stderr":"Pending Unity commands; no relaunch"}
+    autosync=Path("/workspaces/.aaris-world-bridge/ondemand/unity_batched_autosync.py")
+    if not autosync.is_file() or autosync.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Autosync verifier unavailable"}
+    audit=subprocess.run(["python3",str(autosync),"status"],text=True,capture_output=True,timeout=35)
+    if audit.returncode:
+        return {"exit_code":3,"stdout":"","stderr":"Autosync check failed"}
+    status=json.loads(audit.stdout)
+    if status.get("pending")!=0 or status.get("pending_unity_commands")!=0:
+        return {"exit_code":3,"stdout":json.dumps(status)[:1000],
+                "stderr":"Unsaved native edits present"}
+    directory=target/"Assets/TerrainDemoScene_URP/Terrain/Data"
+    tiles=[
+        "Terrain_1_1_4bf22c8f-eb55-436d-84e3-dedfa85665b1.asset",
+        "Terrain_1_2_1694bb0f-cffe-402c-b6f9-cf47692fbb78.asset",
+        "Terrain_2_1_82fc4922-5564-4a18-858e-787f6d901556.asset",
+        "Terrain_2_2_b6e03cf0-de91-4cae-b6af-0128d856ae43.asset",
+    ]
+    hashes={}
+    for name in tiles:
+        src=directory/name
+        if not src.is_file() or src.is_symlink() or src.stat().st_size < 1024*1024:
+            return {"exit_code":3,"stdout":"","stderr":"Missing original native terrain asset: "+name}
+        h=hashlib.sha256()
+        with src.open("rb") as file:
+            for chunk in iter(lambda:file.read(1024*1024),b""): h.update(chunk)
+        hashes[name]=h.hexdigest()
+    proof=Path("/workspaces/.aaris-world-bridge/ondemand/unity-forest-recompile-proof.json")
+    if proof.exists() or proof.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Prior forest relaunch checkpoint requires review"}
+    checkpoint={"scratch":str(target),"old_pid":pid,
+                "tile_sha256":hashes,"phase":"before_graceful_stop"}
+    proof.write_text(json.dumps(checkpoint,sort_keys=True),encoding="utf-8")
+    os.kill(pid,signal.SIGTERM)
+    for _ in range(85):
+        if pid not in _scratch_unity_pids(): break
+        time.sleep(.55)
+    if pid in _scratch_unity_pids():
+        return {"exit_code":3,"stdout":"","stderr":"Unity did not exit gracefully; no forced stop performed"}
+    checkpoint["phase"]="scratch_editor_exited"
+    proof.write_text(json.dumps(checkpoint,sort_keys=True),encoding="utf-8")
+    launched=unity_virtual_gui_launch()
+    checkpoint["phase"]="relaunch_called"
+    checkpoint["relaunch_exit_code"]=launched["exit_code"]
+    checkpoint["new_pids"]=_scratch_unity_pids()
+    proof.write_text(json.dumps(checkpoint,sort_keys=True),encoding="utf-8")
+    if launched["exit_code"]!=0: return launched
+    return {"exit_code":0,"stdout":json.dumps({
+        "status":"scratch_gui_unity_relaunched_for_compile",
+        "old_pid":pid,"new_pids":_scratch_unity_pids(),
+        "tile_sha256_before":hashes,"original_worktree_untouched":True,
+        "note":"Check editor import and all tile hashes before full-forest plan"
+    }),"stderr":""}
+
+
 def unity_forest_x11_probe():
     if not _scratch_unity_pids() or not Path("/tmp/.X11-unix/X12").exists():
         return {"exit_code":3,"stdout":"","stderr":"No verified scratch Unity process/display"}
@@ -2022,6 +2103,9 @@ def execute(job):
     if op == "unity_forest_editor_refresh":
         if args: raise ValueError("Unity refresh takes no arguments")
         return unity_forest_editor_refresh()
+    if op == "unity_forest_recompile":
+        if args: raise ValueError("Forest recompile takes no args")
+        return unity_forest_recompile()
     if op == "unity_forest_x11_probe":
         if args: raise ValueError("X11 probe takes no args")
         return unity_forest_x11_probe()
