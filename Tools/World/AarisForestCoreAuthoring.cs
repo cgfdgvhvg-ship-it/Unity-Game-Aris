@@ -110,7 +110,7 @@ namespace Aaris.WorldAutomation
             for (int i = 0; i < original.Length; i++)
             {
                 TreeInstance tree = original[i];
-                if (!float.IsFinite(tree.widthScale) || !float.IsFinite(tree.heightScale)
+                if ((float.IsNaN(tree.widthScale) || float.IsInfinity(tree.widthScale)) || (float.IsNaN(tree.heightScale) || float.IsInfinity(tree.heightScale))
                     || tree.widthScale <= 0f || tree.heightScale <= 0f)
                     throw new InvalidOperationException("Invalid original tree dimensions: " + i);
                 Vector3 p = positions[i];
@@ -241,7 +241,7 @@ namespace Aaris.WorldAutomation
                     || !asset.EndsWith(".asset", StringComparison.Ordinal))
                     throw new InvalidOperationException("Non-allowlisted native TerrainData");
                 if (!all && asset != request.target) continue;
-                string physical = Path.GetFullPath(asset);
+                string physical = Path.GetFullPath(Path.Combine(Directory.GetParent(Application.dataPath).FullName, asset));
                 var plan = Build(terrain, physical);
                 plan.report.asset = asset;
                 count += plan.report.treeCount;
