@@ -136,15 +136,19 @@ def arm(original=ORIGINAL,scratch=SCRATCH,statefile=STATE,clock=time.time):
         if previous.get("scratch_identity")!=ident:
             if previous.get("pending_assets"):
                 raise SyncError("Prior Unity scratch vanished with UNSAVED changes; manual review")
+            if previous.get("pushed") and previous.get("last_restored_identity")!=ident:
+                raise SyncError("Previous Git LFS session edits must be restored before rearming new scratch")
         else:
             return previous
     if not (original/".git").exists():
         raise SyncError("Original Git checkout unavailable")
     now=clock()
     state={"schema":VERSION,"scratch_identity":ident,"armed_at":now,
-           "branch":None,"pushed":{},"pending_assets":{},
-           "last_success":None,"last_error":None,
-           "last_attempt":None}
+           "branch":previous.get("branch") if previous else None,
+           "pushed":previous.get("pushed",{}) if previous else {},
+           "pending_assets":{},"last_restored_identity":None,
+           "last_success":previous.get("last_success") if previous else None,
+           "last_error":None,"last_attempt":None}
     store_state(state,statefile)
     return state
 
@@ -443,6 +447,9 @@ def restore_synced_scratch(*,original=ORIGINAL,scratch=SCRATCH,
         # Commit validated copies into the *scratch* tree. Original untouched.
         for temp,destination in staging:
             os.replace(temp,destination)
+    state["last_restored_identity"]=scratch_identity(scratch)
+    state["pending_assets"]={}
+    store_state(state,statefile)
     return {"status":"verified_synced_edits_restored_to_scratch",
             "restored":files,"branch":branch,"original_untouched":True,
             "note":"Only prior Git LFS committed data was restored; latest AI edits must be independently inspected."}
