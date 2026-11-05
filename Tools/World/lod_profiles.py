@@ -44,6 +44,18 @@ def preserved_tree_lod_only(root, path, expected_sha):
     source = (Path(root)/path).read_bytes()
     if hashlib.sha256(source).hexdigest() == expected_sha:
         return True
+    # A later reviewed v2 trunk/collider/LOD source transaction is allowed
+    # ONLY when *all twelve* tree source blobs match the exact reviewed
+    # SHA-1 Git object IDs. A random extra prefab or collider change
+    # still fails closed. Historical v1/LOD-only paths remain supported.
+    manifest = Path(root) / "Tools/World/tree-realism-v2-reviewed.json"
+    if manifest.is_file() and path.startswith(TREE_PREFIX):
+        try:
+            from verify_tree_realism_v2 import authorized_tree_blobs
+            if path in authorized_tree_blobs(root):
+                return True
+        except (ValueError, KeyError, OSError):
+            return False
     key = path.removeprefix(TREE_PREFIX).removesuffix(".prefab")
     if not path.startswith(TREE_PREFIX) or not path.endswith(".prefab") or key not in REVIEWED_TREE_LODS:
         return False
