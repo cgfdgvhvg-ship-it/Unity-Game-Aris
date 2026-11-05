@@ -191,6 +191,33 @@ class RestartTests(unittest.TestCase):
         self.assertEqual(hypothetical["step"],"blocked_original_changed_since_checkpoint")
         self.assertTrue(hypothetical["previous_checkpoint_present"])
 
+    def test_partial_scratch_copy_without_scene_readback_is_blocked(self):
+        (self.scratch.parent/"scene-readback.json").unlink()
+        report=self.plan()
+        self.assertEqual(report["step"],"blocked_incomplete_scratch_copy")
+        self.assertFalse(report["scratch_ready_for_reopen"])
+
+    def test_copy_complete_manifest_permits_safe_first_import(self):
+        (self.scratch.parent/"scene-readback.json").unlink()
+        report=self.plan()
+        marker=self.scratch.parent/".aaris-scratch-copy-complete.json"
+        marker.write_text(json.dumps({
+            "schema":cp.SCHEMA,"scene":cp.SCENE,
+            "source_sha256":report["source_sha256"]
+        }))
+        result=self.plan()
+        self.assertEqual(result["step"],"reopen_existing_scratch")
+        self.assertTrue(result["scratch_copy_complete"])
+        self.assertTrue(result["scratch_ready_for_reopen"])
+
+    def test_wrong_copy_manifest_never_reopens_partial_project(self):
+        (self.scratch.parent/"scene-readback.json").unlink()
+        marker=self.scratch.parent/".aaris-scratch-copy-complete.json"
+        marker.write_text(json.dumps({"schema":cp.SCHEMA,"scene":cp.SCENE,
+                                      "source_sha256":{}}))
+        result=self.plan()
+        self.assertEqual(result["step"],"blocked_incomplete_scratch_copy")
+
     def test_refuse_checkpoint_on_unsafe_symlink(self):
         report=self.plan()
         self.state.symlink_to(self.original/cp.SCENE)
