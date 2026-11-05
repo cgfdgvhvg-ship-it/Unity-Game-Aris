@@ -2635,9 +2635,17 @@ def unity_main_core_sync(job):
                 for chunk in iter(lambda:stream.read(1024*1024),b""):h.update(chunk)
             if h.hexdigest()!=manifest["checks"][rel]:
                 mismatches.append(rel+":snapshot-drift")
-    if mismatches:
+    # Do not overwrite pre-existing owner-authored scene/settings differences.
+    # Report them, but permit the 19 independently verified source files to
+    # reimport if each of those files matches its exact reviewed historical blob.
+    expected_drift={
+        "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity:snapshot-drift",
+        "ProjectSettings/QualitySettings.asset:snapshot-drift",
+        "ProjectSettings/GraphicsSettings.asset:snapshot-drift",
+    }
+    if not set(mismatches)<=expected_drift:
         return {"exit_code":3,"stdout":json.dumps({"read_only_snapshot_errors":mismatches}),
-                "stderr":"Cannot assert merged main scene/pipeline baseline; no files changed"}
+                "stderr":"Unexpected non-target baseline drift; no source writes"}
     changes=[]
     for rel in required:
         dst=scratch/rel
@@ -2694,7 +2702,10 @@ def unity_main_core_sync(job):
       "source_main_commit":commit,"scratch_only":True,"owner_worktree_untouched":True,
       "total_reviewed_core_files":len(required),"changed_core_count":len(changes),
       "changed_paths":[rel for rel,_,_,_ in changes],
-      "all_19_exact_main_bytes":True,"verified_scene_pipeline_package":True,
+      "all_19_exact_main_bytes":True,
+      "scene_pipeline_unchanged":True,
+      "scene_pipeline_preexisting_drift":mismatches,
+      "full_project_matches_main":not bool(mismatches),
       "backup_path":str(backup),
       "next_gate":"Unity Editor asset reimport, shader material check and matched camera capture"
     },ensure_ascii=False),"stderr":""}
