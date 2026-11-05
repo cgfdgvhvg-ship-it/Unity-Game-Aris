@@ -18,7 +18,7 @@ namespace Aaris.WorldAutomation
         public sealed class ForestReport
         {
             public string asset, beforeSha256, afterSha256;
-            public int treeCount, actualTrees, preservedRocks, preservedShrubs, changedCount, mature, young, landmark, competitionTrees, steepTrees;
+            public int treeCount, actualTrees, preservedRocks, preservedShrubs, changedCount, widthIncreased, widthDecreased, mature, young, landmark, competitionTrees, steepTrees;
             public float widthBefore, widthAfter, heightBefore, heightAfter;
             public float projectedCanopyBefore, projectedCanopyAfter;
         }
@@ -149,22 +149,27 @@ namespace Aaris.WorldAutomation
                 float oldWidth = tree.widthScale;
                 float oldHeight = tree.heightScale;
 
-                // Mostly mature/strong, some healthy young, rare landmarks.
-                float age;
+                // Realistic broad/shorter mature silhouettes. Most grow in width;
+                // some younger trees stay visibly slimmer, with rare scenic heroes.
+                // No additional geometry; this is serialized native TreeInstance data.
+                float widthFactor, heightFactor;
                 if (luck < .75f)
                 {
                     report.mature++;
-                    age = Mathf.Lerp(1.04f, 1.23f, varWidth);
+                    widthFactor = Mathf.Lerp(1.08f, 1.18f, varWidth);
+                    heightFactor = Mathf.Lerp(.78f, .87f, varHeight);
                 }
                 else if (luck < .93f)
                 {
                     report.young++;
-                    age = Mathf.Lerp(.83f, 1.00f, varWidth);
+                    widthFactor = Mathf.Lerp(.91f, 1.00f, varWidth);
+                    heightFactor = Mathf.Lerp(.87f, .96f, varHeight);
                 }
                 else
                 {
                     report.landmark++;
-                    age = Mathf.Lerp(1.23f, 1.44f, varWidth);
+                    widthFactor = Mathf.Lerp(1.15f, 1.28f, varWidth);
+                    heightFactor = Mathf.Lerp(.78f, .85f, varHeight);
                 }
 
                 float slope = data.GetSteepness(Mathf.Clamp01(tree.position.x),
@@ -193,15 +198,13 @@ namespace Aaris.WorldAutomation
                     }
                 if (crowded) report.competitionTrees++;
 
-                // Preserve most of the previously authored species-specific shape
-                // and large silhouette while reducing extreme canopy size.
-                float ecology = (steep ? .93f : 1f) * (crowded ? .95f : 1f);
-                float species = SpeciesScale(prototypes, tree.prototypeIndex);
-                float width = Mathf.Clamp((oldWidth * .61f + age * species * .39f)
-                                           * ecology, .78f, 1.90f);
-                float height = Mathf.Clamp(oldHeight * .91f +
-                                   (.87f + .37f * varHeight) * .09f, .78f, 2.08f);
-                if (steep) height *= .98f;
+                // Keep mature trees stout without globally inflating canopy volume.
+                // Species-aware bounded adjustments retain natural tree families.
+                float ecology = (steep ? .985f : 1f) * (crowded ? .975f : 1f);
+                float species = Mathf.Lerp(1f, SpeciesScale(prototypes, tree.prototypeIndex), .35f);
+                float width = Mathf.Clamp(oldWidth * widthFactor * species * ecology, .62f, 2.65f);
+                float height = Mathf.Clamp(oldHeight * heightFactor *
+                                           (steep ? .99f : 1f), .68f, 2.25f);
                 plannedWidths[i] = width;
                 proposed[i].heightScale = height;
                 report.widthBefore += oldWidth;
@@ -215,7 +218,7 @@ namespace Aaris.WorldAutomation
             for (int i = 0; i < original.Length; i++)
                 if (categories[i] == 1)
                     rawAfter += plannedWidths[i] * plannedWidths[i] * proposed[i].heightScale;
-            float limit = report.projectedCanopyBefore * .985f;
+            float limit = report.projectedCanopyBefore * .99f;
             float reduction = rawAfter > limit && rawAfter > 0f
                 ? Mathf.Sqrt(limit / rawAfter) : 1f;
             for (int i = 0; i < original.Length; i++)
@@ -226,17 +229,24 @@ namespace Aaris.WorldAutomation
                 report.heightAfter += proposed[i].heightScale;
                 report.projectedCanopyAfter += proposed[i].widthScale *
                     proposed[i].widthScale * proposed[i].heightScale;
+                if (proposed[i].widthScale > original[i].widthScale + .0001f)
+                    report.widthIncreased++;
+                else if (proposed[i].widthScale < original[i].widthScale - .0001f)
+                    report.widthDecreased++;
                 if (Mathf.Abs(proposed[i].widthScale - original[i].widthScale) > .0001f
                     || Mathf.Abs(proposed[i].heightScale - original[i].heightScale) > .0001f)
                     report.changedCount++;
             }
-            if (original.Length > 0)
+            if (report.actualTrees > 0)
             {
-                report.widthBefore /= original.Length;
-                report.widthAfter /= original.Length;
-                report.heightBefore /= original.Length;
-                report.heightAfter /= original.Length;
+                report.widthBefore /= report.actualTrees;
+                report.widthAfter /= report.actualTrees;
+                report.heightBefore /= report.actualTrees;
+                report.heightAfter /= report.actualTrees;
             }
+            if (report.widthIncreased < report.actualTrees * .70f ||
+                report.widthDecreased < 1)
+                throw new InvalidOperationException("Not mostly wider with a few slimmer tree variations");
             if (report.changedCount != report.actualTrees ||
                 report.actualTrees + report.preservedRocks + report.preservedShrubs != original.Length)
                 throw new InvalidOperationException("Tree-only scaling did not cover exact native categories");
