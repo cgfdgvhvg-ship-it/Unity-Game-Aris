@@ -793,7 +793,7 @@ def unity_virtual_gui_status():
     bridge=_virtual_bridge_path()
     data["forest_authoring_scratch_files"]={
         "helper_staged":helper.is_file(),"bridge_patched":
-        bridge.is_file() and "case \\"forest_plan\\"".replace("\\\\"","\\\"") in bridge.read_text(encoding="utf-8"),
+        bridge.is_file() and 'case "forest_plan":' in bridge.read_text(encoding="utf-8"),
         "helper_unity_meta_created":Path(str(helper)+".meta").is_file(),
     }
     data["x11_tools"]={name:bool(shutil.which(name)) for name in
