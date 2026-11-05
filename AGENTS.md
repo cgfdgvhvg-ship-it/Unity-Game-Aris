@@ -1,3 +1,11 @@
+## Actions-free Cloudflare Codespace relay (deployment state, 2026-11-05)
+
+The owner requested a fallback because GitHub Actions fails **before the runner starts** with an account billing/spending-limit error. An external Cloudflare Worker named `aaris-codespace-relay` is now uploaded, with a `* * * * *` Cron and enabled workers.dev route. Its current binding is deliberately **`RELAY_ENABLED=false`** and **`GITHUB_CONTROL_TOKEN` / `AGENT_SHARED_SECRET` do not exist yet**, so it is **not live**; no start, stop, or terminal command has run through this route. Configure the two secrets through the owner's Cloudflare dashboard, stage the reviewed in-Codespace agent and confirm a real boot hook before enabling. Do not send tokens in this repo, chat, or issues.
+
+Follow [Docs/CODESPACE_RELAY_NO_ACTIONS.md](Docs/CODESPACE_RELAY_NO_ACTIONS.md). When enabled, submit relay jobs only to `.aaris/relay-jobs/<id>.json` on `ai/codespace-jobs`, and read verified receipts from `.aaris/relay-results/`. A committed job is not proof of execution. The old GitHub Actions controller remains documented for future use but should not be retried while GitHub billing blocks runner provisioning. Do not modify the owner's dirty worktree or merge PR #75.
+
+---
+
 # Actions-free Codespace relay (2026-11-05; setup NOT YET complete)
 
 GitHub Actions on-demand jobs have been blocked by the account's runner billing/spending limit. A source-only alternative now lives in `Tools/CodespaceRelay/` with deployment and safety instructions in [Docs/CODESPACE_RELAY_NO_ACTIONS.md](Docs/CODESPACE_RELAY_NO_ACTIONS.md).
