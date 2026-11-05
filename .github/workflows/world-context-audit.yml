@@ -34,6 +34,8 @@ jobs:
         run: python Tools/World/fetch_assets.py
       - name: Diagnose residential meshes from hydrated Git LFS (read-only)
         run: python Tools/World/diagnose_house_geometry.py
+      - name: Simulate all 45 vehicle reservations and scan actual native rock/tree centers near 47 enlarged homes
+        run: python Tools/World/smart_residential_clearance.py --native
       - name: Inspect seeded random points and preview move and color edits in temporary copies
         run: python Tools/World/audit_context.py
 

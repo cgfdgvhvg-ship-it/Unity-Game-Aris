@@ -433,6 +433,127 @@ def restore_reviewed_residential_foundations(root, source):
     return b"".join(out)
 
 
+# Keep the historical scene SHA immutable while allowing exactly 17 paired
+# changes to vehicle spawn marker + absolute-coordinate asphalt apron. New road
+# exits, genuine vehicle physics or arbitrary terrain edits are NOT approved.
+REVIEWED_VEHICLE_SPAWN_MANIFEST = "Tools/World/reviewed-residential-vehicle-spawns-20261105.json"
+
+
+def restore_reviewed_residential_vehicle_spawns(root, source):
+    """Return exact old scene bytes after reversing 17 markers + 17 aprons.
+
+    Reject unreviewed marker positions, changed pavement translations, partial
+    pairs, mutated manifest coordinates, wrong owners and duplicate names.
+    The historical SHA verifies every other byte after all reviewed reversals.
+    """
+    import re
+    from smart_residential_clearance import simulation, ClearanceError
+    root=Path(root)
+    try:
+        plan=json.loads((root/REVIEWED_VEHICLE_SPAWN_MANIFEST).read_text())
+        layout=json.loads((root/"Docs/MAP_LAYOUT.json").read_text())
+        expected=simulation(layout)
+        source.decode("utf-8")
+    except (OSError,ValueError,UnicodeError,KeyError,TypeError,ClearanceError):
+        return None
+    rows=plan.get("rows",[])
+    if (plan.get("schema")!=1 or plan.get("initial_marker_count")!=45
+        or plan.get("unchanged_marker_count")!=28
+        or plan.get("changed_marker_count")!=17
+        or plan.get("changed_apron_count")!=17
+        or not isinstance(rows,list) or len(rows)!=17):
+        return None
+    data={row.get("spawn_name"):row for row in rows if isinstance(row,dict)}
+    derived={row["spawn_name"]:row for row in expected["relocated"]}
+    if (len(data)!=17 or set(data)!=set(derived)
+        or expected["total_spawns"]!=45 or expected["total_buildings"]!=59):
+        return None
+    def parsed_position(line):
+        if not isinstance(line,str):
+            return None
+        m=re.fullmatch(
+            r"  m_LocalPosition: \{x: (-?[\d.eE+]+), y: (-?[\d.eE+]+), z: (-?[\d.eE+]+)\}",
+            line)
+        return tuple(map(float,m.groups())) if m else None
+    for name,item in derived.items():
+        entry=data[name]
+        if (entry.get("house_name")!=item["house_name"]
+            or entry.get("model")!=item["model"]
+            or entry.get("road_exit_xz_m")!=item["road_exit_xz_m"]):
+            return None
+        for k,expected_values in (
+            ("old_spawn_position_m",item["original_position_m"]),
+            ("new_spawn_position_m",item["new_position_m"])
+        ):
+            actual=entry.get(k)
+            if (not isinstance(actual,list) or len(actual)!=3
+                or any(type(x) not in (int,float) for x in actual)
+                or any(abs(a-b)>1e-7 for a,b in zip(actual,expected_values))):
+                return None
+        if (abs(entry.get("shift_z_m",0)-item["delta_xz_m"][1])>1e-7
+            or abs(entry.get("before_clearance_m",0)-item["before_clearance_m"])>1e-6
+            or abs(entry.get("after_clearance_m",0)-item["after_clearance_m"])>1e-6):
+            return None
+        for typ in ("marker","apron"):
+            part=entry.get(typ)
+            if not isinstance(part,dict) or set(part)!={"original_line","updated_line"}:
+                return None
+            old=parsed_position(part["original_line"])
+            new=parsed_position(part["updated_line"])
+            if old is None or new is None or old==new:
+                return None
+            if typ=="marker":
+                expected_old=item["original_position_m"]
+                expected_new=item["new_position_m"]
+            else:
+                expected_old=(0,0,0)
+                expected_new=(0,0,item["delta_xz_m"][1])
+            if any(abs(a-b)>1e-7 for a,b in zip(old,expected_old)):
+                return None
+            if any(abs(a-b)>1e-7 for a,b in zip(new,expected_new)):
+                return None
+    blocks=re.split(rb"(?=^--- !u!)",source,flags=re.M)
+    owners={}
+    all_related=set()
+    for block in blocks:
+        m=re.match(rb"--- !u!1 &(\d+)\nGameObject:\n",block)
+        if m:
+            n=re.search(rb"^  m_Name: ([^\r\n]+)",block,flags=re.M)
+            if not n:continue
+            name=n[1].decode("utf-8")
+            if name in data or (name.endswith("_Apron") and name[:-6] in data):
+                if name in all_related:
+                    return None
+                all_related.add(name)
+                owners[m[1]]=name
+    if len(all_related)!=34:
+        return None
+    seen=set()
+    restored=[]
+    for block in blocks:
+        if not re.match(rb"--- !u!4 &\d+\nTransform:\n",block):
+            restored.append(block)
+            continue
+        m=re.search(rb"^  m_GameObject: \{fileID: (\d+)\}$",block,flags=re.M)
+        name=owners.get(m[1],"") if m else ""
+        if not name:
+            restored.append(block)
+            continue
+        if name in seen:
+            return None
+        seen.add(name)
+        typ="apron" if name.endswith("_Apron") else "marker"
+        row=data[name[:-6] if typ=="apron" else name][typ]
+        old=row["original_line"].encode()
+        new=row["updated_line"].encode()
+        if block.count(new)!=1 or block.count(old)!=0:
+            return None
+        restored.append(block.replace(new,old,1))
+    if seen!=all_related:
+        return None
+    return b"".join(restored)
+
+
 def preserved_or_reviewed_lod_only(root,path,expected_sha):
     source=(Path(root)/path).read_bytes()
     if hashlib.sha256(source).hexdigest()==expected_sha:return True
@@ -442,7 +563,9 @@ def preserved_or_reviewed_lod_only(root,path,expected_sha):
         if source is None:return False
         if hashlib.sha256(source).hexdigest()==expected_sha:return True
     if path == SCENE_MOBILE_LOD_PATH:
-        foundation_source=restore_reviewed_residential_foundations(root, source)
+        vehicle_source=restore_reviewed_residential_vehicle_spawns(root,source)
+        if vehicle_source is None:return False
+        foundation_source=restore_reviewed_residential_foundations(root,vehicle_source)
         if foundation_source is None:return False
         reviewed_scales=restore_reviewed_residential_scales(foundation_source)
         if reviewed_scales is None:return False
