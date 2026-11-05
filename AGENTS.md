@@ -1,3 +1,11 @@
+# CURRENT MAIN STATUS — PR #64 MERGED, REAL UNITY RENDER SCREENSHOTS BLOCKED (2026-11-05)
+
+**Authoritative current state:** Owner explicitly requested merge; [PR #64](https://github.com/Aaris-khan-don/Unity-Game-Aris/pull/64) was **successfully merged to `main`**, GitHub-reported merge commit `4c6d9ccc60eb1263297b0d7caadc696d7c998957`. Its four Git LFS native TerrainData files contain saved tree-only scaling for **1,939 real trees**, while **5,564 rocks and 5 shrubs retain original scales**. Historical statements below saying PR #64 is unmerged are obsolete.
+
+**Rendering/screenshot status:** Authentic post-merge 3D screenshots were **not produced** from this Codespace. The native Unity 6000.3.26f1 Editor on Xvfb `:12` uses non-accelerated Mesa `llvmpipe`; the URP SceneView and scratch camera render crash with `SIGSEGV / signal 11`. An OpenGL one-shot screenshot attempt (owner queue job `unity-map-forest-west-image-20261105-s02`, [run 41986025136](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41986025136)) failed without JPEG. A second attempt with software Vulkan/Lavapipe, `-batchmode -force-vulkan` (job `unity-map-forest-west-vulkan-20261105-s04`, [run 41986563098](https://github.com/Aaris-khan-don/Unity-Game-Aris/actions/runs/41986563098)) also crashed after scene import, reporting `meshVD.GetDataPtr() == NULL`. **Do not claim that game-view screenshots exist or invent rendered results.** For real screenshot verification, use a compatible GPU-backed Unity Editor/device (then inspect/compare screenshots and test Android RAM/FPS). Scratch-only attempted capture helpers remain in the owner job queue branch `ai/codespace-jobs`; not game runtime code.
+
+---
+
 # VERIFIED TREE-ONLY CORE ASSET FIX — CURRENT LATEST (2026-11-05)
 
 **Use this section as authoritative for forest tree scale.** Previous notes about “all 7,508 trees” were discovered to be incorrect: Unity's TerrainData TreeInstance container holds **1,939 real trees, 5,564 rocks, and 5 shrubs**. The earlier whole-instance pass was quarantined; it was **replaced**, not merged.
