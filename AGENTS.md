@@ -104,7 +104,7 @@ Keep the existing world/scene build and camera/Cloudflare workflow intact.
 - Public GitHub Issue #77 is an **owner-only, bounded intent** channel:
   issue comments START_DESKTOP 45 and AI {"action":"inspect",...}.
   AI JSON can only request inspect, outline, capture, move, scale,
-  resize, explicitly opted-in shared-material tint, or save.
+  resize, explicitly opted-in shared-material tint or prefab part scale, or save.
 - ALWAYS inspect target by name/location, read exact IDs and actual dimensions,
   then issue a small reversible change; inspect and photograph again.
   OUTLINE returns sampled 3D vertices + bounding corners, not full
