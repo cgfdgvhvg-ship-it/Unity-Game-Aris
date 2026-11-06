@@ -763,6 +763,16 @@ def _scratch_unity_pids():
     return sorted(found)
 
 
+def _actual_shader_issues(logtext):
+    """Keep only real shader warnings/errors, not successful import progress."""
+    patterns=(r"shader unsupported", r"shader is not supported",
+              r"all subshaders removed", r"failed to compile shader",
+              r"error in shader", r"shader error", r"shader compiler error")
+    return [line for line in logtext.splitlines()
+            if not line.startswith("[Worker")
+            and any(re.search(p, line, re.IGNORECASE) for p in patterns)]
+
+
 def unity_virtual_gui_status():
     data=unity_batch_status()
     data["scratch_unity_pids"]=_scratch_unity_pids()
@@ -812,22 +822,17 @@ def unity_virtual_gui_status():
                   "error CS","Scripts have compiler errors",
                   "script compilation failed","Script compilation failed"))]
         data["forest_editor_compiler_evidence"]=found[-12:]
-    # Foliage/URP shader triage: inspect only exact isolated Editor log,
-    # do not print arbitrary files or change any materials, cache or owner source.
-    shader_markers=("shader error", "shader unsupported", "shader is not supported",
-                    "failed to compile shader", "failed to compile", "all subshaders removed",
-                    "speedtreeurp", "error in shader", "shadergraph", "renderpipeline")
+    # Count real warnings/errors, not normal ShaderImporter progress lines.
     if log.is_file() and not log.is_symlink() and log.stat().st_size < 32*1024**2:
         with log.open("rb") as stream:
             stream.seek(max(0, log.stat().st_size-10*1024**2))
             material=stream.read().decode("utf-8","replace")
-        evidence=[line[-500:] for line in material.splitlines()
-                  if any(mark in line.lower() for mark in shader_markers)
-                  and not line.startswith("[Worker")]
+        evidence=_actual_shader_issues(material)
         data["shader_log_match_count"]=len(evidence)
         data["shader_log_evidence"]=[
             re.sub(r"(?i)(?:ghp_|ghu_|github_pat_|sk-)[A-Za-z0-9_-]{8,}",
-                   "[REDACTED]", line) for line in evidence[-32:]]
+                   "[REDACTED]", line[-500:]) for line in evidence[-32:]]
+        data["shader_log_note"]="Real shader diagnostics; routine import progress excluded"
     data["display_socket"]=Path("/tmp/.X11-unix/X12").exists()
     data["novnc_required"]=False
     return data
