@@ -71,11 +71,11 @@ def inspect_mesh(source, expected_bounds, expected_triangles=None, expected_subm
         require(isinstance(subs, list) and bool(subs), "no mesh submeshes")
         if expected_submeshes is not None:
             require(len(subs) == expected_submeshes, "authored material/submesh slots changed")
-        spans, total, max_edge = [], 0, 0.0
+        spans, total, max_edge, empty_slots = [], 0, 0.0, []
         for slot, sub in enumerate(subs):
             start, size = sub["firstByte"], sub["indexCount"]
             require(type(start) is int and type(size) is int and start >= 0 and
-                    start % 4 == 0 and size > 0 and size % 3 == 0 and
+                    start % 4 == 0 and size >= 0 and size % 3 == 0 and
                     start // 4 + size <= len(ix),
                     f"LOD submesh {slot}: invalid index range; firstByte={start} indexCount={size} totalIndices={len(ix)} topology={sub.get('topology')}")
             require(sub["topology"] == 0 and sub.get("baseVertex", 0) == 0,
@@ -83,6 +83,9 @@ def inspect_mesh(source, expected_bounds, expected_triangles=None, expected_subm
             a, b = start // 4, start // 4 + size
             require(all(b <= x or a >= y for x, y in spans),
                     f"LOD submesh {slot}: overlapping index windows")
+            if size == 0:
+                empty_slots.append(slot)
+                continue  # A reserved unused material slot is valid Unity mesh data.
             spans.append((a, b))
             ids = ix[a:b]
             require(int(ids.max()) < n,
@@ -112,7 +115,8 @@ def inspect_mesh(source, expected_bounds, expected_triangles=None, expected_subm
         require(max_edge <= float(np.linalg.norm(ref_high - ref_low)) + .16,
                 "triangle edge longer than original building diagonal")
         return {"status": "ok", "vertices": n, "triangles": total,
-                "submeshes": len(subs), "max_triangle_edge_m": round(max_edge, 3)}
+                "submeshes": len(subs), "empty_submeshes": empty_slots,
+                "max_triangle_edge_m": round(max_edge, 3)}
     except (KeyError, IndexError, TypeError, ValueError, yaml.YAMLError) as e:
         if isinstance(e, MeshHealthError):
             raise
