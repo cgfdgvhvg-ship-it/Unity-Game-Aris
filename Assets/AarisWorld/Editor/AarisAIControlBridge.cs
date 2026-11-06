@@ -392,6 +392,8 @@ namespace Aaris.MapReview.Editor
             int treeIndex;
             if (ParseTree(i.target, out terrain, out treeIndex))
             {
+                if (i.op == "size")
+                    throw new NotSupportedException("Native Terrain trees use scale for width/height; individual part sizing requires editable prefab geometry");
                 var data = terrain.terrainData;
                 var trees = data.treeInstances;
                 var tree = trees[treeIndex];
