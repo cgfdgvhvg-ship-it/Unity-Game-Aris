@@ -85,7 +85,7 @@ def publish_world_asset(comment_id, filename, suffix):
     source = STATE / filename
     if not source.is_file() or source.stat().st_size == 0:
         return None
-    if suffix == "png" and source.read_bytes()[:8] != b"\\x89PNG\\r\\n\\x1a\\n":
+    if suffix == "png" and source.read_bytes()[:8] != b"\x89PNG\r\n\x1a\n":
         raise RuntimeError("Unity object photo is not PNG")
     ensure_release()
     dest = STATE / f"ai-world-{comment_id}.{suffix}"
@@ -136,10 +136,10 @@ def process_world(comment_id, body):
             "op", "path", "matches", "meshVertices", "sampledVertices",
             "treeWidthScale", "treeHeightScale", "treePrototype") if key in reply}
         issue_comment("AI map request #" + str(comment_id) +
-                      ": executed by licensed Unity Editor.\\n" +
+                      ": executed by licensed Unity Editor.\n" +
                       "Summary: " + json.dumps(details, ensure_ascii=True)[:1100] +
-                      "\\n\\n" + "\\n".join(attachments) +
-                      "\\nEdits are saved on this runner; use MAP_SAVE to publish a Git branch.")
+                      "\n\n" + "\n".join(attachments) +
+                      "\nEdits are saved on this runner; use MAP_SAVE to publish a Git branch.")
         return "world-published"
     except (OSError, subprocess.CalledProcessError, RuntimeError) as exc:
         issue_comment(f"AI map request #{comment_id}: editor operation succeeded, but "
@@ -188,10 +188,11 @@ def process_save(comment_id):
                   "Review modified assets, LFS uploads and CI before merging.", check=False)
         if made.returncode == 0 and made.stdout.strip():
             pr_url = made.stdout.strip()
+    (STATE / "session-saved-to-git").write_text(branch + "\\n")
     issue_comment(f"MAP_SAVE #{comment_id}: saved {len(files)} changed Unity source files "
                   f"to Git branch \`{branch}\`.\\nReview: {pr_url}\\n"
                   f"Release checkpoint: {'ok' if checkpoint.returncode == 0 else 'failed'}."
-                  "\\nChanges are not automatically merged into main.")
+                  "\nChanges are not automatically merged into main.")
     return "world-git-saved"
 
 def process(comment):
