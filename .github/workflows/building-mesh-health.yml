@@ -43,11 +43,16 @@ jobs:
           python Tools/Validation/check_building_mesh_health.py --require-native --json-out /tmp/aaris-building-mesh-health.json
       - name: Calculate bounded candidate face corrections without changing native Unity files
         run: |
-          python Tools/Validation/preview_lod_face_winding.py --root . --json-out /tmp/aaris-lod-face-preview.json > /tmp/aaris-preview-stdout.json
+          python Tools/Validation/preview_lod_face_winding.py --root . --candidate-dir /tmp/aaris-lod-candidate --json-out /tmp/aaris-lod-face-preview.json > /tmp/aaris-preview-stdout.json
           python - <<'PY'
           import json
           r=json.load(open('/tmp/aaris-lod-face-preview.json'))
           assert r['status']=='candidate_only' and r['assets_examined']==34 and not r['original_repo_modified']
+          from pathlib import Path
+          candidates=list(Path('/tmp/aaris-lod-candidate').rglob('*.asset'))
+          assert len(candidates)==r['candidate_assets_changed']
+          assert not list(Path('/tmp/aaris-lod-candidate').rglob('*.meta'))
+          assert all('Geometry_LOD' in p.name for p in candidates), 'Only LOD1/LOD2 candidates are allowed'
           print('LOD face candidates:',r['candidate_assets_changed'],'faces reoriented:',r['total_faces_reoriented'],'remaining opposing:',r['remaining_opposing_faces'])
           PY
           test -z "$(git status --porcelain -- Assets/AarisWorld/Models Assets/TerrainDemoScene_URP/Scenes)"
