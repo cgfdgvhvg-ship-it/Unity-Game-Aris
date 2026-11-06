@@ -5,6 +5,9 @@ on:
     paths:
       - 'Tools/Validation/check_building_mesh_health.py'
       - 'Tools/World/tests/test_building_mesh_health.py'
+      - 'Tools/MapBuild/lod_winding.py'
+      - 'Tools/MapBuild/ground_native.py'
+      - 'Tools/World/tests/test_lod_winding.py'
       - 'AGENTS.md'
       - '.github/workflows/building-mesh-health.yml'
   workflow_dispatch:
@@ -27,8 +30,9 @@ jobs:
         run: python -m pip install numpy==2.3.5 PyYAML==6.0.3
       - name: Compile diagnostics and run corruption regression tests
         run: |
-          python -m py_compile Tools/Validation/check_building_mesh_health.py Tools/World/tests/test_building_mesh_health.py
+          python -m py_compile Tools/Validation/check_building_mesh_health.py Tools/World/tests/test_building_mesh_health.py Tools/MapBuild/lod_winding.py Tools/MapBuild/ground_native.py Tools/World/tests/test_lod_winding.py
           python -m unittest discover -s Tools/World/tests -p test_building_mesh_health.py -v
+          python -m unittest discover -s Tools/World/tests -p test_lod_winding.py -v
       - name: Read real 17-building LOD0 LOD1 LOD2 mesh bytes from Git LFS
         run: |
           git lfs install --local
