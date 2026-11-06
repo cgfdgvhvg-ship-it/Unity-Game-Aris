@@ -179,7 +179,7 @@ def parse_ai(body):
         raise ValueError("AI command must be valid JSON") from exc
     if not isinstance(command, dict):
         raise ValueError("AI request must be an object")
-    allowed = {"op", "target", "part", "value", "radius"}
+    allowed = {"op", "target", "part", "value", "radius", "scope"}
     if set(command) - allowed:
         raise ValueError("Unknown AI intent fields")
     op = command.get("op")
@@ -222,7 +222,10 @@ def parse_ai(body):
     elif "value" in command or "radius" in command:
         raise ValueError("Unexpected coordinates or radius for this operation")
     if op == "part_scale" and str(command.get("target", "")).startswith("tree:"):
-        raise ValueError("Native tree prototype changes need separate review; do not modify all trees accidentally")
+        if command.get("scope") != "prototype":
+            raise ValueError("Tree leaf/branch changes affect all trees using a prefab; scope=prototype required")
+    elif "scope" in command:
+        raise ValueError("scope is only supported for native tree prototype part_scale")
     return command
 
 def publish_ai_asset(comment_id, source, suffix):
@@ -277,17 +280,25 @@ def save_review_pr(comment_id):
                    capture_output=True, text=True)
     subprocess.run(["git", "config", "user.name", "github-actions[bot]"], check=True)
     subprocess.run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], check=True)
-    subprocess.run(["git", "add", "--", "Assets/TerrainDemoScene_URP/Scenes",
-                    "Assets/TerrainDemoScene_URP/Terrain/Data", "Assets/AarisWorld"],
-                   check=True, capture_output=True, text=True)
+    # Stage only exact edited native scene/TerrainData assets or prefab files,
+    # not every imported asset in broad Unity directories.
+    changed_worktree = subprocess.run(
+        ["git", "diff", "--name-only", "-z", "--", "Assets"],
+        check=True, capture_output=True).stdout
+    candidates = [os.fsdecode(n) for n in changed_worktree.split(b"\0") if n]
+    def native_asset(path):
+        return (path == "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity"
+                or (path.startswith("Assets/TerrainDemoScene_URP/Terrain/Data/")
+                    and path.endswith(".asset"))
+                or (path.startswith("Assets/") and path.endswith(".prefab")))
+    selected = [p for p in candidates if native_asset(p)]
+    if not selected:
+        return "No eligible saved Unity scene/TerrainData/prefab changes to publish."
+    subprocess.run(["git", "add", "--", *selected], check=True, capture_output=True, text=True)
     changed = subprocess.run(["git", "diff", "--cached", "--name-only", "-z"],
                              check=True, capture_output=True).stdout
-    if not changed:
-        return "No saved Unity source changes to publish. Inspect or edit a target first."
     files = [os.fsdecode(n) for n in changed.split(b"\0") if n]
-    if any(not f.startswith(("Assets/TerrainDemoScene_URP/Scenes/",
-                             "Assets/TerrainDemoScene_URP/Terrain/Data/",
-                             "Assets/AarisWorld/")) for f in files):
+    if not files or any(not native_asset(p) for p in files):
         raise RuntimeError("Unexpected source path staged; refusing automatic publish")
     current_branch = subprocess.run(["git", "branch", "--show-current"], check=True,
                                     capture_output=True, text=True).stdout.strip()
@@ -406,11 +417,13 @@ def main():
         assert parse("CAMERA -420 22 -210 0 20 22")["distance"] == 22
         good = parse_ai('AI {"op":"outline","target":"tree:0:123"}')
         assert good["target"] == "tree:0:123"
+        assert parse_ai('AI {"op":"part_scale","target":"tree:0:123","part":"Leaves","value":[1.1,1,1.1],"scope":"prototype"}')["scope"] == "prototype"
         assert parse_ai('AI {"op":"nearby","value":[420,0,-520],"radius":35}')["radius"] == 35
         for bad in ('AI {"op":"shell","target":"foo"}',
                     'AI {"op":"move","target":"Tree","value":[1000,0,0]}',
                     'AI {"op":"scale","target":"tree:0:9","value":[1,1,2]}',
                     'AI {"op":"part_scale","target":"X","part":"../private","value":[1,1,1]}',
+                    'AI {"op":"part_scale","target":"tree:0:3","part":"Leaves","value":[1,1,1]}',
                     'AI {"op":"save","command":"rm"}'):
             try: parse_ai(bad)
             except ValueError: pass
