@@ -12,12 +12,7 @@ namespace Aaris.MapReview
         [SerializeField] private Collider[] obstacles;
         [SerializeField] private float activationDistance = 55;
         [SerializeField] private float cellSize = 250;
-        // Cache the original collider shapes, not Collider.bounds (empty when disabled).
-        // The world envelopes and grid may be refreshed after explicit transform edits.
-        private Bounds[] worldBounds, localBounds;
-        private Matrix4x4[] indexedMatrices;
-        private bool[] savedEnabled, indexed;
-        private bool restoreProximityStateOnEnable;
+        private Bounds[] worldBounds;
         private readonly Dictionary<long, List<int>> cells = new Dictionary<long, List<int>>();
         private List<int> active, nextActive;
         private int[] visited, wanted;
@@ -29,10 +24,6 @@ namespace Aaris.MapReview
         {
             if (target == null || obstacles == null) { enabled = false; return; }
             worldBounds = new Bounds[obstacles.Length];
-            localBounds = new Bounds[obstacles.Length];
-            indexedMatrices = new Matrix4x4[obstacles.Length];
-            savedEnabled = new bool[obstacles.Length];
-            indexed = new bool[obstacles.Length];
             visited = new int[obstacles.Length]; wanted = new int[obstacles.Length];
             active = new List<int>(obstacles.Length); nextActive = new List<int>(obstacles.Length);
             cellSize = Mathf.Max(32, cellSize);
@@ -40,122 +31,51 @@ namespace Aaris.MapReview
             {
                 Collider c = obstacles[i];
                 if (c == null) continue;
-                savedEnabled[i] = c.enabled;
-                // Never gate the native terrain or the player, even if misregistered.
-                if (c is TerrainCollider || c is CharacterController)
-                {
-                    Debug.LogWarning("Aaris proximity registry skips terrain/player collider " + c.name);
-                    continue;
-                }
-                // Some building MeshColliders are deliberately authored disabled as
-                // proximity gates: still index them, then enable on approach. Their
-                // geometric bounds must not be read from the disabled Collider.bounds.
-                // Resolve the saved local shape without waking its distant physics.
+                // Collider.bounds is empty while disabled. Read only local bounds metadata;
+                // never temporarily enable/cook every distant building just to cache bounds.
                 Bounds local;
                 if (c is MeshCollider mc && mc.sharedMesh != null) local = mc.sharedMesh.bounds;
                 else if (c is BoxCollider box) local = new Bounds(box.center, box.size);
-                else if (c is SphereCollider sphere)
-                    local = new Bounds(sphere.center, Vector3.one * (sphere.radius * 2f));
-                else if (c is CapsuleCollider capsule)
-                {
-                    float width = capsule.radius * 2f;
-                    Vector3 size = new Vector3(width, width, width);
-                    size[capsule.direction] = Mathf.Max(capsule.height, width);
-                    local = new Bounds(capsule.center, size);
-                }
-                else
-                {
-                    // Unrecognized collider: preserve its current active behavior rather
-                    // than silently disabling an obstacle that we cannot spatially index.
-                    Debug.LogWarning("Aaris collider registry cannot index " + c.GetType().Name
-                        + " on " + c.name + "; retaining its saved enabled state.");
-                    continue;
-                }
-                localBounds[i] = local;
-                indexedMatrices[i] = c.transform.localToWorldMatrix;
-                worldBounds[i] = TransformBounds(local, indexedMatrices[i]);
-                AddToCells(i, worldBounds[i]);
-                indexed[i] = true;
-                // No unnecessary PhysX state change for an already disabled collider.
-                if (c.enabled) c.enabled = false;
+                else { c.enabled = true; worldBounds[i] = c.bounds; continue; }
+                Matrix4x4 m = c.transform.localToWorldMatrix;
+                Vector3 e = local.extents;
+                Vector3 x = m.MultiplyVector(new Vector3(e.x, 0, 0));
+                Vector3 y = m.MultiplyVector(new Vector3(0, e.y, 0));
+                Vector3 z = m.MultiplyVector(new Vector3(0, 0, e.z));
+                Vector3 worldSize = 2 * new Vector3(Mathf.Abs(x.x) + Mathf.Abs(y.x) + Mathf.Abs(z.x),
+                    Mathf.Abs(x.y) + Mathf.Abs(y.y) + Mathf.Abs(z.y), Mathf.Abs(x.z) + Mathf.Abs(y.z) + Mathf.Abs(z.z));
+                worldBounds[i] = new Bounds(m.MultiplyPoint3x4(local.center), worldSize);
+                Bounds bounds = worldBounds[i];
+                // An object belongs to EVERY cell touched by its bounds, not just its pivot.
+                // This keeps long piers and buildings collidable across cell boundaries.
+                for (int xCell = Cell(bounds.min.x); xCell <= Cell(bounds.max.x); xCell++)
+                    for (int zCell = Cell(bounds.min.z); zCell <= Cell(bounds.max.z); zCell++)
+                    {
+                        long key = Key(xCell, zCell);
+                        if (!cells.TryGetValue(key, out List<int> entries))
+                        { entries = new List<int>(); cells.Add(key, entries); }
+                        entries.Add(i);
+                    }
+                c.enabled = false;
             }
             RefreshNow();
         }
-        private static Bounds TransformBounds(Bounds local, Matrix4x4 m)
-        {
-            Vector3 e = local.extents;
-            Vector3 x = m.MultiplyVector(new Vector3(e.x, 0, 0));
-            Vector3 y = m.MultiplyVector(new Vector3(0, e.y, 0));
-            Vector3 z = m.MultiplyVector(new Vector3(0, 0, e.z));
-            Vector3 worldSize = 2 * new Vector3(Mathf.Abs(x.x) + Mathf.Abs(y.x) + Mathf.Abs(z.x),
-                Mathf.Abs(x.y) + Mathf.Abs(y.y) + Mathf.Abs(z.y), Mathf.Abs(x.z) + Mathf.Abs(y.z) + Mathf.Abs(z.z));
-            return new Bounds(m.MultiplyPoint3x4(local.center), worldSize);
-        }
-
-        private void AddToCells(int i, Bounds bounds)
-        {
-            // Register every overlapped cell; long piers and rotated buildings can cross many.
-            for (int xCell = Cell(bounds.min.x); xCell <= Cell(bounds.max.x); xCell++)
-                for (int zCell = Cell(bounds.min.z); zCell <= Cell(bounds.max.z); zCell++)
-                {
-                    long key = Key(xCell, zCell);
-                    if (!cells.TryGetValue(key, out List<int> entries))
-                    { entries = new List<int>(); cells.Add(key, entries); }
-                    entries.Add(i);
-                }
-        }
-
-        // This O(N) check runs only for explicit RefreshNow() calls, never during
-        // ordinary 0.25-second player proximity polling. Rebuild once if any
-        // indexed obstacle moved, rotated, scaled or inherited a parent transform.
-        // Keep the authored disabled-collider geometry usable without enabling it.
-        private void ReindexMovedObstacles()
-        {
-            bool changed = false;
-            for (int i = 0; i < obstacles.Length; i++)
-            {
-                if (!indexed[i] || obstacles[i] == null) continue;
-                if (indexedMatrices[i] != obstacles[i].transform.localToWorldMatrix)
-                {
-                    changed = true;
-                    break;
-                }
-            }
-            if (!changed) return;
-            cells.Clear();
-            for (int i = 0; i < obstacles.Length; i++)
-            {
-                if (!indexed[i] || obstacles[i] == null) continue;
-                Matrix4x4 m = obstacles[i].transform.localToWorldMatrix;
-                indexedMatrices[i] = m;
-                worldBounds[i] = TransformBounds(localBounds[i], m);
-                AddToCells(i, worldBounds[i]);
-            }
-        }
-
         private int Cell(float value) => Mathf.FloorToInt(value / cellSize);
         private static long Key(int x, int z) => ((long)x << 32) ^ (uint)z;
         private void Update()
         {
             if (target == null) return;
-            if ((target.position - lastPosition).sqrMagnitude >= 4 || Time.unscaledTime >= nextCheck) RefreshNow(false);
+            if ((target.position - lastPosition).sqrMagnitude >= 4 || Time.unscaledTime >= nextCheck) RefreshNow();
         }
-        // Call explicitly after teleports or moved colliders to ensure immediate physics-query accuracy.
-        public void RefreshNow() { RefreshNow(true); }
-
-        private void RefreshNow(bool forceSync)
+        public void RefreshNow()
         {
             if (target == null || worldBounds == null) return;
-            // Force refresh is also an explicit invalidation point for edited
-            // obstacle transforms. Syncing PhysX alone would leave cells stale.
-            if (forceSync) ReindexMovedObstacles();
             lastPosition = target.position;
             nextCheck = Time.unscaledTime + .25f;
             float limit = activationDistance * activationDistance;
             if (query == int.MaxValue) { Array.Clear(visited, 0, visited.Length); Array.Clear(wanted, 0, wanted.Length); query = 0; }
             query++;
             nextActive.Clear();
-            bool changedColliders = false;
             for (int xCell = Cell(lastPosition.x - activationDistance); xCell <= Cell(lastPosition.x + activationDistance); xCell++)
                 for (int zCell = Cell(lastPosition.z - activationDistance); zCell <= Cell(lastPosition.z + activationDistance); zCell++)
             {
@@ -171,42 +91,20 @@ namespace Aaris.MapReview
                     float dx = q.x - lastPosition.x, dz = q.z - lastPosition.z;
                     if (dx * dx + dz * dz > limit) continue;
                     wanted[i] = query;
-                    if (!c.enabled) { c.enabled = true; changedColliders = true; }
+                    if (!c.enabled) c.enabled = true;
                     nextActive.Add(i);
                 }
             }
             foreach (int i in active)
-                if (wanted[i] != query && obstacles[i] != null && obstacles[i].enabled)
-                {
-                    obstacles[i].enabled = false;
-                    changedColliders = true;
-                }
+                if (wanted[i] != query && obstacles[i] != null) obstacles[i].enabled = false;
             List<int> swap = active; active = nextActive; nextActive = swap;
-            // Only synchronize after a collision window change, not every idle 0.25 s.
-            if (changedColliders || forceSync) Physics.SyncTransforms();
+            // A teleported CharacterController/camera must see the newly enabled shapes immediately.
+            Physics.SyncTransforms();
         }
-        private void OnEnable()
-        {
-            // First OnEnable has no restored state; later calls rebuild the window.
-            if (!restoreProximityStateOnEnable || indexed == null || obstacles == null) return;
-            restoreProximityStateOnEnable = false;
-            for (int i = 0; i < obstacles.Length; i++)
-                if (indexed[i] && obstacles[i] != null && obstacles[i].enabled)
-                    obstacles[i].enabled = false;
-            active.Clear();
-            nextActive.Clear();
-            RefreshNow();
-        }
-
         private void OnDisable()
         {
-            // Previously every registered collider was force-enabled, including colliders
-            // deliberately disabled in the authored scene or prefab.
-            if (obstacles == null || savedEnabled == null) return;
-            for (int i = 0; i < obstacles.Length; i++)
-                if (obstacles[i] != null && obstacles[i].enabled != savedEnabled[i])
-                    obstacles[i].enabled = savedEnabled[i];
-            restoreProximityStateOnEnable = true;
+            if (obstacles == null) return;
+            foreach (Collider c in obstacles) if (c != null) c.enabled = true;
         }
     }
 }

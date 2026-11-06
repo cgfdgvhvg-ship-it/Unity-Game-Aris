@@ -24,10 +24,10 @@ Material:
     - _SunSize: 0.035
     - _SunSizeConvergence: 5
     - _AtmosphereThickness: 1
-    - _Exposure: 0.88
+    - _Exposure: 1.15
     m_Colors:
-    - _SkyTint: {r: 0.44, g: 0.55, b: 0.7, a: 1.0}
-    - _GroundColor: {r: 0.3, g: 0.36, b: 0.44, a: 1.0}
+    - _SkyTint: {r: 0.5, g: 0.5, b: 0.5, a: 1.0}
+    - _GroundColor: {r: 0.45, g: 0.47, b: 0.45, a: 1.0}
     m_Ints: []
   m_BuildTextureStacks: []
   m_ValidKeywords:

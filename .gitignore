@@ -22,5 +22,3 @@ Tools/MapBuild/original_scene.yaml
 Tools/MapBuild/original_terrain.yaml
 __pycache__/
 Tools/MapBuild/.model-cache/
-.venv/
-*.pyc

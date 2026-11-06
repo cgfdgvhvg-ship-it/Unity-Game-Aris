@@ -7,7 +7,6 @@ from types import SimpleNamespace
 import numpy as np
 import yaml
 from native_assets import mesh_asset
-from lod_winding import candidate_winding
 
 def simplify(raw,level):
     """Material/normal/UV aware clustering for distant LODs; LOD0 is untouched."""
@@ -31,12 +30,7 @@ def simplify(raw,level):
             q=chosen[tri,:3];tri=tri[np.linalg.norm(np.cross(q[:,1]-q[:,0],q[:,2]-q[:,0]),axis=1)>1e-7]
         if not len(tri):chosen=v[old[0]];tri=np.array([[0,1,2]])
         # Keep the original material slots and a valid triangle for tiny authored details.
-        active,remap=np.unique(tri,return_inverse=True);chosen=chosen[active];tri=remap.reshape(-1,3)
-        # Keep the saved LOD front faces consistent with the source vertex normals.
-        # Repairs only proposed index ordering at authoring time; does not touch UV,
-        # tangents, original LOD0, materials or any existing native LFS core files.
-        tri,_quality=candidate_winding(chosen,tri)
-        tri=tri.reshape(-1)
+        active,remap=np.unique(tri,return_inverse=True);chosen=chosen[active];tri=remap.reshape(-1)
         positions.extend(chosen[:,:3]);normals.extend(chosen[:,3:6]);tangents.extend(chosen[:,6:10]);uvs.extend(chosen[:,10:12])
         indices.extend(tri+offset);groups.append((first,len(tri)));first+=len(tri);offset+=len(chosen)
     return positions,normals,uvs,indices,tangents,groups

@@ -43,7 +43,7 @@ namespace Aaris.MapReview
             previousSimulateMouse = Input.simulateMouseWithTouches;
             Input.simulateMouseWithTouches = false;
             inputConfigured = true;
-            // The mobile runtime owns the startup cap; only the player FPS button changes it.
+            Application.targetFrameRate = 60;
             if (nearbyColliders == null) nearbyColliders = FindFirstObjectByType<AarisNearbyColliders>();
             spawn = transform.position;
             spawnRotation = transform.rotation;
@@ -164,15 +164,10 @@ namespace Aaris.MapReview
             Vector3 wish = Quaternion.Euler(0f, yaw, 0f) * new Vector3(moveInput.x, 0f, moveInput.y);
             wish = Vector3.ClampMagnitude(wish, 1f);
             float speed = running || Input.GetKey(KeyCode.LeftShift) ? runSpeed : walkSpeed;
-            // Zero horizontal intent never needs a terrain/bridge support query.
-            // Keep gravity, jumps and CharacterController.Move active while idle.
-            if (wish.sqrMagnitude > 0f)
-            {
-                Vector3 candidate = transform.position + wish * (speed * dt);
-                // Keep all shoreline and solid-support checks for any real movement.
-                if (Mathf.Abs(candidate.x) > 975f || Mathf.Abs(candidate.z) > 975f || !SafeFooting(candidate))
-                    wish = Vector3.zero;
-            }
+            Vector3 candidate = transform.position + wish * (speed * dt);
+            // Review mode stops at the shoreline; swimming is a separate gameplay system.
+            if (Mathf.Abs(candidate.x) > 975f || Mathf.Abs(candidate.z) > 975f || !SafeFooting(candidate))
+                wish = Vector3.zero;
             if (wish.sqrMagnitude > 0.001f)
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(wish), 1f - Mathf.Exp(-14f * dt));
             verticalVelocity = Mathf.Max(verticalVelocity - gravity * dt, -40f);
@@ -217,41 +212,16 @@ namespace Aaris.MapReview
             return support.point.y >= seaLevel + 0.35f
                 && support.normal.y >= Mathf.Cos(controller.slopeLimit * Mathf.Deg2Rad);
         }
-        // Full near-plane frustum corners must stay clear during phone swipe/orbit.
-        // A fixed 0.18 m sphere misses the outer near-plane corners at 60°/16:9,
-        // so the old camera could clip into roofs and produce black/white flashes.
-        // Derive collision clearance from the ACTUAL saved camera optics instead.
-        private float CameraHullRadius()
-        {
-            float near = Mathf.Max(0.02f, followCamera.nearClipPlane);
-            float halfHeight = Mathf.Tan(Mathf.Clamp(followCamera.fieldOfView, 5f, 175f)
-                * 0.5f * Mathf.Deg2Rad) * near;
-            float halfWidth = halfHeight * Mathf.Max(0.1f, followCamera.aspect);
-            return Mathf.Clamp(Mathf.Sqrt(near * near + halfWidth * halfWidth
-                + halfHeight * halfHeight) + 0.07f, 0.24f, 0.8f);
-        }
-
         private Vector3 ObstructionSafe(Vector3 pivot, Vector3 target)
         {
             Vector3 delta = target - pivot;
             float length = delta.magnitude;
             if (length < 0.01f) return target;
-            Vector3 direction = delta / length;
-            float radius = CameraHullRadius();
-            // Closest-hit physics query is deterministic regardless of collider order.
-            float allowed = Physics.SphereCast(pivot, radius, direction, out RaycastHit hit,
+            // Closest-hit query avoids a full, unordered hit buffer in dense forest.
+            float allowed = Physics.SphereCast(pivot, 0.18f, delta / length, out RaycastHit hit,
                 length, WorldMask, QueryTriggerInteraction.Ignore)
-                ? Mathf.Min(length, Mathf.Max(0.10f, hit.distance - 0.09f)) : length;
-            Vector3 cameraPoint = pivot + direction * allowed;
-            // SphereCast does not report a collider already overlapping its start;
-            // guard the destination independently, especially after fast touch swipes.
-            // Retract towards the player instead of moving the camera THROUGH a wall.
-            for (int step = 0; step < 16 && Physics.CheckSphere(cameraPoint, radius,
-                 WorldMask, QueryTriggerInteraction.Ignore); step++)
-            {
-                cameraPoint = Vector3.MoveTowards(cameraPoint, pivot, 0.16f);
-            }
-            return cameraPoint;
+                ? Mathf.Min(length, Mathf.Max(0.12f, hit.distance - 0.08f)) : length;
+            return pivot + delta / length * allowed;
         }
         private void PlaceCamera(bool instant)
         {

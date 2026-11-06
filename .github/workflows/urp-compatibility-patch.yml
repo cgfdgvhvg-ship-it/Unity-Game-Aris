@@ -37,9 +37,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          test "$(gh api repos/sundamunda289-art/Unity-Game-Aris --jq .private)" = true
-          gh release upload aaris-map-source-20261103-1d5e5f6 /tmp/Aaris_URP_Compatibility_Fix.zip --repo sundamunda289-art/Unity-Game-Aris --clobber
-          gh release view aaris-map-source-20261103-1d5e5f6 --repo sundamunda289-art/Unity-Game-Aris --json body --jq .body > /tmp/aaris-source-notes.md
+          test "$(gh api repos/Aaris-khan-don/Unity-Game-Aris --jq .private)" = true
+          gh release upload aaris-map-source-20261103-1d5e5f6 /tmp/Aaris_URP_Compatibility_Fix.zip --repo Aaris-khan-don/Unity-Game-Aris --clobber
+          gh release view aaris-map-source-20261103-1d5e5f6 --repo Aaris-khan-don/Unity-Game-Aris --json body --jq .body > /tmp/aaris-source-notes.md
           python - <<'PY'
           from pathlib import Path
           p=Path('/tmp/aaris-source-notes.md');s=p.read_text()
@@ -48,4 +48,4 @@ jobs:
           s+='\n'+marker+'\n\nAlso download `Aaris_URP_Compatibility_Fix.zip` and extract it into the same parent folder after all six source ZIPs, replacing the matching files. This small patch adds the committed compatibility define and prevents the map generator from removing it. No map assets need to be downloaded again.\n'
           p.write_text(s)
           PY
-          gh release edit aaris-map-source-20261103-1d5e5f6 --repo sundamunda289-art/Unity-Game-Aris --notes-file /tmp/aaris-source-notes.md
+          gh release edit aaris-map-source-20261103-1d5e5f6 --repo Aaris-khan-don/Unity-Game-Aris --notes-file /tmp/aaris-source-notes.md

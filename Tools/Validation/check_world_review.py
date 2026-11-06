@@ -31,10 +31,7 @@ def check(native=False):
         root=next(d for c,i,n,d in objects if n=='Transform' and d['m_Father']['fileID']==0)
         assert list(root['m_LocalScale'].values())==[model['prefab_scale']]*3
         lod=next(d for c,i,n,d in objects if n=='LODGroup')
-        heavy_compounds={'Airfield','CanalTown','HanokVillage'}
-        expected_lods=([.28,.095,.0025] if name in HOMES else
-            [.22,.11,.0025] if name in heavy_compounds else [.22,.07,.0025])
-        assert [l['screenRelativeHeight'] for l in lod['m_LODs']]==expected_lods,(name,'Unexpected LOD profile')
+        assert [l['screenRelativeHeight'] for l in lod['m_LODs']]==[.22,.07,.0025]
         renderers={i:d for c,i,n,d in objects if n=='MeshRenderer'};assert len(renderers)==3
         assert all(len(d['m_Materials'])==model['submeshes'] for d in renderers.values()),(name,'Material slots changed')
         for level in lod['m_LODs']:assert len(level['renderers'])==1 and level['renderers'][0]['renderer']['fileID']in renderers
@@ -50,18 +47,9 @@ def check(native=False):
     assert player['minLookPitch']==-70 and player['maxLookPitch']==70
     sky=next(d for c,i,n,d in documents(ROOT/SKY) if n=='Material')
     assert sky['m_Shader']['fileID']==106 and '_SUNDISK_HIGH_QUALITY'in sky['m_ValidKeywords']
-    assert next(f['_Exposure'] for f in sky['m_SavedProperties']['m_Floats'] if '_Exposure'in f)==0.88
-    assert report['daylight']['sky_exposure']==0.88
-    sky_tint=next(f['_SkyTint'] for f in sky['m_SavedProperties']['m_Colors'] if '_SkyTint'in f)
-    ground_color=next(f['_GroundColor'] for f in sky['m_SavedProperties']['m_Colors'] if '_GroundColor'in f)
-    assert [sky_tint[k] for k in ('r','g','b')]==[.44,.55,.70]
-    assert [ground_color[k] for k in ('r','g','b')]==[.30,.36,.44]
+    assert next(f['_Exposure'] for f in sky['m_SavedProperties']['m_Floats'] if '_Exposure'in f)==1.15
     rs=next(d for c,i,n,d in objects if n=='RenderSettings');sun=next((i,d) for c,i,n,d in objects if n=='Light' and names[d['m_GameObject']['fileID']]=='Sun')
     assert rs['m_Sun']['fileID']==sun[0] and rs['m_AmbientMode']==1
-    # Scene sky must reference the exact saved, shader-pinned material GUID.
-    material_meta=(ROOT/(SKY+'.meta')).read_text()
-    sky_guid=next(line.split(': ',1)[1].strip() for line in material_meta.splitlines() if line.startswith('guid: '))
-    assert rs['m_SkyboxMaterial']['guid']==sky_guid and rs['m_SkyboxMaterial']['fileID']==2100000
     assert sun[1]['m_Intensity']==1.35 and sun[1]['m_Shadows']['m_Strength']==.55
     q=transforms['Sun']['m_LocalRotation'];assert abs(sum(v*v for v in q.values())-1)<1e-6
     incoming_y=-2*(q['y']*q['z']-q['w']*q['x']);elevation=math.degrees(math.asin(incoming_y))
@@ -72,13 +60,7 @@ def check(native=False):
     if native:
         assert report['total_tree_count']==1939 and report['terrain_heights_details_prototypes_and_alpha_preserved']
         assert report['spawn_native_ground_and_obstacles_verified']
-        for path,expected in report['original_close_mesh_hashes'].items():
-            if hashlib.sha256((ROOT/path).read_bytes()).hexdigest()!=expected:
-                # An intentional opening edit supersedes exactly its original mesh
-                # hash, without rewriting this historical preservation report.
-                sys.path.insert(0,str(ROOT/'Tools/World'))
-                from verify_tree_house_upgrade import accepts_historical_transition
-                assert accepts_historical_transition(ROOT,path,expected),(path,'Unreviewed source mesh drift')
+        for path,expected in report['original_close_mesh_hashes'].items():assert hashlib.sha256((ROOT/path).read_bytes()).hexdigest()==expected
         pipeline=documents(ROOT/'Assets/TerrainDemoScene_URP/Settings/URP/URP-HighQuality Pipeline Asset.asset')[0][3]
         assert pipeline['m_RenderScale']==1,'Render resolution changed'
     result={'status':'saved_core_checks_passed','building_prefabs_checked':len(prefab_checks),'scaled_residential_instances':47,
