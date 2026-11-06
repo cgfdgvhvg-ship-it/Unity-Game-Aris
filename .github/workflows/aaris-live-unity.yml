@@ -420,6 +420,43 @@ jobs:
             kill "$(cat /tmp/aaris-checkpoint.pid)" 2>/dev/null || true
           fi
           python3 Tools/CI/session_store.py save project
+      - name: Write secret-free runner stage diagnostic
+        if: always()
+        run: |
+          python3 - <<'DIAG'
+          import json, os, shutil, subprocess
+          from pathlib import Path
+          folder = Path('ci-live-control')
+          folder.mkdir(exist_ok=True)
+          try:
+              state = json.loads((folder/'license-status.json').read_text()).get('state','unknown')
+          except (OSError, ValueError):
+              state = 'not_started'
+          docker = subprocess.run(['docker','inspect','--format','{{.State.Running}}',
+                                   'aaris-unity-live'], capture_output=True, text=True, check=False)
+          total, used, free = shutil.disk_usage('.')
+          details = {
+              'workflow_run_id': os.getenv('GITHUB_RUN_ID', ''),
+              'session_minutes': os.getenv('SESSION_MINUTES', ''),
+              'unity_state': state if isinstance(state,str) and state.replace('_','').isalnum() else 'unknown',
+              'unity_container_running': docker.returncode == 0 and docker.stdout.strip() == 'true',
+              'vnc_startup_screenshot': (folder/'desktop-startup.png').is_file(),
+              'real_camera_photo_exists': (folder/'latest.png').is_file(),
+              'ai_result_exists': (folder/'ai-result.json').is_file(),
+              'disk_free_gib': round(free / 1024**3, 2),
+              'notice': 'Sanitized report. No license, OAuth URLs, tokens, or private Unity logs.'
+          }
+          (folder/'diagnostic.json').write_text(json.dumps(details,indent=2)+'\n')
+          print(json.dumps(details, indent=2))
+          DIAG
+      - name: Upload secret-free debug report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-runner-debug-${{ github.run_id }}
+          path: ci-live-control/diagnostic.json
+          retention-days: 14
+          if-no-files-found: warn
       - name: Upload last available Unity camera photo only
         if: always()
         uses: actions/upload-artifact@v4
