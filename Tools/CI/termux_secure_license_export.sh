@@ -8,6 +8,7 @@ ARTIFACT="aaris-unity-license-encrypted"
 DOWNLOADS="$HOME/storage/downloads"
 KEY_DIR="$HOME/.config/aaris-license"
 KEY="$KEY_DIR/identity.txt"
+PRIVATE_ULF="$KEY_DIR/Unity_lic.ulf"
 ULF="$DOWNLOADS/Unity_lic.ulf"
 
 echo "Aaris secure Unity license export via GitHub Actions"
@@ -73,13 +74,14 @@ test -s "$TEMP/Unity_lic.ulf.age" || {
   exit 1
 }
 umask 077
-if ! age --decrypt -i "$KEY" -o "$ULF" "$TEMP/Unity_lic.ulf.age"; then
+if ! age --decrypt -i "$KEY" -o "$PRIVATE_ULF" "$TEMP/Unity_lic.ulf.age"; then
   echo "Could not decrypt the Unity license file." >&2
-  rm -f "$ULF"
+  rm -f "$PRIVATE_ULF"
   exit 1
 fi
+chmod 600 "$PRIVATE_ULF"
 
-if ! python3 - "$ULF" <<'PY'
+if ! python3 - "$PRIVATE_ULF" <<'PY'
 import pathlib, sys, xml.etree.ElementTree as ET
 data=pathlib.Path(sys.argv[1]).read_bytes()
 if not 200<=len(data)<=180000:
@@ -95,12 +97,14 @@ print("ULF XML format verified (license content hidden).")
 PY
 then
   echo "Unrecognized license format. GitHub Secret NOT modified." >&2
-  rm -f "$ULF"
+  rm -f "$PRIVATE_ULF"
   exit 1
 fi
 
-chmod 600 "$ULF"
-gh secret set UNITY_LICENSE -R "$REPO" < "$ULF"
+gh secret set UNITY_LICENSE -R "$REPO" < "$PRIVATE_ULF"
+# Android shared storage might not support Unix chmod. Save a requested copy
+# only after the GitHub Secret has been successfully stored.
+cp "$PRIVATE_ULF" "$ULF"
 rm -f "$TEMP/Unity_lic.ulf.age"
 rmdir "$TEMP" 2>/dev/null || true
 echo "Saved local ULF to Android Downloads and uploaded it as GitHub UNITY_LICENSE Secret."
