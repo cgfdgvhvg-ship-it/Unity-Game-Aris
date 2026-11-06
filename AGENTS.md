@@ -6,7 +6,18 @@ Current owner/repo: `sundamunda289-art/Unity-Game-Aris`; existing Codespace: `re
 
 **Verified direct SSH test:** [run 42157472720](https://github.com/sundamunda289-art/Unity-Game-Aris/actions/runs/42157472720) returned `ok:true`, `exit_code:0` and native Codespace diagnostics, including ~10.76 GiB free and protected dirty worktree. Unity Editor was not installed at that check. The old `musical-carnival-...` Codespace and old owner's HTTP 402 reports below are historical and do not reflect the Sunda Codespace. Do not reset/clean or overwrite its dirty Unity LFS assets.
 
+## SUNDA TMP UNITY EDITOR + VERIFIED LFS SAVE — 2026-11-06
+
+**Active machine confirmed by [readback](https://github.com/sundamunda289-art/Unity-Game-Aris/actions/runs/42161483406):** `standardLinux32gb`, 4 CPU cores, 16 GiB RAM, 32 GiB persistent volume. Separate `/tmp` has 117.556 GiB total, 108.844 GiB free before Editor installation (see verified runtime mount job `sunda-upgraded-tmp-check-20261106-c06`). It is EPHEMERAL and cleared on Codespace stop/restart.
+
+**Official Unity 6000.3.26f1 is installed in this running Codespace:** `/tmp/aaris-unity-editor/6000.3.26f1/Editor/Unity`. Native `-version` returned `6000.3.26f1` (successful [Actions run](https://github.com/sundamunda289-art/Unity-Game-Aris/actions/runs/42161922440)). Install source and exact-version guard: `ai/codespace-jobs/Tools/World/unity_tmp_editor_installer.py`; supported operations `unity_tmp_install_start` and `unity_tmp_install_status` on the EXISTING owner-authorized Actions SSH queue. If Codespace stopped and /tmp was lost, the Editor must be reinstalled or restored from verified external cache; do not claim it survives automatically.
+
+**Map copy/import:** the old `unity_session_recover` operation was invoked successfully and reported `scratch_reimport_started`, launching worker PID 3760 to copy the original Unity project into `/tmp/aaris-unity-batch/project`; this is NOT yet proof that the scene loaded or Unity license is active. Read `unity_recovery_diagnostics` and `unity_virtual_gui_status`; require real `scene-readback.json`, Unity GUI PID, loaded 4 Terrain components and a successful native inspect before editing.
+
+**Native LFS save contract:** after loading and verifying the genuine scratch scene, run `unity_sync_watch_start` to arm the existing batching journal, perform reviewed `unity_virtual_live` edits, inspect native changes and readback, then queue ONE `unity_sync_save_session` job with commit message prefix **`Unity Batch Save:`**. The separate `unity-batched-github-upload.yml` Actions writer uses an ephemeral scoped `GITHUB_TOKEN` to push LFS to a review branch and verify SHA. Codespace direct git credentials are NOT available; `unity_sync_auth` correctly reports `git_credentials_unavailable`. No sync completion may be claimed without the writer's remote receipt. Git stores historical versions; NEVER prune/reset the prior LFS blobs or overwrite the owner's 11 dirty source Assets. Before stopping, force a verified Save Session for all current reviewed edits. Never leak GitHub, Cloudflare, Unity or VNC credentials to issue/job/log/source.
+
 ---
+
 
 
 **Authoritative agent entrypoint:** [Docs/AI_MASTER_CONTROL_AND_AUTH.md](Docs/AI_MASTER_CONTROL_AND_AUTH.md). This is the current GitHub/Codespace/Unity/LFS operating contract, overriding historical terminal guidance below (especially the old Issue #37 bridge). Owner/repo: `sundamunda289-art/Unity-Game-Aris`. The default code source is `main`; the dedicated, owner-only command queue is a **different** branch, `ai/codespace-jobs`.
