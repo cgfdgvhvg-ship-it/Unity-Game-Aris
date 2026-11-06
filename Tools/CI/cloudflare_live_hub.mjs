@@ -11,7 +11,7 @@ const AI_PHOTO_RE=/https:\/\/github\.com\/sundamunda289-art\/Unity-Game-Aris\/re
 const TUNNEL_RE=/^AARIS_LIVE_DESKTOP run_id=(\d+) session_minutes=(\d+) url=(https:\/\/[a-z0-9-]+\.trycloudflare\.com)$/;
 function json(data,status=200){return new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json","Cache-Control":"public, max-age=15","X-Content-Type-Options":"nosniff"}})}
 async function snapshots(){
-  const since=new Date(Date.now()-3*3600000).toISOString();
+  const since=new Date(Date.now()-8*3600000).toISOString();
   const uri="https://api.github.com/repos/"+REPO+"/issues/"+ISSUE+"/comments?per_page=100&since="+encodeURIComponent(since);
   const res=await fetch(uri,{headers:{Accept:"application/vnd.github+json","User-Agent":"aaris-unity-free-hub"},cf:{cacheEverything:true,cacheTtl:45}});
   if(!res.ok)throw Error("GitHub API unavailable");
@@ -20,7 +20,7 @@ async function snapshots(){
     const body=String(item.body||"").trim();
     const tunnel=body.match(TUNNEL_RE);
     if(tunnel&&item.user?.login==="github-actions[bot]"){
-      const mins=Math.min(90,Number(tunnel[2])),at=Date.parse(item.created_at);
+      const mins=Math.min(300,Number(tunnel[2])),at=Date.parse(item.created_at);
       if(Number.isFinite(at)&&mins>0&&Date.now()<at+(mins+2)*60000)
         active={url:tunnel[3],expires_at:new Date(at+mins*60000).toISOString()};
     }
@@ -57,7 +57,7 @@ const PAGE=[
 '<div class="box"><b>AI workbench geometry and dimensions</b><p id="ai">Waiting for first AI scan...</p></div>',
 '<div class="box"><b>Camera/License Status</b><p id="camera">Checking...</p></div>',
 '<p><a href="https://github.com/sundamunda289-art/Unity-Game-Aris/issues/77">Camera command issue</a> &middot; ',
-'<a href="https://github.com/sundamunda289-art/Unity-Game-Aris/actions/workflows/aaris-live-unity.yml">Start a 15/45/90 min session</a></p>',
+'<a href="https://github.com/sundamunda289-art/Unity-Game-Aris/actions/workflows/aaris-live-unity.yml">Start a 15/45/90/180/300 min session</a></p>',
 '<p>ChatGPT can inspect uploaded screenshots through GitHub, but cannot watch the live VNC stream continuously.</p>',
 '<script>async function refresh(){try{const r=await fetch("/status");const v=await r.json();',
 'for(const k of ["desktop","photo","camera","ai"]){document.getElementById(k).replaceChildren()}',
