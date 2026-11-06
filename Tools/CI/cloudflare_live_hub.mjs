@@ -12,7 +12,7 @@ async function snapshots(){
   const uri="https://api.github.com/repos/"+REPO+"/issues/"+ISSUE+"/comments?per_page=100&since="+encodeURIComponent(since);
   const res=await fetch(uri,{headers:{Accept:"application/vnd.github+json","User-Agent":"aaris-unity-free-hub"},cf:{cacheEverything:true,cacheTtl:45}});
   if(!res.ok)throw Error("GitHub API unavailable");
-  let comments=await res.json(),lastPhoto=null,active=null,latestCameraStatus='No camera result yet';
+  let comments=await res.json(),lastPhoto=null,active=null,latestCameraStatus='No camera result yet',latestLicenseStatus='Unknown';
   for(const item of comments){
     const body=String(item.body||"").trim();
     const tunnel=body.match(TUNNEL_RE);
@@ -26,11 +26,14 @@ async function snapshots(){
       else if(body.includes("real Unity 1280"))latestCameraStatus="Camera rendered and saved an authentic Unity PNG.";
       else latestCameraStatus=body.slice(0,170);
     }
+    if(/^AARIS_LICENSE_STATUS [a-z_]+$/.test(body)&&item.user?.login==="github-actions[bot]"){
+      latestLicenseStatus=body.slice("AARIS_LICENSE_STATUS ".length);
+    }
     const photo=body.match(PHOTO_RE);
     if(photo&&item.user?.login==="github-actions[bot]")lastPhoto=photo[0];
   }
   return {live_url:active?.url||null,expires_at:active?.expires_at||null,
-    latest_photo:lastPhoto,latest_camera_status:latestCameraStatus,issue_url:ISSUE_URL,workflow_url:RUN_URL,
+    latest_photo:lastPhoto,latest_camera_status:latestCameraStatus,latest_license_status:latestLicenseStatus,issue_url:ISSUE_URL,workflow_url:RUN_URL,
     authorization:"email PIN required for live desktop",
     note:"Only actual licensed Unity PNGs count as 3D captures. A Cloudflare page is not Unity itself."};
 }
@@ -47,7 +50,7 @@ const PAGE=[
 '<p>ChatGPT can inspect uploaded screenshots through GitHub, but cannot watch the live VNC stream continuously.</p>',
 '<script>async function refresh(){try{const r=await fetch("/status");const v=await r.json();',
 'for(const k of ["desktop","photo","camera"]){document.getElementById(k).replaceChildren()}',
-'const d=document.getElementById("desktop"),p=document.getElementById("photo");document.getElementById("camera").textContent=v.latest_camera_status||"No update";',
+'const d=document.getElementById("desktop"),p=document.getElementById("photo");document.getElementById("camera").textContent="License: "+(v.latest_license_status||"Unknown")+" | Camera: "+(v.latest_camera_status||"No update");',
 'if(v.live_url){let a=document.createElement("a");a.href=v.live_url;a.textContent="Open live desktop (PIN required)";d.appendChild(a)}',
 'else d.textContent="No active desktop session";',
 'if(v.latest_photo){let a=document.createElement("a");a.href=v.latest_photo;a.textContent="Open latest Unity PNG";p.appendChild(a)}',
