@@ -340,8 +340,9 @@ namespace Aaris.MapReview.Editor
 
         private static string[] PartNames(GameObject root)
         {
-            return root.GetComponentsInChildren<Renderer>(true)
-                .Select(r => r.gameObject.name).Distinct()
+            return root.GetComponentsInChildren<Transform>(true)
+                .Where(t => t != root.transform)
+                .Select(t => t.gameObject.name).Distinct()
                 .Take(80).ToArray();
         }
 
