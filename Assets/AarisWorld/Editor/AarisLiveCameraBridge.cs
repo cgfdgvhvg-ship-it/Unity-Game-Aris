@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -401,7 +402,11 @@ namespace Aaris.MapReview.Editor
         }
         private static void Nearby(Intent command, Report report)
         {
-            CheckValues(command, false);
+            if (command.value == null || command.value.Length != 3 ||
+                command.value.Any(v => float.IsNaN(v) || float.IsInfinity(v)) ||
+                Mathf.Abs(command.value[0]) > 1000 || Mathf.Abs(command.value[2]) > 1000 ||
+                command.value[1] < -500 || command.value[1] > 4000)
+                throw new ArgumentException("Nearby center is outside the 2km world");
             if (float.IsNaN(command.radius) || command.radius < 1 || command.radius > 200)
                 throw new ArgumentException("nearby radius must be 1..200 metres");
             Vector3 center = Vector(command);
