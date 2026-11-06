@@ -157,17 +157,17 @@ def save_world(root):
     material.update(m_Parent=ref(),m_ModifiedSerializedProperties=0,m_LockedProperties='')
     material['m_SavedProperties'].setdefault('m_Ints',[])
     for f in material['m_SavedProperties']['m_Floats']:
-        if '_Exposure'in f:f['_Exposure']=1.15
+        if '_Exposure'in f:f['_Exposure']=0.88
     for f in material['m_SavedProperties']['m_Colors']:
-        if '_SkyTint'in f:f['_SkyTint']=color(.5,.5,.5)
-        if '_GroundColor'in f:f['_GroundColor']=color(.45,.47,.45)
+        if '_SkyTint'in f:f['_SkyTint']=color(.44,.55,.70)
+        if '_GroundColor'in f:f['_GroundColor']=color(.30,.36,.44)
     write_yaml(root/SKY,sky);save_json(layout_path,layout)
     report={'schema_version':1,'native_assets_materialized':False,'human_height_m':1.78,'residential_scale_target':HOME_SCALE,
         'residential_scales':{name:layout['models'][name]['prefab_scale'] for name in sorted(HOMES)},
         'residential_instances_scaled':sum(b['model']in HOMES for b in layout['buildings']),
         'complete_three_lod_prefabs':len(layout['models']),'clearances':gaps,
         'safe_spawn_m':spawn.tolist(),'spawn_yaw_degrees':spawn_yaw,'nearest_residential_footprint_m':nearest_home,
-        'daylight':{'sun_elevation_degrees':50,'sun_intensity':1.35,'shadow_strength':.55,'sky_exposure':1.15,'maximum_upward_look_degrees':70},
+        'daylight':{'sun_elevation_degrees':50,'sun_intensity':1.35,'shadow_strength':.55,'sky_exposure':0.88,'maximum_upward_look_degrees':70},
         'graphics_resolution_reduced':False,'unity_editor_compilation_tested':False,'unity_render_tested':False,'android_device_tested':False}
     save_json(root/'Docs/WORLD_REVIEW_REPORT.json',report);return report
 
