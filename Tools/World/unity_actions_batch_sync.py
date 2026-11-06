@@ -22,9 +22,9 @@ import tempfile
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 import unity_batched_autosync as sync
 
-OWNER="Aaris-khan-don"
+OWNER="sundamunda289-art"
 REPO=sync.REPO
-CS="musical-carnival-jjxp9r6vw45wfjgvg"
+CS="redesigned-space-train-gxp5jwvq94wg2wvw6"
 TMP_REMOTE="/tmp/aaris-unity-batch/sync-export"
 STAGED_REMOTE="/workspaces/.aaris-world-bridge/ondemand/unity_batched_autosync.py"
 ALLOWED_EVENT_OP="unity_sync_save_session"
