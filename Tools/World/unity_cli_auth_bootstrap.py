@@ -97,7 +97,7 @@ def status():
         try:
             ver=subprocess.run([str(binpath),"--version"],capture_output=True,text=True,
                                stdin=subprocess.DEVNULL,timeout=9,check=False)
-            match=re.search(r"\\b[0-9]+\\.[0-9]+\\.[0-9]+(?:-beta\\.[0-9]+)?\\b",ver.stdout+ver.stderr)
+            match=re.search(r"\b[0-9]+\.[0-9]+\.[0-9]+(?:-beta\.[0-9]+)?\b",ver.stdout+ver.stderr)
             result["cli_version"]=match.group(0) if match else "unrecognized"
         except (OSError,subprocess.TimeoutExpired):
             result["cli_version"]="unavailable"
