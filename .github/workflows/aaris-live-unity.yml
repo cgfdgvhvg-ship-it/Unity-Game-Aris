@@ -10,8 +10,16 @@ on:
       - 'Tools/CI/unity_personal_bootstrap.py'
       - 'Tools/CI/license_reuse.py'
       - 'Tools/CI/runner_storage.sh'
+      - 'Tools/CI/session_store.py'
       - 'Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs'
       - 'Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs.meta'
+  pull_request:
+    paths:
+      - '.github/workflows/aaris-live-unity.yml'
+      - 'Tools/CI/issue_camera_bridge.py'
+      - 'Tools/CI/live_camera_server.py'
+      - 'Tools/CI/session_store.py'
+      - 'Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs'
   issue_comment:
     types: [created]
   workflow_dispatch:
@@ -21,7 +29,7 @@ on:
         type: choice
         required: true
         default: '45'
-        options: ['15', '45', '90']
+        options: ['15', '45', '90', '300']
       license_export_recipient:
         description: 'Optional age1 public key for encrypted license artifact (NO private key)'
         type: string
@@ -74,7 +82,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'issue_comment' && github.event.issue.number == 77 && github.event.comment.user.login == 'sundamunda289-art' && (startsWith(github.event.comment.body, 'START_DESKTOP ') || startsWith(github.event.comment.body, 'ACTIVATE_UNITY ')))
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 140
+    timeout-minutes: 355
     env:
       UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
       UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -108,13 +116,13 @@ jobs:
           # Github issue comments are untrusted text: never put this value in a shell command.
           # Only these exact three commands from the repository owner can start a runner.
           case "$SESSION_MINUTES" in
-            "START_DESKTOP 15"|"START_DESKTOP 45"|"START_DESKTOP 90")
+            "START_DESKTOP 15"|"START_DESKTOP 45"|"START_DESKTOP 90"|"START_DESKTOP 300")
               SESSION_MINUTES="${SESSION_MINUTES#START_DESKTOP }" ;;
-            "ACTIVATE_UNITY 15"|"ACTIVATE_UNITY 45"|"ACTIVATE_UNITY 90")
+            "ACTIVATE_UNITY 15"|"ACTIVATE_UNITY 45"|"ACTIVATE_UNITY 90"|"ACTIVATE_UNITY 300")
               SESSION_MINUTES="${SESSION_MINUTES#ACTIVATE_UNITY }" ;;
           esac
-          case "$SESSION_MINUTES" in 15|45|90) ;; *)
-            echo '::error::Invalid session length. Allowed: 15, 45, 90 minutes.'
+          case "$SESSION_MINUTES" in 15|45|90|300) ;; *)
+            echo '::error::Invalid session length. Allowed: 15, 45, 90, 300 minutes.'
             exit 1 ;;
           esac
           echo "SESSION_MINUTES=$SESSION_MINUTES" >> "$GITHUB_ENV"
@@ -127,7 +135,7 @@ jobs:
           # whole session. Reuse preinstalled packages on GitHub runners.
           sudo timeout 90 apt-get update -qq
           sudo timeout 160 env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
-            --no-install-recommends xvfb x11vnc novnc websockify nginx \
+            --no-install-recommends xvfb x11vnc novnc websockify nginx xterm scrot zstd \
             openbox git-lfs libgl1-mesa-dri libglu1-mesa age
           git lfs install --local
           mkdir -p ci-live-control ci-logs ci-photos
