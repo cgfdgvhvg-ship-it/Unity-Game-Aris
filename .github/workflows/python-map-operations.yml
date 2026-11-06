@@ -1,0 +1,106 @@
+name: Aaris Python Map Worker (No Unity License)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/python-map-operations.yml'
+      - 'Tools/CI/map_static_check.py'
+      - 'Tools/MapBuild/**'
+      - 'Tools/Validation/**'
+      - 'Docs/MAP_LAYOUT.json'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'audit / inspect / apply-render-materials (manual branch PR only)'
+        type: choice
+        required: true
+        default: audit
+        options: [audit, inspect, apply-render-materials]
+      x:
+        description: 'Inspect X coordinate (-1000 to 1000 meters)'
+        required: false
+        default: '0'
+        type: string
+      z:
+        description: 'Inspect Z coordinate (-1000 to 1000 meters)'
+        required: false
+        default: '0'
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: aaris-python-map-${ github.ref }
+  cancel-in-progress: false
+
+jobs:
+  python-map:
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    env:
+      MAP_MODE: ${{ inputs.mode || 'audit' }
+      MAP_X: ${{ inputs.x || '0' }
+      MAP_Z: ${{ inputs.z || '0' }
+      GH_TOKEN: ${{ github.token }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          fetch-depth: 1
+      - name: Validate map Python and license-free metadata
+        run: |
+          set -euo pipefail
+          python3 -m compileall -q Tools/CI Tools/MapBuild Tools/Validation
+          if [[ "$MAP_MODE" == "inspect" ]]; then
+            python3 Tools/CI/map_static_check.py inspect --x "$MAP_X" --z "$MAP_Z" --out ci-map-report.json
+          else
+            python3 Tools/CI/map_static_check.py audit --out ci-map-report.json
+          fi
+      - name: Set up Python native map editor only for explicit edit requests
+        if: env.MAP_MODE == 'apply-render-materials'
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check -r Tools/MapBuild/requirements.txt
+          git lfs install --local
+          git lfs pull --include="Assets/AarisWorld/**,Assets/TerrainDemoScene_URP/Settings/URP/**" --exclude=""
+      - name: Apply audited native material/URP synchronisation via Python
+        if: env.MAP_MODE == 'apply-render-materials'
+        run: |
+          set -euo pipefail
+          python3 Tools/MapBuild/render_review.py --apply
+          git diff --check
+      - name: Create review branch for changes (never silently modify main)
+        if: env.MAP_MODE == 'apply-render-materials'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Assets Docs
+          if git diff --cached --quiet; then
+            echo 'No native material changes. Existing map already matches source.'
+            exit 0
+          fi
+          branch="ci/python-map-materials-$GITHUB_RUN_ID"
+          git switch -c "$branch"
+          git commit -m 'ci(map): propose source-correct Unity material synchronisation'
+          git push origin "HEAD:refs/heads/$branch"
+          gh pr create --base main --head "$branch" \
+            --title 'Python map: source-correct URP materials (review required)' \
+            --body 'License-free native-material update. This PR is NOT a Unity render verification. Review the changes before merge.'
+      - name: Upload map QA report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-map-qa-${ github.run_id }
+          path: ci-map-report.json
+          retention-days: 30
+          if-no-files-found: warn
+      - name: Job summary
+        if: always()
+        run: |
+          echo '### Python native-map worker' >> "$GITHUB_STEP_SUMMARY"
+          echo "Mode: $MAP_MODE" >> "$GITHUB_STEP_SUMMARY"
+          echo 'This workflow never installs Unity, reads UNITY_LICENSE, or waits for Unity login.' >> "$GITHUB_STEP_SUMMARY"
