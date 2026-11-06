@@ -153,6 +153,7 @@ namespace Aaris.MapReview.Editor
         [Serializable] private sealed class Item
         {
             public string id, name, kind, color, sourceAsset;
+            public string[] parts;
             public Vector3 position, dimensions;
             public Vector3[] dots;
         }
@@ -181,7 +182,7 @@ namespace Aaris.MapReview.Editor
         private static void Validate(Intent q)
         {
             Check(q != null && q.nonce > 0, "Invalid AI request or nonce");
-            Check(new[] {"inspect", "outline", "move", "scale", "resize", "capture", "tint_shared"}
+            Check(new[] {"inspect", "outline", "move", "scale", "resize", "capture", "tint_shared", "part_scale_shared"}
                 .Contains(q.action), "Action is not allowlisted");
             Check(q.id == null || q.id.Length <= 180, "ID too long");
             Check(q.query == null || q.query.Length <= 80, "Query too long");
@@ -206,6 +207,9 @@ namespace Aaris.MapReview.Editor
             if (q.action == "tint_shared")
                 Check(q.shared && !string.IsNullOrEmpty(q.part) && !string.IsNullOrEmpty(q.hex),
                     "Shared material edit requires explicit opt-in, part and colour");
+            if (q.action == "part_scale_shared")
+                Check(q.shared && !string.IsNullOrEmpty(q.part) && q.sx >= .2f && q.sy >= .2f && q.sz >= .2f,
+                    "Shared prefab part scaling requires explicit opt-in, named part and safe factors");
         }
 
         private static void Poll()
@@ -334,6 +338,24 @@ namespace Aaris.MapReview.Editor
             return GlobalObjectId.GetGlobalObjectIdSlow(t.gameObject).ToString();
         }
 
+        private static string[] PartNames(GameObject root)
+        {
+            return root.GetComponentsInChildren<Renderer>(true)
+                .Select(r => r.gameObject.name).Distinct()
+                .Take(80).ToArray();
+        }
+
+        private static GameObject TreePrefab(Terrain terrain, int treeIndex)
+        {
+            TreeInstance[] instances = terrain.terrainData.treeInstances;
+            int proto = instances[treeIndex].prototypeIndex;
+            TreePrototype[] prototypes = terrain.terrainData.treePrototypes;
+            Check(proto >= 0 && proto < prototypes.Length, "Native tree prototype unavailable");
+            GameObject prefab = prototypes[proto].prefab;
+            Check(prefab != null, "Native tree has no prefab");
+            return prefab;
+        }
+
         private static Item SceneItem(Transform t, bool dots)
         {
             Bounds b = SceneBounds(t);
@@ -350,7 +372,7 @@ namespace Aaris.MapReview.Editor
             return new Item { id = SceneId(t), name = t.name,
                 kind = "scene-object", color = color, position = t.position,
                 dimensions = b.size, sourceAsset = UnityEngine.SceneManagement.SceneManager.GetActiveScene().path,
-                dots = dots ? SceneDots(t, b) : new Vector3[0] };
+                parts = PartNames(t.gameObject), dots = dots ? SceneDots(t, b) : new Vector3[0] };
         }
 
         private static Item TreeItem(Terrain terrain, int tile, int index, bool dots)
@@ -364,7 +386,8 @@ namespace Aaris.MapReview.Editor
                 name = prefab == null ? "Tree" : prefab.name,
                 kind = "native-terrain-tree", position = TreePosition(terrain, inst),
                 dimensions = bounds.size, color = "#" + ColorUtility.ToHtmlStringRGBA(inst.color),
-                sourceAsset = asset, dots = dots ? TreeDots(terrain, inst, bounds) : new Vector3[0] };
+                sourceAsset = asset, parts = prefab == null ? new string[0] : PartNames(prefab),
+                dots = dots ? TreeDots(terrain, inst, bounds) : new Vector3[0] };
         }
 
         private static Vector3[] SceneDots(Transform root, Bounds b)
@@ -540,13 +563,51 @@ namespace Aaris.MapReview.Editor
                 return;
             }
 
+            if (q.action == "part_scale_shared")
+            {
+                Check(terrain != null, "Shared part scaling currently requires a native tree ID");
+                GameObject prototype = TreePrefab(terrain, treeIndex);
+                string prefabPath = AssetDatabase.GetAssetPath(prototype);
+                Check(prefabPath.StartsWith("Assets/", StringComparison.Ordinal) &&
+                    prefabPath.EndsWith(".prefab", IgnoreCase),
+                    "Tree part cannot be edited: prototype is not a standalone writable .prefab");
+                GameObject editing = null;
+                try
+                {
+                    editing = PrefabUtility.LoadPrefabContents(prefabPath);
+                    Transform[] matches = editing.GetComponentsInChildren<Transform>(true)
+                        .Where(t => t != editing.transform &&
+                            string.Equals(t.name,q.part,IgnoreCase)).ToArray();
+                    Check(matches.Length == 1,
+                        "Part name must match exactly ONE prefab child; inspect parts and retry");
+                    Transform target = matches[0];
+                    Vector3 changed = Vector3.Scale(target.localScale,new Vector3(q.sx,q.sy,q.sz));
+                    Check(Mathf.Abs(changed.x) >= .01f && Mathf.Abs(changed.y) >= .01f &&
+                          Mathf.Abs(changed.z) >= .01f && Mathf.Abs(changed.x) <= 100 &&
+                          Mathf.Abs(changed.y) <= 100 && Mathf.Abs(changed.z) <= 100,
+                          "Shared part scale out of bounds");
+                    target.localScale = changed;
+                    Check(PrefabUtility.SaveAsPrefabAsset(editing,prefabPath) != null,
+                        "Could not save updated shared tree prefab");
+                }
+                finally
+                {
+                    if (editing != null) PrefabUtility.UnloadPrefabContents(editing);
+                }
+                answer.modifiedAsset = prefabPath;
+                answer.items = new[] {TreeItem(terrain,tileIndex,treeIndex,false)};
+                answer.matched = 1;
+                answer.message = "Saved shared tree prefab part scale. ALL trees of this prototype are affected.";
+                return;
+            }
+
             if (q.action == "tint_shared")
             {
-                Check(obj != null, "Shared material tint currently requires a scene object");
+                GameObject root = obj != null ? obj.gameObject : TreePrefab(terrain, treeIndex);
                 Color tint;
                 Check(ColorUtility.TryParseHtmlString(q.hex, out tint), "Invalid HTML colour");
                 Renderer selected = null;
-                foreach (Renderer renderer in obj.GetComponentsInChildren<Renderer>(true))
+                foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(true))
                     if (renderer.name.IndexOf(q.part, IgnoreCase) >= 0)
                     { selected = renderer; break; }
                 Check(selected != null, "Named mesh part was not found");
@@ -554,7 +615,8 @@ namespace Aaris.MapReview.Editor
                 Check(mat != null, "The selected part has no material");
                 string path = AssetDatabase.GetAssetPath(mat);
                 Check(path.StartsWith("Assets/", StringComparison.Ordinal) &&
-                      !path.EndsWith(".fbx", IgnoreCase), "Only saved standalone project materials are editable");
+                      path.EndsWith(".mat", IgnoreCase),
+                      "Only saved standalone project .mat files are editable");
                 string prop = mat.HasProperty("_BaseColor") ? "_BaseColor" :
                     mat.HasProperty("_Color") ? "_Color" : "";
                 Check(prop != "", "Material has no supported colour property");
@@ -564,7 +626,9 @@ namespace Aaris.MapReview.Editor
                 AssetDatabase.SaveAssets();
                 answer.modifiedAsset = path;
                 answer.message = "Shared material changed: affects ALL users of this material";
-                answer.items = new[] {SceneItem(obj,false)};
+                answer.items = new[] { obj != null ? SceneItem(obj,false) :
+                    TreeItem(terrain,tileIndex,treeIndex,false) };
+                answer.matched = 1;
                 return;
             }
 
