@@ -154,6 +154,31 @@ jobs:
           sudo nginx -c /tmp/aaris-nginx.conf
           curl --retry 8 --retry-delay 1 --retry-connrefused -fsS http://127.0.0.1:8080/api/status
           curl --retry 8 --retry-delay 1 --retry-connrefused -fsS http://127.0.0.1:8080/vnc/vnc.html -o /dev/null
+
+          python3 - <<'PY'
+          import base64, os, socket, time
+          ok=False
+          for attempt in range(15):
+              try:
+                  with socket.create_connection(("127.0.0.1",8080), timeout=3) as s:
+                      key=base64.b64encode(os.urandom(16)).decode()
+                      request=(f"GET /vnc/websockify HTTP/1.1\r\n"
+                               "Host: 127.0.0.1:8080\r\n"
+                               "Connection: Upgrade\r\nUpgrade: websocket\r\n"
+                               "Sec-WebSocket-Version: 13\r\n"
+                               f"Sec-WebSocket-Key: {key}\r\n\r\n")
+                      s.sendall(request.encode())
+                      response=s.recv(1024)
+                      if b" 101 " in response:
+                          ok=True
+                          break
+              except OSError:
+                  pass
+              time.sleep(1)
+          if not ok:
+              raise SystemExit("noVNC WebSocket handshake through nginx failed")
+          print("noVNC WebSocket handshake passed")
+          PY
       - name: Start Cloudflare email-protected temporary tunnel
         run: |
           set -euo pipefail
