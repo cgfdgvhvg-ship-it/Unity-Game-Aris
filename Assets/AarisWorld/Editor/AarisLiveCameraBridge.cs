@@ -282,21 +282,35 @@ namespace Aaris.MapReview.Editor
             if (id.StartsWith("tree:", StringComparison.Ordinal))
             {
                 int last = id.LastIndexOf(':');
+                if (last <= 5) throw new ArgumentException("Bad native Terrain tree ID.");
                 string name = id.Substring(5, last - 5);
                 int index;
-                if (last < 6 || !int.TryParse(id.Substring(last + 1), out index))
-                    throw new ArgumentException("Bad native terrain tree ID.");
+                if (!int.TryParse(id.Substring(last + 1), out index))
+                    throw new ArgumentException("Bad native Terrain tree index.");
                 Terrain terrain = Terrains().SingleOrDefault(t => t.name == name);
                 if (terrain == null || index < 0 || index >= terrain.terrainData.treeInstanceCount)
                     throw new ArgumentException("Tree ID not found; run scan again.");
                 return new Selection { terrain = terrain, treeIndex = index };
             }
-            var all = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-                .Where(Editable).Where(t => t.name == id || SceneId(t) == id).Take(2).ToArray();
-            if (all.Length != 1)
-                throw new ArgumentException(all.Length == 0 ? "Object not found in loaded scene." :
-                    "Ambiguous object name: use the scene: ID returned by scan.");
-            return new Selection { transform = all[0] };
+            if (id.StartsWith("scene:", StringComparison.Ordinal))
+            {
+                GlobalObjectId globalId;
+                if (!GlobalObjectId.TryParse(id.Substring(6), out globalId))
+                    throw new ArgumentException("Bad Unity GlobalObjectId.");
+                GameObject go = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(globalId) as GameObject;
+                if (go == null || !Editable(go.transform))
+                    throw new ArgumentException("Scene object ID missing or not safely editable.");
+                return new Selection { transform = go.transform };
+            }
+            // A name lookup is human-friendly but must be unambiguous.
+            // IDs from scan avoid this O(scene-objects) search entirely.
+            var matches = UnityEngine.Object.FindObjectsByType<Transform>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None)
+                .Where(Editable).Where(t => t.name == id).Take(2).ToArray();
+            if (matches.Length != 1)
+                throw new ArgumentException(matches.Length == 0 ? "Object not found in loaded scene." :
+                    "Ambiguous object name; use the scene: ID from scan.");
+            return new Selection { transform = matches[0] };
         }
 
         private static List<SurfaceDot> Outline(Selection selection)
