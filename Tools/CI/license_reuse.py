@@ -2,8 +2,7 @@
 """Safely capture an already authorized Unity Personal ULF from active Editor container.
 
 - Export it ONLY to the local PIN-protected control server for one-time phone
-  download, or store it directly as GitHub Actions UNITY_LICENSE if the owner
-  explicitly configured a narrowly scoped SECRETS_WRITE_TOKEN.
+  download, and let the owner save it as a GitHub repository Secret via Termux.
 - Never publish the ULF in Issue comments, Git logs, Releases, Actions
   artifacts, cache, or Cloudflare KV.
 - This cannot make a machine-bound license portable or generate an entitlement.
@@ -68,27 +67,6 @@ def safe_status(state: str) -> None:
     os.chmod(temp, 0o600)
     os.replace(temp, target)
 
-def save_secret(license_bytes: bytes) -> bool:
-    writer = os.getenv("UNITY_SECRETS_WRITE_TOKEN", "").strip()
-    if not writer:
-        return False
-    environment = {
-        **os.environ,
-        "GH_TOKEN": writer, "GITHUB_TOKEN": writer,
-        "GH_PROMPT_DISABLED": "1",
-    }
-    try:
-        # gha token cannot write Secrets. This intentionally requires
-        # a fine-grained PAT, limited to THIS repository, Secrets:write.
-        result = subprocess.run(
-            ["gh", "secret", "set", "UNITY_LICENSE", "--repo", REPO],
-            input=license_bytes, stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL, env=environment,
-            timeout=35, check=False)
-        return result.returncode == 0
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-
 def install_export(license_bytes: bytes) -> None:
     STATE.mkdir(parents=True, exist_ok=True)
     temporary = STATE / "Unity_lic.tmp"
@@ -120,12 +98,6 @@ def main():
         if data is not None:
             install_export(data)
             safe_status("download_ready")
-            # Only the owner enabling a narrowly scoped write token authorizes
-            # automatic storage. No one sees the license data in run logs.
-            if save_secret(data):
-                safe_status("unity_license_saved_in_github_secret")
-            elif os.getenv("UNITY_SECRETS_WRITE_TOKEN"):
-                safe_status("github_secret_write_failed_manual_download_available")
             # Do not log anything about license content or token.
             print("A licensed Unity ULF exists; protected one-time export ready.", flush=True)
             return
