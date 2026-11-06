@@ -160,11 +160,11 @@ export async function handleCron(env, api=makeGitHubApi(env)) {
     if (handled>=8) break;
     const id=file.slice(0,-5);
     if (await pendingResult(api,id)) continue;
-    handled++;
     let job;
     try {
       job = await loadAuthorizedJob(api,file);
       if (job.action === 'terminal') continue; // Cloudflare controls lifecycle only.
+      handled++;
       const result = await processJob(api,job);
       if (result) await publishResult(api,job,result);
     } catch (err) {
@@ -181,45 +181,9 @@ export async function handleCron(env, api=makeGitHubApi(env)) {
 function json(data, status=200) {
   return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json','cache-control':'no-store'}});
 }
-export async function handleAgent(request,env,api=makeGitHubApi(env)) {
-  // Terminal requests are handled by authenticated GitHub Actions -> Codespace SSH.
+export async function handleAgent(_request, _env, _api) {
+  // All terminal commands use GitHub Actions SSH, never this Worker.
   return json({error:'terminal commands use GitHub Actions SSH'},410);
-  /* Retained legacy code below (unreachable, for rollback review).
-  if (env.RELAY_ENABLED !== 'true') return json({error:'relay not enabled'},503);
-  const u=new URL(request.url);
-  if (!equalToken(request.headers.get('authorization')?.replace(/^Bearer /,''),env.AGENT_SHARED_SECRET)) {
-    return json({error:'unauthorized'},401);
-  }
-  if (request.method==='GET' && u.pathname==='/v1/next') {
-    for (const file of await getJobs(api)) {
-      const id=file.slice(0,-5);
-      if (await pendingResult(api,id)) continue;
-      const job=await loadAuthorizedJob(api,file);
-      if (job.action==='terminal') return json({job});
-    }
-    return json({job:null});
-  }
-  if (request.method==='POST' && u.pathname==='/v1/result') {
-    if (Number(request.headers.get('content-length')||0)>18000) return json({error:'too large'},413);
-    const body=await request.text();
-    if (body.length>18000) return json({error:'too large'},413);
-    let data;
-    try { data=JSON.parse(body); } catch { return json({error:'bad JSON'},400); }
-    if (!data || !ID.test(data.id) || !['ok','error'].includes(data.status) ||
-      !Number.isInteger(data.exit_code) || ![-1,0,1,2,3,124,127].includes(data.exit_code) ||
-      typeof data.stdout!=='string' || data.stdout.length>9000 ||
-      typeof data.stderr!=='string' || data.stderr.length>3000) {
-      return json({error:'bad result'},400);
-    }
-    if (await pendingResult(api,data.id)) return json({error:'already recorded'},409);
-    const job=await loadAuthorizedJob(api,`${data.id}.json`);
-    if (job.action!=='terminal') return json({error:'not a terminal request'},403);
-    await publishResult(api,job,{source:'codespace-agent',status:data.status,
-      command:job.command,exit_code:data.exit_code,stdout:data.stdout,stderr:data.stderr});
-    return json({stored:true,id:data.id});
-  }
-  return json({error:'unknown route'},404);
-  */
 }
 
 export default {
