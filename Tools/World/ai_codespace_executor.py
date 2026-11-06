@@ -2428,6 +2428,13 @@ def ensure_desktop_tools():
 
 
 
+def _terms_window_belongs_to_scratch(text, scratch_pids):
+    """Pure, fail-closed check that X11's exact Unity Terms window is ours."""
+    match = re.search(r"(?m)^_NET_WM_PID\(CARDINAL\) = (\d+)\s*$", text)
+    return (len(scratch_pids) == 1 and match is not None
+            and int(match.group(1)) == scratch_pids[0])
+
+
 def unity_terms_accept():
     """Owner-authorized, single-purpose click for the exact Unity 6000 Terms dialog.
 
@@ -2437,8 +2444,9 @@ def unity_terms_accept():
     import ctypes
     import ctypes.util
 
-    if not _unity_pids() or not Path("/tmp/.X11-unix/X12").exists():
-        return {"exit_code": 3, "stdout": "", "stderr": "Unity GUI/display not running"}
+    scratch_pids = _scratch_unity_pids()
+    if len(scratch_pids) != 1 or not Path("/tmp/.X11-unix/X12").exists():
+        return {"exit_code": 3, "stdout": "", "stderr": "Exact scratch Unity GUI/display not running"}
     env = os.environ.copy()
     env["DISPLAY"] = ":12"
     command = ["xwininfo", "-display", ":12", "-name",
@@ -2449,6 +2457,14 @@ def unity_terms_accept():
     if probe.returncode != 0 or '"Unity Editor Software Terms"' not in info:
         return {"exit_code": 3, "stdout": "",
                 "stderr": "Exact Unity Editor Software Terms window not found"}
+    window_pid = subprocess.run(["xprop", "-display", ":12", "-name",
+                                 "Unity Editor Software Terms", "_NET_WM_PID"],
+                                env=env, capture_output=True, text=True,
+                                timeout=12, check=False)
+    if window_pid.returncode != 0 or not _terms_window_belongs_to_scratch(
+            window_pid.stdout, scratch_pids):
+        return {"exit_code": 3, "stdout": "",
+                "stderr": "Unity Terms dialog does not belong to this exact scratch Unity PID"}
     def value(pattern):
         match = re.search(pattern, info, re.MULTILINE)
         if not match:
@@ -2515,8 +2531,8 @@ def unity_terms_accept():
     after = subprocess.run(command, env=env, capture_output=True,
                            text=True, timeout=12, check=False)
     closed = after.returncode != 0
-    outcome = {"terms_window_closed": closed, "editor_pids": _unity_pids(),
-               "project_library_exists": (PROJECT / "Library").is_dir(),
+    outcome = {"terms_window_closed": closed, "scratch_editor_pids": _scratch_unity_pids(),
+               "scratch_library_exists": (BATCH_ROOT / "project/Library").is_dir(),
                "free_disk_gib": round(shutil.disk_usage(PROJECT).free / 2**30, 3)}
     return {"exit_code": 0 if closed else 3, "stdout": json.dumps(outcome),
             "stderr": "" if closed else "Terms window is still visible; inspect new screenshot"}
