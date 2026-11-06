@@ -288,3 +288,38 @@ is Git commits, not an ephemeral VM, temporary license or noVNC session.
 - After authorized live licensing, verify Unity C# compilation and
   actual Editor PNG, then check Git LFS commit/push on a safe dry-run and
   one small non-dry-run operation. Static Python PASS is not a Unity PASS.
+
+## 2026-11-07: metre-based part sizing and better 3D blueprints
+
+**Existing two-tool architecture only:** `Tools/CI/ai_intents.py` validates owner-authored GitHub Issue #77 commands and handles publication/LFS commits. `Assets/AarisWorld/Editor/AarisAIControlBridge.cs` reads those intents inside a legitimately licensed Unity Editor. There is still no general shell endpoint or unprotected remote Editor access.
+
+### Set a wall or editable part to a desired real-world dimension
+
+First use `find`, `children` and `bounds` to obtain an **actual** scene hierarchy ID and establish the part's own local thickness axis. Example IDs below are illustrative; never guess a target.
+
+```text
+AI {"op":"find","query":"House"}
+AI {"op":"children","target":"Village[2]/House[1]"}
+AI {"op":"bounds","target":"Village[2]/House[1]/Wall[0]"}
+AI {"op":"size","target":"Village[2]/House[1]/Wall[0]","axis":"z","meters":0.35,"dry_run":true}
+AI {"op":"size","target":"Village[2]/House[1]/Wall[0]","axis":"z","meters":0.35}
+AI {"op":"photo","target":"Village[2]/House[1]/Wall[0]","distance":15}
+```
+
+The new `size` command sets the approximate extent of one editable scene part along its **own local x, y or z axis**, accounting for the transform and parent hierarchy. It derives dimensions from all child mesh bounding boxes; when no MeshFilter exists, it uses a conservative renderer-bounds approximation. The result JSON includes `plannedLocalScale`, `plannedPosition`, and `measureAccuracy`. Use the dry run first, then verify the actual bounds and collision clearance after saving. The requested dimension is 0.05–100 metres and one edit is capped at 0.25–4 times current size. Never assume a wall's local z axis is thickness without inspecting it.
+
+**Native Terrain tree exception:** native instances have one `widthScale` and one `heightScale`, not independently editable leaf/trunk parts. `size` on a native `terrain-tree:tile:index` now explicitly fails; use the existing relative `scale` command instead. A shared TreePrototype mesh edit can affect an entire species, so it is not silently allowed.
+
+### More complete point-cloud sampling
+
+For scene object `outline`, the sampled vertex budget is divided between child meshes rather than exhausted by the first dense mesh. This gives leaves, branches, trunks, roofs, etc. a chance to contribute points. Unreadable mesh parts contribute bounding-box corner points marked with `sampled-mesh-with-partial-bounds-fallback`. The downloadable SVG/PLY remains a sparse **point cloud**, not a watertight model, material scan, or wind-deformed foliage. True photo capture remains dependent on verified Unity Editor activation and rendering.
+
+### Operational checks
+
+```bash
+python3 -m py_compile Tools/CI/ai_intents.py Tools/CI/issue_camera_bridge.py
+python3 Tools/CI/ai_intents.py
+python3 Tools/CI/issue_camera_bridge.py --selftest
+```
+
+A successful Python `verify` job does not prove Unity C# compilation, realistic screenshots, authorized license activation, actual asset writes or Git LFS remote persistence. Keep the change in its review branch until those distinctions are checked.
