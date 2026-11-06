@@ -95,7 +95,8 @@ def process(comment):
             except (OSError, ValueError):
                 pass
         if license_state.get("state") in {
-            "installing_official_unity_cli", "starting_unity_oauth",
+            "installing_official_unity_cli", "installing_unity_hub_prerequisites",
+            "waiting_for_unity_hub_signin", "starting_unity_oauth",
             "waiting_for_mobile_unity_signin", "activating_unity_personal",
             "editor_starting"
         }:
@@ -345,7 +346,8 @@ def runtime_status():
     into a public GitHub issue. A running Docker container is NOT a licensed Editor.
     """
     safe_stages = {
-        "installing_official_unity_cli", "starting_unity_oauth",
+        "installing_official_unity_cli", "installing_unity_hub_prerequisites",
+        "waiting_for_unity_hub_signin", "starting_unity_oauth",
         "waiting_for_mobile_unity_signin", "activating_unity_personal",
         "unity_personal_activation_succeeded", "license_secret_installed",
         "unity_activation_requires_attention", "editor_starting",
@@ -562,7 +564,8 @@ def main():
     seen = set()
     last_license_state = None
     allowed_license_states = {
-        "installing_official_unity_cli", "starting_unity_oauth",
+        "installing_official_unity_cli", "installing_unity_hub_prerequisites",
+        "waiting_for_unity_hub_signin", "starting_unity_oauth",
         "waiting_for_mobile_unity_signin", "activating_unity_personal",
         "unity_personal_activation_succeeded", "license_secret_installed",
         "unity_activation_requires_attention", "editor_starting",
