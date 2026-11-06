@@ -167,7 +167,7 @@ def process(comment):
 
 # The same owner-only issue #77 is the AI interface. JSON is intentionally
 # restricted to documented world operations, never file paths or shell commands.
-AI_OPS = {"nearby", "inspect", "outline", "photo", "move", "scale", "part_scale", "save"}
+AI_OPS = {"status", "nearby", "inspect", "outline", "photo", "move", "scale", "part_scale", "save"}
 SAFE_TARGET = re.compile(r"^[\w /.:()\-]{1,250}$", re.UNICODE)
 
 def parse_ai(body):
@@ -185,14 +185,14 @@ def parse_ai(body):
     op = command.get("op")
     if op not in AI_OPS:
         raise ValueError("Allowed AI operations: " + ", ".join(sorted(AI_OPS)))
-    if op not in {"nearby", "save"}:
+    if op not in {"nearby", "save", "status"}:
         target = command.get("target")
         if not isinstance(target, str) or not SAFE_TARGET.fullmatch(target):
             raise ValueError("Target must be an exact name, scene:path or tree:tile:index")
         if target.startswith("tree:") and not re.fullmatch(r"tree:\d{1,2}:\d{1,8}", target):
             raise ValueError("Invalid native terrain tree identifier")
     elif "target" in command:
-        raise ValueError("Target is not used for nearby/save")
+        raise ValueError("Target is not used for nearby/save/status")
     if "part" in command:
         if op != "part_scale" or not isinstance(command["part"], str) or not SAFE_TARGET.fullmatch(command["part"]):
             raise ValueError("Only part_scale accepts a relative child transform path")
@@ -338,6 +338,77 @@ def save_review_pr(comment_id):
             url = result.stdout.strip()
     return "Saved and pushed " + str(len(files)) + " native files to review branch.\n" + url
 
+def runtime_status():
+    """Safe on-demand diagnostics while the Actions runner is alive.
+
+    Never post a Unity sign-in URL, ULF, logs, tokens or arbitrary status detail
+    into a public GitHub issue. A running Docker container is NOT a licensed Editor.
+    """
+    safe_stages = {
+        "installing_official_unity_cli", "starting_unity_oauth",
+        "waiting_for_mobile_unity_signin", "activating_unity_personal",
+        "unity_personal_activation_succeeded", "license_secret_installed",
+        "unity_activation_requires_attention", "editor_starting",
+        "fetching_unity_editor"
+    }
+    stage = "not_reported"
+    try:
+        raw = json.loads((STATE / "license-status.json").read_text())
+        value = raw.get("state")
+        if isinstance(value, str) and value in safe_stages:
+            stage = value
+        else:
+            stage = "unrecognized_or_unavailable"
+    except (OSError, ValueError, TypeError):
+        pass
+
+    try:
+        docker = subprocess.run(
+            ["docker", "inspect", "--format", "{{.State.Running}}", "aaris-unity-live"],
+            capture_output=True, text=True, check=False, timeout=5)
+        docker_running = docker.returncode == 0 and docker.stdout.strip() == "true"
+    except (OSError, subprocess.TimeoutExpired):
+        docker_running = False
+
+    # Check only the loopback TCP port. Never expose the VNC password or
+    # Cloudflare URL, and do not confuse an open port with an Editor render.
+    import socket
+    try:
+        with socket.create_connection(("127.0.0.1", 6080), timeout=2):
+            vnc_running = True
+    except OSError:
+        vnc_running = False
+
+    try:
+        disk_free = f"{shutil.disk_usage('.').free / (1024**3):.1f} GiB"
+    except OSError:
+        disk_free = "unavailable"
+
+    camera = camera_health()
+    camera_ok = camera.get("state") == "Camera moved and real Unity PNG saved"
+    last_ai = "none"
+    try:
+        data = json.loads((STATE / "ai-result.json").read_text())
+        if data.get("op") in AI_OPS and data.get("state") in {"ok", "error"}:
+            last_ai = str(data["op"]) + ":" + str(data["state"])
+    except (OSError, ValueError, TypeError):
+        pass
+
+    return (
+        "Aaris runner on-demand diagnostics (no secrets):\n"
+        f"Unity bootstrap stage: {stage}\n"
+        f"Unity Docker container running: {docker_running}\n"
+        f"noVNC loopback port reachable: {vnc_running}\n"
+        f"Last camera successfully reported a Unity PNG: {camera_ok}\n"
+        f"Camera PNG file present: {(STATE / 'latest.png').is_file()}\n"
+        f"Last AI command: {last_ai}\n"
+        f"Temporary runner disk free: {disk_free}\n"
+        "A running desktop, Docker, or a cached PNG does NOT prove that "
+        "the current Unity Editor is licensed or rendering. "
+        "Check the protected Cloudflare page for private activation guidance."
+    )
+
+
 def process_ai(comment):
     comment_id = comment["id"]
     try:
@@ -345,6 +416,9 @@ def process_ai(comment):
     except ValueError as error:
         issue_comment(f"AI request #{comment_id}: rejected: {error}")
         return "invalid-ai-intent"
+    if command["op"] == "status":
+        issue_comment(f"AI request #{comment_id}: " + runtime_status())
+        return "runtime-status-reported"
     if command["op"] == "save":
         try:
             issue_comment(f"AI request #{comment_id}: " + save_review_pr(comment_id))
@@ -434,11 +508,14 @@ def main():
                 raise AssertionError("Unsafe camera intent was accepted")
         assert "ACTIVATE_UNITY" != "ACTIVATE_UNITY 15"
         assert parse("CAMERA -420 22 -210 0 20 22")["distance"] == 22
+        assert parse_ai('AI {"op":"status"}') == {"op": "status"}
         good = parse_ai('AI {"op":"outline","target":"tree:0:123"}')
         assert good["target"] == "tree:0:123"
         assert parse_ai('AI {"op":"part_scale","target":"tree:0:123","part":"Leaves","value":[1.1,1,1.1],"scope":"prototype"}')["scope"] == "prototype"
         assert parse_ai('AI {"op":"nearby","value":[420,0,-520],"radius":35}')["radius"] == 35
-        for bad in ('AI {"op":"shell","target":"foo"}',
+        for bad in ('AI {"op":"status","target":"tree:0:1"}',
+                    'AI {"op":"status","command":"ls"}',
+                    'AI {"op":"shell","target":"foo"}',
                     'AI {"op":"move","target":"Tree","value":[1000,0,0]}',
                     'AI {"op":"scale","target":"tree:0:9","value":[1,1,2]}',
                     'AI {"op":"part_scale","target":"X","part":"../private","value":[1,1,1]}',
