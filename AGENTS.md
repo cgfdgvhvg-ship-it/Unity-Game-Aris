@@ -62,3 +62,32 @@ Unity 6000.3.26f1, URP 17.3.0. Native source scene: Assets/TerrainDemoScene_URP/
 - Only sanitized, predefined license states can be reported to GitHub issue #77; OAuth URLs and passwords are never included. The stable Cloudflare Worker hub displays those states.
 - Restore only Unity Library import cache with actions/cache@v4; this cache must not contain the license, Hub OAuth state, cookies or other credentials. A cold Docker pull and Git LFS hydration still cost time.
 - The CLI path is a documented activation attempt, not a proven entitlement for a new runner. Official Unity 6000.3 Personal docs say Hub sign-in is the supported activation method. Failure is signaled, not bypassed. Do not spoof Machine IDs or fake screenshots.
+
+
+## Assistant-triggered license retry (owner-only, no keyboard on phone)
+
+A connected GitHub assistant (authorized as repo owner sundamunda289-art)
+can now post these exact commands on GitHub Issue #77:
+- ACTIVATE_UNITY 15 — start a fresh 15-minute Actions desktop and attempt
+  authorized Unity Personal activation (also 45 or 90).
+- ACTIVATE_UNITY — retry the official Unity activation process inside the
+  currently RUNNING pinned GameCI Unity container; do not replace its host.
+- CAMERA -420 22 -210 0 20 22 — move camera if the real Editor is licensed.
+
+The issue relay allows ACTIVATE_UNITY only for owner-authored comments;
+it executes a constant, bounded Docker command, not arbitrary shell input.
+The container remains alive after an unsuccessful activation so a retry can
+be attempted without downloading the same Editor again in that session.
+
+**Important**: An explicit ACTIVATE_UNITY command cannot bypass Unity's
+license entitlement, browser sign-in or MFA requirements. It works without
+the user's intervention only when a valid authorized ULF / active authorized
+session is available in that new container. For Unity Personal, GameCI
+documents one-time Hub activation -> ULF -> UNITY_LICENSE GitHub Secret.
+There is no supported ALF-to-ULF Personal manual activation at present.
+Unity Cloud Service Account credentials alone do not grant an Editor
+Personal license. No machine identity spoofing or token caching is used.
+
+Verified repo-level unit test for command handler and the workflow's
+issue_comment path ran in GitHub Actions. An actual successful Unity
+license activation and true scene PNG have NOT yet been verified.
