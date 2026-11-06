@@ -50,7 +50,7 @@ def check(native=False):
     assert player['minLookPitch']==-70 and player['maxLookPitch']==70
     sky=next(d for c,i,n,d in documents(ROOT/SKY) if n=='Material')
     assert sky['m_Shader']['fileID']==106 and '_SUNDISK_HIGH_QUALITY'in sky['m_ValidKeywords']
-    assert next(f['_Exposure'] for f in sky['m_SavedProperties']['m_Floats'] if '_Exposure'in f)==1.15
+    assert next(f['_Exposure'] for f in sky['m_SavedProperties']['m_Floats'] if '_Exposure'in f)==0.88
     rs=next(d for c,i,n,d in objects if n=='RenderSettings');sun=next((i,d) for c,i,n,d in objects if n=='Light' and names[d['m_GameObject']['fileID']]=='Sun')
     assert rs['m_Sun']['fileID']==sun[0] and rs['m_AmbientMode']==1
     assert sun[1]['m_Intensity']==1.35 and sun[1]['m_Shadows']['m_Strength']==.55
