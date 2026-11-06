@@ -114,12 +114,14 @@ Supporting infrastructure (not additional AI commands): `Tools/CI/unity_personal
 AI {"op":"status"}
 AI {"op":"nearby","value":[-420,22,-210],"radius":35}
 AI {"op":"inspect","target":"tree:0:12"}
+AI {"op":"parts","target":"tree:0:12"}
 AI {"op":"outline","target":"tree:0:12"}
 AI {"op":"photo","target":"tree:0:12"}
 AI {"op":"move","target":"tree:0:12","value":[2,0,0]}
 AI {"op":"scale","target":"tree:0:12","value":[1.2,0.95,1.2]}
 AI {"op":"part_scale","target":"tree:0:12","part":"Leaves","value":[1.1,1,1.1],"scope":"prototype"}
 AI {"op":"inspect","target":"scene:Root/Building/WallNorth"}
+AI {"op":"parts","target":"scene:Root/Building"}
 AI {"op":"scale","target":"scene:Root/Building/WallNorth","value":[1,1,1.1]}
 AI {"op":"part_scale","target":"scene:Root/Building","part":"WindowFrame","value":[1.1,1,1]}
 AI {"op":"photo","target":"scene:Root/Building"}
@@ -128,7 +130,7 @@ AI {"op":"save"}
 
 **These are syntax examples, not verified object IDs.** First call `AI {"op":"status"}` on an active issue #77 session: it reports allowlisted Unity bootstrap state, Docker running status, local noVNC TCP accessibility, last camera/AI response and remaining disk, with no license file, OAuth URL, token, password or private logs. It is handled by the Python relay and works even before Unity has activated; it does not start a new cloud runner or establish that the Unity Editor has rendered. Then use `nearby` to get real targets. `tree:tile:index` selects an actual native TerrainData tree; tiles sort by world X then Z. These indices can change if source tree instances are regenerated. Scene targets must be unique names or an exact `scene:Root/Child` hierarchy; ambiguous names are refused. Coordinates are Unity world metres. Move is a **relative delta** per axis, bounded to 100m per call; scale is a **multiplicative** local factor, bounded to 0.25..3. For native Terrain trees width X and Z factors must match. Child `part_scale` works for scene-object Transform children. For native Terrain trees, it is permitted ONLY on an editable `.prefab` child and ONLY with `"scope":"prototype"`: **all** tree instances using that prefab will change. Imported `.fbx` models are explicitly rejected. Confirm the child hierarchy and review all affected trees before saving. This changes leaf/branch scale, not actual mesh leaf count or density.
 
-**Expected responses:** `inspect` includes position, rotation, local scale and approximate actual renderer X/Y/Z world bounds (metres); `nearby` lists up to 30 nearest scene objects/tree IDs; `outline` exports up to 256 world-space surface support dots in JSON, a standard 3D PLY point cloud and an isometric dotted SVG projection (not a watertight triangulated 3D mesh); `photo` produces a genuine 1280×720 Unity camera PNG or a clear render error. Meshes with readback disabled use their renderer bounds as an explicit fallback; wind, LOD, invisible colliders and tree prototype differences may affect the visible silhouette.
+**Expected responses:** `inspect` includes position, rotation, local scale and approximate actual renderer X/Y/Z world bounds (metres); `parts` enumerates up to 80 exact relative child paths plus local scale and per-child renderer dimensions, with a total count, so AI can identify actual leaf, branch, wall and window paths rather than guessing; any larger parts inventory is supplied as a JSON Release asset (PUBLIC); `nearby` lists up to 30 nearest scene objects/tree IDs; `outline` exports up to 256 world-space surface support dots in JSON, a standard 3D PLY point cloud and an isometric dotted SVG projection (not a watertight triangulated 3D mesh); `photo` produces a genuine 1280×720 Unity camera PNG or a clear render error. Meshes with readback disabled use their renderer bounds as an explicit fallback; wind, LOD, invisible colliders and tree prototype differences may affect the visible silhouette.
 
 **Save and review:** Unity writes real scene/TerrainData assets locally and reports `saved:true`; `AI {"op":"save"}` pushes only whitelisted native Assets to a new `ai/live-review-<runid>` Git LFS-backed branch and creates a PR for review. Do NOT mistake a runner-local save or a Release checkpoint for a merge into main. Review actual geometry, terrain boundaries, tree/road collisions, materials, camera render, Unity compilation and Git LFS before merging. A 7-minute temporary checkpoint plus best-effort end checkpoint may recover work on a subsequent runner with **the same base Git commit**; a forced stop can lose the most recent interval. Git PR is the durable persistence path.
 
@@ -143,4 +145,4 @@ AI {"op":"save"}
 
 ### Tests for AI tool changes
 
-Run `python3 Tools/CI/issue_camera_bridge.py --selftest`, `python3 -m py_compile Tools/CI/issue_camera_bridge.py Tools/CI/live_camera_server.py` and repository `Tools/Validation/check_explorer.py` C# parsing checks on a PR. The workflow's `verify` job runs those on PRs. Real Editor compile, TerrainData write/read, photo/audit, and Cloudflare PIN sessions must be separately verified on a genuinely licensed runner. Never mark those end-to-end stages as passed based solely on static checks.
+Run `python3 Tools/CI/issue_camera_bridge.py --selftest` (including status/parts schema tests), `python3 -m py_compile Tools/CI/issue_camera_bridge.py Tools/CI/live_camera_server.py` and repository `Tools/Validation/check_explorer.py` C# parsing checks on a PR. The workflow's `verify` job runs those on PRs. Real Editor compile, TerrainData write/read, photo/audit, and Cloudflare PIN sessions must be separately verified on a genuinely licensed runner. Never mark those end-to-end stages as passed based solely on static checks.
