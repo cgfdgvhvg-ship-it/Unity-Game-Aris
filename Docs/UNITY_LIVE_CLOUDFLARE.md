@@ -119,3 +119,50 @@ a timeout rather than claiming rendering succeeded.
 
 Cloudflare Worker limits matter: Workers Free has 100,000 requests/day; this
 implementation does NOT write every video frame to Cloudflare KV or R2.
+
+
+## Automated Personal activation bootstrap on each fresh GitHub runner (2026-11-06)
+
+Source: Tools/CI/unity_personal_bootstrap.py
+Live interface: Cloudflare PIN-gated desktop URL -> /api/license
+
+The live desktop starts after an owner-authored START_DESKTOP 15/45/90
+command. The Python bootstrap executes **inside the same GameCI Linux Editor
+container** that must later open the actual 2km Unity scene.
+
+Order of operations:
+1. Pull the pinned Unity Editor Docker image and hydrate genuine Git LFS
+   assets. This is not instantaneous on an empty runner.
+2. If UNITY_LICENSE contains a legitimate ULF XML license, install it in the
+   container's private Unity license path (permissions 0600). Editor will
+   validate the entitlement; the script does not claim it is portable.
+3. Otherwise download the official Unity CLI installer from unity.com,
+   install the CLI inside the same container and start unity auth login
+   --format json. A user-authored OAuth sign-in URL is stored only in the
+   local ci-live-control/license-status.json and exposed only via the
+   email-PIN-protected Cloudflare desktop's /api/license endpoint.
+4. Open the Cloudflare page on a phone, enter the approved email PIN, and
+   tap Sign in to Unity securely when shown. Sign in to the actual Unity
+   webpage; do NOT send credentials or OAuth URLs in GitHub issue comments.
+5. After the **authorized user login** completes the Python process runs
+   unity license activate --personal --accept-eula --non-interactive.
+   If Unity accepts the license activation, the script launches the pinned
+   Editor in GUI mode, importing Assets and opening the saved native scene.
+6. If Unity rejects Personal activation (Unity 6000.3 manual currently
+   requires Hub sign-in) the private status displays an actionable error
+   instead of claiming the screenshot exists.
+
+Service accounts are NOT used for Personal license activation. UNITY_EMAIL and
+UNITY_PASSWORD alone cannot silently approve browser sign-in. An accepted ULF
+or a successful authorized OAuth login is required and a new ephemeral runner
+may require re-authorization. Machine IDs are never altered. No Unity
+tokens/ULFs are archived to GitHub cache, Releases or Cloudflare.
+
+For speed, the GitHub Actions workflow now caches only the Unity Library
+import data keyed to Unity 6000.3.26f1 and package files. Cache reuse is best
+effort (no guarantee of a fast cold start) and never includes auth directories.
+
+Supported official references:
+https://docs.unity.com/en-us/unity-cli/reference/accounts-licenses-cloud-commands
+https://github.com/Unity-Technologies/skills/blob/main/skills/unity-cli/references/auth-license-cloud.md
+https://docs.unity.com/en-us/engine/6000.3/manual/get-started/install-and-upgrade/licenses-and-activation/license-activation-methods
