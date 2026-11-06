@@ -17,6 +17,7 @@ import sys
 import time
 
 from live_camera_server import validate, STATE
+import ai_intents
 
 ISSUE = int(os.getenv("AARIS_CAMERA_ISSUE", "77"))
 REPO = os.getenv("GITHUB_REPOSITORY", "sundamunda289-art/Unity-Game-Aris")
@@ -79,6 +80,17 @@ def publish_photo(comment_id, photo):
     url = f"https://github.com/{REPO}/releases/download/{RELEASE}/{filename}"
     return url
 
+def publish_ai_file(comment_id, path):
+    """Publish only validated AI reports, blueprints or genuine Editor PNG files."""
+    if not path.is_file() or path.stat().st_size > 6 * 1024 * 1024:
+        raise RuntimeError("AI result absent or too large")
+    if not re.fullmatch(r"ai-(?:result|blueprint|photo)-\d+\.(?:json|svg|png)", path.name):
+        raise RuntimeError("Unexpected AI report filename")
+    ensure_release()
+    gh("release", "upload", RELEASE, str(path), "--repo", REPO)
+    return f"https://github.com/{REPO}/releases/download/{RELEASE}/{path.name}"
+
+
 def process(comment):
     author = comment.get("user") or {}
     if author.get("login") != OWNER:
@@ -86,7 +98,18 @@ def process(comment):
     comment_id = comment.get("id")
     if type(comment_id) is not int or comment_id <= 0:
         return "ignored-invalid-comment-id"
-    if comment.get("body", "").strip() == "ACTIVATE_UNITY":
+    body = comment.get("body", "")
+    if isinstance(body, str) and body.startswith("AI "):
+        try:
+            return ai_intents.handle(body, comment_id, STATE, Path.cwd(),
+                                     issue_comment, publish_ai_file)
+        except ValueError as error:
+            issue_comment(f"AI request #{comment_id}: validation rejected: {str(error)[:200]}")
+            return "invalid-ai-intent"
+        except (RuntimeError, OSError, subprocess.CalledProcessError) as error:
+            issue_comment(f"AI request #{comment_id}: operation failed ({type(error).__name__}).")
+            return "ai-operation-failed"
+    if body.strip() == "ACTIVATE_UNITY":
         license_state = {}
         private_file = STATE / "license-status.json"
         if private_file.exists():
@@ -168,6 +191,7 @@ def main():
     parser.add_argument("--seconds", type=int, default=4800)
     args = parser.parse_args()
     if args.selftest:
+        ai_intents.selftest()
         sample = parse("CAMERA -420 22 -210 0 20 22")
         assert sample["x"] == -420 and sample["pitch"] == 20
         for body in ("CAMERA 9999 22 -210 0 20 22",
@@ -200,7 +224,7 @@ def main():
                     print("Protected tunnel announced to GitHub issue (PIN required)", flush=True)
                 except subprocess.CalledProcessError:
                     print("Could not announce live tunnel; camera polling still available", flush=True)
-    print("Starting owner-only camera polling on active Unity session", flush=True)
+    print("Starting owner-only camera + AI intent polling on live Unity session", flush=True)
     start = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     since = start
     seen = set()
