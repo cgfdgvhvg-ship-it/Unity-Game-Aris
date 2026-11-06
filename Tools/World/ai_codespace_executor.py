@@ -3408,14 +3408,15 @@ def execute(job):
                            timeout=35,check=False)
         return {"exit_code":out.returncode,"stdout":out.stdout[-4500:],
                 "stderr":out.stderr[-700:]}
-    if op in {"unity_cli_install_start","unity_cli_login_start","unity_cli_auth_status"}:
+    if op in {"unity_cli_install_start","unity_cli_login_start","unity_cli_auth_status","unity_cli_license_activate"}:
         if args: raise ValueError("Unity CLI OAuth operation takes no shell arguments")
         source=Path("/workspaces/.aaris-world-bridge/ondemand/unity_cli_auth_bootstrap.py")
-        if not source.is_file() or source.is_symlink() or source.stat().st_size>12000:
+        if not source.is_file() or source.is_symlink() or source.stat().st_size>20000:
             return {"exit_code":3,"stdout":"","stderr":"Approved Unity CLI OAuth helper missing"}
         flag={"unity_cli_install_start":"--install-start",
               "unity_cli_login_start":"--login-start",
-              "unity_cli_auth_status":"--status"}[op]
+              "unity_cli_auth_status":"--status",
+              "unity_cli_license_activate":"--license-activate"}[op]
         out=subprocess.run(["python3",str(source),flag],capture_output=True,
                           text=True,timeout=48,check=False)
         return {"exit_code":out.returncode,"stdout":out.stdout[-5500:],
