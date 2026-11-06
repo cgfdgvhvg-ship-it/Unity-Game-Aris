@@ -100,6 +100,19 @@ namespace Aaris.MapReview.Editor
                 RenderTexture.active = target;
                 png.ReadPixels(new Rect(0, 0, 1280, 720), 0, 0);
                 png.Apply(false);
+                // Flat or black frames are not reliable evidence of an imported scene.
+                Color32[] pixels = png.GetPixels32();
+                int low = 255, high = 0;
+                for (int py = 48; py < 720; py += 96)
+                    for (int px = 64; px < 1280; px += 128)
+                    {
+                        Color32 c = pixels[py * 1280 + px];
+                        int v = (c.r + c.g + c.b) / 3;
+                        low = Math.Min(low, v);
+                        high = Math.Max(high, v);
+                    }
+                if (high - low < 8)
+                    throw new InvalidOperationException("Flat/black camera output; renderer or scene not ready");
                 var bytes = png.EncodeToPNG();
                 if (bytes.Length < 5000) throw new InvalidOperationException("Empty renderer output");
                 File.WriteAllBytes(path, bytes);
@@ -420,47 +433,64 @@ namespace Aaris.MapReview.Editor
             return false;
         }
 
+        private sealed class Candidate
+        {
+            public Transform obj;
+            public Terrain terrain;
+            public int tile, index;
+            public float distanceSq;
+        }
+
         private static void Inspect(Intent q, Answer answer)
         {
-            var candidates = new System.Collections.Generic.List<Item>();
-            Vector3 focus = new Vector3(q.x, q.y, q.z);
+            // Rank by cheap native positions. Inspect only the closest meshes.
+            var candidates = new System.Collections.Generic.List<Candidate>();
             int max = q.limit == 0 ? 10 : q.limit;
             bool named = !string.IsNullOrEmpty(q.query);
+            float maxSquare = q.radius * q.radius;
             foreach (Transform t in UnityEngine.Object.FindObjectsByType<Transform>(
                          FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 if (t.gameObject.scene.path != AarisExplorerBuild.ScenePath) continue;
                 if (named && t.name.IndexOf(q.query, IgnoreCase) < 0) continue;
-                if (Vector2.Distance(new Vector2(t.position.x,t.position.z),
-                       new Vector2(q.x,q.z)) > q.radius) continue;
+                float dx = t.position.x - q.x, dz = t.position.z - q.z;
+                float distance = dx * dx + dz * dz;
+                if (distance > maxSquare) continue;
                 if (!named && t.GetComponent<Renderer>() == null) continue;
-                candidates.Add(SceneItem(t, false));
+                candidates.Add(new Candidate { obj = t, distanceSq = distance });
             }
-            var tiles = Terrains();
+            Terrain[] tiles = Terrains();
             for (int tile = 0; tile < tiles.Length; tile++)
             {
                 Terrain terrain = tiles[tile];
                 TreeInstance[] trees = terrain.terrainData.treeInstances;
+                TreePrototype[] prototypes = terrain.terrainData.treePrototypes;
+                Vector3 position = terrain.transform.position;
+                Vector3 size = terrain.terrainData.size;
                 for (int i = 0; i < trees.Length; i++)
                 {
-                    Vector3 p = TreePosition(terrain, trees[i]);
-                    if (Vector2.Distance(new Vector2(p.x,p.z), new Vector2(q.x,q.z)) > q.radius)
-                        continue;
-                    var prototype = terrain.terrainData.treePrototypes[trees[i].prototypeIndex].prefab;
-                    string name = prototype == null ? "Tree" : prototype.name;
-                    if (named && name.IndexOf(q.query, IgnoreCase) < 0) continue;
-                    candidates.Add(TreeItem(terrain, tile, i, false));
-                    // Prevent pathologically large query results / allocations.
-                    if (candidates.Count > 4000) break;
+                    TreeInstance tree = trees[i];
+                    float dx = position.x + tree.position.x * size.x - q.x;
+                    float dz = position.z + tree.position.z * size.z - q.z;
+                    float distance = dx * dx + dz * dz;
+                    if (distance > maxSquare) continue;
+                    if (named)
+                    {
+                        if (tree.prototypeIndex < 0 || tree.prototypeIndex >= prototypes.Length) continue;
+                        GameObject prefab = prototypes[tree.prototypeIndex].prefab;
+                        string treeName = prefab == null ? "Tree" : prefab.name;
+                        if (treeName.IndexOf(q.query, IgnoreCase) < 0) continue;
+                    }
+                    candidates.Add(new Candidate {
+                        terrain = terrain, tile = tile, index = i, distanceSq = distance
+                    });
                 }
-                if (candidates.Count > 4000) break;
             }
-            candidates.Sort((a, b) => Vector2.SqrMagnitude(
-                new Vector2(a.position.x-q.x,a.position.z-q.z)).CompareTo(
-                Vector2.SqrMagnitude(new Vector2(b.position.x-q.x,b.position.z-q.z))));
+            candidates.Sort((a,b) => a.distanceSq.CompareTo(b.distanceSq));
             answer.matched = candidates.Count;
-            answer.items = candidates.Take(max).ToArray();
-            answer.message = "Nearby items, world-space metres. IDs can be used for precise edits.";
+            answer.items = candidates.Take(max).Select(c => c.obj != null
+                ? SceneItem(c.obj,false) : TreeItem(c.terrain,c.tile,c.index,false)).ToArray();
+            answer.message = "Nearest items in world-space metres. Exact IDs enable bounded edits.";
         }
 
         private static void Perform(Intent q, Answer answer)
