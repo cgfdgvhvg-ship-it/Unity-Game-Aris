@@ -3398,6 +3398,18 @@ def execute(job):
     if op == "safe_archives_cleanup":
         if args: raise ValueError("archive cleanup takes no arguments")
         return {"exit_code":0,"stdout":json.dumps(safe_archive_cleanroom(delete=True)),"stderr":""}
+    if op in {"unity_cli_install_start","unity_cli_login_start","unity_cli_auth_status"}:
+        if args: raise ValueError("Unity CLI OAuth operation takes no shell arguments")
+        source=Path("/workspaces/.aaris-world-bridge/ondemand/unity_cli_auth_bootstrap.py")
+        if not source.is_file() or source.is_symlink() or source.stat().st_size>12000:
+            return {"exit_code":3,"stdout":"","stderr":"Approved Unity CLI OAuth helper missing"}
+        flag={"unity_cli_install_start":"--install-start",
+              "unity_cli_login_start":"--login-start",
+              "unity_cli_auth_status":"--status"}[op]
+        out=subprocess.run(["python3",str(source),flag],capture_output=True,
+                          text=True,timeout=48,check=False)
+        return {"exit_code":out.returncode,"stdout":out.stdout[-5500:],
+                "stderr":out.stderr[-600:]}
     if op in {"unity_tmp_install_start","unity_tmp_install_status","unity_desktop_deps_start","unity_desktop_deps_status"}:
         if args: raise ValueError("Unity installer takes no arbitrary arguments")
         installer=Path("/workspaces/.aaris-world-bridge/ondemand/unity_tmp_editor_installer.py")
