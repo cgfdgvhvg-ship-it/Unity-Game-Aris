@@ -106,7 +106,7 @@ def process(comment):
         STATE.mkdir(parents=True, exist_ok=True)
         path = STATE / f"ai-diagnostics-{comment_id}.json"
         path.write_text(json.dumps(report, indent=2, sort_keys=True))
-        issue_comment(f"DIAGNOSE #{comment_id}: sanitized runner report (no credentials):\\n\\n"
+        issue_comment(f"DIAGNOSE #{comment_id}: sanitized runner report (no credentials):\n\n"
                       + json.dumps(report, sort_keys=True))
         return "diagnosed"
     if isinstance(body, str) and body.startswith("AI "):
