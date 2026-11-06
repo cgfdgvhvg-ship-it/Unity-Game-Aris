@@ -143,6 +143,29 @@ jobs:
           echo "$!" > /tmp/aaris-xvfb.pid
           sleep 2
           DISPLAY=:99 openbox > /tmp/aaris-openbox.log 2>&1 &
+          # This visible status window makes a slow or unlicensed Editor obvious.
+          cat >/tmp/aaris-desktop-stage.sh <<'STAGE'
+          #!/bin/bash
+          while true; do
+            clear
+            echo "AARIS UNITY CLOUD RUNNER"
+            echo "Linux desktop ready. Unity Editor may still be loading."
+            echo "Repository: sundamunda289-art/Unity-Game-Aris"
+            echo
+            if [[ -f ci-live-control/license-status.json ]]; then
+              python3 -c 'import json; from pathlib import Path; v=json.loads(Path("ci-live-control/license-status.json").read_text()); print("Unity stage:", v.get("state","unknown"))' 2>/dev/null || true
+            else
+              echo "Unity stage: waiting for bootstrap"
+            fi
+            echo
+            echo "Issue #77 accepts owner-authored AI commands."
+            echo "Minimize this window when the Unity Editor opens."
+            sleep 7
+          done
+          STAGE
+          chmod +x /tmp/aaris-desktop-stage.sh
+          DISPLAY=:99 xterm -title 'Aaris Unity starting' -geometry 100x18+25+25 -e /tmp/aaris-desktop-stage.sh > /tmp/aaris-stage-window.log 2>&1 &
+          echo "$!" > /tmp/aaris-stage-window.pid
           DISPLAY=:99 x11vnc -display :99 -rfbport 5900 -localhost -forever \
             -shared -nopw -noxdamage -quiet > /tmp/aaris-x11vnc.log 2>&1 &
           websockify --web /usr/share/novnc 127.0.0.1:6080 127.0.0.1:5900 \
@@ -173,6 +196,9 @@ jobs:
           sudo nginx -c /tmp/aaris-nginx.conf
           curl --retry 8 --retry-delay 1 --retry-connrefused -fsS http://127.0.0.1:8080/api/status
           curl --retry 8 --retry-delay 1 --retry-connrefused -fsS http://127.0.0.1:8080/vnc/vnc.html -o /dev/null
+          # Only a startup desktop diagnostic, not a Unity scene render.
+          DISPLAY=:99 scrot ci-live-control/desktop-startup.png
+          test -s ci-live-control/desktop-startup.png
 
           python3 - <<'PY'
           import base64, os, socket, time
@@ -198,6 +224,13 @@ jobs:
               raise SystemExit("noVNC WebSocket handshake through nginx failed")
           print("noVNC WebSocket handshake passed")
           PY
+      - name: Upload immediate VNC desktop diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-desktop-startup-${{ github.run_id }}
+          path: ci-live-control/desktop-startup.png
+          retention-days: 7
+          if-no-files-found: warn
       - name: Start Cloudflare email-protected temporary tunnel
         run: |
           set -euo pipefail
