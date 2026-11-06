@@ -91,3 +91,91 @@ Personal license. No machine identity spoofing or token caching is used.
 Verified repo-level unit test for command handler and the workflow's
 issue_comment path ran in GitHub Actions. An actual successful Unity
 license activation and true scene PNG have NOT yet been verified.
+
+
+## 2026-11-07: Unified AI hands and eyes (draft upgrade)
+
+The repository lives at **sundamunda289-art/Unity-Game-Aris** (the older
+Aaris-khan-don URL redirects here). Do not accidentally edit the former repo.
+Use the existing **GitHub Issue #77** owner-authorized relay plus the existing
+**AarisLiveCameraBridge.cs**. Do NOT add lots of duplicate control scripts.
+
+### Human / any connected AI: how to use
+
+1. Check Unity licensing first. A successful **verify** workflow is *not*
+   evidence of a running Unity Editor. Real Unity render/mesh inspection
+   needs the licensed 6000.3.26f1 Editor to finish import on the Actions runner.
+2. As the connected repo owner, post **START_DESKTOP 45** to
+   https://github.com/sundamunda289-art/Unity-Game-Aris/issues/77 .
+   Use 15/45/90 (minutes); an Actions runner is temporary. When running, the
+   bot posts a fresh Cloudflare Quick Tunnel URL. Its noVNC screen is protected
+   by the UNITY_EMAIL one-time PIN. A connected GitHub AI can read issue replies
+   and the PUBLIC, non-secret photo/JSON report assets on the live-photos Release;
+   it **cannot** silently receive a continuous live screen stream inside chat.
+3. For automatic camera positioning, owner-post:
+   CAMERA -420 22 -210 0 20 22
+   The response contains a genuine Unity 1280x720 PNG *only* after the
+   C# bridge actually rendered it. Earlier results with license timeouts
+   are **not** Unity photo evidence.
+4. For semantic map operations, post one compact JSON per comment prefixed
+   with **AGENT**. Operations are bounded, typed, owner-only, no arbitrary code:
+
+       AGENT {"action":"health"}
+       AGENT {"action":"scan","x":-420,"z":-210,"radius":45}
+       AGENT {"action":"describe","target":"tree:Terrain_Tile_Name:123"}
+       AGENT {"action":"photo","target":"scene:GlobalObjectId_V1-2-..."}
+       AGENT {"action":"move","target":"<exact ID from scan>","x":-418,"y":21,"z":-208}
+       AGENT {"action":"move","target":"<exact ID from scan>","x":-418,"y":21,"z":-208,"apply":true}
+       AGENT {"action":"scale","target":"<exact ID from scan>","x":1.2,"y":1.0,"z":1.2,"apply":true}
+       AGENT {"action":"save"}
+
+   **Replace placeholders with real ID values returned by scan.** For
+   native Terrain tree instances, horizontal width uses x==z; y changes
+   height. For a scene mesh, x/y/z are *multipliers* for its Transform.localScale.
+   For move, x/y/z are *absolute world metres*, not deltas. Default
+   apply=false does a dry run and returns overlap warnings. Any reported
+   building/vehicle-spawn clearance conflict blocks applying the edit.
+   Do not scale a complete house to change only one wall thickness; choose
+   an independently modeled wall subobject, otherwise revise the source model.
+5. Every successful AGENT action publishes an
+   `agent-report-<issue-comment-id>.json` file under
+   https://github.com/sundamunda289-art/Unity-Game-Aris/releases/tag/live-photos .
+   Scan returns up to 35 nearby real scene meshes/native Terrain tree instances,
+   altitude, slope, bounds, names, stable scene IDs or tree tile/index IDs.
+   Describe returns dimensions in metres and a sampled 3D exterior point cloud
+   (`outer_surface_points_m`), computed from readable mesh vertices and
+   angular silhouette bins. This is an **approximation**, not exact foliage
+   topology or an editable CAD solid. Non-readable meshes fall back to AABB
+   corner sampling; quality is labeled. Photo returns an actual PNG URL.
+6. While the email-PIN live page is up, it exposes
+   /api/agent/report, /api/agent/photo and a rotatable 3D point viewer,
+   plus the independent noVNC live screen. Never put Unity OAuth URLs, ULFs,
+   credentials, emails, tokens or cookies into public issue commands or Releases.
+
+### Saving, resuming and QA
+
+- Changes apply *only when apply=true*, save Unity scene/TerrainData on the
+  runner, and periodically checkpoint **tracked** source assets only to the
+  dedicated `ai-map-draft` branch (every ~240s, with best-effort final flush).
+  An explicit AGENT save forces a Git checkpoint. This is not main; review
+  ai-map-draft vs main before merging, including Git LFS object availability,
+  changed .unity/.asset files, and map clearances. It NEVER overwrites .meta
+  on purpose, never stages secrets/Library, and never pushes directly to main.
+- On the next GitHub-hosted runner, the workflow fetches ai-map-draft and
+  fast-forward checks against main, then hydrates Git LFS before opening Editor.
+  If main and the draft diverged, **stop rather than reset** native scene files.
+  Fresh Docker pulls, Unity activation and scene import can still take time.
+  6-hour runner lifetime does not imply a persistent 6-hour live UI.
+- No automatic save can be guaranteed at a hard runner kill or network failure.
+  The last successfully pushed draft commit is the recovery point. Do not
+  pretend unpushed RAM/working-tree state survives.
+- The workflow's `aaris-live-diagnostics` artifact contains
+  `ci-diagnostics/report.json`, checkpoint status and storage metrics.
+  It deliberately omits login URL, ULF and private Unity logs.
+  Read it to find the last stage (virtual display, API, Cloudflare, LFS,
+  Docker, licensing, camera). The GitHub Actions verify job tests protocol
+  rejection of malformed/unsafe commands but does not prove Unity C# compiled.
+- Offline `Docs/MAP_LAYOUT.json` diagrams and Python checks are helpful for
+  unlicensed scene planning but must **never** be labeled authentic Unity
+  screenshots, native mesh dimensions or verified gameplay collisions.
+
