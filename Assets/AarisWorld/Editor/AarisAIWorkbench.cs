@@ -284,15 +284,21 @@ namespace Aaris.MapReview.Editor
             string proto = a.prototypeIndex >= 0 && a.prototypeIndex < data.treePrototypes.Length &&
                 data.treePrototypes[a.prototypeIndex].prefab != null
                 ? data.treePrototypes[a.prototypeIndex].prefab.name : "unknown";
-            // TreeInstance widthScale/heightScale are multipliers, NOT guaranteed physical dimensions.
+            var points = TreeSamplePoints(t, index);
+            Bounds b = new Bounds(world, new Vector3(a.widthScale * 2, a.heightScale * 6, a.widthScale * 2));
+            if (points.Count > 0)
+            {
+                b = new Bounds(points[0], Vector3.zero);
+                foreach (Vector3 point in points) b.Encapsulate(point);
+            }
             return new Item { name = proto + " #" + index,
                 path = "terrain-tree:" + terrainName + ":" + index, kind = "native-terrain-tree",
-                position = world, center = world + Vector3.up * a.heightScale * 2,
-                size = new Vector3(a.widthScale, a.heightScale, a.widthScale),
+                position = world, center = b.center, size = b.size,
                 details = "prototype=" + proto + "; prototypeIndex=" + a.prototypeIndex +
                           "; widthScale=" + a.widthScale.ToString("F3", Inv) +
                           "; heightScale=" + a.heightScale.ToString("F3", Inv) +
-                          "; size contains scale multipliers, NOT measured metres" };
+                          "; boundsFidelity=" + (points.Count > 0 ? "sampled-prototype-mesh" : "estimated-proxy") +
+                          "; widthScale/heightScale are relative multipliers" };
         }
 
         private static void EditTree(Intent c)
@@ -331,7 +337,8 @@ namespace Aaris.MapReview.Editor
         private static void EditSceneObject(Transform transform, Intent c)
         {
             if (transform.GetComponent<Terrain>() != null || transform.GetComponent<Camera>() != null ||
-                transform.name.Contains("Player") || transform.name.StartsWith("VehicleSpawnPoint_"))
+                transform.name.Contains("Player") || transform.name.StartsWith("VehicleSpawnPoint_") ||
+                transform.GetComponentsInChildren<Transform>(true).Length > 500)
                 throw new ArgumentException("Protected gameplay/terrain object; edits refused");
             Vector3 oldPosition = transform.position, oldScale = transform.localScale;
             Undo.RegisterCompleteObjectUndo(transform, "Aaris AI " + c.op);
@@ -354,6 +361,7 @@ namespace Aaris.MapReview.Editor
             }
             try
             {
+                Physics.SyncTransforms();
                 Bounds after = WorldBounds(transform);
                 if (after.min.x < -1000 || after.max.x > 1000 ||
                     after.min.z < -1000 || after.max.z > 1000)
@@ -378,6 +386,7 @@ namespace Aaris.MapReview.Editor
             catch
             {
                 transform.position = oldPosition; transform.localScale = oldScale;
+                Physics.SyncTransforms();
                 throw;
             }
             // Persist only after all bounds/collision checks succeed.
@@ -416,45 +425,89 @@ namespace Aaris.MapReview.Editor
             WritePly(points, path);
         }
 
+        private static List<Vector3> TreeSamplePoints(Terrain t, int index)
+        {
+            var data = t.terrainData;
+            TreeInstance[] instances = data.treeInstances;
+            if (index < 0 || index >= instances.Length) throw new ArgumentException("Invalid tree index");
+            TreeInstance inst = instances[index];
+            var result = new List<Vector3>();
+            if (inst.prototypeIndex < 0 || inst.prototypeIndex >= data.treePrototypes.Length)
+                return result;
+            var proto = data.treePrototypes[inst.prototypeIndex].prefab;
+            Vector3 world = t.transform.position + Vector3.Scale(inst.position, data.size);
+            if (proto == null) return result;
+            var model = Matrix4x4.TRS(world,
+                Quaternion.Euler(0, inst.rotation * Mathf.Rad2Deg, 0),
+                new Vector3(inst.widthScale, inst.heightScale, inst.widthScale));
+            foreach (MeshFilter f in proto.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (f.sharedMesh == null || !f.sharedMesh.isReadable) continue;
+                Matrix4x4 matrix = model * proto.transform.worldToLocalMatrix * f.transform.localToWorldMatrix;
+                Vector3[] vertices = f.sharedMesh.vertices;
+                int step = Math.Max(1, (int)Math.Ceiling(vertices.Length / 800.0));
+                for (int i=0; i<vertices.Length && result.Count<4096; i+=step)
+                    result.Add(matrix.MultiplyPoint3x4(vertices[i]));
+                if (result.Count >= 4096) break;
+            }
+            return result;
+        }
+
         private static void WriteTreePoints(string terrainName, int index, string path)
         {
             Terrain t = TerrainByName(terrainName);
             TreeInstance inst = t.terrainData.treeInstances[index];
-            var proto = t.terrainData.treePrototypes[inst.prototypeIndex].prefab;
-            var result = new List<Vector3>();
-            Vector3 world = t.transform.position + Vector3.Scale(inst.position, t.terrainData.size);
-            if (proto != null)
-            {
-                var model = Matrix4x4.TRS(world,
-                    Quaternion.Euler(0, inst.rotation * Mathf.Rad2Deg, 0),
-                    new Vector3(inst.widthScale, inst.heightScale, inst.widthScale));
-                foreach (MeshFilter f in proto.GetComponentsInChildren<MeshFilter>(true))
-                {
-                    if (f.sharedMesh == null || !f.sharedMesh.isReadable) continue;
-                    Matrix4x4 matrix = model * proto.transform.worldToLocalMatrix * f.transform.localToWorldMatrix;
-                    Vector3[] vertices = f.sharedMesh.vertices;
-                    int step = Math.Max(1, (int)Math.Ceiling(vertices.Length / 800.0));
-                    for (int i=0; i<vertices.Length && result.Count<4096; i+=step)
-                        result.Add(matrix.MultiplyPoint3x4(vertices[i]));
-                }
-            }
+            var result = TreeSamplePoints(t, index);
             if (result.Count == 0)
             {
-                // No mesh vertices available: an explicitly labelled scale proxy, not a true tree mesh.
+                // Explicit scale proxy; NEVER claim detailed canopy geometry without readable mesh vertices.
+                Vector3 world = t.transform.position + Vector3.Scale(inst.position, t.terrainData.size);
                 for (int i=0; i<24; i++)
                 {
                     float angle = i * Mathf.PI * 2 / 24;
-                    result.Add(world + new Vector3(Mathf.Cos(angle)*inst.widthScale, inst.heightScale*3,
+                    result.Add(world + new Vector3(Mathf.Cos(angle)*inst.widthScale, inst.heightScale*6,
                                                     Mathf.Sin(angle)*inst.widthScale));
+                    result.Add(world + new Vector3(Mathf.Cos(angle)*inst.widthScale*0.25f, 0,
+                                                    Mathf.Sin(angle)*inst.widthScale*0.25f));
                 }
             }
             WritePly(result, path);
         }
 
+        // Each height/azimuth cell keeps its furthest radial point: sparse outer-layer envelope.
+        // This is useful for canopy/trunk silhouette comparisons, not exact manifold topology.
+        private static List<Vector3> OuterShell(List<Vector3> points)
+        {
+            if (points.Count < 32) return points;
+            Bounds b = new Bounds(points[0], Vector3.zero);
+            foreach (Vector3 point in points) b.Encapsulate(point);
+            const int levels = 24, angles = 32;
+            var furthest = new float[levels * angles];
+            var selected = new Vector3[levels * angles];
+            for (int i = 0; i < furthest.Length; i++) furthest[i] = -1;
+            foreach (Vector3 v in points)
+            {
+                int y = Mathf.Clamp(Mathf.FloorToInt((v.y - b.min.y) /
+                            Mathf.Max(0.0001f, b.size.y) * levels), 0, levels - 1);
+                float angle = Mathf.Atan2(v.z - b.center.z, v.x - b.center.x);
+                int az = Mathf.Clamp(Mathf.FloorToInt((angle + Mathf.PI) /
+                            (2 * Mathf.PI) * angles), 0, angles - 1);
+                float d = (v.x - b.center.x) * (v.x - b.center.x) +
+                          (v.z - b.center.z) * (v.z - b.center.z);
+                int cell = y * angles + az;
+                if (d > furthest[cell]) { furthest[cell] = d; selected[cell] = v; }
+            }
+            var shell = new List<Vector3>();
+            for (int i = 0; i < selected.Length; i++)
+                if (furthest[i] >= 0) shell.Add(selected[i]);
+            return shell;
+        }
+
         private static void WritePly(List<Vector3> vertices, string path)
         {
+            vertices = OuterShell(vertices);
             var b = new StringBuilder("ply\nformat ascii 1.0\n");
-            b.Append("comment Unity world-space sampled mesh vertices; not a watertight surface\n");
+            b.Append("comment World-space outer shell sampled by height and azimuth; not a watertight surface\n");
             b.Append("element vertex ").Append(vertices.Count).Append('\n');
             b.Append("property float x\nproperty float y\nproperty float z\nend_header\n");
             foreach (Vector3 v in vertices)
