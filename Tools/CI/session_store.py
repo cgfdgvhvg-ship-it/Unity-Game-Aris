@@ -54,11 +54,33 @@ def allowed(name, kind):
         part.lower() in ("secrets", "licenses", "credentials") for part in p.parts
     )
 
+def unchanged_from_head(name, path):
+    """Ignore checkout/LFS filter anomalies; only archive genuinely edited bytes."""
+    old_sha = command("git", "rev-parse", "HEAD:" + name,
+                      check=False, capture_output=True, text=True)
+    if old_sha.returncode:
+        return False
+    raw_sha = command("git", "hash-object", "--no-filters", "--", name,
+                      capture_output=True, text=True).stdout.strip()
+    if raw_sha == old_sha.stdout.strip():
+        return True
+    # A valid hydrated LFS object differs byte-for-byte from its Git pointer,
+    # but is NOT a map edit. Compare its recorded content digest, not blob SHA.
+    prior = command("git", "cat-file", "blob", "HEAD:" + name,
+                    capture_output=True).stdout
+    if not prior.startswith(b"version https://git-lfs.github.com/spec/v1\n"):
+        return False
+    import re
+    match = re.search(rb"oid sha256:([0-9a-f]{64})\nsize (\d+)\n", prior)
+    return bool(match and path.stat().st_size == int(match.group(2))
+                and sha(path) == match.group(1).decode())
+
 def project_paths():
     tracked = command("git", "diff", "--name-only", "-z", "HEAD",
                       capture_output=True).stdout.split(b"\0")
     untracked = command("git", "ls-files", "--others", "--exclude-standard", "-z",
                         capture_output=True).stdout.split(b"\0")
+    changed = {os.fsdecode(item) for item in tracked if item}
     selected = set()
     for data in tracked + untracked:
         if not data:
@@ -66,6 +88,8 @@ def project_paths():
         name = os.fsdecode(data)
         path = ROOT / name
         if allowed(name, "project") and path.is_file() and not path.is_symlink():
+            if name in changed and unchanged_from_head(name, path):
+                continue
             selected.add(name)
     return sorted(selected)
 
