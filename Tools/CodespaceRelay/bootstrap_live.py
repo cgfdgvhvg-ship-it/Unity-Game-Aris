@@ -16,7 +16,7 @@ import subprocess
 import sys
 import time
 
-REPO = "Aaris-khan-don/Unity-Game-Aris"
+REPO = "sundamunda289-art/Unity-Game-Aris"
 BRANCH = "ai/codespace-jobs"
 ROOT = Path("/workspaces/.aaris-world-bridge")
 STAGE = ROOT / "ondemand"
