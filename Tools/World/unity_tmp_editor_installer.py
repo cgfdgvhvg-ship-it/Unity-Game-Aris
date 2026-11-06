@@ -131,6 +131,80 @@ def start():
     return {"status": "started", "pid": proc.pid, **status()}
 
 
+
+# GUI dependencies are provisioned separately so a failed apt action never
+# triggers a destructive /tmp scene recreation or Unity download.
+DEPS = ("xvfb", "openbox", "xterm", "x11vnc", "websockify", "novnc", "x11-utils",
+        "xdotool", "wmctrl", "xauth")
+EXECUTABLES = ("Xvfb", "openbox", "xterm", "x11vnc", "websockify")
+DEPS_STATE = STAGE / "unity-desktop-deps-status.json"
+DEPS_LOG = STAGE / "unity-desktop-deps.log"
+DEPS_LOCK = STAGE / "unity-desktop-deps.lock"
+
+
+def dependencies_status():
+    state = {}
+    if DEPS_STATE.is_file() and not DEPS_STATE.is_symlink() and DEPS_STATE.stat().st_size < 3000:
+        try:
+            state = json.loads(DEPS_STATE.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            pass
+    running = False
+    for item in Path("/proc").iterdir():
+        if not item.name.isdigit(): continue
+        try:
+            cmd = (item / "cmdline").read_bytes().decode("utf-8","replace")
+            if "unity_tmp_editor_installer.py" in cmd and "--deps-worker" in cmd:
+                running = True
+                break
+        except OSError: pass
+    present = {name: bool(shutil.which(name)) for name in EXECUTABLES}
+    return {"required_commands": present, "ready": all(present.values()),
+            "worker_running": running, "last_state": state.get("state", "not_started"),
+            "last_error": state.get("error")}
+
+
+def dependencies_worker():
+    STAGE.mkdir(parents=True, exist_ok=True)
+    with DEPS_LOCK.open("a+") as guard:
+        fcntl.flock(guard.fileno(), fcntl.LOCK_EX)
+        if dependencies_status()["ready"]: return
+        env = os.environ.copy()
+        env["DEBIAN_FRONTEND"] = "noninteractive"
+        env["APT_LISTCHANGES_FRONTEND"] = "none"
+        try:
+            if not shutil.which("sudo") or not shutil.which("apt-get"):
+                raise RuntimeError("Codespace sudo/apt-get missing")
+            for kind, cmd, limit in (
+                ("apt_update", ["sudo", "-n", "apt-get", "update", "-qq"], 900),
+                ("apt_install", ["sudo", "-n", "apt-get", "install", "-y", "-qq",
+                                 "--no-install-recommends", *DEPS], 1200),
+            ):
+                DEPS_STATE.write_text(json.dumps({"state": kind}), encoding="utf-8")
+                with DEPS_LOG.open("a", encoding="utf-8") as log:
+                    result = subprocess.run(cmd, env=env, cwd="/tmp", stdin=subprocess.DEVNULL,
+                                            stdout=log, stderr=log, timeout=limit, check=False)
+                if result.returncode != 0:
+                    raise RuntimeError(kind + " failed, exit " + str(result.returncode))
+            if not dependencies_status()["ready"]:
+                raise RuntimeError("GUI dependencies missing after apt install")
+            DEPS_STATE.write_text(json.dumps({"state":"installed"}), encoding="utf-8")
+        except Exception as exc:
+            DEPS_STATE.write_text(json.dumps({"state":"failed",
+                         "error":type(exc).__name__ + ": " + str(exc)[:200]}), encoding="utf-8")
+
+
+def dependencies_start():
+    d=dependencies_status()
+    if d["ready"]: return {"status":"already_installed", **d}
+    if d["worker_running"]: return {"status":"already_running", **d}
+    STAGE.mkdir(parents=True, exist_ok=True)
+    with DEPS_LOG.open("a", encoding="utf-8") as log:
+        proc = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "--deps-worker"],
+              stdin=subprocess.DEVNULL, cwd="/tmp", stdout=log, stderr=log, start_new_session=True)
+    return {"status":"started", "pid":proc.pid, **dependencies_status()}
+
+
 if __name__ == "__main__":
     if sys.argv[1:] == ["--worker"]:
         worker()
@@ -138,5 +212,11 @@ if __name__ == "__main__":
         print(json.dumps(status(), sort_keys=True))
     elif sys.argv[1:] == ["--start"]:
         print(json.dumps(start(), sort_keys=True))
+    elif sys.argv[1:] == ["--deps-start"]:
+        print(json.dumps(dependencies_start(), sort_keys=True))
+    elif sys.argv[1:] == ["--deps-status"]:
+        print(json.dumps(dependencies_status(), sort_keys=True))
+    elif sys.argv[1:] == ["--deps-worker"]:
+        dependencies_worker()
     else:
-        raise SystemExit("Use --start, --status or --worker")
+        raise SystemExit("Use --start, --status, --deps-start, --deps-status or worker modes")
