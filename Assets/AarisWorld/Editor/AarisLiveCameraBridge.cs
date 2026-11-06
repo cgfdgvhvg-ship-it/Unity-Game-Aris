@@ -147,9 +147,9 @@ namespace Aaris.MapReview.Editor
         private static Vector3[] BuildDirections()
         {
             var list = new System.Collections.Generic.List<Vector3>();
-            for (int i = 0; i < 96; ++i)
+            for (int i = 0; i < 256; ++i)
             {
-                float y = 1f - 2f * (i + 0.5f) / 96f;
+                float y = 1f - 2f * (i + 0.5f) / 256f;
                 float a = i * 2.39996323f;
                 float r = Mathf.Sqrt(Mathf.Max(0f, 1f - y * y));
                 list.Add(new Vector3(Mathf.Cos(a) * r, y, Mathf.Sin(a) * r));
@@ -476,7 +476,8 @@ namespace Aaris.MapReview.Editor
                         instance.position = next;
                         var trees = td.treeInstances;
                         trees[index] = instance;
-                        td.treeInstances = trees;
+                        td.SetTreeInstances(trees, true);
+                        terrain.Flush();
                         EditorUtility.SetDirty(td);
                         AssetDatabase.SaveAssets();
                         report.asset = AssetDatabase.GetAssetPath(td);
@@ -493,7 +494,8 @@ namespace Aaris.MapReview.Editor
                         instance.heightScale = Mathf.Clamp(instance.heightScale * factor.y, 0.1f, 5f);
                         var trees = terrain.terrainData.treeInstances;
                         trees[index] = instance;
-                        terrain.terrainData.treeInstances = trees;
+                        terrain.terrainData.SetTreeInstances(trees, false);
+                        terrain.Flush();
                         EditorUtility.SetDirty(terrain.terrainData);
                         AssetDatabase.SaveAssets();
                         report.asset = AssetDatabase.GetAssetPath(terrain.terrainData);
@@ -545,6 +547,19 @@ namespace Aaris.MapReview.Editor
                     else if (command.op == "photo") Photo(bounds);
                     else if (command.op == "inspect") report.detail = "Native tree instance; scale X/Z=widthScale, Y=heightScale";
                     else throw new ArgumentException("Allowed tree ops: inspect, outline, photo, move, scale, part_scale (prototype scope)");
+                    if (report.saved)
+                    {
+                        // Return AFTER-edit dimensions, not stale pre-edit bounds.
+                        GameObject changed = PreviewTree(terrain, instance, prototype);
+                        try
+                        {
+                            FillBounds(report, changed);
+                            report.position = TreePosition(terrain, instance);
+                            report.scale = new Vector3(instance.widthScale, instance.heightScale,
+                                instance.widthScale);
+                        }
+                        finally { UnityEngine.Object.DestroyImmediate(changed); }
+                    }
                 }
                 finally { UnityEngine.Object.DestroyImmediate(preview); }
                 return;
