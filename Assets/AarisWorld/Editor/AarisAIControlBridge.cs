@@ -16,8 +16,8 @@ namespace Aaris.MapReview.Editor
     {
         [Serializable] private sealed class Intent
         {
-            public string op, target, query;
-            public float x, y, z, radius, dx, dy, dz, sx, sy, sz, distance;
+            public string op, target, query, axis;
+            public float x, y, z, radius, dx, dy, dz, sx, sy, sz, distance, meters;
             public int max_points;
             public long nonce;
             public bool dry_run;
@@ -32,7 +32,8 @@ namespace Aaris.MapReview.Editor
 
         [Serializable] private sealed class Result
         {
-            public string state, op, error, target, photo, meshMode;
+            public string state, op, error, target, photo, meshMode, preview, measureAccuracy;
+            public Vector3 plannedPosition, plannedLocalScale;
             public long nonce;
             public int count, totalPoints;
             public Item[] objects = new Item[0];
@@ -92,10 +93,10 @@ namespace Aaris.MapReview.Editor
 
         private static void Validate(Intent i)
         {
-            if (!new[] { "find", "inspect", "bounds", "children", "outline", "move", "scale", "photo" }.Contains(i.op))
+            if (!new[] { "find", "inspect", "bounds", "children", "outline", "move", "scale", "size", "photo" }.Contains(i.op))
                 throw new ArgumentException("Unknown AI operation");
             if (!new[] { i.x, i.y, i.z, i.radius, i.dx, i.dy, i.dz,
-                         i.sx, i.sy, i.sz, i.distance }.All(Finite))
+                         i.sx, i.sy, i.sz, i.distance, i.meters }.All(Finite))
                 throw new ArgumentException("Non-finite numeric input");
             if (i.op == "find" && (string.IsNullOrWhiteSpace(i.query) || i.query.Length > 80))
                 throw new ArgumentException("Query required (1-80 chars)");
@@ -114,6 +115,9 @@ namespace Aaris.MapReview.Editor
                                     i.sy < 0.25f || i.sy > 4 ||
                                     i.sz < 0.25f || i.sz > 4))
                 throw new ArgumentException("Scale factors must be 0.25-4");
+            if (i.op == "size" && ((i.axis != "x" && i.axis != "y" && i.axis != "z") ||
+                                   i.meters < 0.05f || i.meters > 100f))
+                throw new ArgumentException("size requires axis x/y/z and 0.05-100 metres");
             if (i.op == "photo" && (i.distance < 2 || i.distance > 200))
                 throw new ArgumentException("Camera distance must be 2-200");
         }
@@ -289,6 +293,50 @@ namespace Aaris.MapReview.Editor
                     else bounds.Encapsulate(c.bounds);
                 }
             }
+            return any;
+        }
+
+        // Measure a compound object along its own local axes. Mesh bounds are
+        // projected into target-local coordinates before converting to metres.
+        // This avoids treating a rotated wall's world AABB as its thickness.
+        private static bool TryLocalMeshBounds(Transform target, out Bounds local, out string accuracy)
+        {
+            local = new Bounds(Vector3.zero, Vector3.zero);
+            bool any = false;
+            Matrix4x4 toLocal = target.worldToLocalMatrix;
+            foreach (var filter in target.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (filter.sharedMesh == null) continue;
+                Bounds b = filter.sharedMesh.bounds;
+                Matrix4x4 relative = toLocal * filter.transform.localToWorldMatrix;
+                for (int n = 0; n < 8; n++)
+                {
+                    Vector3 corner = b.center + Vector3.Scale(b.extents, new Vector3(
+                        (n & 1) == 0 ? -1 : 1, (n & 2) == 0 ? -1 : 1,
+                        (n & 4) == 0 ? -1 : 1));
+                    Vector3 point = relative.MultiplyPoint3x4(corner);
+                    if (!any) { local = new Bounds(point, Vector3.zero); any = true; }
+                    else local.Encapsulate(point);
+                }
+            }
+            if (any) { accuracy = "local-mesh-aabb"; return true; }
+            // Some imported renderers expose bounds but not readable mesh filters.
+            // Transform their world AABB corners; this is conservative for rotations.
+            foreach (var renderer in target.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer is ParticleSystemRenderer) continue;
+                Bounds b = renderer.bounds;
+                for (int n = 0; n < 8; n++)
+                {
+                    Vector3 corner = b.center + Vector3.Scale(b.extents, new Vector3(
+                        (n & 1) == 0 ? -1 : 1, (n & 2) == 0 ? -1 : 1,
+                        (n & 4) == 0 ? -1 : 1));
+                    Vector3 point = toLocal.MultiplyPoint3x4(corner);
+                    if (!any) { local = new Bounds(point, Vector3.zero); any = true; }
+                    else local.Encapsulate(point);
+                }
+            }
+            accuracy = any ? "conservative-renderer-aabb" : "unavailable";
             return any;
         }
 
@@ -474,21 +522,44 @@ namespace Aaris.MapReview.Editor
             {
                 var points = new List<Vector3>();
                 int total = 0;
-                var filters = target.GetComponentsInChildren<MeshFilter>(true);
-                foreach (var filter in filters)
+                bool usedBoundsFallback = false;
+                var filters = target.GetComponentsInChildren<MeshFilter>(true)
+                    .Where(f => f.sharedMesh != null).ToArray();
+                // Divide sample budget between parts: a giant trunk mesh must not
+                // hide leaves, branches or roof/wall pieces from the blueprint.
+                for (int fi = 0; fi < filters.Length; fi++)
                 {
-                    if (filter.sharedMesh == null) continue;
+                    var filter = filters[fi];
+                    var mesh = filter.sharedMesh;
+                    total += mesh.vertexCount;
+                    int left = Math.Max(0, i.max_points - points.Count);
+                    if (left == 0) continue;
+                    int budget = Math.Max(1, left / (filters.Length - fi));
                     try
                     {
-                        var vertices = filter.sharedMesh.vertices;
-                        total += vertices.Length;
-                        int left = Math.Max(0, i.max_points - points.Count);
-                        int stride = Math.Max(1, (int)Math.Ceiling((double)vertices.Length / Math.Max(1, left)));
-                        for (int j = 0; j < vertices.Length && points.Count < i.max_points; j += stride)
+                        var vertices = mesh.vertices;
+                        if (vertices.Length == 0) throw new InvalidOperationException("Empty mesh");
+                        int stride = Math.Max(1, (int)Math.Ceiling((double)vertices.Length / budget));
+                        int sampled = 0;
+                        for (int j = 0; j < vertices.Length && sampled < budget; j += stride)
+                        {
                             points.Add(filter.transform.TransformPoint(vertices[j]));
+                            sampled++;
+                        }
                     }
-                    catch (Exception) { /* Nonreadable mesh uses renderer bounds fallback. */ }
-                    if (points.Count >= i.max_points) break;
+                    catch (Exception)
+                    {
+                        usedBoundsFallback = true;
+                        Bounds b = mesh.bounds;
+                        for (int n = 0; n < 8 && n < budget; n++)
+                        {
+                            Vector3 corner = b.center + Vector3.Scale(b.extents,
+                                new Vector3((n & 1) == 0 ? -1 : 1,
+                                            (n & 2) == 0 ? -1 : 1,
+                                            (n & 4) == 0 ? -1 : 1));
+                            points.Add(filter.transform.TransformPoint(corner));
+                        }
+                    }
                 }
                 if (points.Count == 0)
                 {
@@ -500,7 +571,9 @@ namespace Aaris.MapReview.Editor
                                         (n & 4) == 0 ? -1 : 1)));
                     r.meshMode = "bounds-corners-fallback";
                 }
-                else r.meshMode = "sampled-mesh-vertices";
+                else r.meshMode = usedBoundsFallback
+                    ? "sampled-mesh-with-partial-bounds-fallback"
+                    : "balanced-sampled-mesh-vertices";
                 r.points = points.ToArray();
                 r.totalPoints = total;
                 return;
@@ -515,12 +588,46 @@ namespace Aaris.MapReview.Editor
             if (target.GetComponent<Terrain>() != null || target.GetComponent<Camera>() != null ||
                 PrefabUtility.IsPartOfPrefabAsset(target.gameObject))
                 throw new InvalidOperationException("Terrain root, camera or prefab asset cannot be transformed");
-            if (i.op == "move")
+            if (i.op == "size")
+            {
+                Bounds local;
+                string accuracy;
+                if (!TryLocalMeshBounds(target, out local, out accuracy))
+                    throw new NotSupportedException("Cannot measure an object without mesh or renderer bounds");
+                int axisIndex = i.axis == "x" ? 0 : i.axis == "y" ? 1 : 2;
+                Vector3 basis = axisIndex == 0 ? Vector3.right :
+                    axisIndex == 1 ? Vector3.up : Vector3.forward;
+                float span = axisIndex == 0 ? local.size.x :
+                    axisIndex == 1 ? local.size.y : local.size.z;
+                float currentMetres = span * target.TransformVector(basis).magnitude;
+                if (currentMetres < 0.001f)
+                    throw new InvalidOperationException("Target local axis has zero measurable extent");
+                float factor = i.meters / currentMetres;
+                if (!Finite(factor) || factor < 0.25f || factor > 4f)
+                    throw new ArgumentException("Desired dimension exceeds one-edit 0.25-4x safety limit");
+                Vector3 next = target.localScale;
+                next[axisIndex] *= factor;
+                if (next[axisIndex] < 0.01f || next[axisIndex] > 100f)
+                    throw new ArgumentException("Requested local scale is outside safe limits");
+                r.measureAccuracy = accuracy;
+                r.preview = "Requested local-axis dimension in metres; review renderer bounds after write";
+                r.plannedPosition = target.position;
+                r.plannedLocalScale = next;
+                if (!i.dry_run)
+                {
+                    Undo.RecordObject(target, "Aaris AI set dimension");
+                    target.localScale = next;
+                }
+            }
+            else if (i.op == "move")
             {
                 Vector3 next = target.position + new Vector3(i.dx, i.dy, i.dz);
                 if (Mathf.Abs(next.x) > 2500 || Mathf.Abs(next.z) > 2500 ||
                     Mathf.Abs(next.y) > 5000)
                     throw new ArgumentException("Target would leave supported world bounds");
+                r.preview = "Proposed move; not applied until non-dry-run";
+                r.plannedPosition = next;
+                r.plannedLocalScale = target.localScale;
                 if (!i.dry_run)
                 {
                     Undo.RecordObject(target, "Aaris AI move");
@@ -533,6 +640,9 @@ namespace Aaris.MapReview.Editor
                 if (next.x < 0.01f || next.y < 0.01f || next.z < 0.01f ||
                     next.x > 100 || next.y > 100 || next.z > 100)
                     throw new ArgumentException("Resulting object scale outside allowed range");
+                r.preview = "Proposed local scale; not applied until non-dry-run";
+                r.plannedPosition = target.position;
+                r.plannedLocalScale = next;
                 if (!i.dry_run)
                 {
                     Undo.RecordObject(target, "Aaris AI resize");
