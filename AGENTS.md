@@ -40,3 +40,18 @@ Unity 6000.3.26f1, URP 17.3.0. Native source scene: Assets/TerrainDemoScene_URP/
 - While an explicit live GitHub Actions session runs, Tools/CI/issue_camera_bridge.py polls for CAMERA x y z yaw pitch distance comments from repository owner sundamunda289-art only. It can upload actual Editor PNGs to the public live-photos Release, and responds with immutable PNG links.
 - Cloudflare hub has no KV/R2 writes and no paid components. It cannot run Unity; GitHub Actions hosts the temporary desktop. Live view requires email PIN; Unity Editor itself needs authorized Unity licensing.
 - ChatGPT can request and read snapshots via the GitHub connector, but cannot receive a continuously streaming video in this chat. See Docs/UNITY_LIVE_CLOUDFLARE.md.
+
+
+## Verified intent-driven control and license boundary
+- Post START_DESKTOP 15, START_DESKTOP 45, or START_DESKTOP 90 as the
+  sundamunda289-art repo owner on GitHub Issue #77; ChatGPT with the linked
+  GitHub app can post this owner-authorized command. It triggers a temporary
+  GitHub Actions desktop without running any phone commands.
+- The runner advertises its PIN-protected temporary Cloudflare Tunnel URL in
+  a bot issue comment; the stable free Cloudflare Worker hub discovers it.
+- Post CAMERA x y z yaw pitch distance on the same issue. The runner polls
+  and responds with an actual Unity PNG link only after successful Editor
+  camera rendering; otherwise it returns a clear error.
+- Test run 42239962330 confirmed start/issue relay; camera request 6688056483
+  returned a license-not-available timeout. Real Unity render remains BLOCKED.
+- Do not infer that the live desktop is Unity itself without valid activation.
