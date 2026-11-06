@@ -77,7 +77,7 @@ def inspect_mesh(source, expected_bounds, expected_triangles=None, expected_subm
             require(type(start) is int and type(size) is int and start >= 0 and
                     start % 4 == 0 and size > 0 and size % 3 == 0 and
                     start // 4 + size <= len(ix),
-                    f"LOD submesh {slot}: invalid index range")
+                    f"LOD submesh {slot}: invalid index range; firstByte={start} indexCount={size} totalIndices={len(ix)} topology={sub.get('topology')}")
             require(sub["topology"] == 0 and sub.get("baseVertex", 0) == 0,
                     f"LOD submesh {slot}: unsupported topology/baseVertex")
             a, b = start // 4, start // 4 + size
