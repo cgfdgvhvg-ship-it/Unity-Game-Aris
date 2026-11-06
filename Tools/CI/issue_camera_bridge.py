@@ -189,9 +189,9 @@ def process_save(comment_id):
                   "Review modified assets, LFS uploads and CI before merging.", check=False)
         if made.returncode == 0 and made.stdout.strip():
             pr_url = made.stdout.strip()
-    (STATE / "session-saved-to-git").write_text(branch + "\\n")
+    (STATE / "session-saved-to-git").write_text(branch + "\n")
     issue_comment(f"MAP_SAVE #{comment_id}: saved {len(files)} changed Unity source files "
-                  f"to Git branch \`{branch}\`.\\nReview: {pr_url}\\n"
+                   f"to Git branch `{branch}`.\nReview: {pr_url}\n"
                   f"Release checkpoint: {'ok' if checkpoint.returncode == 0 else 'failed'}."
                   "\nChanges are not automatically merged into main.")
     return "world-git-saved"
