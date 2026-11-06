@@ -7,11 +7,14 @@ on:
       - '.github/workflows/aaris-live-unity.yml'
       - 'Tools/CI/live_camera_server.py'
       - 'Tools/CI/issue_camera_bridge.py'
+      - 'Tools/CI/ai_intents.py'
       - 'Tools/CI/unity_personal_bootstrap.py'
       - 'Tools/CI/license_reuse.py'
       - 'Tools/CI/runner_storage.sh'
       - 'Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs'
       - 'Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs.meta'
+      - 'Assets/AarisWorld/Editor/AarisAIWorkbench.cs'
+      - 'Assets/AarisWorld/Editor/AarisAIWorkbench.cs.meta'
   issue_comment:
     types: [created]
   workflow_dispatch:
@@ -31,6 +34,7 @@ on:
 permissions:
   contents: write
   issues: write
+  pull-requests: write
 
 concurrency:
   group: aaris-one-live-editor-${{ github.event_name }}
@@ -47,7 +51,9 @@ jobs:
           lfs: false
       - name: Verify camera API rejects unsafe inputs
         run: |
-          python3 -m py_compile Tools/CI/live_camera_server.py Tools/CI/issue_camera_bridge.py Tools/CI/unity_personal_bootstrap.py
+          python3 -m py_compile Tools/CI/live_camera_server.py Tools/CI/issue_camera_bridge.py Tools/CI/ai_intents.py Tools/CI/unity_personal_bootstrap.py
+          python3 Tools/CI/ai_intents.py
+          test -s Assets/AarisWorld/Editor/AarisAIWorkbench.cs
           python3 Tools/CI/unity_personal_bootstrap.py --selftest
           python3 Tools/CI/license_reuse.py --selftest
           python3 Tools/CI/issue_camera_bridge.py --selftest
@@ -354,6 +360,29 @@ jobs:
         run: |
           echo "Cloudflare session is active for $SESSION_MINUTES minutes."
           sleep "$((SESSION_MINUTES*60))"
+      - name: Propose persisted AI Unity edits as a review-only PR
+        if: always()
+        run: |
+          set -euo pipefail
+          # Workbench saves only scene/TerrainData, never auth files.
+          # GitHub source history (not Library/cache) is the next runner's truth.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- Assets/AarisWorld Assets/TerrainDemoScene_URP/Scenes Assets/TerrainDemoScene_URP/Terrain
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo 'No saved Unity project changes this session.'
+            exit 0
+          fi
+          branch="ci/ai-editor-$GITHUB_RUN_ID"
+          git switch -c "$branch"
+          git commit -m "ci(ai): propose reviewed Editor scene/TerrainData changes"
+          git push origin "HEAD:refs/heads/$branch"
+          echo "AI saved changes: https://github.com/$GITHUB_REPOSITORY/tree/$branch" >> "$GITHUB_STEP_SUMMARY"
+          gh pr create --base main --head "$branch" \
+            --title "AI workbench: review Unity scene and native terrain edits" \
+            --body "Owner-commanded live Editor operations; review geometry/collisions and LFS diffs. No automatic merge or publish. Unity screenshots prove only rendered frames, not complete gameplay QA." \
+            || echo "::warning::Review branch pushed but automatic PR creation was not permitted. Open PR manually."
       - name: Upload last available Unity camera photo only
         if: always()
         uses: actions/upload-artifact@v4
