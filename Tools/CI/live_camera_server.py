@@ -10,6 +10,8 @@ import json
 import math
 import os
 import time
+import socket
+import base64
 
 ROOT = Path(__file__).resolve().parents[2]
 STATE = ROOT / "ci-live-control"
@@ -42,6 +44,10 @@ Never post this link in GitHub public issues or logs.</small></p>
 <a id="exportulf" href="/api/license/ulf" download="Unity_lic.ulf"
 style="display:none;color:#6fead7">Download Unity license once for GitHub Secret</a>
 </section>
+<div style="margin:8px 0"><button onclick="licenseStatus()">Retry license status</button>
+<a href="/vnc/vnc.html?autoconnect=true&resize=remote&path=/vnc/websockify"
+target="_blank" rel="noopener" style="color:#6fead7">Open full-screen noVNC</a></div>
+<p id="connection">Testing VNC/WebSocket...</p>
 <p id="result">Opening session...</p>
 <iframe src="/vnc/vnc.html?autoconnect=true&resize=remote&path=/vnc/websockify"></iframe>
 <p><a style="color:#6fead7" href="/api/photo" target="_blank">Latest genuine Unity PNG</a></p>
@@ -74,6 +80,18 @@ else {a.style.display='none';a.removeAttribute('href');}
 }catch(e){message='License status temporarily unavailable: '+e.message;}
 document.getElementById('licstate').textContent=message;
 }
+async function checkConnection(){
+try{
+let r=await fetch('/api/health',{credentials:'same-origin',cache:'no-store'});
+if(!r.ok)throw Error('HTTP '+r.status);
+let h=await r.json();
+document.getElementById('connection').textContent=
+'VNC backend: '+(h.vnc_backend?'connected':'offline')+
+' | WebSocket: '+(h.vnc_proxy?'working':'offline')+
+' | Unity container: '+h.unity_container;
+}catch(e){document.getElementById('connection').textContent='Health check unavailable: '+e.message;}
+}
+setInterval(checkConnection,8000);checkConnection();
 setInterval(status,7000);status();
 setInterval(licenseStatus,3000);licenseStatus();
 </script></html>"""
@@ -92,6 +110,41 @@ def validate(data):
         clean[key] = float(val)
     clean["nonce"] = int(time.time_ns() % 9000000000000000)
     return clean
+
+def host_service_health():
+    # Lightweight, read-only checks; do not expose private OAuth URLs.
+    out = {"cloudflare_origin": "reachable", "vnc_backend": False,
+           "vnc_proxy": False, "unity_container": "unknown"}
+    try:
+        with socket.create_connection(("127.0.0.1", 5900), timeout=0.8) as sock:
+            sock.settimeout(0.8)
+            out["vnc_backend"] = sock.recv(12).startswith(b"RFB ")
+    except (OSError, TimeoutError):
+        pass
+    try:
+        with socket.create_connection(("127.0.0.1", 8080), timeout=1) as sock:
+            key = base64.b64encode(os.urandom(16)).decode("ascii")
+            handshake = (
+                "GET /vnc/websockify HTTP/1.1\\r\\n"
+                "Host: localhost\\r\\n"
+                "Upgrade: websocket\\r\\nConnection: Upgrade\\r\\n"
+                "Sec-WebSocket-Version: 13\\r\\n"
+                f"Sec-WebSocket-Key: {key}\\r\\n\\r\\n"
+            ).replace("\\r", "\r").replace("\\n", "\n")
+            sock.settimeout(1)
+            sock.sendall(handshake.encode("ascii"))
+            out["vnc_proxy"] = b" 101 " in sock.recv(512)
+    except (OSError, TimeoutError):
+        pass
+    try:
+        from subprocess import run, DEVNULL
+        proc = run(["docker", "inspect", "--format", "{{.State.Running}}",
+                    "aaris-unity-live"], stdout=-1, stderr=DEVNULL,
+                   text=True, timeout=2, check=False)
+        out["unity_container"] = "running" if proc.returncode == 0 and proc.stdout.strip() == "true" else "not_running"
+    except (OSError, TimeoutError):
+        out["unity_container"] = "unknown"
+    return out
 
 class Handler(BaseHTTPRequestHandler):
     def send(self, code, body, mimetype="application/json"):
@@ -112,6 +165,8 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path == "/":
             return self.send(200, HTML, "text/html; charset=utf-8")
+        if path == "/api/health":
+            return self.send(200, host_service_health())
         if path == "/api/license":
             status = STATE / "license-status.json"
             try:
