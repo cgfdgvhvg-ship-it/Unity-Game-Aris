@@ -17,7 +17,7 @@ import sys
 import time
 
 from live_camera_server import validate, STATE
-from ai_world_commands import parse as parse_world, selftest as world_selftest
+from ai_world_commands import parse as parse_world, selftest as world_selftest, EDIT_OPS
 
 ISSUE = int(os.getenv("AARIS_CAMERA_ISSUE", "77"))
 REPO = os.getenv("GITHUB_REPOSITORY", "sundamunda289-art/Unity-Game-Aris")
@@ -123,6 +123,10 @@ def process_world(comment_id, body):
         issue_comment(f"AI map request #{comment_id}: Unity reported an error: "
                       f"{str(reply.get('message', 'unknown'))[:250]}")
         return "world-editor-error"
+    if request["op"] in EDIT_OPS:
+        # Later edits invalidate any earlier MAP_SAVE marker. Persist them with
+        # a new MAP_SAVE before this ephemeral runner terminates.
+        (STATE / "session-saved-to-git").unlink(missing_ok=True)
     try:
         result_link = publish_world_asset(comment_id, "ai-result.json", "json")
         attachments = [f"Inspector JSON / coordinates: {result_link}"]
