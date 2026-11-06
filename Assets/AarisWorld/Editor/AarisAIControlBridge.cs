@@ -16,7 +16,7 @@ namespace Aaris.MapReview.Editor
     {
         [Serializable] private sealed class Intent
         {
-            public string op, target, query, axis;
+            public string op, target, query, axis, hex;
             public float x, y, z, radius, dx, dy, dz, sx, sy, sz, distance, meters;
             public int max_points;
             public long nonce;
@@ -25,7 +25,7 @@ namespace Aaris.MapReview.Editor
 
         [Serializable] private sealed class Item
         {
-            public string id, name, type, accuracy;
+            public string id, name, type, accuracy, tintHex;
             public Vector3 position, boundsCenter, boundsSize, localScale;
             public bool hasBounds;
         }
@@ -93,7 +93,7 @@ namespace Aaris.MapReview.Editor
 
         private static void Validate(Intent i)
         {
-            if (!new[] { "find", "inspect", "bounds", "children", "outline", "move", "scale", "size", "photo" }.Contains(i.op))
+            if (!new[] { "find", "inspect", "bounds", "children", "outline", "move", "scale", "size", "tint", "photo" }.Contains(i.op))
                 throw new ArgumentException("Unknown AI operation");
             if (!new[] { i.x, i.y, i.z, i.radius, i.dx, i.dy, i.dz,
                          i.sx, i.sy, i.sz, i.distance, i.meters }.All(Finite))
@@ -103,7 +103,7 @@ namespace Aaris.MapReview.Editor
             if (i.op == "inspect" && (i.radius < 1 || i.radius > 200 ||
                     Mathf.Abs(i.x) > 2500 || Mathf.Abs(i.z) > 2500 || Mathf.Abs(i.y) > 5000))
                 throw new ArgumentException("Invalid inspection sphere");
-            if (new[] { "bounds", "children", "outline", "move", "scale", "photo" }.Contains(i.op) &&
+            if (new[] { "bounds", "children", "outline", "move", "scale", "size", "tint", "photo" }.Contains(i.op) &&
                 (string.IsNullOrWhiteSpace(i.target) || i.target.Length > 300))
                 throw new ArgumentException("Exact target ID required");
             if (i.op == "outline" && (i.max_points < 8 || i.max_points > MaxVertexSamples))
@@ -118,6 +118,9 @@ namespace Aaris.MapReview.Editor
             if (i.op == "size" && ((i.axis != "x" && i.axis != "y" && i.axis != "z") ||
                                    i.meters < 0.05f || i.meters > 100f))
                 throw new ArgumentException("size requires axis x/y/z and 0.05-100 metres");
+            if (i.op == "tint" && (string.IsNullOrEmpty(i.hex) ||
+                !System.Text.RegularExpressions.Regex.IsMatch(i.hex, @"^#[0-9A-Fa-f]{6}$")))
+                throw new ArgumentException("Tint needs an exact #RRGGBB value");
             if (i.op == "photo" && (i.distance < 2 || i.distance > 200))
                 throw new ArgumentException("Camera distance must be 2-200");
         }
@@ -193,6 +196,7 @@ namespace Aaris.MapReview.Editor
             // but a mesh-accurate bounding box requires resolving its prototype.
             return new Item { id = "terrain-tree:" + tile + ":" + index,
                 name = name, type = "native-terrain-tree", accuracy = "scale-only",
+                tintHex = "#" + ColorUtility.ToHtmlStringRGB((Color)tree.color),
                 position = point,
                 localScale = new Vector3(tree.widthScale, tree.heightScale, tree.widthScale),
                 hasBounds = false };
@@ -494,6 +498,23 @@ namespace Aaris.MapReview.Editor
                         r.changedAsset = AssetDatabase.GetAssetPath(data);
                     }
                 }
+                else if (i.op == "tint")
+                {
+                    Color tint;
+                    if (!ColorUtility.TryParseHtmlString(i.hex, out tint))
+                        throw new ArgumentException("Could not parse tree tint");
+                    r.preview = "Individual native tree instance tint; entire tree may be tinted, not leaf-only.";
+                    if (!i.dry_run)
+                    {
+                        Undo.RecordObject(data, "Aaris AI tint one native tree");
+                        tree.color = (Color32)tint;
+                        trees[treeIndex] = tree;
+                        data.treeInstances = trees;
+                        EditorUtility.SetDirty(data);
+                        AssetDatabase.SaveAssets();
+                        r.changedAsset = AssetDatabase.GetAssetPath(data);
+                    }
+                }
                 else if (i.op == "photo")
                 {
                     Vector3 point = r.objects[0].position;
@@ -502,6 +523,8 @@ namespace Aaris.MapReview.Editor
                                           : Mathf.Max(8, i.distance),
                           i.nonce, r);
                 }
+                if (i.op == "move" || i.op == "scale" || i.op == "tint")
+                    r.objects = new[] { TreeItem(terrain, tile, treeIndex, tree) };
                 r.count = 1;
                 return;
             }
@@ -600,6 +623,8 @@ namespace Aaris.MapReview.Editor
                 Photo(center, Mathf.Max(i.distance, b.extents.magnitude * 2.6f), i.nonce, r);
                 return;
             }
+            if (i.op == "tint")
+                throw new NotSupportedException("Tint is per-instance for native Terrain trees only; scene materials may be shared by many objects.");
             if (target.GetComponent<Terrain>() != null || target.GetComponent<Camera>() != null ||
                 PrefabUtility.IsPartOfPrefabAsset(target.gameObject))
                 throw new InvalidOperationException("Terrain root, camera or prefab asset cannot be transformed");
