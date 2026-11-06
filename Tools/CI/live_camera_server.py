@@ -153,7 +153,7 @@ def host_service_health():
     return out
 
 PUBLIC_LICENSE_STATES = {
-    "fetching_unity_editor", "installing_unity_hub_prerequisites",
+    "bootstrap_not_started", "fetching_unity_editor", "installing_unity_hub_prerequisites",
     "installing_official_unity_hub", "starting_unity_hub_gui",
     "waiting_for_unity_hub_signin", "unity_hub_window_not_visible",
     "unity_hub_window_check_unavailable", "unity_hub_license_detected",
@@ -177,7 +177,8 @@ def public_diagnostics():
         phase = "unreadable"
     scene = ROOT / "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity"
     try:
-        lfs_ready = scene.is_file() and b"git-lfs.github.com/spec" not in scene.read_bytes()[:96]
+        with scene.open("rb") as stream:
+            lfs_ready = b"git-lfs.github.com/spec" not in stream.read(96)
     except OSError:
         lfs_ready = False
     editor = False
