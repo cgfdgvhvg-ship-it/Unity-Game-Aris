@@ -78,8 +78,32 @@ def oauth_failure_diagnostics():
         "completed": ("now signed in", "successfully signed in", "login successful"),
         "network_error": ("connection refused", "network error", "dns error")
     }
+    safe_lines=[]
+    for line in data.splitlines():
+        line=line.strip()
+        if not any(word in line for word in ("failed","error","keyring","credential","sign-in","store")):
+            continue
+        if any(word in line for word in ("http", "auth_url=", "code_challenge", "state=", "client_id=", "access_token", "refresh_token")):
+            continue
+        if len(line)>300: continue
+        # Only fixed English failure phrases, never arbitrary returned strings.
+        categories={
+            "failed to store": "failed_to_store_credential",
+            "keyring": "keyring_unavailable_or_failed",
+            "credential store": "credential_store_problem",
+            "sign-in failed": "signin_failed",
+            "login failed": "login_failed",
+            "not signed in": "not_signed_in",
+            "auth failed": "authorization_failed",
+            "cannot connect": "cannot_connect",
+            "could not": "could_not_complete",
+            "timeout": "timeout"
+        }
+        safe_lines.extend(v for k,v in categories.items() if k in line)
+    safe_lines=sorted(set(safe_lines))
     return {"bytes":AUTH_LOG.stat().st_size,
             "error_markers":{k:True for k,v in markers.items() if any(s in data for s in v)},
+            "failure_kinds":safe_lines,
             "json_error_codes":sorted(set(re.findall(r'"code"\\s*:\\s*"([a-z0-9_\\-]{2,45})"',data)))[:12]}
 
 
