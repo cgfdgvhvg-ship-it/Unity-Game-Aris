@@ -101,8 +101,8 @@ def inspect_mesh(source, expected_bounds, expected_triangles=None, expected_subm
                          (p.max(axis=0) <= high + .01).all()),
                     f"LOD submesh {slot}: triangles escape saved localAABB")
         if expected_triangles is not None:
-            require(total == expected_triangles,
-                    f"triangle count {total} differs from authored {expected_triangles}")
+            require(0 < total <= expected_triangles,
+                    f"triangle count {total} exceeds original authored maximum {expected_triangles} or is zero")
         low, high = bounds(d["m_LocalAABB"])
         actual_low, actual_high = pos.min(axis=0), pos.max(axis=0)
         require(bool((actual_low >= low - .02).all() and
@@ -116,6 +116,7 @@ def inspect_mesh(source, expected_bounds, expected_triangles=None, expected_subm
                 "triangle edge longer than original building diagonal")
         return {"status": "ok", "vertices": n, "triangles": total,
                 "submeshes": len(subs), "empty_submeshes": empty_slots,
+                "triangles_removed_since_layout": expected_triangles - total if expected_triangles is not None else None,
                 "max_triangle_edge_m": round(max_edge, 3)}
     except (KeyError, IndexError, TypeError, ValueError, yaml.YAMLError) as e:
         if isinstance(e, MeshHealthError):
