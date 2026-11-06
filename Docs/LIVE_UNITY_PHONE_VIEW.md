@@ -2,14 +2,14 @@
 
 ## Architecture (Actions-free)
 
-ChatGPT/AI writes owner-authored JSON to `.aaris/relay-jobs/` on `ai/codespace-jobs`. The existing Cloudflare Worker polls GitHub once per minute and uses GitHub Codespaces REST to START a sleeping `musical-carnival-jjxp9r6vw45wfjgvg`. The **in-Codespace** `github_queue_agent.py` (after one-time installation) uses its own authenticated `gh api` to read approved jobs, launch bounded native Python/Unity actions, and write text-only receipts to `.aaris/relay-results/`. It does **not** require GitHub Actions, third-party SSH, or `AGENT_SHARED_SECRET`.
+ChatGPT/AI writes owner-authored JSON to `.aaris/relay-jobs/` on `ai/codespace-jobs`. The existing Cloudflare Worker polls GitHub once per minute and uses GitHub Codespaces REST to START a sleeping `redesigned-space-train-gxp5jwvq94wg2wvw6`. The **in-Codespace** `github_queue_agent.py` (after one-time installation) uses its own authenticated `gh api` to read approved jobs, launch bounded native Python/Unity actions, and write text-only receipts to `.aaris/relay-results/`. It does **not** require GitHub Actions, third-party SSH, or `AGENT_SHARED_SECRET`.
 
 The live screen runs on that same Codespace: `Unity Editor → Xvfb :12 → x11vnc 127.0.0.1:5900 (password-protected) → websockify/noVNC :6080 → GitHub Codespaces PRIVATE forwarded port → owner phone browser`. Video frames are NOT added to Git, GitHub Actions artifacts, Cloudflare R2 or the chat.
 
 Stable Cloudflare entry link: **https://aaris-codespace-relay.aaris-game-control-6f9c.workers.dev/live**
 
 That Cloudflare route is intentionally a **302 redirect to the GitHub-authenticated PRIVATE forwarded port**, not a video proxy, and cannot bypass GitHub sign-in. Direct URL (only after noVNC is running and forwarded privately):
-`https://musical-carnival-jjxp9r6vw45wfjgvg-6080.app.github.dev/vnc.html?autoconnect=true&resize=scale`.
+`https://redesigned-space-train-gxp5jwvq94wg2wvw6-6080.app.github.dev/vnc.html?autoconnect=true&resize=scale`.
 
 **Do not make port 6080 Public.** A public forwarded port exposes a remote desktop and should never be used for this project. If an authenticated port cannot be forwarded, this design fails closed and no alternate public screenshot endpoint is created.
 
@@ -18,7 +18,7 @@ That Cloudflare route is intentionally a **302 redirect to the GitHub-authentica
 As of 2026-11-05 the old Issue #37 terminal bridge did **not** return a receipt for a new harmless `pwd` command after Codespace restart. A legacy owner-authored installer job has been queued for when that bridge resumes; a queued job **does not** prove installation. If it does not resume, in the actual Codespace's own browser Terminal run this once:
 
 ```bash
-gh api "repos/Aaris-khan-don/Unity-Game-Aris/contents/Tools/CodespaceRelay/bootstrap_live.py?ref=ai/codespace-jobs" --jq .content | base64 -d | python3 -
+gh api "repos/sundamunda289-art/Unity-Game-Aris/contents/Tools/CodespaceRelay/bootstrap_live.py?ref=ai/codespace-jobs" --jq .content | base64 -d | python3 -
 ```
 
 Review the source in GitHub before running it. The installer fetches only these already-reviewed GitHub files: `agent.py`, `github_queue_agent.py`, `bootstrap_live.py`, `ai_codespace_executor.py`. It stages to `/workspaces/.aaris-world-bridge/ondemand/`, and attempts two user systemd services, `aaris-github-queue` and `aaris-live-desktop`; it does **not** checkout/reset, commit, change LFS objects, or modify the Unity worktree. If user systemd is unavailable, it installs a `~/.bashrc` fallback and starts the agent in the current Codespace, but **full cold-boot autostart is not proven** until a real restart test.
@@ -66,12 +66,12 @@ The owner previously pasted the installer into Android Termux. That is **not** t
 **One-time bootstrap directly from Termux using its existing authenticated `gh` CLI** (the commands run by SSH inside the real Codespace, not on the phone):
 
 ```bash
-gh codespace ssh -c musical-carnival-jjxp9r6vw45wfjgvg -- -tt "gh api 'repos/Aaris-khan-don/Unity-Game-Aris/contents/Tools/CodespaceRelay/bootstrap_live.py?ref=ai/codespace-jobs' --jq .content | base64 -d | python3 -"
+gh codespace ssh -c redesigned-space-train-gxp5jwvq94wg2wvw6 -- -tt "gh api 'repos/sundamunda289-art/Unity-Game-Aris/contents/Tools/CodespaceRelay/bootstrap_live.py?ref=ai/codespace-jobs' --jq .content | base64 -d | python3 -"
 ```
 
 The script checks the expected remote project, stages the reviewed Python scripts and Unity camera bridge in the persistent bridge folder, asks **once** on the remote terminal to create the private VNC password (8 character VNC password compatibility), attempts user systemd services, and starts/revives the desktop. It outputs a **read-only LIVE_HEALTH_REPORT** including whether 6080 is listening; no credentials are printed or stored in Git. It stages the new C# focus code for the isolated scratch Unity scene and saves a backup before replacing that scratch-only Editor bridge. The original checked-out Unity scene and assets are unchanged.
 
-One-time in Codespace web editor: forward port `6080` in **PORTS**, and confirm **Private** visibility. A forwarded port and a listening remote `websockify` are both required. The GitHub URL `https://musical-carnival-jjxp9r6vw45wfjgvg-6080.app.github.dev/vnc.html` returns HTTP 404 while the server/forwarding is absent. The Cloudflare `/live` entry link is unchanged.
+One-time in Codespace web editor: forward port `6080` in **PORTS**, and confirm **Private** visibility. A forwarded port and a listening remote `websockify` are both required. The GitHub URL `https://redesigned-space-train-gxp5jwvq94wg2wvw6-6080.app.github.dev/vnc.html` returns HTTP 404 while the server/forwarding is absent. The Cloudflare `/live` entry link is unchanged.
 
 ### AI's place and manual navigation
 
