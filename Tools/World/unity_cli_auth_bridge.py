@@ -157,7 +157,7 @@ def auth_status():
     url=None
     if LOGIN_LOG.is_file() and not LOGIN_LOG.is_symlink() and LOGIN_LOG.stat().st_size<160000:
         text=LOGIN_LOG.read_text(encoding="utf-8",errors="replace")
-        links=re.findall(r"https://[^\\s<>\"']+",text)
+        links=re.findall(r"https://[^\s<>\"']+",text)
         for cand in links:
             cand=cand.rstrip("),.;")
             try:
