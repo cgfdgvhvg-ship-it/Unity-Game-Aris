@@ -75,7 +75,7 @@ namespace Aaris.MapReview.Editor
                 output.target = command.target;
                 if (!new[] { "scan", "inspect", "blueprint", "photo", "move", "resize", "tree" }
                     .Contains(command.op)) throw new ArgumentException("Unsupported operation");
-                Scene scene = EditorSceneManager.GetActiveScene();
+                Scene scene = SceneManager.GetActiveScene();
                 if (scene.path != AarisExplorerBuild.ScenePath)
                     scene = EditorSceneManager.OpenScene(AarisExplorerBuild.ScenePath, OpenSceneMode.Single);
                 output.scene = scene.path;
@@ -334,6 +334,7 @@ namespace Aaris.MapReview.Editor
                 transform.name.Contains("Player") || transform.name.StartsWith("VehicleSpawnPoint_"))
                 throw new ArgumentException("Protected gameplay/terrain object; edits refused");
             Vector3 oldPosition = transform.position, oldScale = transform.localScale;
+            Undo.RegisterCompleteObjectUndo(transform, "Aaris AI " + c.op);
             Bounds before = WorldBounds(transform);
             if (c.op == "move")
             {
@@ -365,7 +366,6 @@ namespace Aaris.MapReview.Editor
                         other.transform == transform || other.transform.IsChildOf(transform) ||
                         transform.IsChildOf(other.transform))
                         continue;
-                    if (other.transform.root == transform.root) continue;
                     if (after.Intersects(other.bounds) && !before.Intersects(other.bounds))
                         throw new InvalidOperationException("New collision with " + Hierarchy(other.transform));
                 }
@@ -380,8 +380,7 @@ namespace Aaris.MapReview.Editor
                 transform.position = oldPosition; transform.localScale = oldScale;
                 throw;
             }
-            // Record undo BEFORE persisting. Scene is saved only after validation passes.
-            Undo.RegisterCompleteObjectUndo(transform, "Aaris AI " + c.op);
+            // Persist only after all bounds/collision checks succeed.
             PrefabUtility.RecordPrefabInstancePropertyModifications(transform);
             EditorSceneManager.MarkSceneDirty(transform.gameObject.scene);
             EditorSceneManager.SaveScene(transform.gameObject.scene);
