@@ -37,7 +37,11 @@ Camera coordinates in Unity metres. Access limited to approved email via Cloudfl
 <a id="authorize" href="#" target="_blank" rel="noopener noreferrer"
 style="display:none;color:#6fead7;font-size:18px">Sign in to Unity securely</a>
 <p><small>Only Unity's official sign-in URL is shown, inside the email-PIN protected Cloudflare session.
-Never post this link in GitHub public issues or logs.</small></p></section>
+Never post this link in GitHub public issues or logs.</small></p>
+<p id="licexport">Checking for a reusable Unity ULF...</p>
+<a id="exportulf" href="/api/license/ulf" download="Unity_lic.ulf"
+style="display:none;color:#6fead7">Download Unity license once for GitHub Secret</a>
+</section>
 <p id="result">Opening session...</p>
 <iframe src="/vnc/vnc.html?autoconnect=true&resize=remote&path=vnc/websockify"></iframe>
 <p><a style="color:#6fead7" href="/api/photo" target="_blank">Latest genuine Unity PNG</a></p>
@@ -59,6 +63,11 @@ if(r.status===401||r.status===403)throw Error('Cloudflare email PIN expired. Rel
 if(!r.headers.get('content-type')?.includes('application/json'))
 throw Error('License endpoint returned HTTP '+r.status+' (not JSON); check your PIN session.');
 let d=await r.json();message=(d.state||'unknown')+(d.detail?' — '+d.detail:'');
+const reuse=d.reuse_state||'not_yet_available';
+document.getElementById('licexport').textContent='Reusable .ulf: '+reuse;
+document.getElementById('exportulf').style.display=
+(['download_ready','unity_license_saved_in_github_secret',
+'github_secret_write_failed_manual_download_available'].includes(reuse))?'inline':'none';
 let a=document.getElementById('authorize');
 if(d.auth_url){a.href=d.auth_url;a.style.display='inline';}
 else {a.style.display='none';a.removeAttribute('href');}
@@ -107,9 +116,35 @@ class Handler(BaseHTTPRequestHandler):
             status = STATE / "license-status.json"
             try:
                 info = json.loads(status.read_text()) if status.exists() else {"state": "awaiting_bootstrap"}
-                return self.send(200, {key: info[key] for key in ("state", "detail", "auth_url") if key in info})
+                export_status = STATE / "license-export-status.json"
+                if export_status.exists():
+                    try:
+                        info["reuse_state"] = json.loads(export_status.read_text()).get("state", "unknown")
+                    except (OSError, json.JSONDecodeError):
+                        info["reuse_state"] = "unknown"
+                return self.send(200, {key: info[key] for key in ("state", "detail", "auth_url", "reuse_state") if key in info})
             except (OSError, json.JSONDecodeError):
                 return self.send(503, {"state": "license_status_unavailable"})
+        if path == "/api/license/ulf":
+            # This route is ONLY reachable through Cloudflare's email-PIN gate.
+            # No ULF is ever sent to a public Issue, GitHub Release or cache.
+            ulf = STATE / "Unity_lic.ulf"
+            if not ulf.is_file():
+                return self.send(404, {"error": "No reusable Unity license file created on this runner"})
+            try:
+                from license_reuse import check_license
+                data = check_license(ulf.read_bytes())
+            except (OSError, ValueError):
+                return self.send(404, {"error": "Unity license is not ready"})
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Disposition", 'attachment; filename="Unity_lic.ulf"')
+            self.send_header("Cache-Control", "no-store, private")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if path == "/api/status":
             status = STATE / "status.json"
             data = json.loads(status.read_text()) if status.exists() else {"state": "Waiting for Unity Editor camera bridge"}
