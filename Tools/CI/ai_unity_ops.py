@@ -49,6 +49,8 @@ DEFAULTS = {
 }
 ID_RE = re.compile(r"(?:GlobalObjectId_V1-[0-9A-Fa-f-]+|terrain:[0-9]+:[0-9]+)\Z")
 HEX_RE = re.compile(r"#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?\Z")
+CHANGED_ASSETS = STATE / "ai-changed-assets.json"
+
 
 
 def no_duplicates(pairs):
@@ -122,6 +124,29 @@ def run_id():
     return value
 
 
+def allowed_changed_asset(path):
+    """Single existing Unity source asset, not a credential, cache or .meta."""
+    return (isinstance(path, str) and path.startswith("Assets/") and
+            len(path) < 300 and not any(x in path for x in ("\\", "\n", "\r")) and
+            ".." not in Path(path).parts and
+            Path(path).suffix in (".unity", ".asset", ".mat") and
+            (ROOT / path).is_file())
+
+
+def remember_modified(path):
+    if not allowed_changed_asset(path):
+        raise ValueError("Editor returned a non-allowlisted modified asset")
+    try:
+        previous = json.loads(CHANGED_ASSETS.read_text(encoding="utf-8"))
+        if not isinstance(previous, list):
+            previous = []
+    except (OSError, ValueError):
+        previous = []
+    paths = sorted(set(previous + [path]))
+    CHANGED_ASSETS.write_text(json.dumps(paths), encoding="utf-8")
+    (STATE / "ai-mutated.marker").write_text(path, encoding="utf-8")
+
+
 def checkpoint():
     """Git LFS data goes to a run-specific review branch, NEVER directly to main."""
     if os.environ.get("GITHUB_REPOSITORY") != REPO:
@@ -135,10 +160,15 @@ def checkpoint():
     # Fail closed: only already-tracked Asset sources. This never stages secrets,
     # generated .meta files, logs, project auth, Library, or untracked files.
     git("lfs", "install", "--local")
-    git("add", "-u", "--", "Assets/")
+    paths = json.loads(CHANGED_ASSETS.read_text(encoding="utf-8"))
+    if not isinstance(paths, list) or not paths or not all(allowed_changed_asset(p) for p in paths):
+        raise RuntimeError("Invalid or missing Editor-edited asset list")
+    # Stage ONLY files identified as changed by the real Unity Editor.
+    git("add", "--", *paths)
     changed = git("diff", "--cached", "--name-only").splitlines()
     if not changed:
         (STATE / "ai-mutated.marker").unlink(missing_ok=True)
+        CHANGED_ASSETS.unlink(missing_ok=True)
         return "No staged Unity asset changes"
     if any(not s.startswith("Assets/") or
            s.endswith(".meta") or ".." in Path(s).parts for s in changed):
@@ -158,6 +188,7 @@ def checkpoint():
                           "Review geometry, nearby objects, real screenshots and LFS diffs "
                           "before merging. No credentials or Library cache included.")
     (STATE / "ai-mutated.marker").unlink(missing_ok=True)
+    CHANGED_ASSETS.unlink(missing_ok=True)
     return "Saved " + str(len(changed)) + " tracked asset(s) to review PR: " + pr
 
 
@@ -219,7 +250,12 @@ def handle(comment, comment_cb, photo_cb):
         return "ai-unity-timeout"
     state = result.get("state", "error")
     if state == "ok" and q["action"] in MUTATING:
-        (STATE / "ai-mutated.marker").write_text(str(comment_id), encoding="ascii")
+        try:
+            remember_modified(result.get("modifiedAsset"))
+        except ValueError:
+            state = "untrusted-asset-path"
+            result["state"] = state
+            result["message"] = "Editor reported an invalid modified asset path; not checkpointed"
     # Full mesh dots/metadata are published as a downloadable JSON file for AI.
     try:
         report = publish_report(comment_id, result)
@@ -266,7 +302,8 @@ def selftest():
             pass
         else:
             raise AssertionError("Unsafe request accepted: " + body)
-    assert not (STATE / "ai-mutated.marker").exists() or True
+    for bad in ("Assets/../../secrets.ulf", "Library/cache.asset", "Assets/Test.cs", "Assets/Test.meta"):
+        assert not allowed_changed_asset(bad)
     print("Aaris bounded AI parser, native tree scaling and checkpoint intent validation: PASS")
 
 
