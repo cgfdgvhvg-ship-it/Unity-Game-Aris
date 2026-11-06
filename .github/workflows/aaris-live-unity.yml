@@ -61,6 +61,14 @@ jobs:
           python3 Tools/CI/issue_camera_bridge.py --selftest
           node --check Tools/CI/cloudflare_live_hub.mjs
           python3 - <<'PY'
+          from pathlib import Path
+          source = Path('Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs').read_text()
+          assert 'RenderPipeline.SupportsRenderRequest(cam, request)' in source
+          assert 'RenderPipeline.SubmitRenderRequest(cam, request)' in source
+          assert 'UniversalAdditionalCameraData' in source
+          print('URP offscreen capture source contract: PASS (not a Unity compile)')
+          PY
+          python3 - <<'PY'
           import sys
           sys.path.insert(0,"Tools/CI")
           from live_camera_server import validate
@@ -257,7 +265,9 @@ jobs:
           echo 'Camera commands: https://github.com/sundamunda289-art/Unity-Game-Aris/issues/77'
           echo 'Only owner-issued CAMERA x y z yaw pitch distance commands are accepted.'
       - name: Start real Unity Editor with authorized ULF or Unity CLI Personal sign-in
-        continue-on-error: true
+        # Do not mask Git LFS, Docker or Editor bootstrap failures as a green step.
+        # A missing authorized Unity license is handled by the bootstrap status file,
+        # without falsely claiming a successful screenshot.
         timeout-minutes: 35
         run: |
           set -euo pipefail
