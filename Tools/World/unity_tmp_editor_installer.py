@@ -205,6 +205,69 @@ def dependencies_start():
     return {"status":"started", "pid":proc.pid, **dependencies_status()}
 
 
+
+# Mesa llvmpipe/lavapipe keeps Unity functional without a dedicated GPU.
+GRAPHICS_PACKAGES=("mesa-utils","vulkan-tools","libvulkan1","mesa-vulkan-drivers",
+                   "libgl1-mesa-dri","libglx-mesa0","libegl-mesa0",
+                   "libglu1-mesa","libgtk-3-0")
+GRAPHICS_STATE=STAGE/"unity-software-graphics-status.json"
+GRAPHICS_LOG=STAGE/"unity-software-graphics-install.log"
+GRAPHICS_LOCK=STAGE/"unity-software-graphics.lock"
+
+def graphics_status():
+    state={}
+    if GRAPHICS_STATE.is_file() and not GRAPHICS_STATE.is_symlink() and GRAPHICS_STATE.stat().st_size<3000:
+        try:state=json.loads(GRAPHICS_STATE.read_text(encoding="utf-8"))
+        except (OSError,ValueError):pass
+    commands={n:bool(shutil.which(n)) for n in ("glxinfo","vulkaninfo")}
+    icd=Path("/usr/share/vulkan/icd.d")
+    drivers=[p.name for p in icd.glob("*lvp*.json") if p.is_file() and not p.is_symlink()] if icd.is_dir() else []
+    live=False
+    for p in Path("/proc").iterdir():
+        if not p.name.isdigit():continue
+        try:
+            if "unity_tmp_editor_installer.py" in (p/"cmdline").read_bytes().decode("utf-8","replace") and "--graphics-worker" in (p/"cmdline").read_bytes().decode("utf-8","replace"):
+                live=True;break
+        except OSError:continue
+    return {"ready":all(commands.values()) and bool(drivers),
+            "commands":commands,"lavapipe_icds":drivers,
+            "worker_running":live,"last_state":state.get("state","not_started"),
+            "last_error":state.get("error")}
+
+def graphics_worker():
+    STAGE.mkdir(parents=True,exist_ok=True)
+    try:
+        with GRAPHICS_LOCK.open("a+") as file:
+            fcntl.flock(file.fileno(), fcntl.LOCK_EX)
+            if graphics_status()["ready"]:
+                GRAPHICS_STATE.write_text(json.dumps({"state":"installed"}))
+                return
+            GRAPHICS_STATE.write_text(json.dumps({"state":"installing"}))
+            env=os.environ.copy()
+            env["DEBIAN_FRONTEND"]="noninteractive"
+            env["APT_LISTCHANGES_FRONTEND"]="none"
+            with GRAPHICS_LOG.open("a",encoding="utf-8") as log:
+                p=subprocess.run(["sudo","-n","apt-get","install","-y","-qq",
+                                  "--no-install-recommends",*GRAPHICS_PACKAGES],
+                      env=env,stdin=subprocess.DEVNULL,stdout=log,stderr=log,
+                      timeout=1200,check=False)
+            if p.returncode:raise RuntimeError("Mesa packages install exit "+str(p.returncode))
+            if not graphics_status()["ready"]:raise RuntimeError("Mesa driver/graphics tooling missing")
+            GRAPHICS_STATE.write_text(json.dumps({"state":"installed"}))
+    except Exception as exc:
+        GRAPHICS_STATE.write_text(json.dumps({"state":"failed","error":type(exc).__name__+": "+str(exc)[:200]}))
+
+def graphics_start():
+    d=graphics_status()
+    if d["ready"]:return {"status":"already_installed",**d}
+    if d["worker_running"]:return {"status":"already_running",**d}
+    STAGE.mkdir(parents=True,exist_ok=True)
+    with GRAPHICS_LOG.open("a",encoding="utf-8") as log:
+        p=subprocess.Popen([sys.executable,str(Path(__file__).resolve()),"--graphics-worker"],
+              stdin=subprocess.DEVNULL,stdout=log,stderr=log,start_new_session=True)
+    return {"status":"started","pid":p.pid,**graphics_status()}
+
+
 if __name__ == "__main__":
     if sys.argv[1:] == ["--worker"]:
         worker()
@@ -218,5 +281,11 @@ if __name__ == "__main__":
         print(json.dumps(dependencies_status(), sort_keys=True))
     elif sys.argv[1:] == ["--deps-worker"]:
         dependencies_worker()
+    elif sys.argv[1:] == ["--graphics-start"]:
+        print(json.dumps(graphics_start(),sort_keys=True))
+    elif sys.argv[1:] == ["--graphics-status"]:
+        print(json.dumps(graphics_status(),sort_keys=True))
+    elif sys.argv[1:] == ["--graphics-worker"]:
+        graphics_worker()
     else:
-        raise SystemExit("Use --start, --status, --deps-start, --deps-status or worker modes")
+        raise SystemExit("Use --start, --status, --deps-start, --deps-status, --graphics-start or --graphics-status")
