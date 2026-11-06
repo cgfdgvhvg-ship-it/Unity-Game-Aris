@@ -633,6 +633,9 @@ namespace Aaris.MapReview.Editor
 
         private static void TakePhoto(Vector3 point, Quaternion rotation, string path)
         {
+            // Never let a previous successful snapshot impersonate a failed request.
+            // Both the local browser and the public release handler check these files.
+            if (File.Exists(path)) File.Delete(path);
             var go = new GameObject("__AarisLivePreviewCamera");
             go.hideFlags = HideFlags.HideAndDontSave;
             var cam = go.AddComponent<Camera>();
@@ -682,7 +685,16 @@ namespace Aaris.MapReview.Editor
                 byte[] bytes = png.EncodeToPNG();
                 if (bytes.Length < 5000)
                     throw new InvalidOperationException("Empty Unity renderer output.");
-                File.WriteAllBytes(path, bytes);
+                string pending = path + ".writing";
+                try
+                {
+                    File.WriteAllBytes(pending, bytes);
+                    File.Move(pending, path);
+                }
+                finally
+                {
+                    if (File.Exists(pending)) File.Delete(pending);
+                }
             }
             finally
             {
