@@ -24,7 +24,7 @@ on:
         type: choice
         required: true
         default: '45'
-        options: ['15', '45', '90']
+        options: ['15', '45', '90', '180', '300']
       license_export_recipient:
         description: 'Optional age1 public key for encrypted license artifact (NO private key)'
         type: string
@@ -80,7 +80,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'issue_comment' && github.event.issue.number == 77 && github.event.comment.user.login == 'sundamunda289-art' && (startsWith(github.event.comment.body, 'START_DESKTOP ') || startsWith(github.event.comment.body, 'ACTIVATE_UNITY ')))
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 140
+    timeout-minutes: 355
     env:
       UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
       UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -114,13 +114,13 @@ jobs:
           # Github issue comments are untrusted text: never put this value in a shell command.
           # Only these exact three commands from the repository owner can start a runner.
           case "$SESSION_MINUTES" in
-            "START_DESKTOP 15"|"START_DESKTOP 45"|"START_DESKTOP 90")
+            "START_DESKTOP 15"|"START_DESKTOP 45"|"START_DESKTOP 90"|"START_DESKTOP 180"|"START_DESKTOP 300")
               SESSION_MINUTES="${SESSION_MINUTES#START_DESKTOP }" ;;
-            "ACTIVATE_UNITY 15"|"ACTIVATE_UNITY 45"|"ACTIVATE_UNITY 90")
+            "ACTIVATE_UNITY 15"|"ACTIVATE_UNITY 45"|"ACTIVATE_UNITY 90"|"ACTIVATE_UNITY 180"|"ACTIVATE_UNITY 300")
               SESSION_MINUTES="${SESSION_MINUTES#ACTIVATE_UNITY }" ;;
           esac
-          case "$SESSION_MINUTES" in 15|45|90) ;; *)
-            echo '::error::Invalid session length. Allowed: 15, 45, 90 minutes.'
+          case "$SESSION_MINUTES" in 15|45|90|180|300) ;; *)
+            echo '::error::Invalid session length. Allowed: 15, 45, 90, 180, 300 minutes.'
             exit 1 ;;
           esac
           echo "SESSION_MINUTES=$SESSION_MINUTES" >> "$GITHUB_ENV"
