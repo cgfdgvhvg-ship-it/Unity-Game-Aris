@@ -49,6 +49,9 @@ concurrency:
 
 jobs:
   verify:
+    # PR code is untrusted; verification does not need repository write permissions.
+    permissions:
+      contents: read
     if: github.event_name != 'issue_comment' || (github.event.issue.number == 77 && github.event.comment.user.login == 'sundamunda289-art' && (startsWith(github.event.comment.body, 'START_DESKTOP ') || startsWith(github.event.comment.body, 'ACTIVATE_UNITY ')))
     runs-on: ubuntu-latest
     timeout-minutes: 5
