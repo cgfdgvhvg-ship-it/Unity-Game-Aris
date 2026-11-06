@@ -12,7 +12,7 @@ async function snapshots(){
   const uri="https://api.github.com/repos/"+REPO+"/issues/"+ISSUE+"/comments?per_page=100&since="+encodeURIComponent(since);
   const res=await fetch(uri,{headers:{Accept:"application/vnd.github+json","User-Agent":"aaris-unity-free-hub"},cf:{cacheEverything:true,cacheTtl:45}});
   if(!res.ok)throw Error("GitHub API unavailable");
-  let comments=await res.json(),lastPhoto=null,active=null;
+  let comments=await res.json(),lastPhoto=null,active=null,latestCameraStatus='No camera result yet';
   for(const item of comments){
     const body=String(item.body||"").trim();
     const tunnel=body.match(TUNNEL_RE);
@@ -21,11 +21,16 @@ async function snapshots(){
       if(Number.isFinite(at)&&mins>0&&Date.now()<at+(mins+2)*60000)
         active={url:tunnel[3],expires_at:new Date(at+mins*60000).toISOString()};
     }
+    if(body.startsWith("Camera request #")&&item.user?.login==="github-actions[bot]"){
+      if(body.includes("timed out waiting for a licensed Unity Editor"))latestCameraStatus="Camera received; Unity Editor needs a valid license.";
+      else if(body.includes("real Unity 1280"))latestCameraStatus="Camera rendered and saved an authentic Unity PNG.";
+      else latestCameraStatus=body.slice(0,170);
+    }
     const photo=body.match(PHOTO_RE);
     if(photo&&item.user?.login==="github-actions[bot]")lastPhoto=photo[0];
   }
   return {live_url:active?.url||null,expires_at:active?.expires_at||null,
-    latest_photo:lastPhoto,issue_url:ISSUE_URL,workflow_url:RUN_URL,
+    latest_photo:lastPhoto,latest_camera_status:latestCameraStatus,issue_url:ISSUE_URL,workflow_url:RUN_URL,
     authorization:"email PIN required for live desktop",
     note:"Only actual licensed Unity PNGs count as 3D captures. A Cloudflare page is not Unity itself."};
 }
@@ -36,12 +41,13 @@ const PAGE=[
 '<h2>Aaris Unity Live Hub</h2><p>Cloudflare Workers Free. Camera control uses authorized GitHub Issue comments; the remote desktop uses a protected Cloudflare Tunnel.</p>',
 '<div class="box"><b>Desktop</b><p id="desktop">Checking active session...</p></div>',
 '<div class="box"><b>Latest real Unity screenshot</b><p id="photo">Checking for rendered PNG...</p></div>',
+'<div class="box"><b>Camera/License Status</b><p id="camera">Checking...</p></div>',
 '<p><a href="https://github.com/sundamunda289-art/Unity-Game-Aris/issues/77">Camera command issue</a> &middot; ',
 '<a href="https://github.com/sundamunda289-art/Unity-Game-Aris/actions/workflows/aaris-live-unity.yml">Start a 15/45/90 min session</a></p>',
 '<p>ChatGPT can inspect uploaded screenshots through GitHub, but cannot watch the live VNC stream continuously.</p>',
 '<script>async function refresh(){try{const r=await fetch("/status");const v=await r.json();',
-'for(const k of ["desktop","photo"]){document.getElementById(k).replaceChildren()}',
-'const d=document.getElementById("desktop"),p=document.getElementById("photo");',
+'for(const k of ["desktop","photo","camera"]){document.getElementById(k).replaceChildren()}',
+'const d=document.getElementById("desktop"),p=document.getElementById("photo");document.getElementById("camera").textContent=v.latest_camera_status||"No update";',
 'if(v.live_url){let a=document.createElement("a");a.href=v.live_url;a.textContent="Open live desktop (PIN required)";d.appendChild(a)}',
 'else d.textContent="No active desktop session";',
 'if(v.latest_photo){let a=document.createElement("a");a.href=v.latest_photo;a.textContent="Open latest Unity PNG";p.appendChild(a)}',
