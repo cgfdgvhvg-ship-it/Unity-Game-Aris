@@ -99,6 +99,21 @@ namespace Aaris.MapReview.Editor
                 RenderTexture.active = target;
                 png.ReadPixels(new Rect(0, 0, 1280, 720), 0, 0);
                 png.Apply(false);
+                // A valid PNG header alone does not prove the GPU rendered
+                // the scene. Reject almost-uniform black frames explicitly.
+                int visible = 0;
+                for (int gy = 0; gy < 9; gy++)
+                {
+                    for (int gx = 0; gx < 16; gx++)
+                    {
+                        Color sample = png.GetPixel((gx * 1280 + 640) / 16,
+                                                    (gy * 720 + 360) / 9);
+                        if (sample.r + sample.g + sample.b > 0.08f) visible++;
+                    }
+                }
+                if (visible == 0)
+                    throw new InvalidOperationException(
+                        "Unity rendered a black frame; check scene, URP, camera or graphics driver");
                 var bytes = png.EncodeToPNG();
                 if (bytes.Length < 5000) throw new InvalidOperationException("Empty renderer output");
                 File.WriteAllBytes(path, bytes);
