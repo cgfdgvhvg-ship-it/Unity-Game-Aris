@@ -171,15 +171,37 @@ def install_official_hub() -> str:
 
 
 def hub_license_present() -> bool:
-    """Only positive signal: a syntactically valid ULF at the same user's path.
+    """Read-only detection of official Linux license-file locations.
 
-    A syntactically valid license is not proof of an accepted seat. Unity
-    Editor licensing is always validated separately after startup.
+    Unity 6 distinguishes legacy serial/Personal ULF and named-user XML.
+    XML format alone is not proof of entitlement: the Editor must validate.
+    Never publish content, cache the token, or spoof a machine identity.
     """
-    try:
-        return check_license(LICENSE_FILE.read_bytes()) is not None
-    except (ValueError, OSError):
-        return False
+    candidates = (
+        LICENSE_FILE,
+        Path.home() / ".config/unity3d/Unity/licenses/UnityEntitlementLicense.xml",
+    )
+    for candidate in candidates:
+        try:
+            raw = candidate.read_bytes()
+            if candidate.suffix.lower() == ".ulf":
+                check_license(raw)
+            else:
+                if not 200 <= len(raw) <= 200000 or b"\0" in raw:
+                    continue
+                import xml.etree.ElementTree as ET
+                doc = ET.fromstring(raw)
+                if "license" not in doc.tag.lower():
+                    continue
+            return True
+        except (OSError, ValueError):
+            continue
+        except Exception as exc:
+            # XML may be malformed; do not expose or log license details.
+            if isinstance(exc, ET.ParseError):
+                continue
+            raise
+    return False
 
 
 def hub_personal_activation() -> None:
