@@ -217,7 +217,7 @@ def main():
         if re.fullmatch(r"https://[a-z0-9-]+\.trycloudflare\.com", live_url):
             run_id = os.getenv("GITHUB_RUN_ID", "")
             mins = os.getenv("SESSION_MINUTES", "15")
-            if run_id.isdigit() and mins in ("15", "45", "90"):
+            if run_id.isdigit() and mins in ("15", "45", "90", "240", "300"):
                 try:
                     issue_comment(f"AARIS_LIVE_DESKTOP run_id={run_id} "
                                   f"session_minutes={mins} url={live_url}")
@@ -236,7 +236,7 @@ def main():
         "unity_activation_requires_attention", "editor_starting",
         "fetching_unity_editor"
     }
-    until = time.monotonic() + max(15, min(args.seconds, 5400))
+    until = time.monotonic() + max(15, min(args.seconds, 18000))
     while time.monotonic() < until:
         try:
             # Public GitHub issue gets only a fixed, non-sensitive state name.
