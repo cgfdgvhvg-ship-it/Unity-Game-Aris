@@ -91,7 +91,7 @@ def approved_asset(path):
     if not isinstance(path, str) or ".." in path or "\\" in path:
         return False
     return path == SCENE or bool(
-        path.startswith(TERRAIN_DIR) and re.fullmatch(r"[A-Za-z0-9_./-]+\\.asset", path)
+        path.startswith(TERRAIN_DIR) and re.fullmatch(r"[A-Za-z0-9_./-]+\.asset", path)
     )
 
 def project_save(path, repo):
@@ -182,9 +182,9 @@ def deliver(result, nonce, state, repo, issue_comment, publish_file):
             path.write_bytes(svg)
             links.append("3-view dot blueprint: " + publish_file(nonce, path))
     photo = result.get("photo")
-    if isinstance(photo, str) and re.fullmatch(r"ai-photo-\\d+\\.png", photo):
+    if isinstance(photo, str) and re.fullmatch(r"ai-photo-\d+\.png", photo):
         path = state / photo
-        if path.is_file() and path.stat().st_size >= 5000 and path.read_bytes()[:8] == b"\\x89PNG\\r\\n\\x1a\\n":
+        if path.is_file() and path.stat().st_size >= 5000 and path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n":
             links.append("Real Unity PNG: " + publish_file(nonce, path))
     summary = f"AI request #{nonce}: {op} complete; objects={result.get('count', 0)}."
     if commit:
