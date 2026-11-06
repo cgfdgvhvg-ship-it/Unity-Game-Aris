@@ -18,7 +18,9 @@ import sys
 import time
 
 PROJECT = Path("/workspaces/Unity-Game-Aris")
-EDITOR = Path("/home/codespace/Unity/Hub/Editor/6000.3.26f1/Editor/Unity")
+EDITOR_PERSISTENT = Path("/home/codespace/Unity/Hub/Editor/6000.3.26f1/Editor/Unity")
+EDITOR_TEMPORARY = Path("/tmp/aaris-unity-editor/6000.3.26f1/Editor/Unity")
+EDITOR = EDITOR_PERSISTENT if EDITOR_PERSISTENT.is_file() else EDITOR_TEMPORARY
 DESKTOP = Path("/home/codespace/.aaris-desktop")
 
 
@@ -3396,6 +3398,16 @@ def execute(job):
     if op == "safe_archives_cleanup":
         if args: raise ValueError("archive cleanup takes no arguments")
         return {"exit_code":0,"stdout":json.dumps(safe_archive_cleanroom(delete=True)),"stderr":""}
+    if op in {"unity_tmp_install_start","unity_tmp_install_status"}:
+        if args: raise ValueError("Unity installer takes no arbitrary arguments")
+        installer=Path("/workspaces/.aaris-world-bridge/ondemand/unity_tmp_editor_installer.py")
+        if not installer.is_file() or installer.is_symlink() or installer.stat().st_size > 16000:
+            return {"exit_code":3,"stdout":"","stderr":"Reviewed exact-version Unity installer missing"}
+        action="--start" if op=="unity_tmp_install_start" else "--status"
+        result=subprocess.run(["python3",str(installer),action],
+                              capture_output=True,text=True,timeout=25,check=False)
+        return {"exit_code":result.returncode,"stdout":result.stdout[-12000:],
+                "stderr":result.stderr[-900:]}
     if op == "runtime_mount_probe":
         if args: raise ValueError("runtime mount probe accepts no arguments")
         return {"exit_code":0,"stdout":json.dumps(runtime_mount_probe(),ensure_ascii=False),"stderr":""}
