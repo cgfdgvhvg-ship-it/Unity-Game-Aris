@@ -148,7 +148,8 @@ def process_world(comment_id, body):
 
 def process_save(comment_id):
     # Checkpoint is recoverable while base SHA is unchanged; Git branch is the durable source.
-    checkpoint = subprocess.run([sys.executable, "Tools/CI/session_store.py", "save", "project"],
+    checkpoint = subprocess.run(["flock", "-w", "60", "/tmp/aaris-project-checkpoint.lock",
+                                sys.executable, "Tools/CI/session_store.py", "save", "project"],
                                 capture_output=True, text=True, timeout=300, check=False)
     changes = subprocess.run(["git", "diff", "--name-only", "HEAD", "--", "Assets/"],
                              capture_output=True, text=True, timeout=20, check=True)
@@ -340,7 +341,7 @@ def main():
         "unity_activation_requires_attention", "editor_starting",
         "fetching_unity_editor"
     }
-    until = time.monotonic() + max(15, min(args.seconds, 5400))
+    until = time.monotonic() + max(15, min(args.seconds, 18000))
     while time.monotonic() < until:
         try:
             # Public GitHub issue gets only a fixed, non-sensitive state name.
