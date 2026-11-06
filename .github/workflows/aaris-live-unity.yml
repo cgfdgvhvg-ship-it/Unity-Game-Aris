@@ -274,6 +274,13 @@ jobs:
           set -euo pipefail
           printf '{"state":"fetching_unity_editor","detail":"Preparing pinned Editor and native scene."}\n' > ci-live-control/license-status.json
           git lfs pull --include="Assets/**" --exclude=""
+          # Recover only a checksum-verified checkpoint tied to this exact SHA.
+          # If there is no matching checkpoint, keep the clean Git LFS checkout.
+          if python3 Tools/CI/session_store.py restore project; then
+            echo 'Verified previous unsaved world edits restored.'
+          else
+            echo '::notice::No compatible checkpoint. Using checked-in project.'
+          fi
           if head -c 80 Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity |
             grep -q 'git-lfs.github.com/spec'; then
             echo '::error::Native Unity scene is still a Git LFS pointer.'
@@ -390,11 +397,29 @@ jobs:
           path: ci-license-encrypted/Unity_lic.ulf.age
           if-no-files-found: warn
           retention-days: 1
+      - name: Start periodic Git-source checkpoints
+        if: env.LICENSE_EXPORT_RECIPIENT == ''
+        run: |
+          mkdir -p ci-logs
+          (while sleep 420; do
+            python3 Tools/CI/session_store.py save project >>ci-logs/project-checkpoints.log 2>&1 || true
+          done) &
+          echo "$!" > /tmp/aaris-checkpoint.pid
+          echo 'Project edits checkpointed every seven minutes; AI SAVE pushes a review PR.'
       - name: Keep temporary desktop session online
         if: env.LICENSE_EXPORT_RECIPIENT == ''
         run: |
           echo "Cloudflare session is active for $SESSION_MINUTES minutes."
           sleep "$((SESSION_MINUTES*60))"
+      - name: Final best-effort source checkpoint
+        if: always()
+        continue-on-error: true
+        timeout-minutes: 12
+        run: |
+          if [[ -f /tmp/aaris-checkpoint.pid ]]; then
+            kill "$(cat /tmp/aaris-checkpoint.pid)" 2>/dev/null || true
+          fi
+          python3 Tools/CI/session_store.py save project
       - name: Upload last available Unity camera photo only
         if: always()
         uses: actions/upload-artifact@v4
@@ -412,6 +437,9 @@ jobs:
           fi
           if [[ -f /tmp/aaris-issue-bridge.pid ]]; then
             kill "$(cat /tmp/aaris-issue-bridge.pid)" 2>/dev/null || true
+          fi
+          if [[ -f /tmp/aaris-stage-window.pid ]]; then
+            kill "$(cat /tmp/aaris-stage-window.pid)" 2>/dev/null || true
           fi
           if [[ -f /tmp/aaris-license-watch.pid ]]; then
             kill "$(cat /tmp/aaris-license-watch.pid)" 2>/dev/null || true
