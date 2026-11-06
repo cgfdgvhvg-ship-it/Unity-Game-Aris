@@ -142,6 +142,21 @@ def main():
         return
     if REPO != "sundamunda289-art/Unity-Game-Aris" or ISSUE != 77:
         raise RuntimeError("Issue queue is restricted to the configured Aaris repository")
+    # Announce only the time-limited, email-PIN-protected tunnel address.
+    # This enables the persistent free Cloudflare Worker hub to discover it.
+    tunnel_file = Path("/tmp/aaris-tunnel-url")
+    if tunnel_file.is_file():
+        live_url = tunnel_file.read_text().strip()
+        if re.fullmatch(r"https://[a-z0-9-]+\\.trycloudflare\\.com", live_url):
+            run_id = os.getenv("GITHUB_RUN_ID", "")
+            mins = os.getenv("SESSION_MINUTES", "15")
+            if run_id.isdigit() and mins in ("15", "45", "90"):
+                try:
+                    issue_comment(f"AARIS_LIVE_DESKTOP run_id={run_id} "
+                                  f"session_minutes={mins} url={live_url}")
+                    print("Protected tunnel announced to GitHub issue (PIN required)", flush=True)
+                except subprocess.CalledProcessError:
+                    print("Could not announce live tunnel; camera polling still available", flush=True)
     print("Starting owner-only camera polling on active Unity session", flush=True)
     start = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     since = start
