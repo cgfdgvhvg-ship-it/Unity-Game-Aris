@@ -8,6 +8,8 @@ on:
       - 'Tools/MapBuild/lod_winding.py'
       - 'Tools/MapBuild/ground_native.py'
       - 'Tools/World/tests/test_lod_winding.py'
+      - 'Tools/World/tests/test_unity_capture_gpu_guard.py'
+      - 'Assets/AarisWorld/Editor/AarisLiveEditorBridge.cs'
       - 'Tools/Validation/preview_lod_face_winding.py'
       - 'AGENTS.md'
       - '.github/workflows/building-mesh-health.yml'
@@ -34,6 +36,7 @@ jobs:
           python -m py_compile Tools/Validation/check_building_mesh_health.py Tools/World/tests/test_building_mesh_health.py Tools/MapBuild/lod_winding.py Tools/MapBuild/ground_native.py Tools/World/tests/test_lod_winding.py Tools/Validation/preview_lod_face_winding.py
           python -m unittest discover -s Tools/World/tests -p test_building_mesh_health.py -v
           python -m unittest discover -s Tools/World/tests -p test_lod_winding.py -v
+          python -m unittest discover -s Tools/World/tests -p test_unity_capture_gpu_guard.py -v
       - name: Read real 17-building LOD0 LOD1 LOD2 mesh bytes from Git LFS
         run: |
           git lfs install --local
