@@ -101,9 +101,21 @@ def oauth_failure_diagnostics():
         }
         safe_lines.extend(v for k,v in categories.items() if k in line)
     safe_lines=sorted(set(safe_lines))
+    # Strip link URLs, emails and all variable-length credentials before surfacing lines.
+    known=[]
+    for line in data.splitlines():
+        if not any(z in line for z in ("keyring", "credential", "error:", "login failed", "sign-in failed", "secret service", "broker", "store")):
+            continue
+        if "https://" in line or "http://" in line or "state=" in line or "token" in line or "auth_url" in line:
+            continue
+        safe=re.sub(r"\\b[a-z0-9_+/=-]{28,}\\b","[REDACTED]",line)
+        safe=re.sub(r"[^a-z0-9 :,;._=()/-]", "?", safe)[:170]
+        known.append(safe)
+    known=known[-8:]
+
     return {"bytes":AUTH_LOG.stat().st_size,
             "error_markers":{k:True for k,v in markers.items() if any(s in data for s in v)},
-            "failure_kinds":safe_lines,
+            "failure_kinds":safe_lines,"sanitized_error_lines":known,
             "json_error_codes":sorted(set(re.findall(r'"code"\\s*:\\s*"([a-z0-9_\\-]{2,45})"',data)))[:12]}
 
 
