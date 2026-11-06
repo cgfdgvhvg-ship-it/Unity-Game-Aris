@@ -122,18 +122,21 @@ AI {"op":"inspect","x":-420,"y":22,"z":-210,"radius":40}
 AI {"op":"bounds","target":"Village[2]/House[1]/Wall[0]"}
 AI {"op":"outline","target":"Village[2]/House[1]","max_points":512}
 AI {"op":"photo","target":"Village[2]/House[1]","distance":30}
+AI {"op":"bounds","target":"terrain-tree:0:17"}
+AI {"op":"outline","target":"terrain-tree:0:17","max_points":1024}
+AI {"op":"scale","target":"terrain-tree:0:17","sx":1.1,"sy":0.95,"sz":1.1,"dry_run":true}
 AI {"op":"move","target":"Village[2]/House[1]","dx":1,"dy":0,"dz":-2,"dry_run":true}
 AI {"op":"move","target":"Village[2]/House[1]","dx":1,"dy":0,"dz":-2}
 AI {"op":"scale","target":"Village[2]/House[1]/Wall[0]","sx":1.15,"sy":1,"sz":1}
 ```
 
-`find` searches active-scene GameObject names; `inspect` reports near a position (including real Terrain tree instances); both return at most 80 objects. `bounds` reports world-space renderer bounds and world metre dimensions, or position-only if unavailable. `outline` samples up to 2048 readable mesh vertices in world XYZ (and produces a three-view *dot blueprint* SVG); this is not a complete mesh export, convex hull, foliage physics simulation, nor proof of realistic materials.
+`find` searches active-scene GameObject names; `inspect` reports near a position (including real Terrain tree instances); both return at most 80 objects. `bounds` reports world-space renderer bounds and world metre dimensions, or position-only if unavailable. `outline` samples up to 2048 world-space mesh XYZ vertices and publishes both a three-view *dot blueprint* SVG and downloadable ASCII **PLY point cloud** (open with Blender/MeshLab). The PLY contains sparse points, **not** triangles, a closed 3D model, real-time wind deformation, or proof of realistic materials. If a mesh cannot be read, its geometry is explicitly labelled as a bounds-corners fallback.
 
-A native Terrain tree is identified as `terrain-tree:<tile-index>:<instance-index>` from the `inspect` report. This is an instance in a TerrainData asset, not an ordinary GameObject: `move` and `scale` use the Terrain API and save its asset. Native tree `widthScale` is horizontal (so `sx` must equal `sz`) and `heightScale` is vertical; a per-leaf or per-trunk edit requires a separately reviewed prototype/mesh authoring feature. Native tree `outline` is not implemented yet and returns a clear unsupported error. Do not substitute a fake 3D outline for it.
+A native Terrain tree is identified as `terrain-tree:<tile-index>:<instance-index>` from the `inspect` report. This is an instance in a TerrainData asset, not an ordinary GameObject: `move` and `scale` use the Terrain API and save its asset. Native tree `widthScale` is horizontal (so `sx` must equal `sz`) and `heightScale` is vertical. **Targeted `bounds` and `outline` now inspect its real TreePrototype prefab MeshFilter meshes** using the tree instance's rotation and width/height scale, returning approximate world-metre extents and sampled vertices. If a SpeedTree/LOD mesh is unreadable, individual mesh AABB corners replace its vertices and the JSON marks `prototype-mesh-and-bounds-fallback`. This is a geometric approximation, NOT the actual wind-deformed silhouette, complete foliage surface, or a claimed photoreal render. An inaccessible prototype gives an explicit unsupported result for `outline`. A per-leaf or per-trunk modification of native Terrain trees changes shared prototype authoring and is NOT covered by the per-instance `scale` command; never silently change an entire species to fulfil one-tree instructions.
 
 Each `move`/`scale` is limited to bounded numeric deltas/factors and can be previewed with `dry_run:true`. A write saves its Unity scene/TerrainData source, then commits **only the exact allowlisted changed asset** to Git LFS (when LFS-tracked) on `ai-map-edits`, not to main. For big changes: first inspect dimensions, then dry-run, then write one small change, inspect again, capture photo, and review the diff/PR. There is no user-provided shell, path, or arbitrary code execution. A failed Git push reports persistence failure even if Unity saved locally; do not claim the new runner will remember it.
 
-The result JSON and optionally three-view blueprint SVG or genuine PNG are published under unique issue-comment IDs to the public `live-photos` Release. The PNG is a real Unity Editor camera render, **only if** license, Editor launch, mesh import and graphics actually worked. The report carries the exact `nonce` so stale photos/results are rejected. Public artifacts should contain no personal data or secrets.
+The result JSON and optional three-view SVG / 3D PLY dot blueprints or genuine PNG are published under unique issue-comment IDs to the public `live-photos` Release. The PNG is a real Unity Editor camera render, **only if** license, Editor launch, mesh import and graphics actually worked. The report carries the exact `nonce` so stale photos/results are rejected. Public artifacts should contain no personal data or secrets.
 
 ### Persistence / restore / cross-session safety
 
@@ -141,6 +144,15 @@ The result JSON and optionally three-view blueprint SVG or genuine PNG are publi
 - Native `.unity` and `TerrainData .asset` can be LFS binaries; `git lfs pull` must hydrate before Editor launch. The Git branch holds permanent source changes; `Library/`, `Temp/` and login data never become source-of-truth.
 - Because host runners can be killed, all progress must be committed after each authorized write. Running an Editor on a new VM still depends on legitimate Unity activation each session, if needed. There is **no** promise of unattended activation or guaranteed screenshot latency.
 - Always retain separate distinction: `PASS` in Python static tests vs compile PASS in Unity Editor vs real rendered PNG verified from actual scene.
+
+### Operator procedure and known run failures
+
+- For a native tree: inspect nearby X/Y/Z, copy its current `terrain-tree:<tile>:<instance>` ID, run `bounds`, then `outline` for the PLY. IDs are snapshot-relative: after tree list changes, inspect again before editing.
+- For a house wall, `find` the actual wall hierarchy ID and inspect `boundsSize`. To change thickness only, `scale` the appropriate local axis with `dry_run:true` first, then save. The system does **not** promise automated collision reflow for neighboring objects; inspect the surroundings again.
+- `find` searches scene GameObjects, while `inspect` adds native Terrain tree instances within the requested radius. `find Tree` alone can therefore miss native terrain instances.
+- Cloudflare/noVNC is for the owner to **watch** the live desktop. A GitHub-connected AI can read owner-authorized Issue #77 JSON and attached authentic files; it cannot continuously ingest a browser video stream from this chat.
+- GitHub Actions run 42271635029 failed during a mandatory 90-second `apt-get update` (exit 124), before noVNC or Unity launched. The proposed workflow uses a bounded update with a cached-metadata install fallback and reports failure if required packages are still unavailable. This does not resolve a missing authorized `UNITY_LICENSE` or replace required official activation.
+- Results must be described as Python-validated until **Unity Editor C# compile, license activation, actual terrain serialization, and real PNG** have succeeded on a hosted runner. Never claim a photo arrives in a guaranteed number of seconds; a new VM must restore LFS/cache and launch the licensed Editor first.
 
 ### Safe validation
 
