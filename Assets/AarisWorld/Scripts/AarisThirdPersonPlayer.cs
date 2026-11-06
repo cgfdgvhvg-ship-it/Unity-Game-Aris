@@ -217,16 +217,41 @@ namespace Aaris.MapReview
             return support.point.y >= seaLevel + 0.35f
                 && support.normal.y >= Mathf.Cos(controller.slopeLimit * Mathf.Deg2Rad);
         }
+        // Full near-plane frustum corners must stay clear during phone swipe/orbit.
+        // A fixed 0.18 m sphere misses the outer near-plane corners at 60°/16:9,
+        // so the old camera could clip into roofs and produce black/white flashes.
+        // Derive collision clearance from the ACTUAL saved camera optics instead.
+        private float CameraHullRadius()
+        {
+            float near = Mathf.Max(0.02f, followCamera.nearClipPlane);
+            float halfHeight = Mathf.Tan(Mathf.Clamp(followCamera.fieldOfView, 5f, 175f)
+                * 0.5f * Mathf.Deg2Rad) * near;
+            float halfWidth = halfHeight * Mathf.Max(0.1f, followCamera.aspect);
+            return Mathf.Clamp(Mathf.Sqrt(near * near + halfWidth * halfWidth
+                + halfHeight * halfHeight) + 0.07f, 0.24f, 0.8f);
+        }
+
         private Vector3 ObstructionSafe(Vector3 pivot, Vector3 target)
         {
             Vector3 delta = target - pivot;
             float length = delta.magnitude;
             if (length < 0.01f) return target;
-            // Closest-hit query avoids a full, unordered hit buffer in dense forest.
-            float allowed = Physics.SphereCast(pivot, 0.18f, delta / length, out RaycastHit hit,
+            Vector3 direction = delta / length;
+            float radius = CameraHullRadius();
+            // Closest-hit physics query is deterministic regardless of collider order.
+            float allowed = Physics.SphereCast(pivot, radius, direction, out RaycastHit hit,
                 length, WorldMask, QueryTriggerInteraction.Ignore)
-                ? Mathf.Min(length, Mathf.Max(0.12f, hit.distance - 0.08f)) : length;
-            return pivot + delta / length * allowed;
+                ? Mathf.Min(length, Mathf.Max(0.10f, hit.distance - 0.09f)) : length;
+            Vector3 cameraPoint = pivot + direction * allowed;
+            // SphereCast does not report a collider already overlapping its start;
+            // guard the destination independently, especially after fast touch swipes.
+            // Retract towards the player instead of moving the camera THROUGH a wall.
+            for (int step = 0; step < 16 && Physics.CheckSphere(cameraPoint, radius,
+                 WorldMask, QueryTriggerInteraction.Ignore); step++)
+            {
+                cameraPoint = Vector3.MoveTowards(cameraPoint, pivot, 0.16f);
+            }
+            return cameraPoint;
         }
         private void PlaceCamera(bool instant)
         {

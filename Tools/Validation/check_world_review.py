@@ -50,9 +50,18 @@ def check(native=False):
     assert player['minLookPitch']==-70 and player['maxLookPitch']==70
     sky=next(d for c,i,n,d in documents(ROOT/SKY) if n=='Material')
     assert sky['m_Shader']['fileID']==106 and '_SUNDISK_HIGH_QUALITY'in sky['m_ValidKeywords']
-    assert next(f['_Exposure'] for f in sky['m_SavedProperties']['m_Floats'] if '_Exposure'in f)==1.15
+    assert next(f['_Exposure'] for f in sky['m_SavedProperties']['m_Floats'] if '_Exposure'in f)==0.88
+    assert report['daylight']['sky_exposure']==0.88
+    sky_tint=next(f['_SkyTint'] for f in sky['m_SavedProperties']['m_Colors'] if '_SkyTint'in f)
+    ground_color=next(f['_GroundColor'] for f in sky['m_SavedProperties']['m_Colors'] if '_GroundColor'in f)
+    assert [sky_tint[k] for k in ('r','g','b')]==[.44,.55,.70]
+    assert [ground_color[k] for k in ('r','g','b')]==[.30,.36,.44]
     rs=next(d for c,i,n,d in objects if n=='RenderSettings');sun=next((i,d) for c,i,n,d in objects if n=='Light' and names[d['m_GameObject']['fileID']]=='Sun')
     assert rs['m_Sun']['fileID']==sun[0] and rs['m_AmbientMode']==1
+    # Scene sky must reference the exact saved, shader-pinned material GUID.
+    material_meta=(ROOT/(SKY+'.meta')).read_text()
+    sky_guid=next(line.split(': ',1)[1].strip() for line in material_meta.splitlines() if line.startswith('guid: '))
+    assert rs['m_SkyboxMaterial']['guid']==sky_guid and rs['m_SkyboxMaterial']['fileID']==2100000
     assert sun[1]['m_Intensity']==1.35 and sun[1]['m_Shadows']['m_Strength']==.55
     q=transforms['Sun']['m_LocalRotation'];assert abs(sum(v*v for v in q.values())-1)<1e-6
     incoming_y=-2*(q['y']*q['z']-q['w']*q['x']);elevation=math.degrees(math.asin(incoming_y))

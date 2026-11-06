@@ -30,7 +30,7 @@
     "sun_elevation_degrees": 50,
     "sun_intensity": 1.35,
     "shadow_strength": 0.55,
-    "sky_exposure": 1.15,
+    "sky_exposure": 0.88,
     "maximum_upward_look_degrees": 70
   },
   "graphics_resolution_reduced": false,
