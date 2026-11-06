@@ -31,7 +31,7 @@ concurrency:
 
 jobs:
   verify:
-    if: github.event_name != 'issue_comment' || (github.event.issue.number == 77 && github.event.comment.user.login == 'sundamunda289-art' && startsWith(github.event.comment.body, 'START_DESKTOP '))
+    if: github.event_name != 'issue_comment' || (github.event.issue.number == 77 && github.event.comment.user.login == 'sundamunda289-art' && (startsWith(github.event.comment.body, 'START_DESKTOP ') || startsWith(github.event.comment.body, 'ACTIVATE_UNITY ')))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -63,7 +63,7 @@ jobs:
           PY
 
   live-desktop:
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'issue_comment' && github.event.issue.number == 77 && github.event.comment.user.login == 'sundamunda289-art' && startsWith(github.event.comment.body, 'START_DESKTOP '))
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'issue_comment' && github.event.issue.number == 77 && github.event.comment.user.login == 'sundamunda289-art' && (startsWith(github.event.comment.body, 'START_DESKTOP ') || startsWith(github.event.comment.body, 'ACTIVATE_UNITY ')))
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 140
@@ -97,6 +97,8 @@ jobs:
           case "$SESSION_MINUTES" in
             "START_DESKTOP 15"|"START_DESKTOP 45"|"START_DESKTOP 90")
               SESSION_MINUTES="${SESSION_MINUTES#START_DESKTOP }" ;;
+            "ACTIVATE_UNITY 15"|"ACTIVATE_UNITY 45"|"ACTIVATE_UNITY 90")
+              SESSION_MINUTES="${SESSION_MINUTES#ACTIVATE_UNITY }" ;;
           esac
           case "$SESSION_MINUTES" in 15|45|90) ;; *)
             echo '::error::Invalid session length. Allowed: 15, 45, 90 minutes.'
@@ -108,10 +110,12 @@ jobs:
         timeout-minutes: 7
         run: |
           set -euo pipefail
+          # Constrain setup so a failed Ubuntu mirror cannot consume the
+          # whole session. Reuse preinstalled packages on GitHub runners.
           sudo timeout 90 apt-get update -qq
-          sudo timeout 240 env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
-            xvfb x11vnc novnc websockify nginx openbox git-lfs zstd \
-            libgl1-mesa-dri libglu1-mesa
+          sudo timeout 160 env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+            --no-install-recommends xvfb x11vnc novnc websockify nginx \
+            openbox git-lfs libgl1-mesa-dri libglu1-mesa
           git lfs install --local
           mkdir -p ci-live-control ci-logs ci-photos
           Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp -ac > /tmp/aaris-xvfb.log 2>&1 &
@@ -206,7 +210,15 @@ jobs:
             --env LIBGL_ALWAYS_SOFTWARE=1 --env GALLIUM_DRIVER=llvmpipe \
             --volume /tmp/.X11-unix:/tmp/.X11-unix \
             --volume "$PWD:/project" --workdir /project \
-            "$GAMECI_IMAGE" python3 Tools/CI/unity_personal_bootstrap.py
+            "$GAMECI_IMAGE" bash -lc '
+              mkdir -p /project/ci-logs
+              # Keep this container alive after an activation failure so an
+              # explicit ACTIVATE_UNITY issue command can retry in the same VM.
+              flock -n /tmp/aaris-unity-bootstrap.lock \
+                python3 Tools/CI/unity_personal_bootstrap.py \
+                > /project/ci-logs/unity-initial-activation.log 2>&1 || true
+              exec tail -f /dev/null
+            '
           echo 'Unity license bootstrap started inside the same container as the real Editor.'
           echo 'Sign-in links, if necessary, are shown only on the Cloudflare email-PIN gated control page.'
           echo 'Neither an email/password Secret nor a Unity service-account Secret bypasses user licensing.'
