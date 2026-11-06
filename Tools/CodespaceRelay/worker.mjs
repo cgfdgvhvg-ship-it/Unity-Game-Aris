@@ -3,10 +3,10 @@
  * Deploy as a Cloudflare Worker with a Cron Trigger. Never place tokens in git.
  * No arbitrary shell, no repository checkout or source edits.
  */
-const REPO = 'Aaris-khan-don/Unity-Game-Aris';
-const OWNER = 'Aaris-khan-don';
+const REPO = 'sundamunda289-art/Unity-Game-Aris';
+const OWNER = 'sundamunda289-art';
 const BRANCH = 'ai/codespace-jobs';
-const CODESPACE = 'musical-carnival-jjxp9r6vw45wfjgvg';
+const CODESPACE = 'redesigned-space-train-gxp5jwvq94wg2wvw6';
 const JOBS = '.aaris/relay-jobs';
 const RESULTS = '.aaris/relay-results';
 const ID = /^r[a-z0-9][a-z0-9-]{5,51}$/;
@@ -129,6 +129,7 @@ async function codespace(api) {
 }
 
 export async function processJob(api, job) {
+  if (job.action === 'terminal') throw Error('Terminal commands use GitHub Actions SSH, not Cloudflare');
   const info=await codespace(api);
   const state=info.state;
   if (job.action === 'status') return {status:'observed', state, source:'cloudflare-scheduled-worker'};
@@ -163,6 +164,7 @@ export async function handleCron(env, api=makeGitHubApi(env)) {
     let job;
     try {
       job = await loadAuthorizedJob(api,file);
+      if (job.action === 'terminal') continue; // Cloudflare controls lifecycle only.
       const result = await processJob(api,job);
       if (result) await publishResult(api,job,result);
     } catch (err) {
@@ -180,6 +182,9 @@ function json(data, status=200) {
   return new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json','cache-control':'no-store'}});
 }
 export async function handleAgent(request,env,api=makeGitHubApi(env)) {
+  // Terminal requests are handled by authenticated GitHub Actions -> Codespace SSH.
+  return json({error:'terminal commands use GitHub Actions SSH'},410);
+  /* Retained legacy code below (unreachable, for rollback review).
   if (env.RELAY_ENABLED !== 'true') return json({error:'relay not enabled'},503);
   const u=new URL(request.url);
   if (!equalToken(request.headers.get('authorization')?.replace(/^Bearer /,''),env.AGENT_SHARED_SECRET)) {
@@ -214,6 +219,7 @@ export async function handleAgent(request,env,api=makeGitHubApi(env)) {
     return json({stored:true,id:data.id});
   }
   return json({error:'unknown route'},404);
+  */
 }
 
 export default {
