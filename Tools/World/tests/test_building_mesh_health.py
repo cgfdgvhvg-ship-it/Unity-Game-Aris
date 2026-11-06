@@ -64,6 +64,19 @@ class MeshTests(unittest.TestCase):
         with self.assertRaisesRegex(mod.MeshHealthError, "out of vertex range"):
             mod.inspect_mesh(bad, BOUNDS)
 
+    def test_empty_reserved_material_slot_is_valid(self):
+        original = sample_mesh()
+        empty = """  - firstByte: 12
+    indexCount: 0
+    topology: 0
+    baseVertex: 0
+    localAABB: *bound
+"""
+        expanded = original.replace("  m_LocalAABB: *bound", empty + "  m_LocalAABB: *bound")
+        report = mod.inspect_mesh(expanded, BOUNDS, 1, 2)
+        self.assertEqual(report["empty_submeshes"], [1])
+        self.assertEqual(report["triangles"], 1)
+
     def test_extra_triangle_count(self):
         with self.assertRaisesRegex(mod.MeshHealthError, "triangle count"):
             mod.inspect_mesh(sample_mesh(), BOUNDS, 2)
