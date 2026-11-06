@@ -94,6 +94,13 @@ def status():
             "last_state":state.get("state","not_started"),
             "last_error":state.get("error"),"oauth_diagnostic":oauth_failure_diagnostics()}
     if binpath:
+        try:
+            ver=subprocess.run([str(binpath),"--version"],capture_output=True,text=True,
+                               stdin=subprocess.DEVNULL,timeout=9,check=False)
+            match=re.search(r"\\b[0-9]+\\.[0-9]+\\.[0-9]+(?:-beta\\.[0-9]+)?\\b",ver.stdout+ver.stderr)
+            result["cli_version"]=match.group(0) if match else "unrecognized"
+        except (OSError,subprocess.TimeoutExpired):
+            result["cli_version"]="unavailable"
         result["authenticated"]=run_quiet([str(binpath),"auth","status","--format","json"],timeout=12)==0
         result["personal_license_active"]=run_quiet([str(binpath),"license","status","--format","json"],timeout=14)==0
         # OAuth URL is intentionally returned only for an explicit status read.
