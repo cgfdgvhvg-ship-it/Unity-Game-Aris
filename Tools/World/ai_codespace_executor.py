@@ -3398,12 +3398,12 @@ def execute(job):
     if op == "safe_archives_cleanup":
         if args: raise ValueError("archive cleanup takes no arguments")
         return {"exit_code":0,"stdout":json.dumps(safe_archive_cleanroom(delete=True)),"stderr":""}
-    if op in {"unity_tmp_install_start","unity_tmp_install_status"}:
+    if op in {"unity_tmp_install_start","unity_tmp_install_status","unity_desktop_deps_start","unity_desktop_deps_status"}:
         if args: raise ValueError("Unity installer takes no arbitrary arguments")
         installer=Path("/workspaces/.aaris-world-bridge/ondemand/unity_tmp_editor_installer.py")
         if not installer.is_file() or installer.is_symlink() or installer.stat().st_size > 16000:
             return {"exit_code":3,"stdout":"","stderr":"Reviewed exact-version Unity installer missing"}
-        action="--start" if op=="unity_tmp_install_start" else "--status"
+        action={"unity_tmp_install_start":"--start","unity_tmp_install_status":"--status","unity_desktop_deps_start":"--deps-start","unity_desktop_deps_status":"--deps-status"}[op]
         result=subprocess.run(["python3",str(installer),action],
                               capture_output=True,text=True,timeout=25,check=False)
         return {"exit_code":result.returncode,"stdout":result.stdout[-12000:],
