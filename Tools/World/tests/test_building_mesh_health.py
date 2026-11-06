@@ -77,9 +77,13 @@ class MeshTests(unittest.TestCase):
         self.assertEqual(report["empty_submeshes"], [1])
         self.assertEqual(report["triangles"], 1)
 
-    def test_extra_triangle_count(self):
+    def test_triangle_count_may_decrease_when_door_is_cut(self):
+        r = mod.inspect_mesh(sample_mesh(), BOUNDS, 2)
+        self.assertEqual(r["triangles_removed_since_layout"], 1)
+
+    def test_triangle_count_must_not_increase_over_original(self):
         with self.assertRaisesRegex(mod.MeshHealthError, "triangle count"):
-            mod.inspect_mesh(sample_mesh(), BOUNDS, 2)
+            mod.inspect_mesh(sample_mesh(), BOUNDS, 0)
 
     def test_material_slot_drift(self):
         with self.assertRaisesRegex(mod.MeshHealthError, "material/submesh"):
