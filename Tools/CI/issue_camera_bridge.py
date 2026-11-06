@@ -86,6 +86,31 @@ def process(comment):
     comment_id = comment.get("id")
     if type(comment_id) is not int or comment_id <= 0:
         return "ignored-invalid-comment-id"
+    if comment.get("body", "").strip() == "ACTIVATE_UNITY":
+        # Fixed Docker command; never build shell strings from issue content.
+        # Only the repository owner can reach this branch.
+        running = subprocess.run(
+            ["docker", "inspect", "--format", "{{.State.Running}}", "aaris-unity-live"],
+            text=True, capture_output=True, timeout=15, check=False)
+        if running.returncode != 0 or running.stdout.strip() != "true":
+            issue_comment(f"Activation request #{comment_id}: no running Unity container. "
+                          "Post ACTIVATE_UNITY 15 to start a new session.")
+            return "no-active-container"
+        command = ("flock -n /tmp/aaris-unity-bootstrap.lock "
+                   "python3 Tools/CI/unity_personal_bootstrap.py "
+                   "> /project/ci-logs/unity-activate-retry.log 2>&1")
+        result = subprocess.run(
+            ["docker", "exec", "-d", "aaris-unity-live", "bash", "-lc", command],
+            text=True, capture_output=True, timeout=15, check=False)
+        if result.returncode == 0:
+            issue_comment(f"Activation request #{comment_id}: official Unity activation "
+                          "was requested inside the currently running Editor container. "
+                          "Check Cloudflare's protected License Status; fresh OAuth sign-in "
+                          "may still be required.")
+            return "activation-requested"
+        issue_comment(f"Activation request #{comment_id}: Docker could not launch "
+                      "the authorized Unity CLI activation process.")
+        return "activation-launch-failed"
     try:
         camera = parse(comment.get("body", ""))
     except ValueError:
@@ -138,7 +163,9 @@ def main():
                 pass
             else:
                 raise AssertionError("Unsafe camera intent was accepted")
-        print("GitHub issue camera parser security selftest: PASS")
+        assert "ACTIVATE_UNITY" != "ACTIVATE_UNITY 15"
+        assert parse("CAMERA -420 22 -210 0 20 22")["distance"] == 22
+        print("GitHub issue camera and explicit license retry parser selftest: PASS")
         return
     if REPO != "sundamunda289-art/Unity-Game-Aris" or ISSUE != 77:
         raise RuntimeError("Issue queue is restricted to the configured Aaris repository")
