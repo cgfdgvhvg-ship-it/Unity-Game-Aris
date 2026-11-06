@@ -246,7 +246,7 @@ def handle(comment, comment_cb, photo_cb):
 def selftest():
     valid = parse('AI {"action":"inspect","query":"Tree","x":120,"z":-44,"radius":25}')
     assert valid["sx"] == 1 and valid["radius"] == 25
-    assert parse('AI {"action":"scale","id":"terrain:1:4","sx":1.3,"sy":.8,"sz":1.3}')["sx"] == 1.3
+    assert parse('AI {"action":"scale","id":"terrain:1:4","sx":1.3,"sy":0.8,"sz":1.3}')["sx"] == 1.3
     assert parse('AI {"action":"save"}') == {"action": "save"}
     for body in [
         'AI {"action":"shell","cmd":"rm -rf /"}',
