@@ -42,6 +42,16 @@ def private_status(state: str, *, url: str | None = None, detail: str = "") -> N
         record["auth_url"] = url
     temp = STATE_DIR / "license-status.tmp"
     temp.write_text(json.dumps(record))
+    # The Unity container runs as root while the Cloudflare-facing Python
+    # server runs as the unprivileged GitHub runner. Transfer ownership to
+    # that runner, retaining owner-only 0600 access to the private OAuth URL.
+    host_uid = os.getenv("AARIS_HOST_UID")
+    host_gid = os.getenv("AARIS_HOST_GID")
+    if host_uid is not None and host_gid is not None:
+        uid, gid = int(host_uid), int(host_gid)
+        if not (0 <= uid <= 65535 and 0 <= gid <= 65535):
+            raise ValueError("Invalid host ownership for private license status")
+        os.chown(temp, uid, gid)
     os.chmod(temp, 0o600)
     os.replace(temp, STATE_DIR / "license-status.json")
 
@@ -206,7 +216,20 @@ def selftest() -> None:
     assert extract_auth_url('{"type":"progress","message":"auth_url=https://id.unity.com/connect?x=123"}')
     assert extract_auth_url("auth_url=https://id.unity.com/start") == "https://id.unity.com/start"
     assert extract_auth_url("https://example.com/bad") is None
-    print("Authorized Unity OAuth URL parsing, validation and no-credential policy: PASS")
+    # Regression: private status must remain owner-readable and valid JSON.
+    import tempfile
+    global STATE_DIR
+    prev = STATE_DIR
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            STATE_DIR = Path(tmp)
+            private_status("test_ready", detail="Private status working")
+            value = json.loads((STATE_DIR / "license-status.json").read_text())
+            assert value["state"] == "test_ready"
+            assert (STATE_DIR / "license-status.json").stat().st_mode & 0o777 == 0o600
+    finally:
+        STATE_DIR = prev
+    print("Authorized Unity OAuth URL parsing, private status and no-credential policy: PASS")
 
 def main() -> int:
     parser = argparse.ArgumentParser()
