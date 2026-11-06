@@ -23,6 +23,7 @@ import subprocess
 import threading
 import time
 from urllib.parse import urlparse
+from license_reuse import check_license
 
 PROJECT = Path("/project")
 STATE_DIR = Path(os.getenv("AARIS_LIVE_STATE", "/project/ci-live-control"))
@@ -76,16 +77,31 @@ def extract_auth_url(line: str) -> str | None:
     return None
 
 def write_provided_license() -> bool:
-    raw = os.getenv("UNITY_LICENSE", "").strip()
-    if not raw:
+    """Unattended reinstall of an already legitimately activated Unity license.
+
+    This does NOT generate or reissue a Personal seat; Unity must accept the
+    ULF on this runner. Never expose license bytes to logs or public artifacts.
+    """
+    secret = os.getenv("UNITY_LICENSE", "")
+    if not secret.strip():
         return False
-    if len(raw) > 200000 or not raw.startswith("<"):
-        raise ValueError("The UNITY_LICENSE Secret is not a valid ULF XML candidate")
+    try:
+        raw = check_license(secret.strip().encode("utf-8"))
+    except (UnicodeError, ValueError) as exc:
+        raise ValueError("UNITY_LICENSE is not a complete valid ULF XML secret") from exc
     LICENSE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    LICENSE_FILE.write_text(raw)
-    os.chmod(LICENSE_FILE, 0o600)
+    temp = LICENSE_FILE.with_name(".Unity_lic.ulf.tmp")
+    try:
+        with temp.open("wb") as handle:
+            os.chmod(temp, 0o600)
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp, LICENSE_FILE)
+    finally:
+        temp.unlink(missing_ok=True)
     private_status("license_secret_installed",
-                   detail="An authorized ULF was installed; Editor must validate it.")
+                   detail="Authorized ULF candidate securely installed from GitHub Secrets; the Editor must confirm that this runner is licensed.")
     return True
 
 def installed_cli() -> str | None:
@@ -205,7 +221,15 @@ def run_editor() -> int:
     # GUI mode: no -batchmode or -nographics; graphics via Xvfb/Mesa.
     cmd = [editor, "-projectPath", str(PROJECT),
            "-logFile", str(logfile), "-force-glcore"]
-    return subprocess.call(cmd)
+    # The Unity Editor needs the securely installed file, not the original
+    # ULF secret in its environment. Never forward a password to the GUI.
+    safe_env = {key: value for key, value in os.environ.items()
+                if key not in ("UNITY_LICENSE", "UNITY_PASSWORD",
+                               "UNITY_SERVICE_ACCOUNT_SECRET")}
+    code = subprocess.call(cmd, env=safe_env)
+    private_status("editor_process_ended",
+                   detail="Unity Editor process finished; inspect protected status and the scene capture results.")
+    return code
 
 def selftest() -> None:
     assert allowed_auth_url("https://id.unity.com/sign-in")
@@ -216,9 +240,40 @@ def selftest() -> None:
     assert extract_auth_url('{"type":"progress","message":"auth_url=https://id.unity.com/connect?x=123"}')
     assert extract_auth_url("auth_url=https://id.unity.com/start") == "https://id.unity.com/start"
     assert extract_auth_url("https://example.com/bad") is None
+    # A GitHub Secret can seed a fresh disposable runner without another login.
+    # Test only dummy ULF data; never use real credentials in unit tests.
+    import tempfile
+    global LICENSE_FILE, STATE_DIR
+    previous_license, previous_state = LICENSE_FILE, STATE_DIR
+    previous_secret = os.environ.get("UNITY_LICENSE")
+    try:
+        with tempfile.TemporaryDirectory() as folder:
+            STATE_DIR = Path(folder)
+            LICENSE_FILE = STATE_DIR / "private" / "Unity_lic.ulf"
+            os.environ["UNITY_LICENSE"] = (
+                '<?xml version="1.0"?><License><Filler>' +
+                "TEST-NOT-A-REAL-LICENSE-" * 12 + "</Filler></License>"
+            )
+            assert write_provided_license()
+            assert LICENSE_FILE.exists()
+            assert (LICENSE_FILE.stat().st_mode & 0o777) == 0o600
+            assert json.loads((STATE_DIR / "license-status.json").read_text())["state"] == "license_secret_installed"
+            assert not (STATE_DIR / "license-status.json").read_text().find("TEST-NOT-A-REAL-LICENSE") >= 0
+            os.environ["UNITY_LICENSE"] = "not-an-ulf"
+            try:
+                write_provided_license()
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("Invalid Unity ULF secret was accepted")
+    finally:
+        LICENSE_FILE, STATE_DIR = previous_license, previous_state
+        if previous_secret is None:
+            os.environ.pop("UNITY_LICENSE", None)
+        else:
+            os.environ["UNITY_LICENSE"] = previous_secret
     # Regression: private status must remain owner-readable and valid JSON.
     import tempfile
-    global STATE_DIR
     prev = STATE_DIR
     try:
         with tempfile.TemporaryDirectory() as tmp:
@@ -240,7 +295,7 @@ def main() -> int:
         return 0
     try:
         if write_provided_license():
-            print("Unity authorized ULF candidate found (content hidden).", flush=True)
+            print("Unity GitHub Secret ULF candidate installed without another interactive sign-in (content hidden).", flush=True)
         else:
             print("No ULF secret; trying official Unity CLI user authentication.", flush=True)
             binary = install_official_cli()
