@@ -61,6 +61,28 @@ def safe_url():
     return None
 
 
+
+def oauth_failure_diagnostics():
+    """Only a fixed allowlist of error categories: never expose OAuth tokens, URLs or raw logs."""
+    if not AUTH_LOG.is_file() or AUTH_LOG.is_symlink(): return {}
+    with AUTH_LOG.open("rb") as stream:
+        stream.seek(max(0, AUTH_LOG.stat().st_size - 32000))
+        data=stream.read().decode("utf-8", "replace").lower()
+    markers={
+        "canceled": ("canceled", "cancelled", "user canceled"),
+        "timeout": ("timed out", "timeout", "expired"),
+        "credential_store": ("keyring", "secret service", "credential store", "credential-store"),
+        "browser_handoff": ("callback", "redirect", "deep link", "auth_url"),
+        "login_failed": ("sign-in failed", "login failed", "authentication failed"),
+        "non_interactive": ("non-interactive", "requires interaction"),
+        "completed": ("now signed in", "successfully signed in", "login successful"),
+        "network_error": ("connection refused", "network error", "dns error")
+    }
+    return {"bytes":AUTH_LOG.stat().st_size,
+            "error_markers":{k:True for k,v in markers.items() if any(s in data for s in v)},
+            "json_error_codes":sorted(set(re.findall(r'"code"\\s*:\\s*"([a-z0-9_\\-]{2,45})"',data)))[:12]}
+
+
 def status():
     binpath=cli_path()
     state={}
@@ -70,7 +92,7 @@ def status():
     result={"unity_cli_installed":bool(binpath),"installer_running":running("--install-worker"),
             "oauth_worker_running":running("--login-worker"),
             "last_state":state.get("state","not_started"),
-            "last_error":state.get("error")}
+            "last_error":state.get("error"),"oauth_diagnostic":oauth_failure_diagnostics()}
     if binpath:
         result["authenticated"]=run_quiet([str(binpath),"auth","status","--format","json"],timeout=12)==0
         result["personal_license_active"]=run_quiet([str(binpath),"license","status","--format","json"],timeout=14)==0
