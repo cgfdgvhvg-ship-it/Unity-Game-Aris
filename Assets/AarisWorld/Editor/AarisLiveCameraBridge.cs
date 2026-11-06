@@ -5,6 +5,8 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 namespace Aaris.MapReview.Editor
 {
@@ -635,6 +637,14 @@ namespace Aaris.MapReview.Editor
             go.hideFlags = HideFlags.HideAndDontSave;
             var cam = go.AddComponent<Camera>();
             cam.enabled = false;
+            // Camera.Render() alone is not a supported offscreen capture path in URP.
+            // An explicitly configured Base camera is required for StandardRequest.
+            if (GraphicsSettings.currentRenderPipeline != null)
+            {
+                var urpData = go.AddComponent<UniversalAdditionalCameraData>();
+                urpData.renderType = CameraRenderType.Base;
+                urpData.renderPostProcessing = false;
+            }
             cam.clearFlags = CameraClearFlags.Skybox;
             cam.nearClipPlane = .1f;
             cam.farClipPlane = 5000;
@@ -648,7 +658,19 @@ namespace Aaris.MapReview.Editor
                 bool valid = false;
                 for (int attempt = 0; attempt < 2; attempt++)
                 {
-                    cam.Render();
+                    if (GraphicsSettings.currentRenderPipeline != null)
+                    {
+                        var request = new RenderPipeline.StandardRequest { destination = target };
+                        if (!RenderPipeline.SupportsRenderRequest(cam, request))
+                            throw new NotSupportedException(
+                                "Active URP pipeline does not support StandardRequest; no fake or empty photo will be published.");
+                        RenderPipeline.SubmitRenderRequest(cam, request);
+                    }
+                    else
+                    {
+                        // Legacy built-in pipeline only.
+                        cam.Render();
+                    }
                     RenderTexture.active = target;
                     png.ReadPixels(new Rect(0, 0, 1280, 720), 0, 0);
                     png.Apply(false);
