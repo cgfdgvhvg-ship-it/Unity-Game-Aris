@@ -131,10 +131,25 @@ def install_official_hub() -> str:
                    detail="Installing official Unity Hub on disposable runner (not uploading any credentials).")
     if os.geteuid() != 0:
         raise RuntimeError("Unity Hub package installation requires container root privileges")
-    # The pinned GameCI Ubuntu image normally ships GPG. Do not bypass apt
-    # signature validation or execute scripts downloaded from GitHub issues.
+    # Minimal GameCI Ubuntu Editor images can omit GPG. Install its signing
+    # toolchain from the image's preconfigured signed Ubuntu APT sources,
+    # BEFORE adding the Unity Hub repository; never bypass APT signatures.
+    apt_env = dict(safe_environment(), DEBIAN_FRONTEND="noninteractive")
+    apt_common = ["-o", "Acquire::Retries=1",
+                  "-o", "Acquire::http::Timeout=15",
+                  "-o", "Acquire::https::Timeout=15"]
     if not shutil.which("gpg"):
-        raise RuntimeError("Missing gpg in Unity container; cannot verify Unity Hub packages")
+        private_status("installing_unity_hub_prerequisites",
+                       detail="Installing GPG from authenticated Ubuntu packages before Unity Hub.")
+        subprocess.run(["apt-get", *apt_common, "update", "-qq"],
+                       timeout=120, check=True, env=apt_env,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["apt-get", *apt_common, "install", "-y", "-qq",
+                        "--no-install-recommends", "gnupg", "ca-certificates"],
+                       timeout=180, check=True, env=apt_env,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if not shutil.which("gpg"):
+        raise RuntimeError("GPG missing after authenticated Ubuntu package installation; cannot verify Unity Hub")
     key_url = "https://hub.unity3d.com/linux/keys/public"
     key = subprocess.run(
         ["curl", "--proto", "=https", "-fsSL", "--retry", "2",
@@ -154,10 +169,6 @@ def install_official_hub() -> str:
                       "URIs: https://hub.unity3d.com/linux/repos/deb\n"
                       "Suites: stable\nComponents: main\n"
                       "Signed-By: /etc/apt/keyrings/unityhub.gpg\n")
-    apt_env = dict(safe_environment(), DEBIAN_FRONTEND="noninteractive")
-    apt_common = ["-o", "Acquire::Retries=1",
-                  "-o", "Acquire::http::Timeout=15",
-                  "-o", "Acquire::https::Timeout=15"]
     subprocess.run(["apt-get", *apt_common, "update", "-qq"],
                    timeout=125, check=True, env=apt_env,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
