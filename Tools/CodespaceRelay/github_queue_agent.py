@@ -20,8 +20,8 @@ from urllib.parse import quote
 
 import agent as native
 
-REPO = "Aaris-khan-don/Unity-Game-Aris"
-OWNER = "aaris-khan-don"
+REPO = "sundamunda289-art/Unity-Game-Aris"
+OWNER = "sundamunda289-art"
 BRANCH = "ai/codespace-jobs"
 JOBS = ".aaris/relay-jobs"
 RESULTS = ".aaris/relay-results"
