@@ -65,9 +65,9 @@ const PAGE=[
 'if(v.live_url){let a=document.createElement("a");a.href=v.live_url;a.textContent="Open live desktop (PIN required)";d.appendChild(a)}',
 'else d.textContent="No active desktop session";',
 'if(v.latest_photo){let a=document.createElement("a");a.href=v.latest_photo;a.textContent="Open latest Unity PNG";p.appendChild(a)}',
-'else p.textContent="No verified Unity photo yet";
+'else p.textContent="No verified Unity photo yet";',
 'const ai=document.getElementById("ai");ai.textContent=v.latest_ai_status||"No report";',
-'for(const [url,label] of [[v.latest_ai_report,"JSON dimensions/report"],[v.latest_ai_blueprint,"3D point cloud PLY"]])if(url){ai.appendChild(document.createElement("br"));let a=document.createElement("a");a.href=url;a.textContent=label;ai.appendChild(a)}',',
+'for(const [url,label] of [[v.latest_ai_report,"JSON dimensions/report"],[v.latest_ai_blueprint,"3D point cloud PLY"]])if(url){ai.appendChild(document.createElement("br"));let a=document.createElement("a");a.href=url;a.textContent=label;ai.appendChild(a)}',
 '}catch(e){document.getElementById("desktop").textContent="GitHub lookup unavailable"}}refresh();setInterval(refresh,30000);</script></html>'
 ].join("");
 export default{async fetch(req){
