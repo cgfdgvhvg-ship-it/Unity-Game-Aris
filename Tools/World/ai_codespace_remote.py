@@ -484,7 +484,7 @@ def main(argv=None):
         if job["operation"] in {"codespace_machines", "codespace_machine_upgrade"}:
             # Only the existing named Codespace; no other machine is modified.
             current = github_api("GET", token)
-            if (current.get("name") != CODESPACE or current.get("repository", {}).get("full_name") != REPOSITORY:
+            if (current.get("name") != CODESPACE or current.get("repository", {}).get("full_name") != REPOSITORY):
                 raise JobError("Codespace identity mismatch before machine inspection")
             info = github_api("GET", token, "/machines")
             options = info.get("machines", []) if isinstance(info, dict) else []
