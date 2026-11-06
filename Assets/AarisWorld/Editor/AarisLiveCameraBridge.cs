@@ -79,7 +79,7 @@ namespace Aaris.MapReview.Editor
                 Debug.LogError("[Aaris live bridge] " + error);
             }
         }
-        private static void TakePhoto(Vector3 point, Quaternion rotation, string path)
+        internal static void TakePhoto(Vector3 point, Quaternion rotation, string path)
         {
             var go = new GameObject("__AarisLivePreviewCamera");
             go.hideFlags = HideFlags.HideAndDontSave;
