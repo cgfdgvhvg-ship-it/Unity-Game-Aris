@@ -105,12 +105,17 @@ def initialize_service():
                    "--print-address=1"],timeout=15)
         if p.returncode: raise RuntimeError("private D-Bus session failed")
     if not is_bus_ready(): raise RuntimeError("private D-Bus not reachable")
-    if not secret_service_ready():
-        password=SECRET.read_bytes().strip()+b"\n"
-        p=command(["gnome-keyring-daemon","--components=secrets","--unlock"],
-                  timeout=35,env=environment(),stdin=password)
-        if p.returncode:raise RuntimeError("keyring unlock daemon failed")
-    if not secret_service_ready():raise RuntimeError("GNOME Secret Service not ready")
+    # Even when D-Bus advertises the service, its login collection can
+    # remain locked until a real unlock is performed.
+    password=SECRET.read_bytes().strip()+b"\n"
+    p=command(["gnome-keyring-daemon","--components=secrets","--unlock"],
+              timeout=35,env=environment(),stdin=password)
+    if p.returncode and not secret_service_ready():
+        raise RuntimeError("keyring unlock daemon failed")
+    for _ in range(36):
+        if secret_service_ready():break
+        time.sleep(0.5)
+    if not secret_service_ready():raise RuntimeError("GNOME Secret Service not ready after startup")
     # End-to-end store/read/delete of a harmless random probe, never an account token.
     probe=secrets.token_hex(20)
     args=["aaris-unity-keyring-test","verification"]
@@ -150,7 +155,7 @@ def worker():
         save("failed",error=type(e).__name__+": "+str(e)[:220])
 
 def start():
-    if secret_service_ready():return {"status":"already_ready", **status()}
+    if secret_service_ready() and status()["last_state"]=="ready":return {"status":"already_ready", **status()}
     if worker_running():return {"status":"already_running", **status()}
     STAGE.mkdir(parents=True,exist_ok=True)
     with LOG.open("a") as log:
