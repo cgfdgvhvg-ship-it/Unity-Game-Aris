@@ -179,3 +179,45 @@ Use the existing **GitHub Issue #77** owner-authorized relay plus the existing
   unlicensed scene planning but must **never** be labeled authentic Unity
   screenshots, native mesh dimensions or verified gameplay collisions.
 
+## 2026-11-07: Render correctness and troubleshooting contract
+
+- **Capture implementation:** `Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs`
+  builds an explicit URP Base Camera and uses
+  `RenderPipeline.SupportsRenderRequest` +
+  `RenderPipeline.SubmitRenderRequest(StandardRequest)` for Unity 6 URP.
+  Only the legacy Built-in Render Pipeline uses `Camera.Render()`.
+  Offscreen captures must be actual licensed Unity Editor renders, never
+  placeholders from Python/OpenGL/schematic diagrams.
+- **Stale-image protection:** At the beginning of each photo attempt,
+  invalidate the preceding `latest.png` or `agent-latest.png` path.
+  Publish only after rendering passes the black/white/flat-frame check
+  and the new PNG is written. A failed render must not return an old photo.
+- **Two validation levels:** Pull-request `verify` runs Python protocol
+  tests and checks URP capture source markers *without* starting a Unity
+  Editor. These checks passing does **not** validate C# compilation,
+  URP screenshot fidelity, licensing or successful cloud desktop startup.
+  Full integration requires a legitimate active Unity license and a fresh
+  live session; confirm an AGENT health, scan, describe and photo request.
+- **Failure visibility:** A Git LFS hydration, Docker image pull or
+  Unity bootstrap launcher failure must fail the Actions startup step,
+  rather than being silently treated as success. Even when activation
+  is legitimately unavailable, publish `aaris-live-diagnostics` on
+  the workflow's `if: always()` cleanup path where possible.
+- **Black desktop diagnosis:** Start with the Action's
+  `ci-diagnostics/report.json`, not with an assumption that Unity is
+  running: distinguish Xvfb -> noVNC WebSocket -> Cloudflare PIN ->
+  Docker container -> Unity authorization -> scene import -> real camera
+  frame. Seeing a Linux desktop is NOT proof the Unity Editor started.
+  Cloudflare Quick Tunnel URLs change on each new runner.
+- **AI edit boundaries:** `AGENT describe` reports a sampled 3D
+  exterior point cloud and world-space bounds; it does not reconstruct
+  exact trunks, leaf topology or watertight CAD. `AGENT scale` on a
+  terrain tree adjusts overall width/height, *not foliage alone*.
+  For individual leaves, walls, doors or roof thickness use dedicated
+  scene/model subobjects or add an explicitly reviewed prefab/model
+  authoring operation. Do not claim that generic mesh scaling edits
+  geometry of a merged house or a tree prefab.
+- **Persisted progress:** Only a successfully pushed `ai-map-draft`
+  commit survives a new GitHub-hosted runner. The repo's permanent assets
+  and Git LFS are authoritative; a runner's Unity Library, tunnel URL,
+  desktop state and Unity login session are not persistent.
