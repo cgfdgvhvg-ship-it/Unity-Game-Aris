@@ -13,10 +13,10 @@ BOUNDS = {"m_Center": {"x": .5, "y": 0, "z": .5},
           "m_Extent": {"x": .5, "y": 0, "z": .5}}
 
 
-def sample_mesh():
+def sample_mesh(normal_sign=1.):
     vertices = np.zeros((3, 12), dtype="<f4")
     vertices[:, :3] = [[0, 0, 0], [1, 0, 0], [0, 0, 1]]
-    vertices[:, 3:6] = [0, 1, 0]
+    vertices[:, 3:6] = [0, normal_sign, 0]
     vertices[:, 6:10] = [1, 0, 0, 1]
     vertices[:, 10:12] = [[0, 0], [1, 0], [0, 1]]
     indices = np.array([0, 1, 2], dtype="<u4")
@@ -53,6 +53,12 @@ class MeshTests(unittest.TestCase):
     def test_normal_native_mesh(self):
         r = mod.inspect_mesh(sample_mesh(), BOUNDS, 1, 1)
         self.assertEqual((r["triangles"], r["submeshes"]), (1, 1))
+
+    def test_face_normal_disagreement_is_reported_without_guessing_unity_frontface(self):
+        opposed = mod.inspect_mesh(sample_mesh(), BOUNDS, 1, 1)
+        aligned = mod.inspect_mesh(sample_mesh(normal_sign=-1.), BOUNDS, 1, 1)
+        self.assertEqual(opposed["face_normal_opposing_triangles"], 1)
+        self.assertEqual(aligned["face_normal_agreeing_triangles"], 1)
 
     def test_lfs_pointer_not_geometry(self):
         with self.assertRaisesRegex(mod.MeshHealthError, "LFS pointer"):
