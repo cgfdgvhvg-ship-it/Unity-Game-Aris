@@ -20,6 +20,7 @@ OPS = {
     "find": {"query"},
     "inspect": {"x", "y", "z", "radius"},
     "bounds": {"target"},
+    "children": {"target"},
     "outline": {"target", "max_points"},
     "move": {"target", "dx", "dy", "dz", "dry_run"},
     "scale": {"target", "sx", "sy", "sz", "dry_run"},
@@ -27,7 +28,7 @@ OPS = {
 }
 REQUIRED = {
     "find": {"query"}, "inspect": {"x", "y", "z", "radius"},
-    "bounds": {"target"}, "outline": {"target"},
+    "bounds": {"target"}, "children": {"target"}, "outline": {"target"},
     "move": {"target", "dx", "dy", "dz"},
     "scale": {"target", "sx", "sy", "sz"},
     "photo": {"target"},
@@ -246,6 +247,8 @@ def handle(body, nonce, state, repo, issue_comment, publish_file):
 def selftest():
     sample = parse('AI {"op":"outline","target":"House[1]/Wall[0]","max_points":16}', 123)
     assert sample["target"] == "House[1]/Wall[0]"
+    child = parse('AI {"op":"children","target":"House[1]"}', 123)
+    assert child["op"] == "children" and child["target"] == "House[1]"
     assert len(wireframe_svg([{"x":0,"y":0,"z":0},{"x":1,"y":1,"z":1}])) > 100
     ply = point_cloud_ply([{"x":0,"y":0,"z":0},{"x":1,"y":2,"z":3}])
     assert ply and ply.startswith(b"ply\nformat ascii 1.0\n")
