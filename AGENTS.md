@@ -1,3 +1,13 @@
+# UPDATE — authenticated native LOD normal/winding investigation (2026-11-06)
+
+**Read this first if buildings render as black/white spikes or disappear with camera movement.** Exact Git LFS 17×3 building meshes are structurally valid, but some **LOD1/LOD2 face orientations disagree with their saved normals**, particularly CanalTown LOD2 18,491/125,672 and HanokVillage LOD2 11,001/55,215. This is a reproducible source-level warning, **not proof of the cause of the Android screenshots**. See [Docs/LOD_NORMAL_WINDING_DIAGNOSTIC_20261106.md](Docs/LOD_NORMAL_WINDING_DIAGNOSTIC_20261106.md).
+
+**Working corrective scripts:** `Tools/MapBuild/lod_winding.py` (conservative index-order candidate), `Tools/MapBuild/ground_native.py` (guards future generated LODs), `Tools/Validation/preview_lod_face_winding.py` (safe dry-run; optional candidate files outside repository), `Tools/Validation/check_building_mesh_health.py` (read-only native check), and regression tests `test_lod_winding.py` and `test_building_mesh_health.py`. The actual native CI [run 42184886477](https://github.com/sundamunda289-art/Unity-Game-Aris/actions/runs/42184886477) passed; it checked 34 LOD1/LOD2 assets and proposed **66,095 index reorderings across 31 meshes** without changing any tracked Unity asset. These changes are **not yet applied to production meshes**, as actual Unity/Android visual validation is blocked by the stopped Codespace. Do not misstate candidate as fixed game graphics.
+
+**Required from any AI encountering a script error:** diagnose the exact traceback/CLI or CI step; fix the smallest source bug; add a regression test reproducing the failure; rerun all affected unit tests and native-LFS validation; update this `AGENTS.md` and incident document with **actual tested results and remaining blockers**. Never suppress a failed check, mutate protected `.meta` GUIDs, bypass signed owner-only jobs, overwrite a dirty Codespace worktree or claim screenshot/device success from Python-only evidence.
+
+---
+
 # ACTIVE VISUAL-RENDERING INCIDENT — black spiky buildings / white sky (2026-11-06)
 
 **Owner evidence:** Six actual third-person mobile screenshots show black/white spiky or planar building silhouettes, white-looking sky/horizon, and camera-dependent white/black occlusion. The player, terrain and nearby trees render in at least some views. These are observed symptoms; **do not infer that all 3D source meshes, sky shader, LFS blobs, or device GPU are definitively corrupt without tests**. Do not turn the screenshots into replacement assets.
