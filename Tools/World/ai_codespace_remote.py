@@ -196,32 +196,25 @@ def github_api(method, token, suffix="", *, payload=None, timeout=30):
 
 
 def start_and_wait(token: str, *, sleep=time.sleep, get=github_api, attempts=30):
+    """Cloudflare alone starts/stops the Codespace. SSH transport only checks state."""
     info = get("GET", token)
     if info.get("name") != CODESPACE or info.get("repository", {}).get("full_name") != REPOSITORY:
-        raise JobError("Codespace identity/repository mismatch: refusing to start another")
+        raise JobError("Codespace identity/repository mismatch: refusing another Codespace")
     state = info.get("state", "Unknown")
+    if state in {"Shutdown", "Stopped", "ShuttingDown"}:
+        raise JobError("Codespace is stopped: request Cloudflare lifecycle start before queuing SSH commands")
     if state in {"Unavailable", "Deleted", "Deleting", "Archived", "Failed"}:
         raise JobError(f"Codespace lifecycle state is {state}")
-    # Shutdown means normally stopped, not deleted; request a start.
-    if state not in {"Available", "Running"}:
-        print("AARIS: requesting Codespace start; prior state", state, flush=True)
-        try:
-            get("POST", token, "/start")
-        except JobError as exc:
-            # A concurrent request can transition state: confirm with GET.
-            after = get("GET", token)
-            if after.get("state") not in {"Available", "Running", "Starting"}:
-                raise exc
     for i in range(attempts):
         info = get("GET", token)
         state = info.get("state")
         print(f"AARIS: Codespace state {state} (poll {i + 1}/{attempts})", flush=True)
         if state in {"Available", "Running"}:
             return
-        if state in {"Unavailable", "Deleted", "Deleting", "Archived", "Failed"}:
-            raise JobError("Codespace became unavailable")
+        if state in {"Shutdown", "Stopped", "ShuttingDown", "Unavailable", "Deleted", "Deleting", "Archived", "Failed"}:
+            raise JobError(f"Codespace not ready: {state}; Cloudflare controls lifecycle")
         sleep(5)
-    raise JobError("Codespace did not become ready; check billing or quota")
+    raise JobError("Codespace did not become ready; check Cloudflare status, billing or quota")
 
 
 def invoke(args, *, env, timeout=90, attempts=3):
