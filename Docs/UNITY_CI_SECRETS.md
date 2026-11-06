@@ -41,3 +41,6 @@ Official sources:
 - https://docs.unity.com/en-us/cloud/accounts/manage-account-security
 - https://docs.unity.com/en-us/unity-cli/reference/accounts-licenses-cloud-commands
 - https://github.com/Unity-Technologies/skills/blob/main/skills/unity-cli/references/auth-license-cloud.md
+
+## Always-available map preview without any license
+The separate Python worker automatically creates five 1920×1080 diagrams: full 2km overview and four 1km terrain-tile views. They show actual stored building bounding boxes, source road centerlines, district centers and vehicle-spawn markers from Docs/MAP_LAYOUT.json. They do **not** depict Unity's real meshes, foliage, textures, shading or skybox. Open `https://github.com/sundamunda289-art/Unity-Game-Aris/releases/tag/layout-review` to download the images on a phone. A `layout-preview-manifest.json` records the source SHA-256. Unity credential availability does not affect this service.
