@@ -2,14 +2,22 @@
 
 Repository: sundamunda289-art/Unity-Game-Aris (public). Never paste secret contents into chat, Issues, PRs, Release assets, workflow logs, Git cache, or uploaded artifacts.
 
-## One-time GitHub Actions Secrets
+## Phone-only setup (Unity Personal; no PC and no ULF required to open Hub)
 
-Go to Settings > Secrets and variables > Actions > New repository secret.
-- UNITY_LICENSE — complete contents of a valid authorized Unity ULF license file (not a Gmail token and not an .alf license request).
-- UNITY_EMAIL — the sign-in email for your Unity account, if using the GameCI activation compatibility step.
-- UNITY_PASSWORD — the Unity ID password, not your Gmail password. Set/reset it from Unity Dashboard > profile picture > Account > Security > Password. Signing in with Google does not automatically mean you already have a standalone Unity ID password.
+Go to **Settings > Secrets and variables > Actions > New repository secret**.
 
-GameCI's personal-license instructions document these three environment variables. The User / Password pair alone does NOT entitle a fresh Unity Personal seat. Unity Personal activation may require the Unity Hub, and manual .alf activation of Personal is no longer supported. Obtain a ULF only through methods Unity supports. Do not generate, copy, reuse or spoof device IDs as an activation workaround.
+1. Set **UNITY_EMAIL** to the inbox that should receive the Cloudflare desktop's one-time PIN. This lets the phone open the protected GitHub Actions screen. It is not an Editor license.
+2. **Do not create UNITY_LICENSE unless Unity has legitimately issued a compatible ULF**. An empty or missing ULF is expected for a first-time phone-only setup. The *live desktop workflow* now falls back to installing and displaying the **official Unity Hub** in its existing pinned Unity Editor container. Open the temporary Cloudflare/noVNC desktop from the phone, sign in to Unity Hub and activate **Unity Personal** there. The bootstrap waits for a license file before attempting the real Editor.
+3. **UNITY_PASSWORD is not needed for this Hub GUI path.** It may be used by *separate GameCI workflows* with supported entitlements and license material, but **a saved email/password is not a supported unattended method to activate Unity Personal on a fresh runner**. Do not paste a password into public GitHub Issues, workflow inputs, commits, logs, or ChatGPT.
+4. If Unity Hub legitimately creates a valid `.ulf`, the existing protected export can help download it to the phone for optional `UNITY_LICENSE` Secret setup. **Saving it does not make machine-bound credentials portable**, so another GitHub runner can still need Hub sign-in.
+
+Official Unity 6000.3 licensing documentation explicitly states that **Unity Hub is the only supported method for Personal activation**, not CLI-based activation. No login bypass, reused machine IDs, browser cookie injection or unauthorized seat transfer is implemented.
+
+Official sources: https://docs.unity.com/en-us/engine/6000.3/manual/get-started/install-and-upgrade/licenses-and-activation/license-activation-methods and https://docs.unity.com/en-us/hub/install-hub-linux.
+
+### Other build workflows and optional credentials
+
+The separate **Unity photographer** workflow checks `UNITY_LICENSE`; without it, the actual rendering job skips but Python map audits continue. Some older GameCI instructions list `UNITY_EMAIL`, `UNITY_PASSWORD`, and `UNITY_LICENSE` for their build actions. Those instructions do NOT make a Personal license work with only a password. `UNITY_SERIAL` belongs to eligible paid serial plans; Unity service-account credentials authenticate to Unity Cloud services, not Unity Personal Editor.
 
 Optional, not required for Personal screenshots: UNITY_SERVICE_ACCOUNT_ID and UNITY_SERVICE_ACCOUNT_SECRET are only for Unity Cloud API/CLI unattended authentication. They DO NOT activate Personal Editor licensing. UNITY_SERIAL belongs to paid serial plans, NOT Unity Personal.
 
