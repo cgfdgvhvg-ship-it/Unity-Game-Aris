@@ -1,6 +1,13 @@
 name: Aaris Live Unity Desktop via Cloudflare (Email PIN)
 
 on:
+  pull_request:
+    paths:
+      - 'Tools/CI/ai_unity_ops.py'
+      - 'Tools/CI/issue_camera_bridge.py'
+      - 'Tools/CI/ai_unity_ops.py'
+      - 'Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs'
+      - '.github/workflows/aaris-live-unity.yml'
   push:
     branches: [main]
     paths:
@@ -47,7 +54,8 @@ jobs:
           lfs: false
       - name: Verify camera API rejects unsafe inputs
         run: |
-          python3 -m py_compile Tools/CI/live_camera_server.py Tools/CI/issue_camera_bridge.py Tools/CI/unity_personal_bootstrap.py
+          python3 -m py_compile Tools/CI/live_camera_server.py Tools/CI/issue_camera_bridge.py Tools/CI/ai_unity_ops.py Tools/CI/unity_personal_bootstrap.py
+          python3 Tools/CI/ai_unity_ops.py selftest
           python3 Tools/CI/unity_personal_bootstrap.py --selftest
           python3 Tools/CI/license_reuse.py --selftest
           python3 Tools/CI/issue_camera_bridge.py --selftest
@@ -354,12 +362,24 @@ jobs:
         run: |
           echo "Cloudflare session is active for $SESSION_MINUTES minutes."
           sleep "$((SESSION_MINUTES*60))"
-      - name: Upload last available Unity camera photo only
+      - name: Checkpoint edited native Unity assets into a Git LFS review PR
+        if: always()
+        continue-on-error: true
+        run: |
+          if [[ -f ci-live-control/ai-mutated.marker ]]; then
+            python3 Tools/CI/ai_unity_ops.py checkpoint
+          else
+            echo 'No AI asset edits require a checkpoint.'
+          fi
+      - name: Upload AI report and last genuine photo
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: aaris-live-camera-last-photo
-          path: ci-live-control/latest.png
+          path: |
+            ci-live-control/latest.png
+            ci-live-control/ai-report-*.json
+            ci-live-control/ai-result.json
           retention-days: 7
           if-no-files-found: ignore
       - name: Stop temporary Unity session
