@@ -167,12 +167,12 @@ jobs:
           fi
           if ! sudo timeout 155 env DEBIAN_FRONTEND=noninteractive \
               apt-get install -y -qq --no-install-recommends \
-              xvfb x11vnc novnc websockify nginx openbox git-lfs \
+              xvfb x11vnc novnc websockify nginx openbox scrot git-lfs \
               libgl1-mesa-dri libglu1-mesa age; then
             echo '::error::Required noVNC/Unity desktop packages unavailable. Check runner APT mirrors.'
             exit 1
           fi
-          for binary in Xvfb x11vnc websockify nginx git; do
+          for binary in Xvfb x11vnc websockify nginx scrot git; do
             command -v "$binary" >/dev/null || {
               echo "::error::Missing required desktop command: $binary"; exit 1;
             }
@@ -422,6 +422,35 @@ jobs:
           path: ci-live-control/latest.png
           retention-days: 7
           if-no-files-found: ignore
+      - name: Collect scrubbed stage and desktop diagnostics
+        if: always()
+        run: |
+          # This is safe to upload: fixed enums and booleans only.
+          # NEVER store VNC screenshots, Unity sign-in URLs, Hub logs or ULFs.
+          mkdir -p ci-live-control
+          python3 - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          try:
+              sys.path.insert(0, "Tools/CI")
+              from live_camera_server import public_diagnostics
+              result = public_diagnostics()
+          except Exception:
+              result = {"license_phase": "diagnostics_unavailable",
+                        "next_action": "Inspect the failed GitHub Actions step"}
+          Path("ci-live-control/runner-diagnostics.json").write_text(
+              json.dumps(result, sort_keys=True, indent=2))
+          print("Runner diagnostics collected; private Unity secrets excluded.")
+          PY
+      - name: Upload sanitized runner diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-runner-diagnostics
+          path: ci-live-control/runner-diagnostics.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: Stop temporary Unity session
         if: always()
         run: |
