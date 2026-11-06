@@ -118,8 +118,8 @@ jobs:
           }
           CONF
           sudo nginx -c /tmp/aaris-nginx.conf
-          curl -fsS http://127.0.0.1:8080/api/status
-          curl -fsS http://127.0.0.1:8080/vnc/vnc.html -o /dev/null
+          curl --retry 8 --retry-delay 1 --retry-connrefused -fsS http://127.0.0.1:8080/api/status
+          curl --retry 8 --retry-delay 1 --retry-connrefused -fsS http://127.0.0.1:8080/vnc/vnc.html -o /dev/null
       - name: Start Cloudflare email-protected temporary tunnel
         run: |
           set -euo pipefail
