@@ -240,6 +240,22 @@ def publish_ai_asset(comment_id, source, suffix):
     gh("release", "upload", RELEASE, str(dest), "--repo", REPO)
     return f"https://github.com/{REPO}/releases/download/{RELEASE}/{name}"
 
+def blueprint_ply(report):
+    # Standard ASCII point-cloud file: real Unity world-space XYZ measurements.
+    # Deliberately does not invent mesh faces/triangles or leaf colors.
+    points = report.get("points") or []
+    if not points:
+        raise ValueError("Unity returned no blueprint points")
+    header = ["ply", "format ascii 1.0", "comment Aaris Unity exterior support point cloud",
+              f"element vertex {len(points)}", "property float x",
+              "property float y", "property float z", "end_header"]
+    for p in points:
+        coords = [float(p[k]) for k in ("x", "y", "z")]
+        if not all(__import__("math").isfinite(v) for v in coords):
+            raise ValueError("Invalid mesh coordinates")
+        header.append(" ".join(f"{v:.6f}" for v in coords))
+    return "\n".join(header) + "\n"
+
 def blueprint_svg(report):
     # An actual dot projection of Unity-reported exterior mesh positions, not a
     # fabricated screenshot. No Pillow, model API or extra script is required.
@@ -381,7 +397,10 @@ def process_ai(comment):
             svg_file = STATE / "ai-outline.svg"
             svg_file.write_text(blueprint_svg(result))
             svg_url = publish_ai_asset(comment_id, svg_file, "svg")
-            message += f"Actual Unity mesh exterior points: {result.get('pointCount',0)}\n3D points JSON: {json_url}\nDotted blueprint: {svg_url}\n"
+            ply_file = STATE / "ai-outline.ply"
+            ply_file.write_text(blueprint_ply(result))
+            ply_url = publish_ai_asset(comment_id, ply_file, "ply")
+            message += f"Actual Unity mesh exterior points: {result.get('pointCount',0)}\n3D points JSON: {json_url}\n3D point cloud PLY: {ply_url}\nDotted blueprint SVG: {svg_url}\n"
         except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
             message += "Blueprint upload failed: " + type(exc).__name__ + "\n"
     if command["op"] == "photo":
@@ -428,6 +447,7 @@ def main():
             try: parse_ai(bad)
             except ValueError: pass
             else: raise AssertionError("Unsafe AI intent was accepted")
+        assert "element vertex 1" in blueprint_ply({"points":[{"x":1,"y":2,"z":3}]})
         print("Owner-only GitHub issue camera/AI intent parser selftest: PASS")
         return
     if REPO != "sundamunda289-art/Unity-Game-Aris" or ISSUE != 77:
