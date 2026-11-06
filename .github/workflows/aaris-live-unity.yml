@@ -7,6 +7,7 @@ on:
       - '.github/workflows/aaris-live-unity.yml'
       - 'Tools/CI/live_camera_server.py'
       - 'Tools/CI/issue_camera_bridge.py'
+      - 'Tools/CI/unity_personal_bootstrap.py'
       - 'Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs'
       - 'Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs.meta'
   issue_comment:
@@ -39,7 +40,8 @@ jobs:
           lfs: false
       - name: Verify camera API rejects unsafe inputs
         run: |
-          python3 -m py_compile Tools/CI/live_camera_server.py Tools/CI/issue_camera_bridge.py
+          python3 -m py_compile Tools/CI/live_camera_server.py Tools/CI/issue_camera_bridge.py Tools/CI/unity_personal_bootstrap.py
+          python3 Tools/CI/unity_personal_bootstrap.py --selftest
           python3 Tools/CI/issue_camera_bridge.py --selftest
           node --check Tools/CI/cloudflare_live_hub.mjs
           python3 - <<'PY'
@@ -175,38 +177,30 @@ jobs:
           echo "$!" > /tmp/aaris-issue-bridge.pid
           echo 'Camera commands: https://github.com/sundamunda289-art/Unity-Game-Aris/issues/77'
           echo 'Only owner-issued CAMERA x y z yaw pitch distance commands are accepted.'
-      - name: Try starting real Unity Editor (without batchmode or -nographics)
+      - name: Start real Unity Editor with authorized ULF or Unity CLI Personal sign-in
         continue-on-error: true
+        timeout-minutes: 35
         run: |
           set -euo pipefail
-          if [[ -z "$UNITY_LICENSE" ]]; then
-            echo 'Unity Editor not launched: no authorized ULF present; live desktop and camera server are available.'
-            printf '{"state":"Unity not launched: a valid Editor license is still required"}\n' \
-              > ci-live-control/status.json
-            exit 0
-          fi
+          printf '{"state":"fetching_unity_editor","detail":"Preparing pinned Editor and native scene."}\n' > ci-live-control/license-status.json
           git lfs pull --include="Assets/**" --exclude=""
           if head -c 80 Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity |
             grep -q 'git-lfs.github.com/spec'; then
-            echo '::error::Unity native scene is still a pointer (LFS download failed).'
+            echo '::error::Native Unity scene is still a Git LFS pointer.'
             exit 1
           fi
+          # Unity Editor image is a convenience, not a fake render.
+          # Docker pull time on fresh hosted runners cannot be guaranteed.
           docker pull "$GAMECI_IMAGE"
           docker run --detach --name aaris-unity-live --shm-size=1g \
             --env UNITY_LICENSE --env DISPLAY=:99 \
             --env LIBGL_ALWAYS_SOFTWARE=1 --env GALLIUM_DRIVER=llvmpipe \
             --volume /tmp/.X11-unix:/tmp/.X11-unix \
             --volume "$PWD:/project" --workdir /project \
-            "$GAMECI_IMAGE" bash -lc '
-              set -e
-              mkdir -p /root/.local/share/unity3d/Unity /project/ci-logs
-              printf "%s" "$UNITY_LICENSE" > /root/.local/share/unity3d/Unity/Unity_lic.ulf
-              chmod 600 /root/.local/share/unity3d/Unity/Unity_lic.ulf
-              exe=/opt/unity/Editor/Unity
-              if [[ ! -x "$exe" ]]; then exe="$(command -v unity-editor)"; fi
-              exec "$exe" -projectPath /project -logFile /project/ci-logs/live-unity.log -force-glcore
-            '
-          echo 'Unity Editor container launched on DISPLAY=:99. Camera commands are handled by AarisLiveCameraBridge.'
+            "$GAMECI_IMAGE" python3 Tools/CI/unity_personal_bootstrap.py
+          echo 'Unity license bootstrap started inside the same container as the real Editor.'
+          echo 'Sign-in links, if necessary, are shown only on the Cloudflare email-PIN gated control page.'
+          echo 'Neither an email/password Secret nor a Unity service-account Secret bypasses user licensing.'
       - name: Keep temporary desktop session online
         run: |
           echo "Cloudflare session is active for $SESSION_MINUTES minutes."
