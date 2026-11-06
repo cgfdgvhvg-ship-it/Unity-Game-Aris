@@ -1,5 +1,14 @@
 # AI MASTER CONTROL AND GITHUB CREDENTIALS — READ THIS FIRST (2026-11-05)
 
+## ACTIVE SUNDA CODESPACE ROUTING — verified 2026-11-06
+
+Current owner/repo: `sundamunda289-art/Unity-Game-Aris`; existing Codespace: `redesigned-space-train-gxp5jwvq94wg2wvw6`. **Cloudflare `aaris-codespace-relay` handles START/STOP/STATUS only; it does NOT execute terminal commands.** Its previously installed GitHub secret `GITHUB_CONTROL_TOKEN` must be refreshed from the Sunda account once, without storing the token in this repository. AI terminal operations use the existing `.aaris/jobs/*.json` queue on `ai/codespace-jobs`, GitHub Actions and direct Codespaces SSH, with machine-readable results in the workflow logs/artifact.
+
+**Verified direct SSH test:** [run 42157472720](https://github.com/sundamunda289-art/Unity-Game-Aris/actions/runs/42157472720) returned `ok:true`, `exit_code:0` and native Codespace diagnostics, including ~10.76 GiB free and protected dirty worktree. Unity Editor was not installed at that check. The old `musical-carnival-...` Codespace and old owner's HTTP 402 reports below are historical and do not reflect the Sunda Codespace. Do not reset/clean or overwrite its dirty Unity LFS assets.
+
+---
+
+
 **Authoritative agent entrypoint:** [Docs/AI_MASTER_CONTROL_AND_AUTH.md](Docs/AI_MASTER_CONTROL_AND_AUTH.md). This is the current GitHub/Codespace/Unity/LFS operating contract, overriding historical terminal guidance below (especially the old Issue #37 bridge). Owner/repo: `sundamunda289-art/Unity-Game-Aris`. The default code source is `main`; the dedicated, owner-only command queue is a **different** branch, `ai/codespace-jobs`.
 
 **One straightforward route for any authorized AI:** (1) use its owner-approved GitHub connector to read this repo; (2) submit exactly one `.aaris/jobs/<unique-id>.json` on `ai/codespace-jobs` with a supported, reviewed `operation`; (3) watch the `Aaris Codespace On-Demand Terminal` Actions run; (4) parse the matching `AARIS_RESULT_JSON`, validate `ok`/exit and native Unity readback; (5) save verified native changes through the **separate** `unity-batched-github-upload.yml` LFS writer, then validate the remote branch/receipt and PR before merge. No Issue #37 command is the default. No arbitrary shell/unsafe repo mutation is permitted from job JSON.
