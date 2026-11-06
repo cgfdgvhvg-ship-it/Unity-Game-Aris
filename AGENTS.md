@@ -323,3 +323,31 @@ python3 Tools/CI/issue_camera_bridge.py --selftest
 ```
 
 A successful Python `verify` job does not prove Unity C# compilation, realistic screenshots, authorized license activation, actual asset writes or Git LFS remote persistence. Keep the change in its review branch until those distinctions are checked.
+
+### 2026-11-07: native tree instance tint and stricter photo evidence
+
+The same `AI` intent bridge now accepts an instance-level tree tint without editing
+a shared TreePrototype prefab, material asset or unrelated scene object:
+
+```text
+AI {"op":"inspect","x":-420,"y":22,"z":-210,"radius":40}
+AI {"op":"bounds","target":"terrain-tree:0:20"}
+AI {"op":"tint","target":"terrain-tree:0:20","hex":"#7CBF68","dry_run":true}
+AI {"op":"tint","target":"terrain-tree:0:20","hex":"#7CBF68"}
+AI {"op":"photo","target":"terrain-tree:0:20","distance":18}
+```
+
+These IDs are **examples only**; find the real instance in the `inspect` response.
+`tint` accepts exactly a six-digit `#RRGGBB` hexadecimal color, returns
+`tintHex` in the tree's object report, and (unless `dry_run:true`) saves the
+individual tree's `TreeInstance.color` to its existing allowlisted native
+TerrainData asset. This is a whole-instance color multiplier: it is **not**
+independent leaf-only color control and actual appearance depends on the tree shader.
+Scene object/material tint is deliberately rejected to avoid accidentally changing
+every object sharing a material. Normal `ai-map-edits` Git LFS persistence applies.
+
+The genuine Unity camera now rejects near-uniform frames as well as completely black
+frames. A rejection is diagnostic evidence, **not a successful photo**; a real
+licensed Editor render still needs runtime verification. Keep this PR in review
+until the C# scripts compile in Unity 6000.3.26f1 and a live tree tint round-trip
+is observed in the saved TerrainData and a real non-flat PNG.
