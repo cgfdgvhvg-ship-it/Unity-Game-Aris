@@ -9,6 +9,8 @@ on:
       - 'Tools/CI/issue_camera_bridge.py'
       - 'Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs'
       - 'Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs.meta'
+  issue_comment:
+    types: [created]
   workflow_dispatch:
     inputs:
       session_minutes:
@@ -28,6 +30,7 @@ concurrency:
 
 jobs:
   verify:
+    if: github.event_name != 'issue_comment' || (github.event.issue.number == 77 && github.event.comment.user.login == 'sundamunda289-art' && startsWith(github.event.comment.body, 'START_DESKTOP '))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -58,7 +61,7 @@ jobs:
           PY
 
   live-desktop:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'issue_comment' && github.event.issue.number == 77 && github.event.comment.user.login == 'sundamunda289-art' && startsWith(github.event.comment.body, 'START_DESKTOP '))
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 140
@@ -67,7 +70,7 @@ jobs:
       UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
       GITHUB_REPOSITORY: ${{ github.repository }}
       GH_TOKEN: ${{ github.token }}
-      SESSION_MINUTES: ${{ inputs.session_minutes || '15' }}
+      SESSION_MINUTES: ${{ github.event_name == 'issue_comment' && github.event.comment.body || inputs.session_minutes || '15' }}
       GAMECI_IMAGE: unityci/editor:ubuntu-6000.3.26f1-base-3
     steps:
       - uses: actions/checkout@v4
@@ -80,7 +83,17 @@ jobs:
             echo '::error::UNITY_EMAIL GitHub Secret must be set to the email allowed to view desktop.'
             exit 1
           fi
-          case "$SESSION_MINUTES" in 15|45|90) ;; *) exit 1;; esac
+          # Github issue comments are untrusted text: never put this value in a shell command.
+          # Only these exact three commands from the repository owner can start a runner.
+          case "$SESSION_MINUTES" in
+            "START_DESKTOP 15"|"START_DESKTOP 45"|"START_DESKTOP 90")
+              SESSION_MINUTES="${SESSION_MINUTES#START_DESKTOP }" ;;
+          esac
+          case "$SESSION_MINUTES" in 15|45|90) ;; *)
+            echo '::error::Invalid session length. Allowed: 15, 45, 90 minutes.'
+            exit 1 ;;
+          esac
+          echo "SESSION_MINUTES=$SESSION_MINUTES" >> "$GITHUB_ENV"
           echo 'Cloudflare will require an email one-time PIN; URL alone is not enough.'
       - name: Install virtual screen, Web VNC and proxy
         timeout-minutes: 7
