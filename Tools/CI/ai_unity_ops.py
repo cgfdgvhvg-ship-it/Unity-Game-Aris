@@ -19,8 +19,8 @@ STATE = ROOT / "ci-live-control"
 REPO = "sundamunda289-art/Unity-Game-Aris"
 ISSUE = 77
 OWNER = "sundamunda289-art"
-ALLOWED = {"inspect", "outline", "move", "scale", "resize", "capture", "tint_shared", "save"}
-MUTATING = {"move", "scale", "resize", "tint_shared"}
+ALLOWED = {"inspect", "outline", "move", "scale", "resize", "capture", "tint_shared", "part_scale_shared", "save"}
+MUTATING = {"move", "scale", "resize", "tint_shared", "part_scale_shared"}
 COMMON = {"action", "id"}
 FIELDS = {
     "inspect": COMMON | {"query", "x", "y", "z", "radius", "limit"},
@@ -30,6 +30,7 @@ FIELDS = {
     "resize": COMMON | {"axis", "value"},
     "capture": COMMON | {"x", "y", "z", "yaw", "pitch", "distance"},
     "tint_shared": COMMON | {"part", "hex", "shared"},
+    "part_scale_shared": COMMON | {"part", "sx", "sy", "sz", "shared"},
     "save": {"action"},
 }
 BOUNDS = {
@@ -98,6 +99,9 @@ def parse(body):
         raise ValueError("scale needs sx, sy and sz, relative factors")
     if action == "resize" and (clean["axis"] not in ("x", "y", "z") or "value" not in request or clean["value"] < 0.05):
         raise ValueError("resize needs axis=x|y|z and value in metres")
+    if action == "part_scale_shared":
+        if clean["shared"] is not True or not clean["part"] or not {"sx", "sy", "sz"} <= set(request):
+            raise ValueError("part_scale_shared needs shared:true, part name, sx/sy/sz factors")
     if action == "tint_shared":
         if clean["shared"] is not True or not clean["part"] or not HEX_RE.fullmatch(clean["hex"]):
             raise ValueError("tint_shared needs shared:true, named part, valid #RRGGBB colour")
@@ -129,7 +133,7 @@ def allowed_changed_asset(path):
     return (isinstance(path, str) and path.startswith("Assets/") and
             len(path) < 300 and not any(x in path for x in ("\\", "\n", "\r")) and
             ".." not in Path(path).parts and
-            Path(path).suffix in (".unity", ".asset", ".mat") and
+            Path(path).suffix in (".unity", ".asset", ".mat", ".prefab") and
             (ROOT / path).is_file())
 
 
@@ -291,6 +295,7 @@ def selftest():
         'AI {"action":"resize","id":"terrain:0:0","axis":"w","value":1}',
         'AI {"action":"scale","id":"terrain:0:0","sx":1.4,"sy":1.4}',
         'AI {"action":"tint_shared","id":"terrain:0:0","part":"leaf","hex":"#fff","shared":true}',
+        'AI {"action":"part_scale_shared","id":"terrain:0:0","part":"Leaves","sx":3.5,"sy":1,"sz":1,"shared":true}',
         'AI {"action":"inspect","x":NaN}',
         'AI {"action":"inspect","x":4,"x":5}',
         'AI {"action":"inspect","cmd":"anything"}',
