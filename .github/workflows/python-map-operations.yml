@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/python-map-operations.yml'
       - 'Tools/CI/map_static_check.py'
+      - 'Tools/CI/layout_preview.py'
+      - 'Assets/**'
       - 'Tools/MapBuild/**'
       - 'Tools/Validation/**'
       - 'Docs/MAP_LAYOUT.json'
@@ -59,6 +61,32 @@ jobs:
           else
             python3 Tools/CI/map_static_check.py audit --out ci-map-report.json
           fi
+      - name: Render real layout-derived QA PNGs without a Unity license
+        id: layout_preview
+        run: |
+          python3 -m pip install --disable-pip-version-check pillow==11.3.0
+          python3 Tools/CI/layout_preview.py
+      - name: Publish latest layout overview and four terrain tiles
+        if: steps.layout_preview.outcome == 'success'
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          images=(ci-layout-preview/*.png ci-layout-preview/*.json)
+          test "${#images[@]}" -eq 6
+          if ! gh release view layout-review --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create layout-review --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" --title "Aaris automated map layout review (not a Unity render)" \
+              --notes "Coordinates from Docs/MAP_LAYOUT.json; geometry/layout QA only. No Unity, no URP shader or actual skybox screenshots."
+          fi
+          gh release upload layout-review --repo "$GITHUB_REPOSITORY" --clobber "${images[@]}"
+      - name: Upload license-free map previews to Actions artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-map-layout-previews-${{ github.run_id }}
+          path: ci-layout-preview/
+          retention-days: 30
+          if-no-files-found: warn
       - name: Set up Python native map editor only for explicit edit requests
         if: env.MAP_MODE == 'apply-render-materials'
         run: |
@@ -104,3 +132,4 @@ jobs:
           echo '### Python native-map worker' >> "$GITHUB_STEP_SUMMARY"
           echo "Mode: $MAP_MODE" >> "$GITHUB_STEP_SUMMARY"
           echo 'This workflow never installs Unity, reads UNITY_LICENSE, or waits for Unity login.' >> "$GITHUB_STEP_SUMMARY"
+          echo "Schematic review images: https://github.com/$GITHUB_REPOSITORY/releases/tag/layout-review" >> "$GITHUB_STEP_SUMMARY"
