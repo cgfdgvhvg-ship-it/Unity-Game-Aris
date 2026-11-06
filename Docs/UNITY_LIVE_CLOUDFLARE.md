@@ -56,3 +56,37 @@ prompts. No secret contents are uploaded to GitHub Releases.
 Official documents:
 https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/
 https://docs.unity.com/en-us/engine/6000.3/manual/get-started/install-and-upgrade/licenses-and-activation/manual-license-activation/manual-activation-cmd-mac
+
+## ChatGPT-accessible, free camera command relay
+
+Persistent read-only Cloudflare Worker hub:
+https://aaris-unity-live-hub.aaris-game-control-6f9c.workers.dev
+
+The hub's code is Tools/CI/cloudflare_live_hub.mjs. It uses no KV,
+R2, paid resource or stored credential. It reads the public issue camera
+channel and available screenshot links. Cloudflare Workers Free requests
+are limited to 100,000/day; the hub caches GitHub lookups for 45 seconds.
+
+Authorised camera command channel:
+https://github.com/sundamunda289-art/Unity-Game-Aris/issues/77
+
+Only comments authored by sundamunda289-art with the format
+CAMERA x y z yaw pitch distance are accepted, e.g.
+CAMERA -420 22 -210 0 20 22
+
+While the on-demand Actions desktop is running, Python polls this issue
+every four seconds. The runner announces its temporary, email-PIN-protected
+Tunnel URL in a GitHub comment. After an authorized licensed Unity Editor
+processes a camera request, the Python bridge uploads a real 1280x720
+screenshot to the live-photos GitHub Release and replies with its link.
+The read-only Worker displays that link.
+
+A connected GitHub app can post issue commands and fetch screenshot links.
+This is near-real-time discrete frame inspection, NOT a continuously streamed
+video channel into ChatGPT. The phone can watch the actual noVNC live desktop
+during a running session.
+
+If Unity has not activated on that machine, no true Unity screenshot is
+created. The desktop and Cloudflare hub cannot activate Unity by themselves.
+Do not put passwords, license tokens, OAuth cookies or any private values
+in public issue comments or public release assets.
