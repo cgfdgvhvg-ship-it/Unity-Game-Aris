@@ -27,7 +27,7 @@ jobs:
           fetch-depth: 2
       - name: Verify safe short-lived GitHub authentication broker before any privileged Codespace job
         run: |
-          python3 -m py_compile Tools/World/ai_master_github_auth.py Tools/World/ai_codespace_remote.py Tools/World/unity_tmp_editor_installer.py Tools/World/ai_codespace_executor.py Tools/World/unity_cli_auth_bootstrap.py
+          python3 -m py_compile Tools/World/ai_master_github_auth.py Tools/World/ai_codespace_remote.py Tools/World/unity_tmp_editor_installer.py Tools/World/ai_codespace_executor.py Tools/World/unity_cli_auth_bootstrap.py Tools/World/unity_secure_keyring.py
           python3 -m unittest discover -s Tools/World/tests -p 'test_ai_master_github_auth.py' -v
       - name: Validate job, check Cloudflare-started Codespace, execute directly via SSH
         env:
