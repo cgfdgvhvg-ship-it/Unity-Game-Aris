@@ -27,7 +27,7 @@ to submit commands using the connected **sundamunda289-art** GitHub account.
 
 ## How to start
 
-Authorized repo owner comments \`START_DESKTOP 45\` on:
+Authorized repo owner comments \`START_DESKTOP 45\` (or 15/90/180/300 minutes) on:
 
 https://github.com/sundamunda289-art/Unity-Game-Aris/issues/77
 
@@ -96,6 +96,6 @@ pipeline before applying structural modifications.
   \`python3 Tools/CI/issue_camera_bridge.py --selftest\` (no license).
   Unity C# compilation and integration photo/edit tests require an actual
   licensed graphical Unity Editor; Python tests alone cannot certify them.
-- Github-hosted machines have a six-hour maximum job duration and may go
+- GitHub-hosted machines have a six-hour maximum job duration and may go
   away sooner. Future runners reload Git history + Git LFS + version-matched
   import cache, not a frozen running desktop or reusable quick tunnel.
