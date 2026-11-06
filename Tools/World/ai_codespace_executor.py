@@ -1047,7 +1047,7 @@ def unity_forest_menu_snapshot():
         if path.exists() and not path.is_symlink(): path.unlink()
 
 
-def unity_forest_editor_refresh(require_forest=True):
+def unity_forest_editor_refresh(require_forest=True, require_view=False):
     """One focused Assets > Refresh keyboard shortcut in PID-verified scratch Unity."""
     import ctypes
     import ctypes.util
@@ -1056,7 +1056,12 @@ def unity_forest_editor_refresh(require_forest=True):
         return {"exit_code":3,"stdout":"","stderr":"No live scratch Editor"}
     helper=BATCH_ROOT/"project/Assets/AarisWorld/Editor/AarisForestCoreAuthoring.cs"
     bridge=_virtual_bridge_path()
-    if require_forest:
+    if require_view:
+        if (not bridge.is_file() or bridge.is_symlink() or
+                'case "view": FrameForScreenshot(request, result); break;' not in
+                bridge.read_text(encoding="utf-8")):
+            return {"exit_code":3,"stdout":"","stderr":"Verified scratch SceneView camera source missing"}
+    elif require_forest:
         if not helper.is_file() or not bridge.is_file() or 'case "forest_plan":' not in bridge.read_text():
             return {"exit_code":3,"stdout":"","stderr":"Reviewed scratch forest authoring not staged"}
     else:
@@ -3791,6 +3796,9 @@ def execute(job):
     if op == "unity_sceneview_prepare":
         if args: raise ValueError("SceneView prepare takes no arguments")
         return unity_sceneview_prepare()
+    if op == "unity_sceneview_refresh":
+        if args: raise ValueError("SceneView refresh takes no arguments")
+        return unity_forest_editor_refresh(require_forest=False, require_view=True)
     if op == "unity_virtual_live":
         return unity_virtual_live_job(job)
     if op == "unity_virtual_result":
