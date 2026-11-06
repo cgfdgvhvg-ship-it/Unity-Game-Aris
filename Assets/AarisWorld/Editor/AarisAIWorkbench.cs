@@ -249,15 +249,19 @@ namespace Aaris.MapReview.Editor
             {
                 TreeInstance[] trees = terrain.terrainData.treeInstances;
                 Vector3 sz = terrain.terrainData.size, basePos = terrain.transform.position;
-                var nearby = new List<Tuple<float, int>>();
+                var nearby = new SortedSet<Tuple<float, int>>();
                 for (int i = 0; i < trees.Length; i++)
                 {
                     float tx = basePos.x + trees[i].position.x * sz.x;
                     float tz = basePos.z + trees[i].position.z * sz.z;
                     float d = (tx - x) * (tx - x) + (tz - z) * (tz - z);
-                    if (d <= radius * radius) nearby.Add(Tuple.Create(d, i));
+                    if (d <= radius * radius)
+                    {
+                        nearby.Add(Tuple.Create(d, i));
+                        if (nearby.Count > 12) nearby.Remove(nearby.Max);
+                    }
                 }
-                foreach (var candidate in nearby.OrderBy(p => p.Item1).Take(12))
+                foreach (var candidate in nearby)
                     objects.Add(FindTree(terrain.name, candidate.Item2));
             }
             return objects.OrderBy(o => (o.position.x - x) * (o.position.x - x) +
