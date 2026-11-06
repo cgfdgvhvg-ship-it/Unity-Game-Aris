@@ -121,6 +121,9 @@ def validate_job(data: dict, *, expected_file: str | None = None) -> dict:
     elif op == "lfs_verify_chunk":
         if len(args) != 1 or not re.fullmatch(r"(?:0|[1-9][0-9]{0,4})", args[0]):
             raise JobError("lfs_verify_chunk requires one numeric cursor")
+    elif op == "unity_gui_house_search":
+        if len(args)!=1 or not re.fullmatch(r"[A-Za-z0-9_]{5,100}",args[0]):
+            raise JobError("UI house search requires one bounded exact saved house name")
     elif op == "unity_main_core_sync":
         if len(args) != 1 or not re.fullmatch(r"[0-9a-f]{40}", args[0]):
             raise JobError("unity_main_core_sync requires reviewed exact main HEAD SHA")
