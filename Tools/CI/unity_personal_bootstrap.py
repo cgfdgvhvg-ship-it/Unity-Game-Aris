@@ -173,7 +173,8 @@ def install_official_hub() -> str:
                    timeout=125, check=True, env=apt_env,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     subprocess.run(["apt-get", *apt_common, "install", "-y", "-qq",
-                    "--no-install-recommends", "unityhub"],
+                    "--no-install-recommends", "unityhub", "wmctrl",
+                    "dbus", "xdg-utils", "libgbm1"],
                    timeout=240, check=True, env=apt_env,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     binary = installed_hub()
@@ -211,6 +212,27 @@ def hub_license_present() -> bool:
     return False
 
 
+def hub_window_visible() -> bool | None:
+    """Check visible EWMH window titles; never expose or log window text.
+
+    None means no reliable GUI probe. A running Electron process alone does
+    not mean it actually mapped a window to the owner's Xvfb display.
+    """
+    wmctrl = shutil.which("wmctrl")
+    if not wmctrl:
+        return None
+    try:
+        result = subprocess.run(
+            [wmctrl, "-lx"], env=safe_environment(),
+            capture_output=True, text=True, timeout=6, check=False)
+        if result.returncode != 0:
+            return None
+        return any("unityhub" in line.lower() or "unity hub" in line.lower()
+                   for line in result.stdout.splitlines())
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
 def hub_personal_activation() -> None:
     """Owner signs in inside Hub GUI through protected noVNC; no password scripting."""
     binary = install_official_hub()
@@ -218,29 +240,45 @@ def hub_personal_activation() -> None:
         raise RuntimeError("DISPLAY missing; Unity Hub GUI cannot open in noVNC desktop")
     private_status("waiting_for_unity_hub_signin",
                    detail="Open the PIN-protected live desktop, sign in to official Unity Hub and activate Personal. No PC required.")
-    # Some Electron versions in this root-owned container need --no-sandbox;
-    # Unity Hub 4 may not require it, so try the normal command first.
-    # Neither Hub nor any spawned browser gets credentials as environment vars.
-    args = [binary]
+    # Electron GUI in a root-owned, headless container requires a session
+    # D-Bus and software rendering on the host Xvfb. Do NOT use --headless.
+    # Never forward a Unity password, ULF or auth token to this process.
+    args = [binary, "--disable-gpu", "--disable-dev-shm-usage"]
     if os.geteuid() == 0:
         args.append("--no-sandbox")
+    dbus_run = shutil.which("dbus-run-session")
+    if dbus_run:
+        args = [dbus_run, "--", *args]
+    private_status("starting_unity_hub_gui",
+                   detail="Starting official Unity Hub with an X11 GUI session (software rendering).")
     process = subprocess.Popen(args, env=safe_environment(),
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    try:
-        deadline = time.monotonic() + 1800
-        while time.monotonic() < deadline:
-            if hub_license_present():
-                private_status("unity_hub_license_detected",
-                               detail="Hub created an authorized license candidate; opening Editor to verify it.")
-                return
-            if process.poll() is not None:
-                raise RuntimeError("Unity Hub exited before a Personal license appeared")
-            time.sleep(3)
-        raise RuntimeError("Unity Hub sign-in or Personal activation not completed in this session")
-    finally:
-        # Leave the Unity Hub running after login; its licensing service may
-        # be needed by the Unity Editor in the same cloud container.
-        pass
+    start = time.monotonic()
+    deadline = start + 1800
+    window_checked = False
+    while time.monotonic() < deadline:
+        if hub_license_present():
+            private_status("unity_hub_license_detected",
+                           detail="Hub created an authorized license candidate; opening Editor to verify it.")
+            return
+        if process.poll() is not None:
+            raise RuntimeError("Unity Hub GUI exited before issuing a Personal license")
+        visible = hub_window_visible()
+        if visible:
+            if not window_checked:
+                private_status("waiting_for_unity_hub_signin",
+                               detail="Unity Hub window detected on virtual desktop. Open noVNC and sign in.")
+                window_checked = True
+        elif visible is False and time.monotonic() - start > 75:
+            private_status("unity_hub_window_not_visible",
+                           detail="Unity Hub process is running but no Unity Hub window was detected on the Xvfb desktop. Browser login cannot proceed.")
+            raise RuntimeError("Unity Hub GUI did not display a window in cloud Xvfb; check window manager and GUI runtime compatibility")
+        elif visible is None and not window_checked and time.monotonic() - start > 15:
+            private_status("unity_hub_window_check_unavailable",
+                           detail="Cannot verify Unity Hub GUI window; check the PIN-protected noVNC desktop.")
+            window_checked = True
+        time.sleep(3)
+    raise RuntimeError("Unity Hub sign-in or Personal activation was not completed in this session")
 
 
 def installed_cli() -> str | None:
@@ -418,6 +456,19 @@ def selftest() -> None:
             assert not hub_license_present()
         finally:
             LICENSE_FILE = old_license
+    # A missing window inspection tool is not proof that Hub is visible.
+    import unittest.mock as mock
+    with mock.patch("shutil.which", return_value=None):
+        assert hub_window_visible() is None
+    with mock.patch("shutil.which", return_value="/usr/bin/wmctrl"):
+        with mock.patch("subprocess.run") as test_run:
+            test_run.return_value = subprocess.CompletedProcess(
+                ["wmctrl", "-lx"], 0,
+                "0x04  0 runner UnityHub.unityhub runner Unity Hub\\n", "")
+            assert hub_window_visible() is True
+            test_run.return_value = subprocess.CompletedProcess(
+                ["wmctrl", "-lx"], 0, "0x01  0 runner Openbox.openbox runner\\n", "")
+            assert hub_window_visible() is False
     # A subprocess must not inherit any GitHub license or Unity password.
     assert "UNITY_LICENSE" not in safe_environment()
     assert "UNITY_PASSWORD" not in safe_environment()
