@@ -1,6 +1,6 @@
 # Aaris AI Master Control — GitHub, Codespace, Unity and LFS
 
-**Current default playbook, 2026-11-05.** Owner repository: **Aaris-khan-don/Unity-Game-Aris** (private). Read this from the **main branch** alongside root AGENTS.md. This document supersedes the older Issue #37 command inbox guide.
+**Current default playbook, 2026-11-05.** Owner repository: **sundamunda289-art/Unity-Game-Aris** (private). Read this from the **main branch** alongside root AGENTS.md. This document supersedes the older Issue #37 command inbox guide.
 
 ## First: no universal password, no credentials in the repository
 
@@ -28,8 +28,8 @@ Reason: the on-demand workflow deliberately runs actions/checkout with persist-c
 
 **Reusable implementation:** Tools/World/ai_master_github_auth.py. It:
 - Uses job-scoped GITHUB_TOKEN (or optional already-minted AARIS_GITHUB_APP_INSTALLATION_TOKEN) only in the verified GitHub Actions workspace.
-- Validates GITHUB_REPOSITORY == Aaris-khan-don/Unity-Game-Aris and an exact reviewed 40-character main commit.
-- Fetches ONLY https://github.com/Aaris-khan-don/Unity-Game-Aris.git main, without a token in the remote URL, git command-line args or persistent credential store.
+- Validates GITHUB_REPOSITORY == sundamunda289-art/Unity-Game-Aris and an exact reviewed 40-character main commit.
+- Fetches ONLY https://github.com/sundamunda289-art/Unity-Game-Aris.git main, without a token in the remote URL, git command-line args or persistent credential store.
 - Disables interactive prompting and inherited Git credential helper; deletes temporary askpass script immediately.
 - Redacts all git fetch stderr/stdout upon failure; never sends the token to the Codespace.
 - Refuses to fetch into /workspaces/Unity-Game-Aris or any other owner dirty working copy; a reviewed main mismatch fails closed.
