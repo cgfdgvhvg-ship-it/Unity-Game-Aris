@@ -84,7 +84,7 @@ def publish_ai_file(comment_id, path):
     """Publish only validated AI reports, blueprints or genuine Editor PNG files."""
     if not path.is_file() or path.stat().st_size > 6 * 1024 * 1024:
         raise RuntimeError("AI result absent or too large")
-    if not re.fullmatch(r"ai-(?:result|blueprint|photo)-\d+\.(?:json|svg|png)", path.name):
+    if not re.fullmatch(r"ai-(?:result-\d+\.json|blueprint-\d+\.(?:svg|ply)|photo-\d+\.png)", path.name):
         raise RuntimeError("Unexpected AI report filename")
     ensure_release()
     gh("release", "upload", RELEASE, str(path), "--repo", REPO)
