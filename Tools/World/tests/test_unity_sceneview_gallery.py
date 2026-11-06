@@ -75,6 +75,17 @@ class ScratchSceneViewGalleryTests(unittest.TestCase):
         self.assertNotIn('os.system(',block)
         self.assertIn('if op == "unity_gui_house_search":',source)
 
+    def test_ui_house_frame_has_only_bounded_x11_inputs(self):
+        source=Path(ex.__file__).read_text(encoding="utf-8")
+        section=source.split("def unity_gui_house_frame(name):",1)[1].split("def unity_sceneview_prepare():",1)[0]
+        self.assertIn("unity_gui_house_search(name)",section)
+        self.assertIn("info[\"ui_location\"]",section)
+        self.assertIn("\"xdotool\",\"key\",\"--clearmodifiers\",\"f\"",section)
+        self.assertIn("scene_or_assets_modified",section)
+        self.assertNotIn("SubmitRenderRequest",section)
+        self.assertNotIn("EditorSceneManager.Save",section)
+        self.assertIn('if op == "unity_gui_house_frame":',source)
+
     def test_staging_has_original_and_scratch_guards(self):
         source=Path(ex.__file__).read_text(encoding='utf-8')
         block=source.split('def unity_sceneview_prepare():',1)[1].split('\ndef unity_virtual_frame(',1)[0]
