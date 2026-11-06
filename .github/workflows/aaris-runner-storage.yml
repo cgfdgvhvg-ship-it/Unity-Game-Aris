@@ -1,0 +1,35 @@
+name: Aaris Cloud Runner Storage & Cleanup
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Tools/CI/runner_storage.sh'
+      - '.github/workflows/aaris-runner-storage.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  disk-diagnostic:
+    name: Measure Ubuntu Cloud CPU RAM and Disk; safe cleanup
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Verify cleanup safety rules
+        run: bash Tools/CI/runner_storage.sh selftest
+      - name: Measure actual free storage and RAM before cleanup
+        run: bash Tools/CI/runner_storage.sh audit
+      - name: Reclaim unused runner system tools (not Unity project)
+        run: bash Tools/CI/runner_storage.sh cleanup
+      - name: Upload before-after storage JSON reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-runner-storage-report
+          path: ci-storage-reports/*.json
+          retention-days: 7
+          if-no-files-found: error
