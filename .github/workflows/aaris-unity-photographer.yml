@@ -114,7 +114,7 @@ jobs:
       - name: Install Xvfb, Mesa, codec and Git LFS
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq zstd xvfb libgl1-mesa-dri libglu1-mesa2 git-lfs
+          sudo apt-get install -y -qq zstd xvfb libgl1-mesa-dri libglu1-mesa git-lfs
           git lfs install --local
           mkdir -p ci-photos ci-logs
           df -h .
@@ -164,7 +164,7 @@ jobs:
             "$GAMECI_IMAGE" bash -lc '
               set -euo pipefail
               if ! command -v xvfb-run >/dev/null 2>&1; then
-                apt-get update -qq && apt-get install -y -qq xvfb libgl1-mesa-dri libglu1-mesa2
+                apt-get update -qq && apt-get install -y -qq xvfb libgl1-mesa-dri libglu1-mesa
               fi
               mkdir -p /root/.local/share/unity3d/Unity /project/ci-logs
               printf "%s" "$UNITY_LICENSE" > /root/.local/share/unity3d/Unity/Unity_lic.ulf
