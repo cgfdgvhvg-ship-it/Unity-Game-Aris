@@ -317,7 +317,25 @@ jobs:
             fi
             sleep 5
           done
-          echo '::warning::Unity did not generate a valid ULF this session. No encrypted artifact created.'
+          # A missing artifact must never result in a green "license export".
+          # Show only controlled status names; NEVER dump OAuth URLs, license
+          # contents, or raw Unity logs into public Actions output.
+          safe_state="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('ci-live-control/license-status.json')
+          try:
+              v=json.loads(p.read_text()).get('state','unknown')
+              print(v if isinstance(v,str) and v.replace('_','').isalnum() else 'unknown')
+          except (OSError,ValueError,TypeError):
+              print('unavailable')
+          PY
+          )"
+          echo "::error::No reusable Unity ULF was generated (Unity bootstrap state: $safe_state). No encrypted license artifact exists."
+          echo '### Unity license export: FAILED' >> "$GITHUB_STEP_SUMMARY"
+          echo "No .ulf file was created. Final safe state: $safe_state" >> "$GITHUB_STEP_SUMMARY"
+          echo 'Unity Personal activation requires Unity Hub sign-in. CLI login alone does not establish a portable ULF.' >> "$GITHUB_STEP_SUMMARY"
+          exit 1
       - name: Upload age-encrypted Unity license (private key stays on phone)
         if: github.event_name == 'workflow_dispatch' && inputs.license_export_recipient != ''
         uses: actions/upload-artifact@v4
