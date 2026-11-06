@@ -1,0 +1,202 @@
+name: Aaris Live Unity Desktop via Cloudflare (Email PIN)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aaris-live-unity.yml'
+      - 'Tools/CI/live_camera_server.py'
+      - 'Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs'
+      - 'Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs.meta'
+  workflow_dispatch:
+    inputs:
+      session_minutes:
+        description: 'Temporary live desktop time (minutes)'
+        type: choice
+        required: true
+        default: '45'
+        options: ['15', '45', '90']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aaris-one-live-editor
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Verify camera API rejects unsafe inputs
+        run: |
+          python3 -m py_compile Tools/CI/live_camera_server.py
+          python3 - <<'PY'
+          import sys
+          sys.path.insert(0,"Tools/CI")
+          from live_camera_server import validate
+          clean=validate({"x":-420,"y":22,"z":-210,"yaw":0,"pitch":20,"distance":22})
+          assert clean["x"] == -420 and clean["distance"] == 22
+          rejected=[
+              {"x":9999,"y":22,"z":-210,"yaw":0,"pitch":20,"distance":22},
+              {"x":0,"y":22,"z":0,"yaw":0,"pitch":0,"distance":22,"shell":"rm -rf /"},
+              {"x":0,"y":float("nan"),"z":0,"yaw":0,"pitch":0,"distance":22},
+          ]
+          for entry in rejected:
+              try: validate(entry)
+              except ValueError: pass
+              else: raise AssertionError("Unsafe camera request was accepted")
+          print("Camera intents: bounded coordinates / no arbitrary commands PASS")
+          PY
+
+  live-desktop:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[live-smoke]')
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 140
+    env:
+      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+      UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
+      SESSION_MINUTES: ${{ inputs.session_minutes || '15' }}
+      GAMECI_IMAGE: unityci/editor:ubuntu-6000.3.26f1-base-3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Verify approved email and session length
+        run: |
+          set -euo pipefail
+          if [[ -z "$UNITY_EMAIL" ]]; then
+            echo '::error::UNITY_EMAIL GitHub Secret must be set to the email allowed to view desktop.'
+            exit 1
+          fi
+          case "$SESSION_MINUTES" in 15|45|90) ;; *) exit 1;; esac
+          echo 'Cloudflare will require an email one-time PIN; URL alone is not enough.'
+      - name: Install virtual screen, Web VNC and proxy
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+            xvfb x11vnc novnc websockify nginx openbox xterm git-lfs zstd \
+            libgl1-mesa-dri libglu1-mesa2
+          git lfs install --local
+          mkdir -p ci-live-control ci-logs ci-photos
+          Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp -ac > /tmp/aaris-xvfb.log 2>&1 &
+          echo "$!" > /tmp/aaris-xvfb.pid
+          sleep 2
+          DISPLAY=:99 openbox > /tmp/aaris-openbox.log 2>&1 &
+          DISPLAY=:99 x11vnc -display :99 -rfbport 5900 -localhost -forever \
+            -shared -nopw -noxdamage -quiet > /tmp/aaris-x11vnc.log 2>&1 &
+          websockify --web /usr/share/novnc 127.0.0.1:6080 127.0.0.1:5900 \
+            > /tmp/aaris-websockify.log 2>&1 &
+          python3 Tools/CI/live_camera_server.py > /tmp/aaris-api.log 2>&1 &
+          echo "$!" > /tmp/aaris-api.pid
+          cat >/tmp/aaris-nginx.conf <<'CONF'
+          worker_processes 1;
+          pid /tmp/aaris-nginx.pid;
+          events { worker_connections 256; }
+          http {
+            access_log off;
+            server {
+              listen 127.0.0.1:8080;
+              location /vnc/ {
+                proxy_pass http://127.0.0.1:6080/;
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection "upgrade";
+                proxy_read_timeout 3600s;
+              }
+              location / {
+                proxy_pass http://127.0.0.1:8765;
+              }
+            }
+          }
+          CONF
+          sudo nginx -c /tmp/aaris-nginx.conf
+          curl -fsS http://127.0.0.1:8080/api/status
+          curl -fsS http://127.0.0.1:8080/vnc/vnc.html -o /dev/null
+      - name: Start Cloudflare email-protected temporary tunnel
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 \
+            https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+            -o /tmp/aaris-cloudflared
+          chmod +x /tmp/aaris-cloudflared
+          /tmp/aaris-cloudflared tunnel --url http://127.0.0.1:8080 \
+            --allowed-mail "$UNITY_EMAIL" > /tmp/aaris-tunnel.log 2>&1 &
+          echo "$!" > /tmp/aaris-tunnel.pid
+          url=""
+          for i in {1..40}; do
+            url=$(grep -Eom1 'https://[-a-z0-9]+\.trycloudflare\.com' /tmp/aaris-tunnel.log || true)
+            if [[ -n "$url" ]]; then break; fi
+            if ! kill -0 "$(cat /tmp/aaris-tunnel.pid)" 2>/dev/null; then
+              echo '::error::Cloudflare process exited before producing a secure URL.'
+              tail -n 50 /tmp/aaris-tunnel.log
+              exit 1
+            fi
+            sleep 2
+          done
+          test -n "$url"
+          printf '%s\n' "$url" > /tmp/aaris-tunnel-url
+          echo "::notice title=Aaris live Unity desktop::$url (email one-time PIN required)"
+          echo "## Live editor session" >> "$GITHUB_STEP_SUMMARY"
+          echo "Open: $url" >> "$GITHUB_STEP_SUMMARY"
+          echo 'Cloudflare PIN is sent to the email stored in UNITY_EMAIL.' >> "$GITHUB_STEP_SUMMARY"
+          echo "Session length: $SESSION_MINUTES minutes" >> "$GITHUB_STEP_SUMMARY"
+      - name: Try starting real Unity Editor (without batchmode or -nographics)
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          if [[ -z "$UNITY_LICENSE" ]]; then
+            echo 'Unity Editor not launched: no authorized ULF present; live desktop and camera server are available.'
+            printf '{"state":"Unity not launched: a valid Editor license is still required"}\n' \
+              > ci-live-control/status.json
+            exit 0
+          fi
+          git lfs pull --include="Assets/**" --exclude=""
+          if head -c 80 Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity |
+            grep -q 'git-lfs.github.com/spec'; then
+            echo '::error::Unity native scene is still a pointer (LFS download failed).'
+            exit 1
+          fi
+          docker pull "$GAMECI_IMAGE"
+          docker run --detach --name aaris-unity-live --shm-size=1g \
+            --env UNITY_LICENSE --env DISPLAY=:99 \
+            --env LIBGL_ALWAYS_SOFTWARE=1 --env GALLIUM_DRIVER=llvmpipe \
+            --volume /tmp/.X11-unix:/tmp/.X11-unix \
+            --volume "$PWD:/project" --workdir /project \
+            "$GAMECI_IMAGE" bash -lc '
+              set -e
+              mkdir -p /root/.local/share/unity3d/Unity /project/ci-logs
+              printf "%s" "$UNITY_LICENSE" > /root/.local/share/unity3d/Unity/Unity_lic.ulf
+              chmod 600 /root/.local/share/unity3d/Unity/Unity_lic.ulf
+              exe=/opt/unity/Editor/Unity
+              if [[ ! -x "$exe" ]]; then exe="$(command -v unity-editor)"; fi
+              exec "$exe" -projectPath /project -logFile /project/ci-logs/live-unity.log -force-glcore
+            '
+          echo 'Unity Editor container launched on DISPLAY=:99. Camera commands are handled by AarisLiveCameraBridge.'
+      - name: Keep temporary desktop session online
+        run: |
+          echo "Cloudflare session is active for $SESSION_MINUTES minutes."
+          sleep "$((SESSION_MINUTES*60))"
+      - name: Upload last available Unity camera photo only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-live-camera-last-photo
+          path: ci-live-control/latest.png
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Stop temporary Unity session
+        if: always()
+        run: |
+          docker rm -f aaris-unity-live >/dev/null 2>&1 || true
+          if [[ -f /tmp/aaris-tunnel.pid ]]; then
+            kill "$(cat /tmp/aaris-tunnel.pid)" 2>/dev/null || true
+          fi
+          echo 'Session ended. GitHub source and Releases remain; runner desktop is ephemeral.'

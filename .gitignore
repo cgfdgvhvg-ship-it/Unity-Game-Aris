@@ -22,3 +22,10 @@ Tools/MapBuild/original_scene.yaml
 Tools/MapBuild/original_terrain.yaml
 __pycache__/
 Tools/MapBuild/.model-cache/
+
+# Ephemeral cloud desktop / CI runtime output
+ci-live-control/
+ci-logs/
+ci-photos/
+ci-layout-preview/
+ci-map-report.json
