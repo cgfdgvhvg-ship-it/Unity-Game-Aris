@@ -33,7 +33,7 @@ namespace Aaris.MapReview.Editor
         [Serializable] private sealed class Result
         {
             public string state, op, error, target, photo, meshMode, preview, measureAccuracy;
-            public Vector3 plannedPosition, plannedLocalScale;
+            public Vector3 plannedPosition, plannedLocalScale, localDimensionsMetres;
             public long nonce;
             public int count, totalPoints;
             public Item[] objects = new Item[0];
@@ -510,7 +510,20 @@ namespace Aaris.MapReview.Editor
             r.target = Id(target);
             r.objects = new[] { Describe(target) };
             r.count = 1;
-            if (i.op == "bounds") return;
+            if (i.op == "bounds")
+            {
+                Bounds local;
+                string accuracy;
+                if (TryLocalMeshBounds(target, out local, out accuracy))
+                {
+                    r.localDimensionsMetres = new Vector3(
+                        local.size.x * target.TransformVector(Vector3.right).magnitude,
+                        local.size.y * target.TransformVector(Vector3.up).magnitude,
+                        local.size.z * target.TransformVector(Vector3.forward).magnitude);
+                    r.measureAccuracy = accuracy;
+                }
+                return;
+            }
             if (i.op == "children")
             {
                 var items = new List<Item>();
