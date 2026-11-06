@@ -3408,6 +3408,28 @@ def execute(job):
                               capture_output=True,text=True,timeout=25,check=False)
         return {"exit_code":result.returncode,"stdout":result.stdout[-12000:],
                 "stderr":result.stderr[-900:]}
+    if op == "unity_recovery_diagnostics":
+        if args: raise ValueError("Recovery diagnostics takes no args")
+        source=Path("/workspaces/.aaris-world-bridge/ondemand/unity-rebuild-worker.log")
+        raw=""
+        if source.is_file() and not source.is_symlink():
+            with source.open("rb") as stream:
+                stream.seek(max(0,source.stat().st_size-8000))
+                raw=stream.read().decode("utf-8","replace")
+        def redact(value):
+            return re.sub(r"(?i)(?:ghp_|ghu_|github_pat_|sk-)[A-Za-z0-9_-]{8,}","[REDACTED]",value)
+        processes=[]
+        for item in Path("/proc").iterdir():
+            if not item.name.isdigit(): continue
+            try:
+                command=(item/"cmdline").read_bytes().decode("utf-8","replace")
+                if "--unity-rebuild-worker" in command:
+                    processes.append(int(item.name))
+            except OSError: pass
+        return {"exit_code":0,"stdout":json.dumps({
+            "background_rebuild_pids":processes,
+            "log_tail":redact(raw[-4400:]),
+            "scratch_status":unity_batch_status()},ensure_ascii=False),"stderr":""}
     if op == "runtime_mount_probe":
         if args: raise ValueError("runtime mount probe accepts no arguments")
         return {"exit_code":0,"stdout":json.dumps(runtime_mount_probe(),ensure_ascii=False),"stderr":""}
