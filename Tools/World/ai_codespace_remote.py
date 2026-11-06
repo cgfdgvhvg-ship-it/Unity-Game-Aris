@@ -16,10 +16,10 @@ import time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-REPOSITORY = "Aaris-khan-don/Unity-Game-Aris"
-OWNER = "Aaris-khan-don"
+REPOSITORY = "sundamunda289-art/Unity-Game-Aris"
+OWNER = "sundamunda289-art"
 BRANCH = "ai/codespace-jobs"
-CODESPACE = "musical-carnival-jjxp9r6vw45wfjgvg"
+CODESPACE = "redesigned-space-train-gxp5jwvq94wg2wvw6"
 QUEUE = ".aaris/jobs/"
 ID_RE = re.compile(r"[a-z][a-z0-9-]{3,55}\Z")
 API = f"https://api.github.com/user/codespaces/{CODESPACE}"
