@@ -167,7 +167,7 @@ def process(comment):
 
 # The same owner-only issue #77 is the AI interface. JSON is intentionally
 # restricted to documented world operations, never file paths or shell commands.
-AI_OPS = {"status", "nearby", "inspect", "outline", "photo", "move", "scale", "part_scale", "save"}
+AI_OPS = {"status", "nearby", "inspect", "parts", "outline", "photo", "move", "scale", "part_scale", "save"}
 SAFE_TARGET = re.compile(r"^[\w /.:()\-]{1,250}$", re.UNICODE)
 
 def parse_ai(body):
@@ -465,6 +465,17 @@ def process_ai(comment):
     if command["op"] == "nearby":
         message += f"Nearby count: {result.get('nearbyCount',0)}\n"
         message += "\n".join((result.get("nearby") or [])[:30]) + "\n"
+    if command["op"] == "parts":
+        parts = result.get("parts") or []
+        message += f"Child part count: {result.get('partCount', len(parts))}\n"
+        message += "Exact relative child paths (first 20):\n"
+        message += "\n".join(str(part)[:210] for part in parts[:20]) + "\n"
+        if len(parts) > 20:
+            try:
+                url = publish_ai_asset(comment_id, STATE / "ai-result.json", "json")
+                message += f"More child paths and numeric measurements: {url}\n"
+            except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
+                message += f"Full parts report upload failed ({type(exc).__name__})\n"
     if command["op"] == "outline":
         try:
             json_url = publish_ai_asset(comment_id, STATE / "ai-result.json", "json")
@@ -509,6 +520,7 @@ def main():
         assert "ACTIVATE_UNITY" != "ACTIVATE_UNITY 15"
         assert parse("CAMERA -420 22 -210 0 20 22")["distance"] == 22
         assert parse_ai('AI {"op":"status"}') == {"op": "status"}
+        assert parse_ai('AI {"op":"parts","target":"tree:0:123"}')["op"] == "parts"
         good = parse_ai('AI {"op":"outline","target":"tree:0:123"}')
         assert good["target"] == "tree:0:123"
         assert parse_ai('AI {"op":"part_scale","target":"tree:0:123","part":"Leaves","value":[1.1,1,1.1],"scope":"prototype"}')["scope"] == "prototype"
