@@ -49,7 +49,19 @@ Explicitly opt in to a shared material edit (all instances using that same mater
 
     AI {"action":"tint_shared","id":"<exact-scene-object-ID>","part":"Leaves","hex":"#438A42","shared":true}
 
-Only standalone project material assets under Assets/ are writable. Embedded FBX and shared terrain-tree material changes are not available here. Leaf density, branch topology, wall mesh generation and collision-aware repositioning require dedicated authored geometry logic, not these simple bounds operations.
+For a tree that uses a standalone writable .prefab, you can scale exactly one
+named leaf/trunk child. The INSPECT/OUTLINE report includes visible renderer
+part names. This changes ALL native trees using the same prefab, not just one:
+
+    AI {"action":"part_scale_shared","id":"terrain:1:104","part":"Leaves","sx":1.3,"sy":1.1,"sz":1.3,"shared":true}
+
+The tree ID and part are illustrative; obtain both from INSPECT first.
+Only exact single child names in standalone Assets/*.prefab are writable;
+imported FBX model trees cannot be restructured by this command.
+Standalone Assets/*.mat shared material edits also work on terrain-tree
+renderers, affecting every instance using that material. Leaf density,
+branch topology, wall vertex remodeling and collision-aware repositioning
+still require dedicated authored geometry logic.
 
 ## Measurement and reliability
 - Inspect sorts by ground-plane distance before expensive mesh sampling: limit 30, radius 250 m.
