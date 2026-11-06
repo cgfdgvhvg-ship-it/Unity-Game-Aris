@@ -248,7 +248,9 @@ def selftest():
     assert sample["target"] == "House[1]/Wall[0]"
     assert len(wireframe_svg([{"x":0,"y":0,"z":0},{"x":1,"y":1,"z":1}])) > 100
     ply = point_cloud_ply([{"x":0,"y":0,"z":0},{"x":1,"y":2,"z":3}])
-    assert ply and b"element vertex 2" in ply and b"1.000000 2.000000 3.000000" in ply
+    assert ply and ply.startswith(b"ply\nformat ascii 1.0\n")
+    assert ply.count(b"\n") >= 10 and b"element vertex 2\n" in ply
+    assert b"1.000000 2.000000 3.000000\n" in ply
     assert point_cloud_ply([{"x":float("nan"),"y":0,"z":0}]) is None
     for value in ('AI {"op":"shell","command":"rm -rf /"}',
                   'AI {"op":"move","target":"X","dx":1e999,"dy":0,"dz":0}',
