@@ -15,6 +15,48 @@ Official Unity 6000.3 licensing documentation explicitly states that **Unity Hub
 
 Official sources: https://docs.unity.com/en-us/engine/6000.3/manual/get-started/install-and-upgrade/licenses-and-activation/license-activation-methods and https://docs.unity.com/en-us/hub/install-hub-linux.
 
+### One-time phone login -> encrypted export -> GitHub Secret -> next runner
+
+This is a *conditional* authorized path, not a method of generating new
+Personal entitlements or silently reusing a machine-bound license.
+
+1. On your phone, add **UNITY_EMAIL** to the repository's GitHub Actions
+   Secrets so Cloudflare's email-PIN gate can admit your browser. Keep 2FA ON.
+2. In Termux, run the checked-in `Tools/CI/termux_secure_license_export.sh`
+   from **the PR #79 review branch**, not an unreviewed shell paste.
+   The helper uses GitHub CLI to launch `aaris-live-unity.yml` on that branch,
+   creates an **age** encryption key locally, and sends **only its public key**
+   to the workflow. It does *not* need the Unity password in shell arguments.
+3. Open the temporary Cloudflare PIN-protected live desktop on the phone,
+   sign in to the **official Unity Hub** with your Unity account credentials
+   and any required 2FA. Only the Unity-owned login UI receives the password.
+4. If Unity actually issues an authorized `Unity_lic.ulf` on that runner,
+   the workflow encrypts it before uploading a short-lived artifact. Termux
+   downloads/decrypts it in a private folder, verifies its XML format, stores
+   it as `UNITY_LICENSE` using `gh secret set`, and removes the plaintext.
+   No unencrypted copy is placed in Android Downloads, Git history, or Releases.
+5. Future *review-branch* workflow sessions first try to restore that
+   authorized ULF privately into the same Unity Editor Docker container.
+   **The Editor must still validate it on each runner**. A license bound to
+   the original machine might be rejected, or Hub might issue a different
+   named-user XML format rather than a reusable ULF. In that case the helper
+   clearly fails the export and Unity Hub sign-in may be needed again.
+
+To use the helper from Termux after inspecting the file:
+```bash
+pkg install -y curl
+curl -fsSLo ~/aaris-license.sh \
+  https://raw.githubusercontent.com/sundamunda289-art/Unity-Game-Aris/ai/scene-operator-v1/Tools/CI/termux_secure_license_export.sh
+bash ~/aaris-license.sh
+```
+Once PR #79 is merged and verified on main, replace the branch ref with main
+using `AARIS_LICENSE_REF=main bash ~/aaris-license.sh`.
+
+Do not add `Unity.Licensing.Client --activate-ulf --username --password
+--include-personal` as an automatic step: these arguments are **not**
+documented as a supported Personal activation mechanism in Unity 6000.3.
+Do not disable 2FA or give the password to an unreviewed third-party Action.
+
 ### Other build workflows and optional credentials
 
 The separate **Unity photographer** workflow checks `UNITY_LICENSE`; without it, the actual rendering job skips but Python map audits continue. Some older GameCI instructions list `UNITY_EMAIL`, `UNITY_PASSWORD`, and `UNITY_LICENSE` for their build actions. Those instructions do NOT make a Personal license work with only a password. `UNITY_SERIAL` belongs to eligible paid serial plans; Unity service-account credentials authenticate to Unity Cloud services, not Unity Personal Editor.
