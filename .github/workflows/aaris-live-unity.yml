@@ -52,6 +52,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: false
+          fetch-depth: 0
       - name: Verify camera API rejects unsafe inputs
         run: |
           python3 -m py_compile Tools/CI/live_camera_server.py Tools/CI/issue_camera_bridge.py Tools/CI/unity_personal_bootstrap.py
@@ -164,8 +165,10 @@ jobs:
           DISPLAY=:99 openbox > /tmp/aaris-openbox.log 2>&1 &
           DISPLAY=:99 x11vnc -display :99 -rfbport 5900 -localhost -forever \
             -shared -nopw -noxdamage -quiet > /tmp/aaris-x11vnc.log 2>&1 &
+          echo "$!" > /tmp/aaris-x11vnc.pid
           websockify --web /usr/share/novnc 127.0.0.1:6080 127.0.0.1:5900 \
             > /tmp/aaris-websockify.log 2>&1 &
+          echo "$!" > /tmp/aaris-websockify.pid
           python3 Tools/CI/live_camera_server.py > /tmp/aaris-api.log 2>&1 &
           echo "$!" > /tmp/aaris-api.pid
           cat >/tmp/aaris-nginx.conf <<'CONF'
@@ -430,6 +433,8 @@ jobs:
                        "disk_free_gib":round(shutil.disk_usage(".").free/1073741824,2)},
              "steps_reached":{"virtual_screen":alive("/tmp/aaris-xvfb.pid"),
                  "vnc_server":alive("/tmp/aaris-x11vnc.pid") if pathlib.Path("/tmp/aaris-x11vnc.pid").exists() else None,
+                 "novnc_websocket":alive("/tmp/aaris-websockify.pid"),
+                 "nginx_proxy":alive("/tmp/aaris-nginx.pid"),
                  "camera_api":alive("/tmp/aaris-api.pid"),
                  "tunnel":alive("/tmp/aaris-tunnel.pid"),
                  "editor_container":docker()},
@@ -446,6 +451,8 @@ jobs:
           problems=[]
           if not report["steps_reached"]["virtual_screen"]:problems.append("Xvfb not running")
           if not report["steps_reached"]["camera_api"]:problems.append("Local camera API not running")
+          if not report["steps_reached"]["novnc_websocket"]:problems.append("noVNC WebSocket proxy not running")
+          if not report["steps_reached"]["nginx_proxy"]:problems.append("Local nginx proxy not running")
           if not report["steps_reached"]["tunnel"]:problems.append("Cloudflare tunnel unavailable")
           if pointer:problems.append("Unity scene is an LFS pointer")
           if not report["steps_reached"]["editor_container"]:problems.append("Editor Docker container not running")
