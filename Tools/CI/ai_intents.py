@@ -178,7 +178,7 @@ def point_cloud_ply(points):
         "end_header",
     ]
     lines.extend(f"{x:.6f} {y:.6f} {z:.6f}" for x, y, z in valid)
-    return ("\\n".join(lines) + "\\n").encode("ascii")
+    return ("\n".join(lines) + "\n").encode("ascii")
 
 
 def deliver(result, nonce, state, repo, issue_comment, publish_file):
