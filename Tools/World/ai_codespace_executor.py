@@ -1929,6 +1929,74 @@ def _sceneview_bridge_source(source):
     return source.replace(switch, switch+'\n                    case "view": FrameForScreenshot(request, result); break;').replace(anchor,method+anchor)
 
 
+
+def unity_gui_house_search(name):
+    """Search a REAL saved scene house in verified scratch Editor Hierarchy (UI only)."""
+    if not isinstance(name,str) or not re.fullmatch(r"[A-Za-z0-9_]{5,100}",name):
+        return {"exit_code":3,"stdout":"","stderr":"Invalid exact house name"}
+    layout=PROJECT/"Docs/MAP_LAYOUT.json"
+    if not layout.is_file() or layout.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Original read-only map layout missing"}
+    saved=json.loads(layout.read_text(encoding="utf-8"))
+    if name not in {b.get("name") for b in saved.get("buildings",[]) if isinstance(b,dict)}:
+        return {"exit_code":3,"stdout":"","stderr":"House name does not match saved real map"}
+    if len(_scratch_unity_pids())!=1 or not (BATCH_ROOT/"scene-readback.json").is_file():
+        return {"exit_code":3,"stdout":"","stderr":"Verified scratch Unity loaded scene required"}
+    if not all(shutil.which(x) for x in ("xwininfo","xprop","xdotool")):
+        return {"exit_code":3,"stdout":"","stderr":"X11 scene UI tools missing"}
+    q=subprocess.run(["xwininfo","-display",":12","-root","-tree"],
+                     capture_output=True,text=True,timeout=12,check=False)
+    if q.returncode:
+        return {"exit_code":3,"stdout":"","stderr":"No verified Unity GUI tree"}
+    eligible=[]
+    for row in q.stdout.splitlines():
+        if "Unity - project - TerrainDemoScene" not in row: continue
+        match=re.search(r"0x[0-9a-fA-F]+",row)
+        if not match: continue
+        wid=match.group(0)
+        prop=subprocess.run(["xprop","-display",":12","-id",wid,
+                             "_NET_WM_PID","WM_NAME"],
+                            capture_output=True,text=True,timeout=8,check=False)
+        pid=re.search(r"_NET_WM_PID\(CARDINAL\) = (\d+)",prop.stdout)
+        if prop.returncode==0 and pid and int(pid.group(1)) in _scratch_unity_pids():
+            eligible.append(wid)
+    if len(eligible)!=1:
+        return {"exit_code":3,"stdout":json.dumps({"windows":eligible}),
+                "stderr":"Expected exactly one verified native scratch Unity map window"}
+    win=eligible[0]
+    bounds=subprocess.run(["xwininfo","-display",":12","-id",win],
+                          capture_output=True,text=True,timeout=10,check=False)
+    def extract(key):
+        match=re.search(r"(?m)^\s*"+re.escape(key)+r":\s*(-?\d+)",bounds.stdout)
+        return int(match.group(1)) if match else None
+    x,y,w,h=[extract(key) for key in
+        ("Absolute upper-left X","Absolute upper-left Y","Width","Height")]
+    if (bounds.returncode or any(v is None for v in (x,y,w,h)) or
+            not (1080<=w<=1600 and 600<=h<=1000 and x>=0 and y>=0)):
+        return {"exit_code":3,"stdout":json.dumps({"bounds":[x,y,w,h]}),
+                "stderr":"Unrecognized Unity GUI layout for exact Hierarchy search"}
+    # Fresh, fixed 1600x900 Xvfb Unity default layout; search bar at
+    # x~125/y~94 relative to verified main editor client window.
+    target_x,target_y=x+125,y+94
+    env=dict(os.environ,DISPLAY=":12")
+    steps=[
+        ["xdotool","mousemove",str(target_x),str(target_y)],
+        ["xdotool","click","1"],
+        ["xdotool","key","--clearmodifiers","ctrl+a"],
+        ["xdotool","type","--clearmodifiers","--delay","30",name]
+    ]
+    for cmd in steps:
+        out=subprocess.run(cmd,env=env,capture_output=True,text=True,timeout=15,check=False)
+        if out.returncode:
+            return {"exit_code":3,"stdout":"","stderr":"Verified Unity Hierarchy search UI input failed"}
+    return {"exit_code":0,"stdout":json.dumps({
+        "status":"unity_hierarchy_house_search_typed",
+        "house":name,"scratch_pid":_scratch_unity_pids()[0],
+        "window":win,"ui_location":[target_x,target_y],
+        "scratch_only":True,"no_scene_or_assets_written":True,
+        "next":"Capture X11 desktop_snapshot to verify exact Hierarchy search result"}),"stderr":""}
+
+
 def unity_sceneview_prepare():
     """Stage a bounded, zero-asset-write camera action in /tmp Unity only."""
     scratch=BATCH_ROOT/"project"
@@ -3793,6 +3861,9 @@ def execute(job):
     if op == "unity_forest_stage":
         if args: raise ValueError("Forest stage does not accept parameters")
         return unity_forest_stage()
+    if op == "unity_gui_house_search":
+        if len(args)!=1: raise ValueError("Exact house name required")
+        return unity_gui_house_search(args[0])
     if op == "unity_sceneview_prepare":
         if args: raise ValueError("SceneView prepare takes no arguments")
         return unity_sceneview_prepare()
