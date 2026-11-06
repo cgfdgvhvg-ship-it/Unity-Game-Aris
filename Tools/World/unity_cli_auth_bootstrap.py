@@ -191,7 +191,7 @@ def worker_login():
         with AUTH_LOG.open("a",encoding="utf-8") as output:
             os.chmod(AUTH_LOG,0o600)
             if not keyring.secret_service_ready():
-                raise RuntimeError("secure keyring not running; initialize it first")
+                keyring.initialize_service()  # Codespace restart: same private key, new D-Bus
             env=keyring.environment();env.pop("DISPLAY",None)
             p=subprocess.run([str(tool),"auth","login","--non-interactive","--format","json"],
                         env=env,stdin=subprocess.DEVNULL,stdout=output,stderr=output,timeout=900,check=False)
@@ -206,11 +206,14 @@ def launch(which):
         return {"status":"already_installed",**status()}
     if which=="--login-start" and not cli_path():
         return {"status":"cli_missing",**status()}
-    if which=="--login-start" and not keyring.secret_service_ready():
-        return {"status":"keyring_not_ready",**status()}
     flag="--install-worker" if which=="--install-start" else "--login-worker"
     if running(flag):return {"status":"already_running",**status()}
     target=LOG if which=="--install-start" else AUTH_LOG
+    if which=="--login-start" and AUTH_LOG.exists():
+        if AUTH_LOG.is_symlink(): raise RuntimeError("unsafe Unity OAuth log")
+        previous=ROOT/"unity-cli-login-previous.log"
+        if previous.is_symlink():raise RuntimeError("unsafe prior OAuth log")
+        os.replace(AUTH_LOG,previous)  # never report a stale login URL
     with target.open("a",encoding="utf-8") as output:
         os.chmod(target,0o600)
         p=subprocess.Popen([sys.executable,str(Path(__file__).resolve()),flag],
