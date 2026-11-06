@@ -16,7 +16,7 @@ import subprocess
 import sys
 import time
 
-from live_camera_server import validate, STATE
+from live_camera_server import validate, STATE, public_diagnostics
 import ai_intents
 
 ISSUE = int(os.getenv("AARIS_CAMERA_ISSUE", "77"))
@@ -99,6 +99,16 @@ def process(comment):
     if type(comment_id) is not int or comment_id <= 0:
         return "ignored-invalid-comment-id"
     body = comment.get("body", "")
+    if isinstance(body, str) and body.strip() == "DIAGNOSE":
+        # Works before Unity licensing or C# compilation. Public reply only
+        # contains allowlisted states/booleans, never logs or sign-in URLs.
+        report = public_diagnostics()
+        STATE.mkdir(parents=True, exist_ok=True)
+        path = STATE / f"ai-diagnostics-{comment_id}.json"
+        path.write_text(json.dumps(report, indent=2, sort_keys=True))
+        issue_comment(f"DIAGNOSE #{comment_id}: sanitized runner report (no credentials):\\n\\n"
+                      + json.dumps(report, sort_keys=True))
+        return "diagnosed"
     if isinstance(body, str) and body.startswith("AI "):
         try:
             return ai_intents.handle(body, comment_id, STATE, Path.cwd(),
@@ -194,6 +204,12 @@ def main():
     args = parser.parse_args()
     if args.selftest:
         ai_intents.selftest()
+        check = public_diagnostics()
+        assert set(check) == {"license_phase", "vnc_backend", "vnc_websocket",
+                              "container", "process_inspection", "unity_editor_process",
+                              "unity_hub_process", "lfs_scene_hydrated",
+                              "genuine_unity_photo_present", "next_action", "screenshot_note"}
+        assert "auth_url" not in check and "detail" not in check
         sample = parse("CAMERA -420 22 -210 0 20 22")
         assert sample["x"] == -420 and sample["pitch"] == 20
         for body in ("CAMERA 9999 22 -210 0 20 22",
