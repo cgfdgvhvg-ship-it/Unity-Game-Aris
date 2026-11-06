@@ -92,7 +92,7 @@ namespace Aaris.MapReview.Editor
 
         private static void Validate(Intent i)
         {
-            if (!new[] { "find", "inspect", "bounds", "outline", "move", "scale", "photo" }.Contains(i.op))
+            if (!new[] { "find", "inspect", "bounds", "children", "outline", "move", "scale", "photo" }.Contains(i.op))
                 throw new ArgumentException("Unknown AI operation");
             if (!new[] { i.x, i.y, i.z, i.radius, i.dx, i.dy, i.dz,
                          i.sx, i.sy, i.sz, i.distance }.All(Finite))
@@ -102,7 +102,7 @@ namespace Aaris.MapReview.Editor
             if (i.op == "inspect" && (i.radius < 1 || i.radius > 200 ||
                     Mathf.Abs(i.x) > 2500 || Mathf.Abs(i.z) > 2500 || Mathf.Abs(i.y) > 5000))
                 throw new ArgumentException("Invalid inspection sphere");
-            if (new[] { "bounds", "outline", "move", "scale", "photo" }.Contains(i.op) &&
+            if (new[] { "bounds", "children", "outline", "move", "scale", "photo" }.Contains(i.op) &&
                 (string.IsNullOrWhiteSpace(i.target) || i.target.Length > 300))
                 throw new ArgumentException("Exact target ID required");
             if (i.op == "outline" && (i.max_points < 8 || i.max_points > MaxVertexSamples))
@@ -350,6 +350,31 @@ namespace Aaris.MapReview.Editor
                 int tile = Array.IndexOf(Tiles(), terrain);
                 r.target = i.target;
                 r.objects = new[] { TreeItem(terrain, tile, treeIndex, tree) };
+                if (i.op == "children")
+                {
+                    var prototypes = data.treePrototypes;
+                    if (tree.prototypeIndex < 0 || tree.prototypeIndex >= prototypes.Length ||
+                        prototypes[tree.prototypeIndex].prefab == null)
+                        throw new NotSupportedException("Terrain tree has no readable prototype");
+                    var root = prototypes[tree.prototypeIndex].prefab.transform;
+                    var inv = root.worldToLocalMatrix;
+                    var rotation = Quaternion.Euler(0f, tree.rotation * Mathf.Rad2Deg, 0f);
+                    Vector3 scale = new Vector3(tree.widthScale, tree.heightScale, tree.widthScale);
+                    Vector3 origin = terrain.transform.position + Vector3.Scale(tree.position, data.size);
+                    // Prototype parts are shared by every instance of this species.
+                    // These are read-only references, NOT editable instance IDs.
+                    r.objects = root.GetComponentsInChildren<Transform>(true)
+                        .Where(t => t != root).Take(MaxResults).Select(t => new Item {
+                            id = "shared-prototype-part:" + Id(t),
+                            name = t.name, type = "shared-prototype-part-readonly",
+                            accuracy = "estimated-prototype-transform-not-instance-mesh",
+                            position = origin + rotation * Vector3.Scale(
+                                inv.MultiplyPoint3x4(t.position), scale),
+                            localScale = t.localScale, hasBounds = false,
+                        }).ToArray();
+                    r.count = r.objects.Length;
+                    return;
+                }
                 Bounds treeBounds;
                 string treeAccuracy;
                 int treeVertices;
@@ -436,6 +461,15 @@ namespace Aaris.MapReview.Editor
             r.objects = new[] { Describe(target) };
             r.count = 1;
             if (i.op == "bounds") return;
+            if (i.op == "children")
+            {
+                var items = new List<Item>();
+                for (int j = 0; j < target.childCount && items.Count < MaxResults; j++)
+                    items.Add(Describe(target.GetChild(j)));
+                r.objects = items.ToArray();
+                r.count = r.objects.Length;
+                return;
+            }
             if (i.op == "outline")
             {
                 var points = new List<Vector3>();
