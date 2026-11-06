@@ -39,6 +39,7 @@ on:
 permissions:
   contents: write
   issues: write
+  pull-requests: write
 
 concurrency:
   group: aaris-one-live-editor-${{ github.event_name }}
