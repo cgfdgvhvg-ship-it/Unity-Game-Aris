@@ -3398,6 +3398,16 @@ def execute(job):
     if op == "safe_archives_cleanup":
         if args: raise ValueError("archive cleanup takes no arguments")
         return {"exit_code":0,"stdout":json.dumps(safe_archive_cleanroom(delete=True)),"stderr":""}
+    if op in {"unity_keyring_setup","unity_keyring_status"}:
+        if args:raise ValueError("Linux Secret Service operation takes no parameters")
+        secure=Path("/workspaces/.aaris-world-bridge/ondemand/unity_secure_keyring.py")
+        if not secure.is_file() or secure.is_symlink() or secure.stat().st_size>14000:
+            return {"exit_code":3,"stdout":"","stderr":"Approved Unity credential storage helper missing"}
+        mode="--start" if op=="unity_keyring_setup" else "--status"
+        out=subprocess.run(["python3",str(secure),mode],capture_output=True,text=True,
+                           timeout=35,check=False)
+        return {"exit_code":out.returncode,"stdout":out.stdout[-4500:],
+                "stderr":out.stderr[-700:]}
     if op in {"unity_cli_install_start","unity_cli_login_start","unity_cli_auth_status"}:
         if args: raise ValueError("Unity CLI OAuth operation takes no shell arguments")
         source=Path("/workspaces/.aaris-world-bridge/ondemand/unity_cli_auth_bootstrap.py")
