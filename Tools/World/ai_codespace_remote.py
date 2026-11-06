@@ -66,7 +66,7 @@ def validate_job(data: dict, *, expected_file: str | None = None) -> dict:
     op = data["operation"]
     if not isinstance(ident, str) or not ID_RE.fullmatch(ident):
         raise JobError("invalid job id")
-    if op not in {"diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "unity_diagnostics", "desktop_tools", "desktop_snapshot", "unity_terms_accept", "unity_low_disk_stop", "unity_low_disk_pause", "unity_resume_paused", "codespace_machines", "system_storage_audit", "runtime_mount_probe", "safe_archives_audit", "safe_archives_cleanup", "unity_lfs_preflight", "unity_scratch_reconcile", "unity_tree_v2_preview", "unity_forest_stage", "unity_forest_x11_probe", "unity_forest_editor_refresh", "unity_forest_menu_snapshot", "unity_forest_recompile", "unity_forest_crash_report", "unity_forest_one_shot_plan", "unity_forest_one_shot_apply", "unity_forest_baseline_probe", "unity_forest_treeonly_prepare", "unity_forest_treeonly_tune", "unity_map_camera_capture", "unity_render_backend_probe", "unity_shader_ab_preflight", "unity_shader_ab_apply", "unity_shader_ab_restore", "unity_main_core_sync", "unity_house_gallery_start", "unity_house_gallery_export", "unity_house_gallery_diagnose", "unity_house_gallery_refresh", "unity_house_bridge_gallery_start", "unity_house_bridge_gallery_export", "unity_house_bridge_gallery_partial_export", "unity_house_bridge_gallery_diagnose", "unity_house_helper_quarantine", "unity_sync_auth", "unity_sync_status", "unity_sync_arm", "unity_sync_dry_run", "unity_sync_save_session", "unity_sync_watch_start", "unity_session_status", "unity_session_stop_simulation", "unity_session_checkpoint", "unity_session_recover", "unity_batch_launch", "unity_batch_status", "unity_virtual_gui_launch", "unity_virtual_gui_status", "unity_virtual_live", "unity_virtual_result", "unity_virtual_frame", "unity_live", "unity_result", "unity_frame", "world_site", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
+    if op not in {"codespace_machine_upgrade", "diagnose", "desktop_xterm", "desktop_diagnose", "unity_gui", "unity_diagnostics", "desktop_tools", "desktop_snapshot", "unity_terms_accept", "unity_low_disk_stop", "unity_low_disk_pause", "unity_resume_paused", "codespace_machines", "system_storage_audit", "runtime_mount_probe", "safe_archives_audit", "safe_archives_cleanup", "unity_lfs_preflight", "unity_scratch_reconcile", "unity_tree_v2_preview", "unity_forest_stage", "unity_forest_x11_probe", "unity_forest_editor_refresh", "unity_forest_menu_snapshot", "unity_forest_recompile", "unity_forest_crash_report", "unity_forest_one_shot_plan", "unity_forest_one_shot_apply", "unity_forest_baseline_probe", "unity_forest_treeonly_prepare", "unity_forest_treeonly_tune", "unity_map_camera_capture", "unity_render_backend_probe", "unity_shader_ab_preflight", "unity_shader_ab_apply", "unity_shader_ab_restore", "unity_main_core_sync", "unity_house_gallery_start", "unity_house_gallery_export", "unity_house_gallery_diagnose", "unity_house_gallery_refresh", "unity_house_bridge_gallery_start", "unity_house_bridge_gallery_export", "unity_house_bridge_gallery_partial_export", "unity_house_bridge_gallery_diagnose", "unity_house_helper_quarantine", "unity_sync_auth", "unity_sync_status", "unity_sync_arm", "unity_sync_dry_run", "unity_sync_save_session", "unity_sync_watch_start", "unity_session_status", "unity_session_stop_simulation", "unity_session_checkpoint", "unity_session_recover", "unity_batch_launch", "unity_batch_status", "unity_virtual_gui_launch", "unity_virtual_gui_status", "unity_virtual_live", "unity_virtual_result", "unity_virtual_frame", "unity_live", "unity_result", "unity_frame", "world_site", "storage_audit", "lfs_verify_chunk", "prune_caches", "unity_version", "world_doctor", "terminal_readonly"}:
         raise JobError("unsupported operation")
     args = data["args"]
     if not isinstance(args, list) or len(args) > 16 or any(
@@ -481,16 +481,39 @@ def main(argv=None):
         token = os.getenv("AARIS_CODESPACE_TOKEN", "")
         if not token:
             raise JobError("SETUP_REQUIRED: add repository Actions secret AARIS_CODESPACE_TOKEN; it requires Codespaces lifecycle admin write, Codespaces read and permission for gh codespace ssh")
-        if job["operation"] == "codespace_machines":
-            # Read account-offered machine types without touching billing, disk or SSH.
+        if job["operation"] in {"codespace_machines", "codespace_machine_upgrade"}:
+            # Only the existing named Codespace; no other machine is modified.
+            current = github_api("GET", token)
+            if (current.get("name") != CODESPACE or current.get("repository", {}).get("full_name") != REPOSITORY:
+                raise JobError("Codespace identity mismatch before machine inspection")
             info = github_api("GET", token, "/machines")
             options = info.get("machines", []) if isinstance(info, dict) else []
             safe = [{"name": m.get("name"), "display_name": m.get("display_name"),
                      "cpus": m.get("cpus"), "memory_in_bytes": m.get("memory_in_bytes"),
                      "storage_in_bytes": m.get("storage_in_bytes")}
                     for m in options if isinstance(m, dict)]
+            current_machine = current.get("machine") or {}
+            outcome = {"machines":safe,"current_machine":{
+                "name":current_machine.get("name"),"cpus":current_machine.get("cpus"),
+                "memory_in_bytes":current_machine.get("memory_in_bytes"),
+                "storage_in_bytes":current_machine.get("storage_in_bytes")},
+                "codespace_state":current.get("state")}
+            if job["operation"] == "codespace_machine_upgrade":
+                target = next((m for m in safe if m["name"] == "standardLinux32gb"), None)
+                if target is None or int(target.get("storage_in_bytes") or 0) < int(current_machine.get("storage_in_bytes") or 0):
+                    raise JobError("Available 4-core upgrade missing or would shrink persistent disk")
+                if current_machine.get("name") == target["name"]:
+                    outcome["change"] = "already_on_highest_offered_ram"
+                else:
+                    # Only an explicit owner job may change billable machine type.
+                    # GitHub applies same-storage changes at the next Codespace restart.
+                    updated = github_api("PATCH", token, payload={"machine":"standardLinux32gb"})
+                    outcome["change"] = "machine_update_requested"
+                    outcome["requested_machine"] = "standardLinux32gb"
+                    outcome["api_machine_name"] = (updated.get("machine") or {}).get("name")
+                    outcome["requires_restart"] = True
             response = {"id":job["id"],"operation":job["operation"],"ok":True,
-                        "exit_code":0,"stdout":json.dumps({"machines":safe}),"stderr":""}
+                        "exit_code":0,"stdout":json.dumps(outcome),"stderr":""}
             result.parent.mkdir(parents=True,exist_ok=True)
             result.write_text(json.dumps(response,ensure_ascii=False,indent=2))
             print("AARIS_RESULT_JSON="+json.dumps(response),flush=True)
