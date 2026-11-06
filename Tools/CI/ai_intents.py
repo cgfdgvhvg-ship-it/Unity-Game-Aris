@@ -24,6 +24,7 @@ OPS = {
     "outline": {"target", "max_points"},
     "move": {"target", "dx", "dy", "dz", "dry_run"},
     "scale": {"target", "sx", "sy", "sz", "dry_run"},
+    "size": {"target", "axis", "meters", "dry_run"},
     "photo": {"target", "distance"},
 }
 REQUIRED = {
@@ -31,6 +32,7 @@ REQUIRED = {
     "bounds": {"target"}, "children": {"target"}, "outline": {"target"},
     "move": {"target", "dx", "dy", "dz"},
     "scale": {"target", "sx", "sy", "sz"},
+    "size": {"target", "axis", "meters"},
     "photo": {"target"},
 }
 RANGES = {
@@ -38,7 +40,7 @@ RANGES = {
     "radius": (1, 200), "dx": (-100, 100), "dy": (-100, 100),
     "dz": (-100, 100), "sx": (0.25, 4), "sy": (0.25, 4),
     "sz": (0.25, 4), "distance": (2, 200),
-    "max_points": (8, 2048),
+    "max_points": (8, 2048), "meters": (0.05, 100),
 }
 EDIT_BRANCH = "ai-map-edits"
 SCENE = "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity"
@@ -66,6 +68,9 @@ def parse(body, nonce):
         if key == "dry_run":
             if type(val) is not bool:
                 raise ValueError("dry_run must be true/false")
+        elif key == "axis":
+            if type(val) is not str or val not in ("x", "y", "z"):
+                raise ValueError("axis must be x, y or z")
         elif key in RANGES:
             lo, hi = RANGES[key]
             if type(val) not in (int, float) or not math.isfinite(val) or not lo <= val <= hi:
@@ -247,6 +252,8 @@ def handle(body, nonce, state, repo, issue_comment, publish_file):
 def selftest():
     sample = parse('AI {"op":"outline","target":"House[1]/Wall[0]","max_points":16}', 123)
     assert sample["target"] == "House[1]/Wall[0]"
+    measured = parse('AI {"op":"size","target":"House[1]/Wall[0]","axis":"z","meters":0.35,"dry_run":true}', 123)
+    assert measured["axis"] == "z" and measured["meters"] == 0.35 and measured["dry_run"]
     child = parse('AI {"op":"children","target":"House[1]"}', 123)
     assert child["op"] == "children" and child["target"] == "House[1]"
     assert len(wireframe_svg([{"x":0,"y":0,"z":0},{"x":1,"y":1,"z":1}])) > 100
@@ -258,7 +265,9 @@ def selftest():
     for value in ('AI {"op":"shell","command":"rm -rf /"}',
                   'AI {"op":"move","target":"X","dx":1e999,"dy":0,"dz":0}',
                   'AI {"op":"bounds","target":"X","secret":true}',
-                  'AI {"op":"scale","target":"X","sx":0,"sy":1,"sz":1}'):
+                  'AI {"op":"scale","target":"X","sx":0,"sy":1,"sz":1}',
+                  'AI {"op":"size","target":"X","axis":"q","meters":2}',
+                  'AI {"op":"size","target":"X","axis":"x","meters":0}'):
         try:
             parse(value, 1)
         except ValueError:
