@@ -31,6 +31,13 @@ Camera coordinates in Unity metres. Access limited to approved email via Cloudfl
 <label>Pitch <input id="pitch" type="number" value="20"></label>
 <label>Distance <input id="distance" type="number" value="22"></label>
 <button onclick="go()">Move + photograph</button></div>
+<section style="border:1px solid #456;padding:12px;border-radius:8px;margin:12px 0">
+<strong>Unity Personal activation</strong>
+<p id="licstate">Checking authorized license state...</p>
+<a id="authorize" href="#" target="_blank" rel="noopener noreferrer"
+style="display:none;color:#6fead7;font-size:18px">Sign in to Unity securely</a>
+<p><small>Only Unity's official sign-in URL is shown, inside the email-PIN protected Cloudflare session.
+Never post this link in GitHub public issues or logs.</small></p></section>
 <p id="result">Opening session...</p>
 <iframe src="/vnc/vnc.html?autoconnect=true&resize=remote&path=vnc/websockify"></iframe>
 <p><a style="color:#6fead7" href="/api/photo" target="_blank">Latest genuine Unity PNG</a></p>
@@ -42,7 +49,13 @@ body:JSON.stringify(data)});document.getElementById('result').textContent=JSON.s
 catch(e){document.getElementById('result').textContent=String(e);}}
 async function status(){try{let r=await fetch('/api/status');
 document.getElementById('result').textContent=JSON.stringify(await r.json());}catch(e){}}
+async function licenseStatus(){try{let r=await fetch('/api/license');
+let d=await r.json();document.getElementById('licstate').textContent=(d.state||'unknown')+
+(d.detail?' — '+d.detail:'');let a=document.getElementById('authorize');
+if(d.auth_url){a.href=d.auth_url;a.style.display='inline';}
+else {a.style.display='none';a.removeAttribute('href');}}catch(e){}}
 setInterval(status,7000);status();
+setInterval(licenseStatus,3000);licenseStatus();
 </script></html>"""
 
 def validate(data):
@@ -79,6 +92,13 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path == "/":
             return self.send(200, HTML, "text/html; charset=utf-8")
+        if path == "/api/license":
+            status = STATE / "license-status.json"
+            try:
+                info = json.loads(status.read_text()) if status.exists() else {"state": "awaiting_bootstrap"}
+                return self.send(200, {key: info[key] for key in ("state", "detail", "auth_url") if key in info})
+            except (OSError, json.JSONDecodeError):
+                return self.send(503, {"state": "license_status_unavailable"})
         if path == "/api/status":
             status = STATE / "status.json"
             data = json.loads(status.read_text()) if status.exists() else {"state": "Waiting for Unity Editor camera bridge"}
