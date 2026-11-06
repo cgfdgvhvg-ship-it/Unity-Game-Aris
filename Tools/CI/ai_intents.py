@@ -156,6 +156,31 @@ def wireframe_svg(points):
     parts.append('</svg>')
     return "\n".join(parts).encode()
 
+def point_cloud_ply(points):
+    """Bounded, coordinate-accurate ASCII PLY point cloud (not a closed 3D mesh)."""
+    valid = []
+    for point in points[:2048]:
+        if not isinstance(point, dict):
+            continue
+        try:
+            xyz = tuple(float(point[axis]) for axis in ("x", "y", "z"))
+        except (TypeError, ValueError, KeyError):
+            continue
+        if all(math.isfinite(n) for n in xyz):
+            valid.append(xyz)
+    if not valid:
+        return None
+    lines = [
+        "ply", "format ascii 1.0",
+        "comment Aaris Unity sampled 3D outline; not a watertight mesh",
+        f"element vertex {len(valid)}",
+        "property float x", "property float y", "property float z",
+        "end_header",
+    ]
+    lines.extend(f"{x:.6f} {y:.6f} {z:.6f}" for x, y, z in valid)
+    return ("\\n".join(lines) + "\\n").encode("ascii")
+
+
 def deliver(result, nonce, state, repo, issue_comment, publish_file):
     if result.get("nonce") != nonce:
         raise RuntimeError("Stale Unity response nonce")
@@ -181,6 +206,11 @@ def deliver(result, nonce, state, repo, issue_comment, publish_file):
             path = state / f"ai-blueprint-{nonce}.svg"
             path.write_bytes(svg)
             links.append("3-view dot blueprint: " + publish_file(nonce, path))
+        ply = point_cloud_ply(result["points"])
+        if ply:
+            path = state / f"ai-blueprint-{nonce}.ply"
+            path.write_bytes(ply)
+            links.append("3D point-cloud PLY: " + publish_file(nonce, path))
     photo = result.get("photo")
     if isinstance(photo, str) and re.fullmatch(r"ai-photo-\d+\.png", photo):
         path = state / photo
@@ -217,6 +247,9 @@ def selftest():
     sample = parse('AI {"op":"outline","target":"House[1]/Wall[0]","max_points":16}', 123)
     assert sample["target"] == "House[1]/Wall[0]"
     assert len(wireframe_svg([{"x":0,"y":0,"z":0},{"x":1,"y":1,"z":1}])) > 100
+    ply = point_cloud_ply([{"x":0,"y":0,"z":0},{"x":1,"y":2,"z":3}])
+    assert ply and b"element vertex 2" in ply and b"1.000000 2.000000 3.000000" in ply
+    assert point_cloud_ply([{"x":float("nan"),"y":0,"z":0}]) is None
     for value in ('AI {"op":"shell","command":"rm -rf /"}',
                   'AI {"op":"move","target":"X","dx":1e999,"dy":0,"dz":0}',
                   'AI {"op":"bounds","target":"X","secret":true}',
