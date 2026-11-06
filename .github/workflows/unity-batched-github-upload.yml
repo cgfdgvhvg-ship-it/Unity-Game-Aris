@@ -24,7 +24,7 @@ jobs:
     # Scheduled workflow runs on default main; no Codespace auto-wake.
     if: >-
       github.event_name != 'push' ||
-      (github.actor == 'Aaris-khan-don' &&
+      (github.actor == 'sundamunda289-art' &&
        startsWith(github.event.head_commit.message, 'Unity Batch Save:'))
     runs-on: ubuntu-latest
     timeout-minutes: 35
