@@ -3410,21 +3410,6 @@ def execute(job):
                           text=True,timeout=48,check=False)
         return {"exit_code":out.returncode,"stdout":out.stdout[-5500:],
                 "stderr":out.stderr[-600:]}
-    if op in {"unity_cli_install_start","unity_cli_install_status",
-              "unity_cli_auth_start","unity_cli_auth_status","unity_cli_license_status"}:
-        if args: raise ValueError("Unity CLI operations take no arguments")
-        source=Path("/workspaces/.aaris-world-bridge/ondemand/unity_cli_auth_bridge.py")
-        if not source.is_file() or source.is_symlink() or source.stat().st_size>16000:
-            return {"exit_code":3,"stdout":"","stderr":"Reviewed Unity CLI OAuth bridge unavailable"}
-        switch={"unity_cli_install_start":"--install-start",
-                "unity_cli_install_status":"--install-status",
-                "unity_cli_auth_start":"--auth-start",
-                "unity_cli_auth_status":"--auth-status",
-                "unity_cli_license_status":"--license-status"}
-        p=subprocess.run(["python3",str(source),switch[op]],text=True,
-                          capture_output=True,timeout=95,check=False)
-        return {"exit_code":p.returncode,"stdout":p.stdout[-9000:],
-                "stderr":p.stderr[-900:] if p.returncode else ""}
     if op in {"unity_tmp_install_start","unity_tmp_install_status","unity_desktop_deps_start","unity_desktop_deps_status"}:
         if args: raise ValueError("Unity installer takes no arbitrary arguments")
         installer=Path("/workspaces/.aaris-world-bridge/ondemand/unity_tmp_editor_installer.py")
