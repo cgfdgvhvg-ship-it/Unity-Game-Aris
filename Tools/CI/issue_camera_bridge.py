@@ -161,9 +161,26 @@ def main():
     start = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     since = start
     seen = set()
+    last_license_state = None
+    allowed_license_states = {
+        "installing_official_unity_cli", "starting_unity_oauth",
+        "waiting_for_mobile_unity_signin", "activating_unity_personal",
+        "unity_personal_activation_succeeded", "license_secret_installed",
+        "unity_activation_requires_attention", "editor_starting",
+        "fetching_unity_editor"
+    }
     until = time.monotonic() + max(15, min(args.seconds, 5400))
     while time.monotonic() < until:
         try:
+            # Public GitHub issue gets only a fixed, non-sensitive state name.
+            # Unity OAuth URLs remain ONLY on the email-PIN gated /api/license.
+            private_license = STATE / "license-status.json"
+            if private_license.is_file():
+                public_state = json.loads(private_license.read_text()).get("state")
+                if (public_state in allowed_license_states and
+                        public_state != last_license_state):
+                    issue_comment("AARIS_LICENSE_STATUS " + public_state)
+                    last_license_state = public_state
             result = gh("api", "--method", "GET", f"repos/{REPO}/issues/{ISSUE}/comments",
                         "-f", f"since={since}", "-f", "per_page=100",
                         check=True)
