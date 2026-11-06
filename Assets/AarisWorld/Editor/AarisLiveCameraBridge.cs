@@ -247,12 +247,21 @@ namespace Aaris.MapReview.Editor
             if (selection.IsTree)
             {
                 TreeInstance tree = selection.terrain.terrainData.treeInstances[selection.treeIndex];
-                Bounds b = TreeBounds(selection.terrain, tree);
+                Bounds b;
+                string fidelity = "prefab_mesh_bounds_at_tree_instance_scale";
+                try { b = TreeBounds(selection.terrain, tree); }
+                catch (InvalidOperationException)
+                {
+                    // Keep the tree present in the inventory; zero dimensions mean UNKNOWN,
+                    // not a fabricated estimate of trunk/canopy geometry.
+                    b = new Bounds(TreePosition(selection.terrain, tree), Vector3.zero);
+                    fidelity = "tree_prototype_geometry_unavailable_dimensions_unknown";
+                }
                 return new MapObject {
                     id = TreeId(selection.terrain, selection.treeIndex),
                     name = selection.terrain.name + "/tree[" + selection.treeIndex + "]",
                     kind = "native_terrain_tree",
-                    fidelity = "prefab_mesh_bounds_at_tree_instance_scale",
+                    fidelity = fidelity,
                     position_m = TreePosition(selection.terrain, tree),
                     bounds_center_m = b.center, dimensions_m = b.size
                 };
@@ -282,7 +291,7 @@ namespace Aaris.MapReview.Editor
                     throw new ArgumentException("Tree ID not found; run scan again.");
                 return new Selection { terrain = terrain, treeIndex = index };
             }
-            var all = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsSortMode.None)
+            var all = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None)
                 .Where(Editable).Where(t => t.name == id || SceneId(t) == id).Take(2).ToArray();
             if (all.Length != 1)
                 throw new ArgumentException(all.Length == 0 ? "Object not found in loaded scene." :
@@ -293,9 +302,9 @@ namespace Aaris.MapReview.Editor
         private static List<SurfaceDot> Outline(Selection selection)
         {
             var cloud = new Dictionary<int, Vector3>();
-            Bounds bounds = selection.IsTree ?
-                TreeBounds(selection.terrain, selection.terrain.terrainData.treeInstances[selection.treeIndex]) :
-                SceneBounds(selection.transform);
+            Bounds bounds = new Bounds(ToMapObject(selection).bounds_center_m,
+                                       ToMapObject(selection).dimensions_m);
+            if (bounds.size == Vector3.zero) return new List<SurfaceDot>();
             Vector3 center = bounds.center;
             Action<Vector3> include = p =>
             {
@@ -354,15 +363,17 @@ namespace Aaris.MapReview.Editor
 
         private static MapObject[] Scan(float x, float z, float radius)
         {
-            var center = new Vector3(x, 0, z);
-            var objects = new List<MapObject>();
-            foreach (Transform tr in UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsSortMode.None))
+            // Rank cheap XZ positions first. Only measure meshes for the nearest 35:
+            // avoids thousands of mesh-bounds calculations in dense native forests.
+            var candidates = new List<KeyValuePair<float, Selection>>();
+            foreach (Transform tr in UnityEngine.Object.FindObjectsByType<Transform>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 if (!Editable(tr)) continue;
                 if (tr.GetComponent<Renderer>() == null && tr.GetComponent<LODGroup>() == null) continue;
-                if (Vector2.Distance(new Vector2(x, z), new Vector2(tr.position.x, tr.position.z)) > radius) continue;
-                try { objects.Add(ToMapObject(new Selection { transform = tr })); }
-                catch (InvalidOperationException) { }
+                float d = (new Vector2(x - tr.position.x, z - tr.position.z)).sqrMagnitude;
+                if (d <= radius * radius)
+                    candidates.Add(new KeyValuePair<float, Selection>(d, new Selection { transform = tr }));
             }
             foreach (Terrain terrain in Terrains())
             {
@@ -370,19 +381,25 @@ namespace Aaris.MapReview.Editor
                 for (int i = 0; i < trees.Length; i++)
                 {
                     Vector3 p = TreePosition(terrain, trees[i]);
-                    if (Vector2.Distance(new Vector2(x, z), new Vector2(p.x, p.z)) > radius) continue;
-                    try { objects.Add(ToMapObject(new Selection { terrain = terrain, treeIndex = i })); }
-                    catch (InvalidOperationException) { }
+                    float d = (new Vector2(x - p.x, z - p.z)).sqrMagnitude;
+                    if (d <= radius * radius)
+                        candidates.Add(new KeyValuePair<float, Selection>(d,
+                            new Selection { terrain = terrain, treeIndex = i }));
                 }
             }
-            return objects.OrderBy(o => (new Vector2(o.position_m.x - x, o.position_m.z - z)).sqrMagnitude)
-                .Take(35).ToArray();
+            var nearest = new List<MapObject>();
+            foreach (var pair in candidates.OrderBy(p => p.Key).Take(35))
+            {
+                try { nearest.Add(ToMapObject(pair.Value)); }
+                catch (InvalidOperationException) { }
+            }
+            return nearest.ToArray();
         }
 
         private static string[] ClearanceWarnings(Selection selection, Bounds proposed)
         {
             var warnings = new List<string>();
-            foreach (Transform t in UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsSortMode.None))
+            foreach (Transform t in UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 if (selection.transform != null && (t == selection.transform ||
                     t.IsChildOf(selection.transform) || selection.transform.IsChildOf(t))) continue;
@@ -528,7 +545,7 @@ namespace Aaris.MapReview.Editor
                                 }
                                 instances[selected.treeIndex] = tree;
                                 Undo.RegisterCompleteObjectUndo(data, "Aaris AI terrain tree edit");
-                                data.SetTreeInstances(instances, true);
+                                data.SetTreeInstances(instances, false);
                                 EditorUtility.SetDirty(data);
                                 AssetDatabase.SaveAssets();
                             }
@@ -540,6 +557,8 @@ namespace Aaris.MapReview.Editor
                                     tr.position = new Vector3(intent.x, intent.y, intent.z);
                                 else tr.localScale = Vector3.Scale(tr.localScale,
                                     new Vector3(intent.x, intent.y, intent.z));
+                                if (PrefabUtility.IsPartOfPrefabInstance(tr))
+                                    PrefabUtility.RecordPrefabInstancePropertyModifications(tr);
                                 EditorUtility.SetDirty(tr);
                                 EditorSceneManager.MarkSceneDirty(tr.gameObject.scene);
                                 EditorSceneManager.SaveScene(tr.gameObject.scene);
