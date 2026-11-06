@@ -32,6 +32,7 @@ jobs:
           python3 -m unittest discover -s Tools/World/tests -p 'test_unity_terms_pid_gate.py' -v
           python3 -m unittest discover -s Tools/World/tests -p 'test_unity_shader_issue_filter.py' -v
           python3 -m unittest discover -s Tools/World/tests -p 'test_unity_house_survey_quarantine.py' -v
+          python3 -m unittest discover -s Tools/World/tests -p 'test_unity_sceneview_gallery.py' -v
       - name: Validate job, check Cloudflare-started Codespace, execute directly via SSH
         env:
           AARIS_CODESPACE_TOKEN: ${{ secrets.AARIS_CODESPACE_TOKEN }}
