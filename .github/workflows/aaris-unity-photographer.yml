@@ -1,0 +1,199 @@
+name: Aaris Unity Photographer and Release Checkpoints
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aaris-unity-photographer.yml'
+      - 'AGENTS.md'
+      - 'Tools/CI/**'
+      - 'Assets/**'
+      - 'Packages/**'
+      - 'ProjectSettings/**'
+  workflow_dispatch:
+    inputs:
+      intent:
+        description: 'Photos to capture: all, houses, roads, tiles or sky'
+        required: false
+        default: all
+        type: choice
+        options: [all, houses, roads, tiles, sky]
+  schedule:
+    - cron: '23 3 * * 1,4'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: aaris-unity-checkpoints
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          persist-credentials: false
+      - name: Install checkpoint codec
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq zstd
+      - name: Test archive round-trip and Python syntax
+        run: |
+          python3 -m compileall -q Tools/CI
+          python3 Tools/CI/session_store.py selftest
+          test -s Assets/AarisWorld/Editor/AarisCICapture.cs
+          test -s Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity
+          grep -q '6000.3.26f1' ProjectSettings/ProjectVersion.txt
+          echo 'Checkpoint logic and native Unity source paths checked.'
+      - name: Record preflight summary
+        if: always()
+        run: |
+          echo '### Aaris session preflight' >> "$GITHUB_STEP_SUMMARY"
+          echo "Source: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo 'No Codespaces; Unity renders require an active Unity license.' >> "$GITHUB_STEP_SUMMARY"
+
+  photograph:
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
+      CAPTURE_INTENT: ${{ inputs.intent || 'all' }}
+      GAMECI_IMAGE: unityci/editor:ubuntu-6000.3.26f1-base-3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          persist-credentials: false
+      - name: Check Unity license is configured
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        run: |
+          if [[ -z "$UNITY_LICENSE" ]]; then
+            echo '::error::UNITY_LICENSE secret required for Unity Editor rendering. Unity Personal may require Unity Hub activation.'
+            exit 1
+          fi
+          echo 'Unity license secret present (value hidden).'
+      - name: Install Xvfb, Mesa, codec and Git LFS
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq zstd xvfb libgl1-mesa-dri libglu1-mesa2 git-lfs
+          git lfs install --local
+          mkdir -p ci-photos ci-logs
+          df -h .
+      - name: Restore matching project checkpoint
+        shell: bash
+        run: |
+          set +e
+          python3 Tools/CI/session_store.py restore project
+          rc=$?
+          set -e
+          if [[ "$rc" -ne 0 && "$rc" -ne 3 ]]; then exit "$rc"; fi
+      - name: Fetch authoritative Unity LFS assets
+        run: |
+          git lfs pull --include="Assets/**" --exclude=""
+          if head -c 80 Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity | grep -q 'git-lfs.github.com/spec'; then
+            echo '::error::Unity scene remains an LFS pointer; refusing false render.'
+            exit 1
+          fi
+      - name: Restore compatible Library cache
+        shell: bash
+        run: |
+          set +e
+          python3 Tools/CI/session_store.py restore engine
+          rc=$?
+          set -e
+          if [[ "$rc" -ne 0 && "$rc" -ne 3 ]]; then exit "$rc"; fi
+      - name: Begin periodic best-effort project autosave
+        run: |
+          (while sleep 420; do
+            if [[ -n "$(git status --porcelain -- Assets Docs Packages ProjectSettings Tools/MapBuild)" ]]; then
+              python3 Tools/CI/session_store.py save project || true
+            fi
+          done) > /tmp/aaris-autosave.log 2>&1 &
+          echo "$!" > /tmp/aaris-autosave.pid
+      - name: Render HD photographs with Unity URP, Xvfb and Mesa
+        id: render
+        timeout-minutes: 240
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        run: |
+          mkdir -p ci-photos ci-logs
+          docker pull "$GAMECI_IMAGE"
+          docker run --rm --shm-size=1g \
+            -e UNITY_LICENSE -e CAPTURE_INTENT \
+            -e LIBGL_ALWAYS_SOFTWARE=1 -e GALLIUM_DRIVER=llvmpipe \
+            -v "$PWD:/project" -w /project \
+            "$GAMECI_IMAGE" bash -lc '
+              set -euo pipefail
+              if ! command -v xvfb-run >/dev/null 2>&1; then
+                apt-get update -qq && apt-get install -y -qq xvfb libgl1-mesa-dri libglu1-mesa2
+              fi
+              mkdir -p /root/.local/share/unity3d/Unity /project/ci-logs
+              printf "%s" "$UNITY_LICENSE" > /root/.local/share/unity3d/Unity/Unity_lic.ulf
+              chmod 600 /root/.local/share/unity3d/Unity/Unity_lic.ulf
+              xvfb-run -a -s "-screen 0 1920x1080x24 +extension GLX" \
+                unity-editor -projectPath /project -batchmode -quit \
+                -executeMethod Aaris.MapReview.Editor.AarisCICapture.Capture \
+                "-aarisCaptureIntent=$CAPTURE_INTENT" \
+                -logFile /project/ci-logs/unity-editor.log
+            '
+      - name: Audit actual PNGs for black, white and empty frames
+        id: audit
+        if: steps.render.outcome == 'success'
+        run: |
+          python3 -m pip install --disable-pip-version-check pillow==11.3.0
+          python3 Tools/CI/photo_audit.py --directory ci-photos
+      - name: Publish photos to live-photos Release
+        if: always()
+        run: |
+          shopt -s nullglob
+          files=(ci-photos/*.png ci-photos/*.json)
+          if (( ${#files[@]} )); then
+            gh release view live-photos --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
+              gh release create live-photos --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+                --title 'Aaris live Unity map photos' --notes 'Actual Unity camera photos; see photo-audit.json for visual QA.'
+            gh release upload live-photos --repo "$GITHUB_REPOSITORY" --clobber "${files[@]}"
+          else
+            echo 'No Unity PNGs produced; live-photos not updated.'
+          fi
+      - name: Upload photographs and editor logs as Actions artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-unity-photos-and-logs
+          path: |
+            ci-photos/
+            ci-logs/
+          retention-days: 30
+          if-no-files-found: warn
+      - name: Stop autosave before final checkpoint
+        if: always()
+        run: |
+          if [[ -f /tmp/aaris-autosave.pid ]]; then
+            kill "$(cat /tmp/aaris-autosave.pid)" 2>/dev/null || true
+          fi
+          if [[ -s /tmp/aaris-autosave.log ]]; then tail -n 50 /tmp/aaris-autosave.log; fi
+      - name: Save changed map assets as SHA-256 Release checkpoint
+        if: always()
+        run: python3 Tools/CI/session_store.py save project
+      - name: Save Library cache after successful screenshot audit
+        if: steps.audit.outcome == 'success'
+        timeout-minutes: 25
+        continue-on-error: true
+        run: python3 Tools/CI/session_store.py save engine
+      - name: Write diagnostic summary
+        if: always()
+        run: |
+          echo '### Aaris Unity Photographer' >> "$GITHUB_STEP_SUMMARY"
+          echo "Commit: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "Capture intent: $CAPTURE_INTENT" >> "$GITHUB_STEP_SUMMARY"
+          echo "Unity render: ${{ steps.render.outcome }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Visual audit: ${{ steps.audit.outcome }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Photos: https://github.com/$GITHUB_REPOSITORY/releases/tag/live-photos" >> "$GITHUB_STEP_SUMMARY"
+          echo "Checkpoint: https://github.com/$GITHUB_REPOSITORY/releases/tag/project-checkpoint" >> "$GITHUB_STEP_SUMMARY"
