@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "id": "r20261106-sunda-upgrade-stop-c01",
+  "action": "stop",
+  "recorded_utc": "2026-11-06T04:13:43.218Z",
+  "status": "stop_requested",
+  "state_before": "Available"
+}
