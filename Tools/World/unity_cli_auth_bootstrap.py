@@ -125,6 +125,21 @@ def status():
             result["cli_version"]=match.group(0) if match else "unrecognized"
         except (OSError,subprocess.TimeoutExpired):
             result["cli_version"]="unavailable"
+        try:
+            doc=subprocess.run([str(binpath),"doctor","--format","json"],
+                               capture_output=True,text=True,stdin=subprocess.DEVNULL,
+                               timeout=25,check=False)
+            raw=doc.stdout+doc.stderr
+            result["doctor_diagnostic"]={
+               "exit_code":doc.returncode,
+               "check_codes":sorted(set(re.findall(r'"messageKey"\\s*:\\s*"([a-zA-Z0-9_:.-]{5,100})"',raw)))[:25],
+               "credential_store_not_shared":("DOCTOR_CHECK_CREDENTIAL_STORE_NOT_SHARED" in raw),
+               "mentions_keyutils":("keyutils" in raw.lower()),
+               "mentions_secret_service":("secret service" in raw.lower()),
+               "auth_broker_unavailable":("not-running" in raw.lower() or "not running" in raw.lower()),
+            }
+        except (OSError,subprocess.TimeoutExpired):
+            result["doctor_diagnostic"]={"error":"unavailable_or_timeout"}
         result["authenticated"]=run_quiet([str(binpath),"auth","status","--format","json"],timeout=12)==0
         result["personal_license_active"]=run_quiet([str(binpath),"license","status","--format","json"],timeout=14)==0
         # OAuth URL is intentionally returned only for an explicit status read.
