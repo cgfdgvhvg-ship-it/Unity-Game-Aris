@@ -896,6 +896,54 @@ def unity_virtual_gui_launch():
 
 
 
+def unity_virtual_gui_restart_after_license():
+    """One guarded graceful Unity GUI restart; preserve scratch scene and LFS files."""
+    snapshot=_session_plan()
+    ready=(snapshot.get("scratch_core_matches") is True
+           and snapshot.get("scratch_terrain_differs") is False
+           and snapshot.get("scratch_ready_for_reopen") is True
+           and snapshot.get("scratch_loaded") is False)
+    if not ready:
+        return {"exit_code":3,"stdout":json.dumps({
+            "core_matches":snapshot.get("scratch_core_matches"),
+            "terrain_differs":snapshot.get("scratch_terrain_differs"),
+            "scratch_loaded":snapshot.get("scratch_loaded")}),
+            "stderr":"Unsafe Unity scratch state: restart refused"}
+    status=unity_virtual_gui_status()
+    if status.get("queued_virtual_commands",0) or status.get("virtual_completed_results",0):
+        return {"exit_code":3,"stdout":"",
+                "stderr":"Pending Unity authoring operations: restart refused"}
+    auth=Path("/workspaces/.aaris-world-bridge/ondemand/unity_cli_auth_bootstrap.py")
+    if not auth.is_file() or auth.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Approved Unity license helper missing"}
+    check=subprocess.run(["python3",str(auth),"--status"],capture_output=True,
+                         text=True,timeout=62,check=False)
+    if check.returncode:
+        return {"exit_code":3,"stdout":"","stderr":"Unity CLI license verification failed"}
+    try:
+        license_status=json.loads(check.stdout)
+    except ValueError:
+        return {"exit_code":3,"stdout":"","stderr":"Unity license verification was not JSON"}
+    if not (license_status.get("authenticated") is True
+            and license_status.get("personal_license_active") is True):
+        return {"exit_code":3,"stdout":"",
+                "stderr":"Unity Personal license or identity not verified"}
+    pids=_scratch_unity_pids()
+    if len(pids)>1:
+        return {"exit_code":3,"stdout":"","stderr":"Multiple scratch Unity processes: inspect before restart"}
+    if pids:
+        # Graceful SIGTERM only. Never SIGKILL or reset/delete the project.
+        os.kill(pids[0], signal.SIGTERM)
+        for _ in range(60):
+            if pids[0] not in _scratch_unity_pids(): break
+            time.sleep(0.25)
+        if pids[0] in _scratch_unity_pids():
+            return {"exit_code":3,"stdout":"",
+                    "stderr":"Unity did not close gracefully; scratch preserved"}
+    return unity_virtual_gui_launch()
+
+
+
 VIRTUAL_CONTROL=BATCH_ROOT/"control"
 
 
@@ -3611,6 +3659,9 @@ def execute(job):
     if op == "unity_virtual_gui_launch":
         if args: raise ValueError("virtual Editor start accepts no arguments")
         return unity_virtual_gui_launch()
+    if op == "unity_virtual_gui_restart_after_license":
+        if args: raise ValueError("Unity license refresh accepts no user arguments")
+        return unity_virtual_gui_restart_after_license()
     if op == "unity_virtual_gui_status":
         if args: raise ValueError("virtual Editor status accepts no arguments")
         return {"exit_code":0,"stdout":json.dumps(unity_virtual_gui_status(),ensure_ascii=False),"stderr":""}
