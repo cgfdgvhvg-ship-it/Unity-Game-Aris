@@ -63,9 +63,9 @@ const PAGE=[
 'if(v.live_url){let a=document.createElement("a");a.href=v.live_url;a.textContent="Open live desktop (PIN required)";d.appendChild(a)}',
 'else d.textContent="No active desktop session";',
 'if(v.latest_photo){let a=document.createElement("a");a.href=v.latest_photo;a.textContent="Open latest Unity PNG";p.appendChild(a)}',
-'else p.textContent="No verified Unity photo yet";
-const w=document.getElementById("world");w.appendChild(document.createTextNode(v.latest_map_status||"No update"));
-for(const item of [[v.latest_map_json," Inspector JSON "],[v.latest_map_ply," 3D blueprint PLY "]]){if(item[0]){let a=document.createElement("a");a.href=item[0];a.textContent=item[1];w.appendChild(a)}}',
+'else p.textContent="No verified Unity photo yet";',
+'const w=document.getElementById("world");w.appendChild(document.createTextNode(v.latest_map_status||"No update"));',
+'for(const item of [[v.latest_map_json," Inspector JSON "],[v.latest_map_ply," 3D blueprint PLY "]]){if(item[0]){let a=document.createElement("a");a.href=item[0];a.textContent=item[1];w.appendChild(a)}}',
 '}catch(e){document.getElementById("desktop").textContent="GitHub lookup unavailable"}}refresh();setInterval(refresh,30000);</script></html>'
 ].join("");
 export default{async fetch(req){
