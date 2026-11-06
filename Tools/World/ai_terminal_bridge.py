@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """GitHub issue jobs -> Codespace process -> GitHub issue results.
 
-ONLY comments authored by Aaris-khan-don on the configured private issue
+ONLY comments authored by sundamunda289-art on the configured private issue
 with exact AARIS_JOB prefix are accepted. This is a remote command channel.
 The owner must keep the repo, issue and credentials private.
 """
@@ -15,8 +15,8 @@ import subprocess
 import sys
 import time
 
-REPO = "Aaris-khan-don/Unity-Game-Aris"
-OWNER = "Aaris-khan-don"
+REPO = "sundamunda289-art/Unity-Game-Aris"
+OWNER = "sundamunda289-art"
 ROOT = Path("/workspaces/Unity-Game-Aris")
 DATA = Path("/workspaces/.aaris-world-bridge")
 ISSUE = int((DATA / "issue.txt").read_text().strip())
