@@ -120,7 +120,8 @@ def process(comment):
         if license_state.get("state") in {
             "installing_official_unity_cli", "starting_unity_oauth",
             "waiting_for_mobile_unity_signin", "activating_unity_personal",
-            "installing_official_unity_hub", "waiting_for_unity_hub_signin",
+            "installing_unity_hub_prerequisites",
+        "installing_official_unity_hub", "waiting_for_unity_hub_signin",
             "editor_starting"
         }:
             issue_comment(f"Activation request #{comment_id}: Unity is already at "
