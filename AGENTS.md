@@ -1,3 +1,13 @@
+# 2026-11-06 Unity scratch Terms regression fixed and authenticated
+
+The owner-approved Codespace job `unity-black-sky-terms-20261106-g1` failed because `ai/codespace-jobs:Tools/World/ai_codespace_executor.py` used `_unity_pids()` (which detects only the original workspace Editor) when the actual isolated Editor process was under `/tmp/aaris-unity-batch/project`. The live X11 window was `Unity Editor Software Terms` (640x480) with PID 5645; **the absence of an original-workspace PID did not mean Unity was stopped**.
+
+**Applied fix on `ai/codespace-jobs`:** require exactly one `_scratch_unity_pids()`, verify the exact X11 window's `_NET_WM_PID` belongs to that scratch Editor, preserve fixed-window geometry and reject unrecognized windows. Added `Tools/World/tests/test_unity_terms_pid_gate.py` (valid scratch PID, wrong/original PID, missing/multiple PIDs, spoofed malformed properties); enabled it in `.github/workflows/ai-codespace-on-demand.yml` preflight. The owner queue rerun `unity-black-sky-terms-fixed-20261106-g2`, GitHub Actions [42190644088](https://github.com/sundamunda289-art/Unity-Game-Aris/actions/runs/42190644088), **PASSED**, and native result recorded `terms_window_closed:true`, `scratch_editor_pids:[5645]`, original source unchanged. This confirms the modal closed, **not** that Unity has imported the scene or rendered the repaired game.
+
+**For future AI:** when a Codespace source/GUI helper reports a false missing process, check scratch vs owner process provenance and X11 PID, fix the *smallest bug*, add a regression, rerun owner-only workflow, and update this file with live evidence. Never erase the original worktree or bypass the fixed owner-only action gates. Next gate: `unity_virtual_gui_status` should show AssetDatabase ready/scene readback, then real matched visual captures and Android test.
+
+---
+
 # UPDATED 2026-11-06 — Cloudflare lifecycle RECOVERED; Unity running, map import pending
 
 **The actual owner Cloudflare Worker `aaris-codespace-relay` is deployed with enabled one-minute cron and stored secrets.** Through the exact authorized `.aaris/relay-jobs/r20261106-unity-visual-repair-start-d3.json`, Worker recorded `start_requested` with prior state `Shutdown` at 2026-11-06T08:16:46Z. The dedicated Github Actions on-demand queue then confirmed the Codespace `redesigned-space-train-gxp5jwvq94wg2wvw6` was **Available**, SSH operational. Do not say Codespace remains stopped.
