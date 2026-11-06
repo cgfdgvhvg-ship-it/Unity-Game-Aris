@@ -120,6 +120,7 @@ def process(comment):
         if license_state.get("state") in {
             "installing_official_unity_cli", "starting_unity_oauth",
             "waiting_for_mobile_unity_signin", "activating_unity_personal",
+            "installing_official_unity_hub", "waiting_for_unity_hub_signin",
             "editor_starting"
         }:
             issue_comment(f"Activation request #{comment_id}: Unity is already at "
@@ -148,7 +149,7 @@ def process(comment):
                           "may still be required.")
             return "activation-requested"
         issue_comment(f"Activation request #{comment_id}: Docker could not launch "
-                      "the authorized Unity CLI activation process.")
+                      "the authorized Unity Hub bootstrap process.")
         return "activation-launch-failed"
     try:
         camera = parse(comment.get("body", ""))
@@ -233,6 +234,8 @@ def main():
         "installing_official_unity_cli", "starting_unity_oauth",
         "waiting_for_mobile_unity_signin", "activating_unity_personal",
         "unity_personal_activation_succeeded", "license_secret_installed",
+        "installing_official_unity_hub", "waiting_for_unity_hub_signin",
+        "unity_hub_license_detected", "editor_process_ended",
         "unity_activation_requires_attention", "editor_starting",
         "fetching_unity_editor"
     }
