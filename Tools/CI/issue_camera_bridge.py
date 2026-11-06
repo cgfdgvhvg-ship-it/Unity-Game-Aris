@@ -235,7 +235,9 @@ def main():
         "installing_official_unity_cli", "starting_unity_oauth",
         "waiting_for_mobile_unity_signin", "activating_unity_personal",
         "unity_personal_activation_succeeded", "license_secret_installed",
-        "installing_official_unity_hub", "waiting_for_unity_hub_signin",
+        "installing_unity_hub_prerequisites", "installing_official_unity_hub",
+        "starting_unity_hub_gui", "waiting_for_unity_hub_signin",
+        "unity_hub_window_not_visible", "unity_hub_window_check_unavailable",
         "unity_hub_license_detected", "editor_process_ended",
         "unity_activation_requires_attention", "editor_starting",
         "fetching_unity_editor"
