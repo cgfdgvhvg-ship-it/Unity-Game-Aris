@@ -217,6 +217,8 @@ namespace Aaris.MapReview.Editor
             {
                 var cloud = new List<Point>();
                 SampleMeshes(tform, Matrix4x4.identity, r.samples == 0 ? 512 : r.samples, cloud, reply);
+                if (cloud.Count == 0)
+                    throw new InvalidOperationException("No readable mesh vertices; cannot generate PLY blueprint");
                 reply.points = cloud.ToArray();
                 reply.sampledVertices = cloud.Count;
                 reply.blueprint = "ai-blueprint.ply";
@@ -272,19 +274,61 @@ namespace Aaris.MapReview.Editor
                 throw new InvalidOperationException("Invalid native tree prototype");
             var prefab = data.treePrototypes[tree.prototypeIndex].prefab;
             reply.treePrototype = prefab == null ? "MISSING" : prefab.name;
-            if (r.op == "tree_blueprint" && prefab != null)
+            if (prefab == null) throw new InvalidOperationException("Native Terrain tree prefab missing");
+            var parent = Matrix4x4.TRS(reply.position,
+                Quaternion.Euler(0, tree.rotation * Mathf.Rad2Deg, 0),
+                new Vector3(tree.widthScale, tree.heightScale, tree.widthScale));
+            var overrideMatrix = parent * prefab.transform.worldToLocalMatrix;
+            // Dimensions are accurate world-aligned mesh bounds (metres), even
+            // when the imported mesh is marked non-readable and has no PLY data.
+            Bounds measured = MeasureMeshBounds(prefab.transform, overrideMatrix, reply.position);
+            reply.bounds = new Size {
+                center = measured.center, extents = measured.extents, size = measured.size
+            };
+            reply.rotation = new Vector3(0, tree.rotation * Mathf.Rad2Deg, 0);
+            reply.localScale = new Vector3(tree.widthScale, tree.heightScale, tree.widthScale);
+            reply.materials = prefab.GetComponentsInChildren<Renderer>(true)
+                .SelectMany(renderer => renderer.sharedMaterials).Where(material => material != null)
+                .Select(material => material.name).Distinct().Take(100).ToArray();
+            if (r.op == "tree_blueprint")
             {
                 var cloud = new List<Point>();
-                var parent = Matrix4x4.TRS(reply.position,
-                    Quaternion.Euler(0, tree.rotation * Mathf.Rad2Deg, 0),
-                    new Vector3(tree.widthScale, tree.heightScale, tree.widthScale));
-                SampleMeshes(prefab.transform, parent * prefab.transform.worldToLocalMatrix,
+                SampleMeshes(prefab.transform, overrideMatrix,
                     r.samples == 0 ? 512 : r.samples, cloud, reply);
+                if (cloud.Count == 0)
+                    throw new InvalidOperationException("Tree has no readable mesh vertices for PLY");
                 reply.points = cloud.ToArray();
                 reply.sampledVertices = cloud.Count;
                 reply.blueprint = "ai-blueprint.ply";
                 WritePly(Path.Combine(State, reply.blueprint), cloud);
             }
+        }
+
+        // Outer surface AABB from all child mesh subparts; includes trunk and leaves.
+        // This does not substitute for physical collision geometry or a watertight mesh.
+        private static Bounds MeasureMeshBounds(Transform root, Matrix4x4 worldOverride, Vector3 origin)
+        {
+            bool hasMesh = false;
+            Bounds combined = new Bounds(origin, Vector3.zero);
+            foreach (MeshFilter filter in root.GetComponentsInChildren<MeshFilter>(true).Take(128))
+            {
+                Mesh mesh = filter.sharedMesh;
+                if (mesh == null) continue;
+                Bounds local = mesh.bounds;
+                Matrix4x4 matrix = worldOverride * filter.transform.localToWorldMatrix;
+                for (int x = -1; x <= 1; x += 2)
+                for (int y = -1; y <= 1; y += 2)
+                for (int z = -1; z <= 1; z += 2)
+                {
+                    Vector3 corner = matrix.MultiplyPoint3x4(local.center + Vector3.Scale(
+                        local.extents, new Vector3(x, y, z)));
+                    if (!hasMesh) { combined = new Bounds(corner, Vector3.zero); hasMesh = true; }
+                    else combined.Encapsulate(corner);
+                }
+            }
+            if (!hasMesh)
+                throw new InvalidOperationException("Tree prototype lacks MeshFilter geometry");
+            return combined;
         }
 
         private static void SampleMeshes(Transform root, Matrix4x4 worldOverride,
