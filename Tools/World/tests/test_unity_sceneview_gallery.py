@@ -46,6 +46,20 @@ class ScratchSceneViewGalleryTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ex.validate_live_payload(dict(good,cameraPosition={'x':float('nan'),'y':0,'z':0}))
 
+    def test_verified_x11_refresh_requires_only_sceneview_patch(self):
+        source=Path(ex.__file__).read_text(encoding="utf-8")
+        code=source.split('def unity_forest_editor_refresh(',1)[1].split('def unity_forest_treeonly_tune(',1)[0]
+        self.assertIn('if require_view:',code)
+        self.assertIn('bridge.is_symlink()',code)
+        self.assertIn('FrameForScreenshot(request, result)',code)
+        self.assertIn('Unity - project - TerrainDemoScene',code)
+        self.assertIn('_NET_WM_PID',code)
+        self.assertIn('XTestFakeKeyEvent',code)
+        self.assertNotIn('SubmitRenderRequest',code)
+        execute=source.split('def execute(',1)[1]
+        self.assertIn('if op == "unity_sceneview_refresh":',execute)
+        self.assertIn('require_forest=False, require_view=True',execute)
+
     def test_staging_has_original_and_scratch_guards(self):
         source=Path(ex.__file__).read_text(encoding='utf-8')
         block=source.split('def unity_sceneview_prepare():',1)[1].split('\ndef unity_virtual_frame(',1)[0]
