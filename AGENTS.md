@@ -197,3 +197,94 @@ available to a separate Editor Docker container.
   remain necessary before this workflow can be called successful.
 
 Official licensing: https://docs.unity.com/en-us/engine/6000.0/manual/get-started/install-and-upgrade/licenses-and-activation/license-activation-methods
+
+
+## Live operator v2: private desktop diagnostics and object-part discovery (2026-11-07)
+
+This section extends the existing two agent-facing tools; do **not** create a
+separate control service for each action. The transport is owner-authored
+GitHub [Issue #77](https://github.com/sundamunda289-art/Unity-Game-Aris/issues/77);
+the live runner remains the Unity Editor host, not GitHub's web UI.
+
+### First diagnose, then operate
+
+1. On an active runner, post **`DIAGNOSE`** from the repository-owner
+   account. The Issue relay immediately replies with *sanitized* booleans and
+   fixed status names: Cloudflare origin health, VNC handshake, Unity Docker
+   process, Hub/Editor process detection, terrain LFS hydration, and whether
+   a genuine Editor photo has been written. **It works without a Unity license.**
+   It also writes `ci-live-control/ai-diagnostics-<comment-id>.json` on the runner.
+2. On the **email-PIN-protected temporary Cloudflare page only**, use
+   `/api/diagnostics` for the same status or `/api/desktop.png` for an
+   **actual Xvfb desktop screenshot even before the Unity Editor starts**.
+   The first endpoint is safe to quote in a public Issue; the second may show
+   private Unity Hub sign-in/MFA, so **never post, commit or upload that image**
+   to public GitHub Issues, Releases, artifacts, caches or pull requests.
+   This desktop screenshot is not a Unity-scene render.
+3. Each runner attempts the existing legitimate license/bootstrap flow.
+   If the status is `waiting_for_unity_hub_signin`, open noVNC and complete
+   official Unity Hub sign-in/Personal activation. A blank screen and a running
+   Docker container do **not** establish a licensed Unity Editor.
+4. On shutdown or job failure, Actions uploads the safe
+   `aaris-runner-diagnostics` artifact. Download its
+   `runner-diagnostics.json` to see how far the setup progressed. The
+   artifact excludes OAuth URLs, Unity license files, screen pixels and logs.
+
+### Object-part exploration, changes and genuine visuals
+
+- `AI {"op":"find","query":"House"}` locates object names and exact
+  hierarchy IDs from the real loaded Unity scene.
+- `AI {"op":"children","target":"<exact-id>"}` lists direct children with
+  IDs, metres-based renderer dimensions where available, position and local
+  scale. Repeat recursively to discover walls, roofs, windows, trunk/branches
+  and leaf mesh objects **if they are separate GameObjects**. Never guess IDs.
+- `AI {"op":"inspect","x":-420,"y":22,"z":-210,"radius":40}` surveys
+  nearby scene objects **and native Terrain tree instances**; it is bounded
+  to 80 entries. Use exact `terrain-tree:<tile>:<index>` IDs only after
+  inspection because index IDs can change if tree lists are edited.
+- `AI {"op":"bounds","target":"<exact-id>"}` measures approximate
+  world-space metres. `AI {"op":"outline","target":"<exact-id>","max_points":1024}`
+  uploads sampled 3D XYZ vertices as PLY and an orthographic three-view dot
+  SVG. This is **not** a watertight model or per-leaf dynamic simulation.
+- `AI {"op":"photo","target":"<exact-id>","distance":30}` takes a genuine
+  Editor camera PNG after licensed Unity import. A fully black frame is
+  rejected, not described as a successful render. Fresh runner downloads,
+  import, licensing and shaders prevent any guaranteed screenshot latency.
+- `AI {"op":"move","target":"<exact-id>","dx":1,"dy":0,"dz":0,"dry_run":true}`
+  previews a displacement; omit `dry_run` for a source edit.
+  `AI {"op":"scale","target":"<exact-id>","sx":1.1,"sy":1,"sz":1.1,"dry_run":true}`
+  previews scale. Repeat inspection after the edit, then use `photo`.
+  Separate house wall/leaf GameObjects can be scaled individually using
+  their exact ID, after checking which local axis represents thickness.
+- Native Terrain tree `children` reports **read-only, shared prototype
+  parts**. A leaf/trunk edit on one terrain instance is *not supported* by
+  per-instance `scale`; those meshes belong to a shared prefab and would
+  change the entire species. Native tree `scale` changes overall width and
+  height only (with `sx == sz`). Do not claim independent per-tree leaf or
+  bark thickness editing.
+- Mutations are saved only to allowlisted `.unity`/TerrainData `.asset`
+  sources on `ai-map-edits`, including the normal Git LFS push. No
+  automatic collision reflow is promised; inspect nearby actors, roads and
+  buildings before and after scaling. No arbitrary shell/AI-generated code
+  can be issued through a public comment.
+
+### Runner lifetime and recovery
+
+GitHub-hosted runners are disposable and capped by Actions job limits. The
+workflow restores Git sources, LFS terrain and the safe Unity `Library/`
+cache, then resumes `ai-map-edits` on each **new authorized run**. The
+existing boot flow does not guarantee a persistent Unity Hub license across
+machines. Do not set up an infinite self-triggering six-hour runner loop:
+it would exhaust Actions quota and cannot eliminate licensing. Durable state
+is Git commits, not an ephemeral VM, temporary license or noVNC session.
+
+### Test and release checklist
+
+- `python3 -m py_compile Tools/CI/ai_intents.py Tools/CI/issue_camera_bridge.py Tools/CI/live_camera_server.py`
+- `python3 Tools/CI/ai_intents.py` and
+  `python3 Tools/CI/issue_camera_bridge.py --selftest`
+- `python3 Tools/CI/unity_personal_bootstrap.py --selftest`
+- Inspect the GitHub Actions `verify` result for the PR.
+- After authorized live licensing, verify Unity C# compilation and
+  actual Editor PNG, then check Git LFS commit/push on a safe dry-run and
+  one small non-dry-run operation. Static Python PASS is not a Unity PASS.
