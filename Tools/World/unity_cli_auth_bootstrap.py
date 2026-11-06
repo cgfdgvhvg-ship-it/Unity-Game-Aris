@@ -52,7 +52,7 @@ def run_quiet(argv, timeout=20):
 def safe_url():
     if not AUTH_LOG.is_file() or AUTH_LOG.is_symlink():return None
     data=AUTH_LOG.read_text(errors="replace")[-14000:]
-    candidates=re.findall(r'https://[^\\s"\\\\<>]+',data)
+    candidates=re.findall(r'https://[^\s"\\<>]+',data)
     for match in candidates:
         url=match.strip("'),;")
         host=urlparse(url).hostname or ""
