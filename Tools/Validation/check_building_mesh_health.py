@@ -71,7 +71,7 @@ def inspect_mesh(source, expected_bounds, expected_triangles=None, expected_subm
         require(isinstance(subs, list) and bool(subs), "no mesh submeshes")
         if expected_submeshes is not None:
             require(len(subs) == expected_submeshes, "authored material/submesh slots changed")
-        spans, total, max_edge, empty_slots = [], 0, 0.0, []
+        spans, total, max_edge, empty_slots, slot_quality = [], 0, 0.0, [], []
         for slot, sub in enumerate(subs):
             start, size = sub["firstByte"], sub["indexCount"]
             require(type(start) is int and type(size) is int and start >= 0 and
@@ -92,6 +92,19 @@ def inspect_mesh(source, expected_bounds, expected_triangles=None, expected_subm
                     f"LOD submesh {slot}: triangle index out of vertex range")
             tris = pos[ids].reshape(-1, 3, 3)
             total += len(tris)
+            # Diagnostic only: distinguish physical spikes from normals/winding/lighting issues.
+            face = np.cross(tris[:, 1] - tris[:, 0], tris[:, 2] - tris[:, 0])
+            face_len = np.linalg.norm(face, axis=1)
+            normals = vertices[ids].reshape(-1, 3, 12)[:, :, 3:6].astype(np.float64).mean(axis=1)
+            norm_len = np.linalg.norm(normals, axis=1)
+            good = (face_len > 1.e-9) & (norm_len > 1.e-8)
+            cosine = np.zeros(len(tris))
+            cosine[good] = (face[good] * normals[good]).sum(axis=1) / (face_len[good] * norm_len[good])
+            slot_quality.append({"submesh": slot, "triangles": len(tris),
+                                 "degenerate_area_triangles": int((face_len <= 1.e-9).sum()),
+                                 "normal_unusable_triangles": int((norm_len <= 1.e-8).sum()),
+                                 "face_normal_opposing_triangles": int((good & (cosine < -.20)).sum()),
+                                 "face_normal_agreeing_triangles": int((good & (cosine > .20)).sum())})
             for i, j in ((0, 1), (0, 2), (1, 2)):
                 max_edge = max(max_edge, float(np.linalg.norm(
                     tris[:, i] - tris[:, j], axis=1).max()))
@@ -117,6 +130,10 @@ def inspect_mesh(source, expected_bounds, expected_triangles=None, expected_subm
         return {"status": "ok", "vertices": n, "triangles": total,
                 "submeshes": len(subs), "empty_submeshes": empty_slots,
                 "triangles_removed_since_layout": expected_triangles - total if expected_triangles is not None else None,
+                "degenerate_area_triangles": sum(x["degenerate_area_triangles"] for x in slot_quality),
+                "face_normal_opposing_triangles": sum(x["face_normal_opposing_triangles"] for x in slot_quality),
+                "face_normal_agreeing_triangles": sum(x["face_normal_agreeing_triangles"] for x in slot_quality),
+                "slot_quality": slot_quality,
                 "max_triangle_edge_m": round(max_edge, 3)}
     except (KeyError, IndexError, TypeError, ValueError, yaml.YAMLError) as e:
         if isinstance(e, MeshHealthError):
@@ -148,7 +165,9 @@ def inspect_project(root, require_native=True):
                 else:
                     failures.append({"file": rel, "error": str(exc)})
     return {"status": "failed" if failures else "passed", "meshes": rows,
-            "failures": failures, "unity_render_tested": False,
+            "failures": failures,
+            "quality_diagnostic_only": "Face-normal cosine uses the authored triangle cross product; evaluate against Unity back-face convention before changing winding.",
+            "unity_render_tested": False,
             "android_device_tested": False}
 
 
