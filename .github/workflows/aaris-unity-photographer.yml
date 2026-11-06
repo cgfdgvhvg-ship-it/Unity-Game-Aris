@@ -93,6 +93,10 @@ jobs:
         with:
           lfs: false
           persist-credentials: false
+      - name: Free runner storage before Unity LFS assets and Docker Editor
+        run: |
+          bash Tools/CI/runner_storage.sh selftest
+          bash Tools/CI/runner_storage.sh cleanup
       - name: Optional GameCI activation using supported existing license and credentials
         if: needs.preflight.outputs.gameci_credentials == 'true'
         id: gameci_activate
