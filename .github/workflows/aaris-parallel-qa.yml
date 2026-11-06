@@ -33,6 +33,8 @@ jobs:
           python3 -m py_compile Tools/CI/unity_personal_bootstrap.py Tools/CI/license_reuse.py
           python3 Tools/CI/unity_personal_bootstrap.py --selftest
           python3 Tools/CI/license_reuse.py --selftest
+          bash -n Tools/CI/termux_secure_license_export.sh
+          echo 'Termux secure license-export shell syntax: PASS'
           echo 'Unity auth URL policy, private-state JSON and ULF parser validated.'
           echo 'No Unity license was activated, downloaded or exposed in this test.' >> "$GITHUB_STEP_SUMMARY"
 
