@@ -1997,6 +1997,37 @@ def unity_gui_house_search(name):
         "next":"Capture X11 desktop_snapshot to verify exact Hierarchy search result"}),"stderr":""}
 
 
+
+def unity_gui_house_frame(name):
+    """Select exact Hierarchy result and frame it inside Unity SceneView via X11."""
+    found=unity_gui_house_search(name)
+    if found["exit_code"]:
+        return found
+    info=json.loads(found["stdout"])
+    sx,sy=info["ui_location"]
+    env=dict(os.environ,DISPLAY=":12")
+    # A single result row is ~35 px below the verified Unity Hierarchy search bar.
+    # Clicking a saved scene object selects it; 'F' frames the selection in
+    # the SceneView. Neither action modifies native scene or prefab contents.
+    time.sleep(.5)
+    steps=[
+        ["xdotool","mousemove",str(sx),str(sy+36)],
+        ["xdotool","click","1"],
+        ["xdotool","mousemove",str(sx+400),str(sy+190)],
+        ["xdotool","key","--clearmodifiers","f"]
+    ]
+    for cmd in steps:
+        done=subprocess.run(cmd,env=env,capture_output=True,text=True,timeout=12,check=False)
+        if done.returncode:
+            return {"exit_code":3,"stdout":json.dumps({"house":name}),
+                    "stderr":"Verified scratch SceneView focus input failed"}
+    return {"exit_code":0,"stdout":json.dumps({
+        "status":"unity_sceneview_frame_requested",
+        "house":name,"scratch_pid":info["scratch_pid"],
+        "scratch_only":True,"scene_or_assets_modified":False,
+        "next":"Read real screenshot and verify desired building is in SceneView"}),"stderr":""}
+
+
 def unity_sceneview_prepare():
     """Stage a bounded, zero-asset-write camera action in /tmp Unity only."""
     scratch=BATCH_ROOT/"project"
@@ -3861,6 +3892,9 @@ def execute(job):
     if op == "unity_forest_stage":
         if args: raise ValueError("Forest stage does not accept parameters")
         return unity_forest_stage()
+    if op == "unity_gui_house_frame":
+        if len(args)!=1: raise ValueError("Exact house name required for framing")
+        return unity_gui_house_frame(args[0])
     if op == "unity_gui_house_search":
         if len(args)!=1: raise ValueError("Exact house name required")
         return unity_gui_house_search(args[0])
