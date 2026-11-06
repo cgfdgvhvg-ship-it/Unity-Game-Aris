@@ -43,7 +43,7 @@ Never post this link in GitHub public issues or logs.</small></p>
 style="display:none;color:#6fead7">Download Unity license once for GitHub Secret</a>
 </section>
 <p id="result">Opening session...</p>
-<iframe src="/vnc/vnc.html?autoconnect=true&resize=remote&path=vnc/websockify"></iframe>
+<iframe src="/vnc/vnc.html?autoconnect=true&resize=remote&path=/vnc/websockify"></iframe>
 <p><a style="color:#6fead7" href="/api/photo" target="_blank">Latest genuine Unity PNG</a></p>
 <script>
 async function go(){let data={};for(let k of ['x','y','z','yaw','pitch','distance'])
