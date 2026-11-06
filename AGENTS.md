@@ -117,6 +117,7 @@ AI {"op":"outline","target":"tree:0:12"}
 AI {"op":"photo","target":"tree:0:12"}
 AI {"op":"move","target":"tree:0:12","value":[2,0,0]}
 AI {"op":"scale","target":"tree:0:12","value":[1.2,0.95,1.2]}
+AI {"op":"part_scale","target":"tree:0:12","part":"Leaves","value":[1.1,1,1.1],"scope":"prototype"}
 AI {"op":"inspect","target":"scene:Root/Building/WallNorth"}
 AI {"op":"scale","target":"scene:Root/Building/WallNorth","value":[1,1,1.1]}
 AI {"op":"part_scale","target":"scene:Root/Building","part":"WindowFrame","value":[1.1,1,1]}
@@ -124,7 +125,7 @@ AI {"op":"photo","target":"scene:Root/Building"}
 AI {"op":"save"}
 ```
 
-**These are syntax examples, not verified object IDs.** First use `nearby` or another scene inventory to get real targets. `tree:tile:index` selects an actual native TerrainData tree; tiles sort by world X then Z. These indices can change if source tree instances are regenerated. Scene targets must be unique names or an exact `scene:Root/Child` hierarchy; ambiguous names are refused. Coordinates are Unity world metres. Move is a **relative delta** per axis, bounded to 100m per call; scale is a **multiplicative** local factor, bounded to 0.25..3. For native Terrain trees width X and Z factors must match. Child `part_scale` works only for scene-object Transform children, **not** native Terrain tree prefab leaves. Do not assume a tree's leaves can be edited independently without changing its whole prototype.
+**These are syntax examples, not verified object IDs.** First use `nearby` or another scene inventory to get real targets. `tree:tile:index` selects an actual native TerrainData tree; tiles sort by world X then Z. These indices can change if source tree instances are regenerated. Scene targets must be unique names or an exact `scene:Root/Child` hierarchy; ambiguous names are refused. Coordinates are Unity world metres. Move is a **relative delta** per axis, bounded to 100m per call; scale is a **multiplicative** local factor, bounded to 0.25..3. For native Terrain trees width X and Z factors must match. Child `part_scale` works for scene-object Transform children. For native Terrain trees, it is permitted ONLY on an editable `.prefab` child and ONLY with `"scope":"prototype"`: **all** tree instances using that prefab will change. Imported `.fbx` models are explicitly rejected. Confirm the child hierarchy and review all affected trees before saving. This changes leaf/branch scale, not actual mesh leaf count or density.
 
 **Expected responses:** `inspect` includes position, rotation, local scale and approximate actual renderer X/Y/Z world bounds (metres); `nearby` lists up to 30 nearest scene objects/tree IDs; `outline` exports up to 96 world-space surface support dots in JSON and an isometric dotted SVG projection (not a watertight triangulated 3D mesh); `photo` produces a genuine 1280×720 Unity camera PNG or a clear render error. Meshes with readback disabled use their renderer bounds as an explicit fallback; wind, LOD, invisible colliders and tree prototype differences may affect the visible silhouette.
 
