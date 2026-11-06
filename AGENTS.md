@@ -164,3 +164,36 @@ python3 Tools/CI/session_store.py selftest
 ```
 
 The `verify` job checks Python intent handling without a Unity license. Real Editor compile test and authorized capture cannot be asserted until a Unity license is active and the live `ai-map-edits` branch is running.
+
+## License automation: verified boundary (2026-11-07)
+
+A GitHub-connected AI must NOT silently add the purported command
+`Unity.Licensing.Client --activate-ulf --username ... --password ... --include-personal`,
+nor promise a new Unity Personal license in five seconds. Those flags are
+not documented as a supported Personal activation route for Unity 6000.3.
+Unity's current official licensing guide says **Personal activation requires
+Unity Hub**. Do not tell users to disable 2FA.
+
+A third-party Marketplace action `RageAgainstThePixel/activate-unity-license`
+exists (published major tag `@v2`, not the claimed `@v3`), but its claims
+do not prove compatibility with Unity 6000.3, an ephemeral Docker container,
+or Personal licensing rules. **Do not pass UNITY_PASSWORD or TOTP seeds to
+unreviewed third-party code**, and do not install this action automatically
+on a public repo. GitHub Actions host-level activation is not automatically
+available to a separate Editor Docker container.
+
+**Current review-branch implementation**:
+- If an authorized `UNITY_LICENSE` exists, install privately as a candidate
+  and let the Editor validate it; never print, archive or publish it.
+- If there is no `.ulf` (phone-only owner), install the official **Unity Hub
+  GUI in the same Editor container**. Owner signs in using Cloudflare
+  email-PIN-protected noVNC and activates Personal via Unity Hub.
+- Check both official Linux license-file formats (`Unity_lic.ulf` and
+  `UnityEntitlementLicense.xml`) as unverified **signals**, not an entitlement
+  or guaranteed Editor launch. Never cache credentials or forge machine IDs.
+- Do not expect merely storing `UNITY_EMAIL`/`UNITY_PASSWORD` to remove
+  future Unity Hub login requirements on a fresh GitHub-hosted runner.
+- Actual Unity Editor compilation, license validation and genuine screenshot
+  remain necessary before this workflow can be called successful.
+
+Official licensing: https://docs.unity.com/en-us/engine/6000.0/manual/get-started/install-and-upgrade/licenses-and-activation/license-activation-methods
