@@ -1,0 +1,90 @@
+name: Aaris Three Parallel QA Workers (Free)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Tools/CI/**'
+      - '.github/workflows/aaris-live-unity.yml'
+      - '.github/workflows/aaris-parallel-qa.yml'
+      - 'Assets/AarisWorld/Editor/**'
+      - 'Docs/MAP_LAYOUT.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aaris-parallel-qa-${{ github.ref }
+  cancel-in-progress: true
+
+jobs:
+  license-auditor:
+    name: "1 — Unity license/secret-safe bootstrap"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Test official activation flow without reading credentials
+        run: |
+          set -euo pipefail
+          python3 -m py_compile Tools/CI/unity_personal_bootstrap.py Tools/CI/license_reuse.py
+          python3 Tools/CI/unity_personal_bootstrap.py --selftest
+          python3 Tools/CI/license_reuse.py --selftest
+          echo 'Unity auth URL policy, private-state JSON and ULF parser validated.'
+          echo 'No Unity license was activated, downloaded or exposed in this test.' >> "$GITHUB_STEP_SUMMARY"
+
+  cloudflare-auditor:
+    name: "2 — Cloudflare/noVNC health and camera control"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Test Python API, camera bounds, WebSocket configuration
+        run: |
+          set -euo pipefail
+          python3 -m py_compile Tools/CI/live_camera_server.py Tools/CI/issue_camera_bridge.py
+          python3 Tools/CI/issue_camera_bridge.py --selftest
+          node --check Tools/CI/cloudflare_live_hub.mjs
+          python3 - <<'PY'
+          import pathlib,sys
+          sys.path.insert(0,'Tools/CI')
+          from live_camera_server import validate, host_service_health, HTML
+          cmd=validate({'x':-420,'y':22,'z':-210,'yaw':0,'pitch':20,'distance':22})
+          assert cmd['x']==-420
+          assert '/vnc/websockify' in HTML, 'noVNC must use correct proxy path'
+          h=host_service_health()
+          assert {'vnc_backend','vnc_proxy','unity_container'} <= set(h)
+          for key in ('auth_url','UNITY_LICENSE','UNITY_PASSWORD'):
+              assert key not in h
+          print('Camera bounds, noVNC path and private health interface: PASS')
+          PY
+          echo 'Static tests pass. End-to-end remote Unity rendering still requires a running licensed Editor.' >> "$GITHUB_STEP_SUMMARY"
+
+  map-auditor:
+    name: "3 — License-free terrain/road/vehicle QA"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Check native map blueprint and inspection API
+        run: |
+          set -euo pipefail
+          python3 -m py_compile Tools/CI/map_static_check.py Tools/CI/layout_preview.py
+          python3 Tools/CI/map_static_check.py audit --out /tmp/aaris-map-report.json
+          python3 Tools/CI/map_static_check.py inspect --x=-420 --z=-210 --out /tmp/aaris-map-inspect.json
+          python3 - <<'PY'
+          import json
+          a=json.load(open('/tmp/aaris-map-report.json'))
+          b=json.load(open('/tmp/aaris-map-inspect.json'))
+          assert a['result']=='passed'
+          assert b['inspection']['requested_xz_m']==[-420.0,-210.0]
+          print('Independent map audit and coordinate inspection: PASS')
+          PY
+          echo 'This is map blueprint QA; it does not certify actual Unity graphics.' >> "$GITHUB_STEP_SUMMARY"
