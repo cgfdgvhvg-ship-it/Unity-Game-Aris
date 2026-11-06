@@ -2670,11 +2670,27 @@ def unity_house_helper_quarantine():
         if mate.is_symlink() or not mate.is_file():
             return {"exit_code":3,"stdout":"","stderr":"Unexpected helper .meta"}
         items.append((mate,safe/mate.name))
-    pending=VIRTUAL_CONTROL/"house-requests"/"unity-house-views-20261105-h01.json"
-    if pending.exists():
-        if pending.is_symlink() or not pending.is_file():
-            return {"exit_code":3,"stdout":"","stderr":"Unsafe original survey request"}
-        items.append((pending,safe/"house-survey-request.json"))
+    # All active house-photo requests belong to the quarantined helper, not
+    # the normal Unity live bridge. Retain every request byte-for-byte, so
+    # reopening the Editor cannot retry the crashing SubmitRenderRequests path.
+    request_dir=VIRTUAL_CONTROL/"house-requests"
+    if request_dir.exists() and (not request_dir.is_dir() or request_dir.is_symlink()):
+        return {"exit_code":3,"stdout":"","stderr":"Unsafe house request directory"}
+    pending=list(request_dir.iterdir()) if request_dir.is_dir() else []
+    if len(pending)>64:
+        return {"exit_code":3,"stdout":"","stderr":"Unexpected number of house photo requests"}
+    for request in pending:
+        if (request.is_symlink() or not request.is_file() or request.suffix!=".json"
+                or not re.fullmatch(r"[a-z][a-z0-9-]{3,55}\\.json",request.name)
+                or request.stat().st_size>3000):
+            return {"exit_code":3,"stdout":"","stderr":"Unrecognized house photo request; preserving all"}
+        try:
+            data=json.loads(request.read_text(encoding="utf-8"))
+        except (OSError,ValueError):
+            return {"exit_code":3,"stdout":"","stderr":"Malformed house photo request; preserving all"}
+        if data!={"id":request.stem}:
+            return {"exit_code":3,"stdout":"","stderr":"House photo request ID mismatch; preserving all"}
+        items.append((request,safe/request.name))
     moved=[]
     try:
         for src,dst in items:
