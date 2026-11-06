@@ -9,6 +9,7 @@ on:
       - 'Tools/CI/issue_camera_bridge.py'
       - 'Tools/CI/unity_personal_bootstrap.py'
       - 'Tools/CI/license_reuse.py'
+      - 'Tools/CI/runner_storage.sh'
       - 'Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs'
       - 'Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs.meta'
   issue_comment:
@@ -86,6 +87,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: false
+      - name: Free cloud runner disk before Unity Docker / native map import
+        run: |
+          bash Tools/CI/runner_storage.sh selftest
+          bash Tools/CI/runner_storage.sh cleanup
       - name: Restore safe Unity import cache (not authentication)
         uses: actions/cache@v4
         with:
