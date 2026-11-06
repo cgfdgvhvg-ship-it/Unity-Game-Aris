@@ -6,6 +6,8 @@ shell, APIs, Editor menu items or arbitrary Git refs. Unity renders and edits
 inside the currently running, licensed Editor; this module only brokers JSON.
 """
 import argparse
+import datetime as dt
+import shutil
 import json
 import math
 import os
@@ -283,6 +285,101 @@ def handle(comment, comment_cb, photo_cb):
     return "ai-" + state
 
 
+
+STAGES = (
+    "storage_cleaned", "vnc_ready", "cloudflare_ready",
+    "issue_relay_ready", "unity_container_started",
+    "unity_bootstrap_checked", "session_finished", "checkpoint_attempted",
+)
+STAGE_PATH = STATE / "ai-stage-log.json"
+
+
+def mark_stage(label):
+    if label not in STAGES:
+        raise ValueError("Unknown workflow stage")
+    STATE.mkdir(parents=True, exist_ok=True)
+    try:
+        stages = json.loads(STAGE_PATH.read_text(encoding="utf-8"))
+        if not isinstance(stages, list):
+            stages = []
+    except (OSError, ValueError):
+        stages = []
+    stages.append({"stage": label, "utc": dt.datetime.now(dt.timezone.utc).isoformat()})
+    tmp = STATE / "ai-stage-log.tmp"
+    tmp.write_text(json.dumps(stages[-60:], indent=2), encoding="utf-8")
+    os.replace(tmp, STAGE_PATH)
+
+
+def diagnostics():
+    """Only an allowlisted, credential-free debug report is exported."""
+    def safe_json(name):
+        try:
+            data = json.loads((STATE / name).read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+        except (OSError, ValueError):
+            return {}
+
+    def state_value(obj):
+        value = obj.get("state", "not_started")
+        return value[:100] if isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9_ -]{1,100}", value) else "redacted"
+
+    def running_container():
+        try:
+            check = subprocess.run(
+                ["docker", "inspect", "--format", "{{.State.Running}}", "aaris-unity-live"],
+                capture_output=True, text=True, timeout=4, check=False)
+            return check.returncode == 0 and check.stdout.strip() == "true"
+        except (OSError, subprocess.TimeoutExpired):
+            return False
+
+    try:
+        disk = shutil.disk_usage(ROOT)
+        disk_report = {"total_gb": round(disk.total / (1024**3), 2),
+                       "free_gb": round(disk.free / (1024**3), 2)}
+    except OSError:
+        disk_report = {"status": "unavailable"}
+    scene = ROOT / "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity"
+    try:
+        native_scene = scene.is_file() and b"git-lfs.github.com/spec" not in scene.read_bytes()[:120]
+    except OSError:
+        native_scene = False
+    status = safe_json("status.json")
+    last = safe_json("ai-result.json")
+    lic = safe_json("license-status.json")
+    try:
+        stages = json.loads(STAGE_PATH.read_text(encoding="utf-8"))
+        stages = stages[-60:] if isinstance(stages, list) else []
+    except (OSError, ValueError):
+        stages = []
+    report = {
+        "utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "github_run_id": os.environ.get("GITHUB_RUN_ID", "")[:20],
+        "workflow": "aaris-live-unity",
+        "note": "Only safe diagnostics; green verification is not proof of a running licensed Unity Editor.",
+        "disk": disk_report,
+        "stages": stages,
+        "native_scene_lfs_hydrated": native_scene,
+        "unity_container_running": running_container(),
+        "virtual_screen_started": (Path("/tmp/aaris-xvfb.pid").exists()),
+        "vnc_server_log_present": Path("/tmp/aaris-x11vnc.log").exists(),
+        "cloudflare_tunnel_started": Path("/tmp/aaris-tunnel.pid").exists(),
+        "issue_relay_started": Path("/tmp/aaris-issue-bridge.pid").exists(),
+        "license_state": state_value(lic),
+        "last_camera_state": state_value(status),
+        "last_ai_state": state_value(last),
+        "last_ai_action": str(last.get("action", "none"))[:40],
+        "ai_unsaved_changes": (STATE / "ai-mutated.marker").exists(),
+        "real_photo_png_exists": (STATE / "latest.png").is_file(),
+    }
+    folder = ROOT / "ci-diagnostics"
+    folder.mkdir(exist_ok=True)
+    out = folder / "ai-debug-report.json"
+    out.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    print("Sanitized AI debug report ready:", out.relative_to(ROOT))
+    print("Stages:", ",".join(x.get("stage", "?") for x in stages))
+    return str(out)
+
+
 def selftest():
     valid = parse('AI {"action":"inspect","query":"Tree","x":120,"z":-44,"radius":25}')
     assert valid["sx"] == 1 and valid["radius"] == 25
@@ -314,6 +411,14 @@ def selftest():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=["selftest", "checkpoint"])
+    parser.add_argument("action", choices=["selftest", "checkpoint", "stage", "diagnostics"])
+    parser.add_argument("stage_name", nargs="?", default="")
     args = parser.parse_args()
-    selftest() if args.action == "selftest" else print(checkpoint())
+    if args.action == "selftest":
+        selftest()
+    elif args.action == "checkpoint":
+        print(checkpoint())
+    elif args.action == "stage":
+        mark_stage(args.stage_name)
+    elif args.action == "diagnostics":
+        diagnostics()
