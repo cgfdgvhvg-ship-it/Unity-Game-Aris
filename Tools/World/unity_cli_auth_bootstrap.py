@@ -6,6 +6,7 @@ from __future__ import annotations
 import json, os, re, shutil, subprocess, sys, time
 from pathlib import Path
 from urllib.parse import urlparse
+import unity_secure_keyring as keyring
 
 ROOT=Path("/workspaces/.aaris-world-bridge/ondemand")
 CLI=Path.home()/".local/bin/unity"
@@ -41,9 +42,9 @@ def cli_path():
     return Path(candidate) if candidate else None
 
 
-def run_quiet(argv, timeout=20):
+def run_quiet(argv, timeout=20, env=None):
     try:
-        p=subprocess.run(argv,stdin=subprocess.DEVNULL,capture_output=True,text=True,timeout=timeout,check=False)
+        p=subprocess.run(argv,stdin=subprocess.DEVNULL,capture_output=True,text=True,timeout=timeout,check=False,env=env)
         return p.returncode
     except (OSError,subprocess.TimeoutExpired):
         return 127
@@ -130,6 +131,8 @@ def status():
             "last_state":state.get("state","not_started"),
             "last_error":state.get("error"),"oauth_diagnostic":oauth_failure_diagnostics()}
     if binpath:
+        shared_env=keyring.environment() if keyring.secret_service_ready() else None
+        result["keyring_ready"]=bool(shared_env)
         try:
             ver=subprocess.run([str(binpath),"--version"],capture_output=True,text=True,
                                stdin=subprocess.DEVNULL,timeout=9,check=False)
@@ -152,8 +155,8 @@ def status():
             }
         except (OSError,subprocess.TimeoutExpired):
             result["doctor_diagnostic"]={"error":"unavailable_or_timeout"}
-        result["authenticated"]=run_quiet([str(binpath),"auth","status","--format","json"],timeout=12)==0
-        result["personal_license_active"]=run_quiet([str(binpath),"license","status","--format","json"],timeout=14)==0
+        result["authenticated"]=run_quiet([str(binpath),"auth","status","--format","json"],timeout=12,env=shared_env)==0
+        result["personal_license_active"]=run_quiet([str(binpath),"license","status","--format","json"],timeout=14,env=shared_env)==0
         # OAuth URL is intentionally returned only for an explicit status read.
         result["sign_in_url"]=safe_url() if not result["authenticated"] else None
     return result
@@ -187,7 +190,9 @@ def worker_login():
         # The standalone Unity CLI prints the headless auth URL to a private log.
         with AUTH_LOG.open("a",encoding="utf-8") as output:
             os.chmod(AUTH_LOG,0o600)
-            env=os.environ.copy();env.pop("DISPLAY",None)
+            if not keyring.secret_service_ready():
+                raise RuntimeError("secure keyring not running; initialize it first")
+            env=keyring.environment();env.pop("DISPLAY",None)
             p=subprocess.run([str(tool),"auth","login","--non-interactive","--format","json"],
                         env=env,stdin=subprocess.DEVNULL,stdout=output,stderr=output,timeout=900,check=False)
         record("authenticated" if p.returncode==0 else "oauth_unfinished",
@@ -201,6 +206,8 @@ def launch(which):
         return {"status":"already_installed",**status()}
     if which=="--login-start" and not cli_path():
         return {"status":"cli_missing",**status()}
+    if which=="--login-start" and not keyring.secret_service_ready():
+        return {"status":"keyring_not_ready",**status()}
     flag="--install-worker" if which=="--install-start" else "--login-worker"
     if running(flag):return {"status":"already_running",**status()}
     target=LOG if which=="--install-start" else AUTH_LOG
