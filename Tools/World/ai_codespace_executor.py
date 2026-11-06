@@ -938,8 +938,24 @@ def unity_virtual_gui_restart_after_license():
             if pids[0] not in _scratch_unity_pids(): break
             time.sleep(0.25)
         if pids[0] in _scratch_unity_pids():
-            return {"exit_code":3,"stdout":"",
-                    "stderr":"Unity did not close gracefully; scratch preserved"}
+            # The original Editor is stuck at its pre-activation license dialog.
+            # Force-stop ONLY this exact PID and ONLY while all scratch core
+            # assets still match the source and no authored scene is loaded.
+            now=_session_plan()
+            safe=(now.get("scratch_core_matches") is True
+                  and now.get("scratch_terrain_differs") is False
+                  and now.get("scratch_loaded") is False
+                  and not unity_virtual_gui_status().get("queued_virtual_commands"))
+            if not safe or pids[0] not in _scratch_unity_pids():
+                return {"exit_code":3,"stdout":"",
+                        "stderr":"Unity changed state; refusing forced stop"}
+            os.kill(pids[0], signal.SIGKILL)
+            for _ in range(60):
+                if pids[0] not in _scratch_unity_pids():break
+                time.sleep(0.25)
+            if pids[0] in _scratch_unity_pids():
+                return {"exit_code":3,"stdout":"",
+                        "stderr":"Unity remained uninterruptible; scratch preserved"}
     return unity_virtual_gui_launch()
 
 
