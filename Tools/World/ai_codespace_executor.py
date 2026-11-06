@@ -2681,7 +2681,7 @@ def unity_house_helper_quarantine():
         return {"exit_code":3,"stdout":"","stderr":"Unexpected number of house photo requests"}
     for request in pending:
         if (request.is_symlink() or not request.is_file() or request.suffix!=".json"
-                or not re.fullmatch(r"[a-z][a-z0-9-]{3,55}\\.json",request.name)
+                or not re.fullmatch(r"[a-z][a-z0-9-]{3,55}", request.stem)
                 or request.stat().st_size>3000):
             return {"exit_code":3,"stdout":"","stderr":"Unrecognized house photo request; preserving all"}
         try:
