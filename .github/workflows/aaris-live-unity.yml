@@ -83,7 +83,7 @@ jobs:
           sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
             xvfb x11vnc novnc websockify nginx openbox xterm git-lfs zstd \
-            libgl1-mesa-dri libglu1-mesa2
+            libgl1-mesa-dri libglu1-mesa
           git lfs install --local
           mkdir -p ci-live-control ci-logs ci-photos
           Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp -ac > /tmp/aaris-xvfb.log 2>&1 &
