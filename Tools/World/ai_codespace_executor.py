@@ -2643,6 +2643,19 @@ def desktop_snapshot(job_id):
     return {"exit_code":0,"stdout":json.dumps(info),"stderr":""}
 
 
+def _valid_house_survey_request(name, contents):
+    """Only minimal owner-issued house survey queue records can be quarantined."""
+    if not isinstance(name,str) or not name.endswith(".json"):
+        return False
+    ident=name[:-5]
+    if not re.fullmatch(r"[a-z][a-z0-9-]{3,55}",ident):
+        return False
+    try:
+        return json.loads(contents)=={"id":ident}
+    except (ValueError,TypeError):
+        return False
+
+
 def unity_house_helper_quarantine():
     """Safely unstage only our new house photo helper from the disposable project.
 
@@ -2681,15 +2694,10 @@ def unity_house_helper_quarantine():
         return {"exit_code":3,"stdout":"","stderr":"Unexpected number of house photo requests"}
     for request in pending:
         if (request.is_symlink() or not request.is_file() or request.suffix!=".json"
-                or not re.fullmatch(r"[a-z][a-z0-9-]{3,55}", request.stem)
                 or request.stat().st_size>3000):
             return {"exit_code":3,"stdout":"","stderr":"Unrecognized house photo request; preserving all"}
-        try:
-            data=json.loads(request.read_text(encoding="utf-8"))
-        except (OSError,ValueError):
-            return {"exit_code":3,"stdout":"","stderr":"Malformed house photo request; preserving all"}
-        if data!={"id":request.stem}:
-            return {"exit_code":3,"stdout":"","stderr":"House photo request ID mismatch; preserving all"}
+        if not _valid_house_survey_request(request.name,request.read_text(encoding="utf-8")):
+            return {"exit_code":3,"stdout":"","stderr":"House photo request ID/shape mismatch; preserving all"}
         items.append((request,safe/request.name))
     moved=[]
     try:
