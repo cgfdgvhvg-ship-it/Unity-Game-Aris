@@ -180,6 +180,14 @@ def run_editor() -> int:
         if b"git-lfs.github.com/spec" in content:
             raise RuntimeError("Native Unity scene is an LFS pointer; assets must be hydrated")
     editor = find_editor()
+    # First camera intent ensures the Aaris editor-only bridge can automatically
+    # frame the saved world once Unity finishes importing, without a user click.
+    first = STATE_DIR / "camera.json"
+    if not first.exists():
+        first.write_text(json.dumps({
+            "x": -420, "y": 22, "z": -210,
+            "yaw": 0, "pitch": 20, "distance": 22, "nonce": 1
+        }))
     private_status("editor_starting",
                    detail="Editor is importing the 2km saved map; wait for the first true PNG to verify rendering.")
     logfile = PROJECT/"ci-logs"/"live-unity.log"
