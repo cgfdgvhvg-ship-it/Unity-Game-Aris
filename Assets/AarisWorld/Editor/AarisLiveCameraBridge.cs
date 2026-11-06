@@ -612,6 +612,23 @@ namespace Aaris.MapReview.Editor
             view.Repaint();
         }
 
+        // Cheap 64-point pixel check catches the black/white/flat desktop bug.
+        // It does NOT prove buildings, tree detail, material correctness or scene art quality.
+        private static bool PlausibleRender(Texture2D texture)
+        {
+            float min = 1f, max = 0f;
+            for (int y = 0; y < 8; y++)
+                for (int x = 0; x < 8; x++)
+                {
+                    Color c = texture.GetPixel((x * 2 + 1) * texture.width / 16,
+                                               (y * 2 + 1) * texture.height / 16);
+                    float luma = .2126f * c.r + .7152f * c.g + .0722f * c.b;
+                    min = Mathf.Min(min, luma);
+                    max = Mathf.Max(max, luma);
+                }
+            return max >= .045f && min <= .965f && max - min >= .012f;
+        }
+
         private static void TakePhoto(Vector3 point, Quaternion rotation, string path)
         {
             var go = new GameObject("__AarisLivePreviewCamera");
@@ -628,12 +645,21 @@ namespace Aaris.MapReview.Editor
             try
             {
                 cam.targetTexture = target;
-                cam.Render();
-                RenderTexture.active = target;
-                png.ReadPixels(new Rect(0, 0, 1280, 720), 0, 0);
-                png.Apply(false);
+                bool valid = false;
+                for (int attempt = 0; attempt < 2; attempt++)
+                {
+                    cam.Render();
+                    RenderTexture.active = target;
+                    png.ReadPixels(new Rect(0, 0, 1280, 720), 0, 0);
+                    png.Apply(false);
+                    if (PlausibleRender(png)) { valid = true; break; }
+                }
+                if (!valid)
+                    throw new InvalidOperationException(
+                        "Unity camera rendered a black, white or nearly flat frame twice; capture rejected.");
                 byte[] bytes = png.EncodeToPNG();
-                if (bytes.Length < 5000) throw new InvalidOperationException("Empty renderer output.");
+                if (bytes.Length < 5000)
+                    throw new InvalidOperationException("Empty Unity renderer output.");
                 File.WriteAllBytes(path, bytes);
             }
             finally
