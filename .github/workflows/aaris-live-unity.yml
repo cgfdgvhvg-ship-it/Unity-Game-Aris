@@ -58,6 +58,7 @@ jobs:
         run: |
           python3 -m py_compile Tools/CI/live_camera_server.py Tools/CI/issue_camera_bridge.py Tools/CI/ai_intents.py Tools/CI/unity_personal_bootstrap.py
           python3 Tools/CI/ai_intents.py
+          bash -n Tools/CI/termux_secure_license_export.sh
           python3 Tools/CI/unity_personal_bootstrap.py --selftest
           python3 Tools/CI/license_reuse.py --selftest
           python3 Tools/CI/issue_camera_bridge.py --selftest
@@ -340,7 +341,8 @@ jobs:
           fi
       - name: Export authorized Unity license as phone-encrypted artifact
         if: github.event_name == 'workflow_dispatch' && inputs.license_export_recipient != ''
-        timeout-minutes: 13
+        # A first-time Unity Hub GUI login can take longer than the old 12m poll.
+        timeout-minutes: 43
         run: |
           set -euo pipefail
           # Only an age public key can enter; private keys never reach GitHub.
@@ -350,7 +352,7 @@ jobs:
           fi
           mkdir -p ci-license-encrypted
           echo 'Looking for a legitimate Unity ULF; will encrypt only if it exists.'
-          for ((i=0;i<144;i++)); do
+          for ((i=0;i<480;i++)); do
             if [[ -s ci-live-control/Unity_lic.ulf ]]; then
               python3 - <<'PY'
           import sys
