@@ -60,6 +60,21 @@ class ScratchSceneViewGalleryTests(unittest.TestCase):
         self.assertIn('if op == "unity_sceneview_refresh":',execute)
         self.assertIn('require_forest=False, require_view=True',execute)
 
+    def test_ui_house_search_uses_saved_name_and_verified_x11_only(self):
+        source=Path(ex.__file__).read_text(encoding='utf-8')
+        block=source.split('def unity_gui_house_search(name):',1)[1].split('def unity_sceneview_prepare():',1)[0]
+        for guard in ('Docs/MAP_LAYOUT.json', 'saved.get("buildings",[])',
+                      '_scratch_unity_pids()', 'scene-readback.json',
+                      'Unity - project - TerrainDemoScene',
+                      '_NET_WM_PID','len(eligible)!=1',
+                      'x>=0 and y>=0', '"ctrl+a"', '"xdotool","type"',
+                      'no_scene_or_assets_written'):
+            self.assertIn(guard,block)
+        self.assertNotIn('SubmitRenderRequest',block)
+        self.assertNotIn('shutil.rmtree(',block)
+        self.assertNotIn('os.system(',block)
+        self.assertIn('if op == "unity_gui_house_search":',source)
+
     def test_staging_has_original_and_scratch_guards(self):
         source=Path(ex.__file__).read_text(encoding='utf-8')
         block=source.split('def unity_sceneview_prepare():',1)[1].split('\ndef unity_virtual_frame(',1)[0]
