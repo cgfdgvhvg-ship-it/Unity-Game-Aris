@@ -78,6 +78,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: false
+      - name: Restore safe Unity import cache (not authentication)
+        uses: actions/cache@v4
+        with:
+          path: Library/
+          key: aaris-unity-library-linux-6000.3.26f1-${{ hashFiles('Packages/packages-lock.json', 'Packages/manifest.json', 'ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: |
+            aaris-unity-library-linux-6000.3.26f1-
       - name: Verify approved email and session length
         run: |
           set -euo pipefail
