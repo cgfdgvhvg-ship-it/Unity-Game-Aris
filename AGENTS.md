@@ -91,3 +91,64 @@ Personal license. No machine identity spoofing or token caching is used.
 Verified repo-level unit test for command handler and the workflow's
 issue_comment path ran in GitHub Actions. An actual successful Unity
 license activation and true scene PNG have NOT yet been verified.
+
+## AI scene developer protocol (2026-11-06; proposed branch `ai/scene-operator-v1`)
+
+**Mission: give a GitHub-connected AI read / measure / inspect / move / resize / photograph abilities without giving it a general shell over a public Issue.**
+
+The canonical scene remains `Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity`. The new system reuses the existing Cloudflare/noVNC desktop and Issue #77 instead of creating many separate executables.
+
+### Only two agent-facing tools
+
+1. `Tools/CI/ai_intents.py` is the validated JSON intent schema, Issue queue dispatcher, response/blueprint publisher, and **safe LFS commit** layer. The existing `issue_camera_bridge.py` imports it and polls owner-authored comments.
+2. `Assets/AarisWorld/Editor/AarisAIControlBridge.cs` is the Unity Editor eye/hand. It reads `ci-live-control/ai-command.json` (not untrusted C#), inspects the Unity scene/meshes/terrain trees and writes `ai-result.json`. The existing `AarisLiveCameraBridge.cs` provides the real camera render method.
+
+No terminal/codespace required for a GitHub-connected AI. A GitHub issue comment authored by `sundamunda289-art` on [Issue #77](https://github.com/sundamunda289-art/Unity-Game-Aris/issues/77) is the command transport.
+
+### Start / license / see
+
+- Start owner Issue comment `START_DESKTOP 45` (or `15`, `90`, `240`, `300`). This starts an **ephemeral** Actions Linux desktop and pinned Unity 6000.3.26f1 container. The protected temporary Cloudflare Tunnel is announced in Issue #77. See the stable [Cloudflare hub](https://aaris-unity-live-hub.aaris-game-control-6f9c.workers.dev).
+- Use the email-PIN-protected desktop to complete any **official** Unity sign-in / Personal activation. License status is shown at `/api/license`; only a licensed running Editor can return a genuine PNG. OAuth links and ULF files must never appear in issue comments, public photos, Git history, or logs.
+- The phone may use noVNC to watch the live screen. AI clients see discrete JSON + authentic PNG snapshots via the GitHub issue/release interface, **not continuous screen video**.
+- The 240/300-minute sessions do not extend GitHub's maximum job lifetime. A new runner starts from Git + LFS, and cached `Library/` only accelerates Unity imports; it is **not** permanent compute.
+
+### AI JSON commands: exact format
+
+Post a single line beginning with `AI ` followed by a small valid JSON object. No markdown code fences. Examples (target IDs are illustrative: always find before editing):
+
+```text
+AI {"op":"find","query":"House"}
+AI {"op":"inspect","x":-420,"y":22,"z":-210,"radius":40}
+AI {"op":"bounds","target":"Village[2]/House[1]/Wall[0]"}
+AI {"op":"outline","target":"Village[2]/House[1]","max_points":512}
+AI {"op":"photo","target":"Village[2]/House[1]","distance":30}
+AI {"op":"move","target":"Village[2]/House[1]","dx":1,"dy":0,"dz":-2,"dry_run":true}
+AI {"op":"move","target":"Village[2]/House[1]","dx":1,"dy":0,"dz":-2}
+AI {"op":"scale","target":"Village[2]/House[1]/Wall[0]","sx":1.15,"sy":1,"sz":1}
+```
+
+`find` searches active-scene GameObject names; `inspect` reports near a position (including real Terrain tree instances); both return at most 80 objects. `bounds` reports world-space renderer bounds and world metre dimensions, or position-only if unavailable. `outline` samples up to 2048 readable mesh vertices in world XYZ (and produces a three-view *dot blueprint* SVG); this is not a complete mesh export, convex hull, foliage physics simulation, nor proof of realistic materials.
+
+A native Terrain tree is identified as `terrain-tree:<tile-index>:<instance-index>` from the `inspect` report. This is an instance in a TerrainData asset, not an ordinary GameObject: `move` and `scale` use the Terrain API and save its asset. Native tree `widthScale` is horizontal (so `sx` must equal `sz`) and `heightScale` is vertical; a per-leaf or per-trunk edit requires a separately reviewed prototype/mesh authoring feature. Native tree `outline` is not implemented yet and returns a clear unsupported error. Do not substitute a fake 3D outline for it.
+
+Each `move`/`scale` is limited to bounded numeric deltas/factors and can be previewed with `dry_run:true`. A write saves its Unity scene/TerrainData source, then commits **only the exact allowlisted changed asset** to Git LFS (when LFS-tracked) on `ai-map-edits`, not to main. For big changes: first inspect dimensions, then dry-run, then write one small change, inspect again, capture photo, and review the diff/PR. There is no user-provided shell, path, or arbitrary code execution. A failed Git push reports persistence failure even if Unity saved locally; do not claim the new runner will remember it.
+
+The result JSON and optionally three-view blueprint SVG or genuine PNG are published under unique issue-comment IDs to the public `live-photos` Release. The PNG is a real Unity Editor camera render, **only if** license, Editor launch, mesh import and graphics actually worked. The report carries the exact `nonce` so stale photos/results are rejected. Public artifacts should contain no personal data or secrets.
+
+### Persistence / restore / cross-session safety
+
+- `.github/workflows/aaris-live-unity.yml` checks out main with history and either creates `ai-map-edits` or fetches/merges the existing remote edit branch before Unity starts. Conflicts stop the run; never force-push or discard a player's scene silently.
+- Native `.unity` and `TerrainData .asset` can be LFS binaries; `git lfs pull` must hydrate before Editor launch. The Git branch holds permanent source changes; `Library/`, `Temp/` and login data never become source-of-truth.
+- Because host runners can be killed, all progress must be committed after each authorized write. Running an Editor on a new VM still depends on legitimate Unity activation each session, if needed. There is **no** promise of unattended activation or guaranteed screenshot latency.
+- Always retain separate distinction: `PASS` in Python static tests vs compile PASS in Unity Editor vs real rendered PNG verified from actual scene.
+
+### Safe validation
+
+```bash
+python3 -m py_compile Tools/CI/ai_intents.py Tools/CI/issue_camera_bridge.py
+python3 Tools/CI/ai_intents.py
+python3 Tools/CI/issue_camera_bridge.py --selftest
+python3 Tools/CI/session_store.py selftest
+```
+
+The `verify` job checks Python intent handling without a Unity license. Real Editor compile test and authorized capture cannot be asserted until a Unity license is active and the live `ai-map-edits` branch is running.
