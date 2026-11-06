@@ -134,8 +134,8 @@ namespace Aaris.MapReview.Editor
             public long nonce;
             public bool saved;
             public Vector3 center, size, position, rotation, scale;
-            public int nearbyCount, pointCount;
-            public string[] nearby;
+            public int nearbyCount, pointCount, partCount;
+            public string[] nearby, parts;
             public Vector3[] points;
         }
         private static readonly string Control = Path.Combine(Directory.GetCurrentDirectory(), "ci-live-control");
@@ -400,6 +400,36 @@ namespace Aaris.MapReview.Editor
                 UnityEngine.Object.DestroyImmediate(go);
             }
         }
+        private static string[] ChildParts(GameObject root)
+        {
+            // Exact relative paths are directly usable by part_scale. A
+            // top-level scene target and a preview tree prefab behave alike.
+            var output = new System.Collections.Generic.List<string>();
+            foreach (var child in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (child == root.transform) continue;
+                string path = child.name;
+                Transform cursor = child.parent;
+                while (cursor != null && cursor != root.transform)
+                {
+                    path = cursor.name + "/" + path;
+                    cursor = cursor.parent;
+                }
+                Renderer renderer = child.GetComponent<Renderer>();
+                Vector3 bounds = renderer == null ? Vector3.zero : renderer.bounds.size;
+                Vector3 local = child.localScale;
+                output.Add(path +
+                    " | localScale=" + local.x.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) +
+                    "," + local.y.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) +
+                    "," + local.z.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) +
+                    " | rendererSizeM=" + bounds.x.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) +
+                    "," + bounds.y.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) +
+                    "," + bounds.z.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
+                if (output.Count == 80) break;
+            }
+            return output.ToArray();
+        }
+
         private static void Nearby(Intent command, Report report)
         {
             if (command.value == null || command.value.Length != 3 ||
@@ -538,6 +568,12 @@ namespace Aaris.MapReview.Editor
                         report.saved = true;
                         report.detail = "Entire shared tree prototype edited; every terrain tree using this prefab is affected. Re-render and check LOD/collisions.";
                     }
+                    else if (command.op == "parts")
+                    {
+                        report.partCount = Mathf.Max(0, preview.GetComponentsInChildren<Transform>(true).Length - 1);
+                        report.parts = ChildParts(preview);
+                        report.detail = "Relative prefab child paths. Editing a native tree prototype part requires scope=prototype and affects all matching instances.";
+                    }
                     else if (command.op == "outline")
                     {
                         report.points = OuterPoints(preview, bounds);
@@ -546,7 +582,7 @@ namespace Aaris.MapReview.Editor
                     }
                     else if (command.op == "photo") Photo(bounds);
                     else if (command.op == "inspect") report.detail = "Native tree instance; scale X/Z=widthScale, Y=heightScale";
-                    else throw new ArgumentException("Allowed tree ops: inspect, outline, photo, move, scale, part_scale (prototype scope)");
+                    else throw new ArgumentException("Allowed tree ops: inspect, parts, outline, photo, move, scale, part_scale (prototype scope)");
                     if (report.saved)
                     {
                         // Return AFTER-edit dimensions, not stale pre-edit bounds.
@@ -572,6 +608,12 @@ namespace Aaris.MapReview.Editor
             report.asset = AarisExplorerBuild.ScenePath;
             if (command.op == "inspect")
                 report.detail = "Bounds cover all child renderers; position/rotation/scale are transform values";
+            else if (command.op == "parts")
+            {
+                report.partCount = Mathf.Max(0, target.GetComponentsInChildren<Transform>(true).Length - 1);
+                report.parts = ChildParts(target.gameObject);
+                report.detail = "Exact relative child transform paths and approximate renderer dimensions for part_scale.";
+            }
             else if (command.op == "outline")
             {
                 report.points = OuterPoints(target.gameObject, box);
@@ -616,7 +658,7 @@ namespace Aaris.MapReview.Editor
                 report.saved = true;
                 report.detail = "Locally saved in scene; use AI SAVE to create a Git LFS-backed review PR";
             }
-            else throw new ArgumentException("Allowed ops: nearby, inspect, outline, photo, move, scale, part_scale");
+            else throw new ArgumentException("Allowed ops: nearby, inspect, parts, outline, photo, move, scale, part_scale");
         }
     }
 
