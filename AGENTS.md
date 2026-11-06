@@ -1,3 +1,11 @@
+## ACTIVE SUNDA CODESPACE ROUTING — verified 2026-11-06
+
+Current owner/repo: `sundamunda289-art/Unity-Game-Aris`; existing Codespace: `redesigned-space-train-gxp5jwvq94wg2wvw6`. **Cloudflare `aaris-codespace-relay` handles START/STOP/STATUS only; it does NOT execute terminal commands.** Its previously installed GitHub secret `GITHUB_CONTROL_TOKEN` must be refreshed from the Sunda account once, without storing the token in this repository. AI terminal operations use the existing `.aaris/jobs/*.json` queue on `ai/codespace-jobs`, GitHub Actions and direct Codespaces SSH, with machine-readable results in the workflow logs/artifact.
+
+**Verified direct SSH test:** [run 42157472720](https://github.com/sundamunda289-art/Unity-Game-Aris/actions/runs/42157472720) returned `ok:true`, `exit_code:0` and native Codespace diagnostics, including ~10.76 GiB free and protected dirty worktree. Unity Editor was not installed at that check. The old `musical-carnival-...` Codespace and old owner's HTTP 402 reports below are historical and do not reflect the Sunda Codespace. Do not reset/clean or overwrite its dirty Unity LFS assets.
+
+---
+
 ## BLOCKER: GITHUB CODESPACES HTTP 402 BILLING — 2026-11-06
 
 The owner tested actual remote SSH from Android Termux:
