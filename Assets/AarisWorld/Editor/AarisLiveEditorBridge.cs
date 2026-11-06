@@ -370,6 +370,14 @@ namespace Aaris.WorldAutomation
                 throw new InvalidOperationException("Camera position/target must be distinct and finite");
             if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
                 throw new InvalidOperationException("Unity Editor has no render graphics device");
+            // Mesa software Vulkan/OpenGL on temporary cloud desktops has crashed in
+            // native Unity 6000.3.26f1 at SubmitRenderRequest. Prevent another
+            // unsafe attempt; GPU-backed Unity/Android remains the acceptance gate.
+            string rendererName=(SystemInfo.graphicsDeviceName ?? string.Empty).ToLowerInvariant();
+            if (rendererName.Contains("llvmpipe") || rendererName.Contains("lavapipe") ||
+                rendererName.Contains("softpipe"))
+                throw new InvalidOperationException(
+                    "CPU software renderer cannot safely capture URP; use a GPU-backed Unity Editor");
             Directory.CreateDirectory(Frames);
             string path=Path.Combine(Frames,request.id+".jpg");
             var cameraObject = new GameObject("__AarisTemporarySceneCapture");
