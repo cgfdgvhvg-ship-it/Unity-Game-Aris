@@ -278,7 +278,7 @@ def save_review_pr(comment_id):
     subprocess.run(["git", "config", "user.name", "github-actions[bot]"], check=True)
     subprocess.run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], check=True)
     subprocess.run(["git", "add", "--", "Assets/TerrainDemoScene_URP/Scenes",
-                    "Assets/TerrainDemoScene_URP/TerrainData", "Assets/AarisWorld"],
+                    "Assets/TerrainDemoScene_URP/Terrain/Data", "Assets/AarisWorld"],
                    check=True, capture_output=True, text=True)
     changed = subprocess.run(["git", "diff", "--cached", "--name-only", "-z"],
                              check=True, capture_output=True).stdout
@@ -286,7 +286,7 @@ def save_review_pr(comment_id):
         return "No saved Unity source changes to publish. Inspect or edit a target first."
     files = [os.fsdecode(n) for n in changed.split(b"\0") if n]
     if any(not f.startswith(("Assets/TerrainDemoScene_URP/Scenes/",
-                             "Assets/TerrainDemoScene_URP/TerrainData/",
+                             "Assets/TerrainDemoScene_URP/Terrain/Data/",
                              "Assets/AarisWorld/")) for f in files):
         raise RuntimeError("Unexpected source path staged; refusing automatic publish")
     current_branch = subprocess.run(["git", "branch", "--show-current"], check=True,
