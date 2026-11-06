@@ -37,7 +37,7 @@ BOUNDS = {
     "dx": (-50, 50), "dy": (-50, 50), "dz": (-50, 50),
     "sx": (0.2, 3), "sy": (0.2, 3), "sz": (0.2, 3),
     "radius": (0, 250), "limit": (1, 30),
-    "value": (0.05, 100), "yaw": (-360, 360), "pitch": (-85, 85),
+    "value": (0, 100), "yaw": (-360, 360), "pitch": (-85, 85),
     "distance": (2, 500),
 }
 DEFAULTS = {
@@ -94,7 +94,7 @@ def parse(body):
     clean["limit"] = int(clean["limit"])
     if action == "scale" and not {"sx", "sy", "sz"} <= set(request):
         raise ValueError("scale needs sx, sy and sz, relative factors")
-    if action == "resize" and (clean["axis"] not in ("x", "y", "z") or "value" not in request):
+    if action == "resize" and (clean["axis"] not in ("x", "y", "z") or "value" not in request or clean["value"] < 0.05):
         raise ValueError("resize needs axis=x|y|z and value in metres")
     if action == "tint_shared":
         if clean["shared"] is not True or not clean["part"] or not HEX_RE.fullmatch(clean["hex"]):
