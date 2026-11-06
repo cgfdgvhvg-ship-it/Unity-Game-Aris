@@ -194,6 +194,83 @@ namespace Aaris.MapReview.Editor
                 hasBounds = false };
         }
 
+        // Native Terrain trees are instances, not GameObjects. Read the prototype meshes
+        // (including leaf meshes) and transform sample points into terrain world metres.
+        // Wind, billboard LOD and shader deformation cannot be measured from these meshes.
+        private static bool TryTreeGeometry(Terrain terrain, TreeInstance tree, int limit,
+            out Vector3[] samples, out Bounds bounds, out string accuracy, out int vertexCount)
+        {
+            Vector3 origin = terrain.transform.position +
+                             Vector3.Scale(tree.position, terrain.terrainData.size);
+            samples = new Vector3[0];
+            bounds = new Bounds(origin, Vector3.zero);
+            accuracy = "missing-readable-prototype";
+            vertexCount = 0;
+            var prototypes = terrain.terrainData.treePrototypes;
+            if (tree.prototypeIndex < 0 || tree.prototypeIndex >= prototypes.Length ||
+                prototypes[tree.prototypeIndex].prefab == null) return false;
+
+            var prefab = prototypes[tree.prototypeIndex].prefab;
+            var filters = prefab.GetComponentsInChildren<MeshFilter>(true)
+                .Where(f => f.sharedMesh != null).ToArray();
+            if (filters.Length == 0) return false;
+
+            Quaternion yaw = Quaternion.Euler(0, tree.rotation * Mathf.Rad2Deg, 0);
+            Vector3 size = new Vector3(tree.widthScale, tree.heightScale, tree.widthScale);
+            Matrix4x4 inverseRoot = prefab.transform.worldToLocalMatrix;
+            var points = new List<Vector3>(Mathf.Min(limit, MaxVertexSamples));
+            bool anyBounds = false;
+            bool fallback = false;
+            for (int fi = 0; fi < filters.Length; fi++)
+            {
+                var filter = filters[fi];
+                var mesh = filter.sharedMesh;
+                vertexCount += mesh.vertexCount;
+                Matrix4x4 relative = inverseRoot * filter.transform.localToWorldMatrix;
+                Bounds localBounds = mesh.bounds;
+                // Mesh AABB corners conservatively measure the prototype's outer extents.
+                for (int corner = 0; corner < 8; corner++)
+                {
+                    Vector3 local = localBounds.center + Vector3.Scale(localBounds.extents,
+                        new Vector3((corner & 1) == 0 ? -1 : 1,
+                                    (corner & 2) == 0 ? -1 : 1,
+                                    (corner & 4) == 0 ? -1 : 1));
+                    Vector3 world = origin + yaw * Vector3.Scale(relative.MultiplyPoint3x4(local), size);
+                    if (!anyBounds) { bounds = new Bounds(world, Vector3.zero); anyBounds = true; }
+                    else bounds.Encapsulate(world);
+                }
+                if (points.Count >= limit) continue;
+                try
+                {
+                    var vertices = mesh.vertices;
+                    int budget = Math.Max(1, (limit - points.Count) / (filters.Length - fi));
+                    int step = Math.Max(1, (int)Math.Ceiling((double)vertices.Length / budget));
+                    for (int vi = 0; vi < vertices.Length && points.Count < limit; vi += step)
+                        points.Add(origin + yaw * Vector3.Scale(
+                            relative.MultiplyPoint3x4(vertices[vi]), size));
+                }
+                catch (Exception)
+                {
+                    fallback = true;
+                    // Unreadable SpeedTree/LOD meshes get clearly labelled box points,
+                    // never a fabricated mesh silhouette.
+                    for (int corner = 0; corner < 8 && points.Count < limit; corner++)
+                    {
+                        Vector3 local = localBounds.center + Vector3.Scale(localBounds.extents,
+                            new Vector3((corner & 1) == 0 ? -1 : 1,
+                                        (corner & 2) == 0 ? -1 : 1,
+                                        (corner & 4) == 0 ? -1 : 1));
+                        points.Add(origin + yaw * Vector3.Scale(
+                            relative.MultiplyPoint3x4(local), size));
+                    }
+                }
+            }
+            samples = points.ToArray();
+            accuracy = fallback ? "prototype-mesh-and-bounds-fallback"
+                                : "approximate-prototype-mesh";
+            return anyBounds;
+        }
+
         private static bool TryBounds(Transform t, out Bounds bounds)
         {
             bounds = new Bounds(t.position, Vector3.zero);
@@ -273,8 +350,40 @@ namespace Aaris.MapReview.Editor
                 int tile = Array.IndexOf(Tiles(), terrain);
                 r.target = i.target;
                 r.objects = new[] { TreeItem(terrain, tile, treeIndex, tree) };
-                if (i.op == "outline") throw new NotSupportedException(
-                    "Native tree outline requires readable prefab geometry; use bounds/scale or scene-object outline");
+                Bounds treeBounds;
+                string treeAccuracy;
+                int treeVertices;
+                Vector3[] treePoints;
+                bool hasTreeGeometry = false;
+                if (i.op == "bounds" || i.op == "outline" || i.op == "photo")
+                {
+                    hasTreeGeometry = TryTreeGeometry(terrain, tree,
+                        i.op == "outline" ? i.max_points : 128,
+                        out treePoints, out treeBounds, out treeAccuracy, out treeVertices);
+                    if (hasTreeGeometry)
+                    {
+                        var item = r.objects[0];
+                        item.hasBounds = true;
+                        item.boundsCenter = treeBounds.center;
+                        item.boundsSize = treeBounds.size;
+                        item.accuracy = treeAccuracy;
+                        r.objects = new[] { item };
+                    }
+                    if (i.op == "outline")
+                    {
+                        if (!hasTreeGeometry || treePoints.Length == 0)
+                            throw new NotSupportedException(
+                                "Terrain tree prototype has no accessible mesh or bounds geometry");
+                        r.points = treePoints;
+                        r.totalPoints = treeVertices;
+                        r.meshMode = treeAccuracy;
+                    }
+                }
+                else
+                {
+                    treeBounds = new Bounds(r.objects[0].position, Vector3.zero);
+                    treePoints = new Vector3[0];
+                }
                 if (i.op == "move")
                 {
                     Vector3 point = terrain.transform.position + Vector3.Scale(tree.position, data.size);
@@ -313,7 +422,10 @@ namespace Aaris.MapReview.Editor
                 else if (i.op == "photo")
                 {
                     Vector3 point = r.objects[0].position;
-                    Photo(point, Mathf.Max(8, i.distance), i.nonce, r);
+                    Photo(hasTreeGeometry ? treeBounds.center : point,
+                          hasTreeGeometry ? Mathf.Max(i.distance, treeBounds.extents.magnitude * 2.6f)
+                                          : Mathf.Max(8, i.distance),
+                          i.nonce, r);
                 }
                 r.count = 1;
                 return;
