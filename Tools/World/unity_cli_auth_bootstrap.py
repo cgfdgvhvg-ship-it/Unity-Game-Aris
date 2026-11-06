@@ -14,6 +14,8 @@ INSTALLER_URL="https://public-cdn.cloud.unity3d.com/hub/prod/cli/install.sh"
 INSTALL_SCRIPT=ROOT/"unity-cli-official-install.sh"
 LOG=ROOT/"unity-cli-auth-install.log"
 AUTH_LOG=ROOT/"unity-cli-login-private.log"
+LICENSE_LOG=ROOT/"unity-license-activation-private.log"
+LICENSE_STATE=ROOT/"unity-license-activation-state.json"
 STATE=ROOT/"unity-cli-auth-state.json"
 
 
@@ -126,7 +128,7 @@ def status():
     if STATE.is_file() and not STATE.is_symlink() and STATE.stat().st_size<3000:
         try:state=json.loads(STATE.read_text())
         except (OSError,ValueError):pass
-    result={"unity_cli_installed":bool(binpath),"installer_running":running("--install-worker"),
+    result={"license_activation":license_state(),"unity_cli_installed":bool(binpath),"installer_running":running("--install-worker"),
             "oauth_worker_running":running("--login-worker"),
             "last_state":state.get("state","not_started"),
             "last_error":state.get("error"),"oauth_diagnostic":oauth_failure_diagnostics()}
@@ -160,6 +162,76 @@ def status():
         # OAuth URL is intentionally returned only for an explicit status read.
         result["sign_in_url"]=safe_url() if not result["authenticated"] else None
     return result
+
+
+
+def license_state():
+    data={}
+    if LICENSE_STATE.is_file() and not LICENSE_STATE.is_symlink() and LICENSE_STATE.stat().st_size<3000:
+        try: data=json.loads(LICENSE_STATE.read_text(encoding="utf-8"))
+        except (OSError,ValueError): pass
+    return {"state":data.get("state","not_started"),"exit_code":data.get("exit_code"),
+            "running":running("--license-worker"),"verified_active":data.get("verified_active",False)}
+
+
+def save_license_state(state, **info):
+    ROOT.mkdir(parents=True,exist_ok=True)
+    next_file=ROOT/"unity-license-activation-state.next"
+    if next_file.is_symlink():raise RuntimeError("unsafe status path")
+    with next_file.open("w", encoding="utf-8") as f:
+        os.chmod(next_file,0o600)
+        json.dump({"state":state,"timestamp":int(time.time()),**info},f)
+    os.replace(next_file,LICENSE_STATE)
+
+
+def worker_license():
+    """Activate only Unity Personal, after explicit user EULA acceptance."""
+    try:
+        tool=cli_path()
+        if tool is None:raise RuntimeError("Unity CLI missing")
+        if not keyring.secret_service_ready():
+            keyring.initialize_service()
+        env=keyring.environment()
+        if run_quiet([str(tool),"auth","status","--format","json"],env=env,timeout=20)!=0:
+            raise RuntimeError("Unity ID is not authenticated")
+        save_license_state("activating")
+        # Captured privately; never commit license data or print raw command output.
+        with LICENSE_LOG.open("a",encoding="utf-8") as log:
+            os.chmod(LICENSE_LOG,0o600)
+            p=subprocess.run([str(tool),"license","activate","--personal","--accept-eula",
+                              "--format","json","--non-interactive"],
+                      stdin=subprocess.DEVNULL,stdout=log,stderr=log,
+                      env=env,timeout=270,check=False)
+        active=run_quiet([str(tool),"license","status","--format","json"],
+                         env=env,timeout=45)==0
+        save_license_state("activated" if active else "failed",
+                           exit_code=p.returncode,verified_active=active)
+    except (OSError, subprocess.TimeoutExpired, RuntimeError) as exc:
+        save_license_state("failed",exit_code=None,verified_active=False,
+                           error_category=type(exc).__name__)
+
+
+def start_license():
+    if not keyring.secret_service_ready():
+        return {"status":"keyring_not_ready","license":license_state()}
+    tool=cli_path()
+    if tool is None:return {"status":"cli_missing","license":license_state()}
+    env=keyring.environment()
+    signed_in=run_quiet([str(tool),"auth","status","--format","json"],env=env,timeout=18)==0
+    if not signed_in:return {"status":"unity_id_not_signed_in","license":license_state()}
+    if run_quiet([str(tool),"license","status","--format","json"],env=env,timeout=35)==0:
+        return {"status":"already_activated","license_active":True,"license":license_state()}
+    if running("--license-worker"):
+        return {"status":"already_running","license":license_state()}
+    ROOT.mkdir(parents=True,exist_ok=True)
+    if LICENSE_LOG.is_symlink() or LICENSE_STATE.is_symlink():
+        raise RuntimeError("unsafe licensing status paths")
+    save_license_state("starting")
+    with LICENSE_LOG.open("a",encoding="utf-8") as log:
+        os.chmod(LICENSE_LOG,0o600)
+        p=subprocess.Popen([sys.executable,str(Path(__file__).resolve()),"--license-worker"],
+                  stdin=subprocess.DEVNULL,stdout=log,stderr=log,start_new_session=True)
+    return {"status":"started","pid":p.pid,"license":license_state()}
 
 
 def worker_install():
@@ -225,6 +297,8 @@ if __name__=="__main__":
     if sys.argv[1:]==["--install-worker"]:worker_install()
     elif sys.argv[1:]==["--login-worker"]:worker_login()
     elif sys.argv[1:]==["--status"]:print(json.dumps(status()))
+    elif sys.argv[1:]==["--license-worker"]:worker_license()
+    elif sys.argv[1:]==["--license-activate"]:print(json.dumps(start_license()))
     elif sys.argv[1:] in (["--install-start"],["--login-start"]):
         print(json.dumps(launch(sys.argv[1])))
     else:raise SystemExit("Expected --install-start, --login-start, --status or worker mode")
