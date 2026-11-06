@@ -147,7 +147,7 @@ def main():
     tunnel_file = Path("/tmp/aaris-tunnel-url")
     if tunnel_file.is_file():
         live_url = tunnel_file.read_text().strip()
-        if re.fullmatch(r"https://[a-z0-9-]+\\.trycloudflare\\.com", live_url):
+        if re.fullmatch(r"https://[a-z0-9-]+\.trycloudflare\.com", live_url):
             run_id = os.getenv("GITHUB_RUN_ID", "")
             mins = os.getenv("SESSION_MINUTES", "15")
             if run_id.isdigit() and mins in ("15", "45", "90"):
