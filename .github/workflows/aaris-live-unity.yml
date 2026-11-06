@@ -327,6 +327,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 1
       - name: Keep temporary desktop session online
+        if: env.LICENSE_EXPORT_RECIPIENT == ''
         run: |
           echo "Cloudflare session is active for $SESSION_MINUTES minutes."
           sleep "$((SESSION_MINUTES*60))"
