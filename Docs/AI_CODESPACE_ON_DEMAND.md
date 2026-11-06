@@ -2,8 +2,8 @@
 
 # Aaris Codespace On-Demand Terminal (Issue #37 is NOT the primary inbox)
 
-**Repository:** `Aaris-khan-don/Unity-Game-Aris` (private); **Codespace:**
-`musical-carnival-jjxp9r6vw45wfjgvg`; **queue branch** `ai/codespace-jobs`.
+**Repository:** `sundamunda289-art/Unity-Game-Aris` (private); **Codespace:**
+`redesigned-space-train-gxp5jwvq94wg2wvw6`; **queue branch** `ai/codespace-jobs`.
 This controller lets an authorised AI post a **new JSON file** via the GitHub
 repo connector, and read the matching **GitHub Actions run/log and JSON artifact**.
 No persistent Termux or Codespace polling process is needed for this new path.
@@ -12,7 +12,7 @@ No persistent Termux or Codespace polling process is needed for this new path.
 
 1. GitHub Actions (`Aaris Codespace On-Demand Terminal`) runs externally when
    a new `.aaris/jobs/<id>.json` is committed to `ai/codespace-jobs` by
-   GitHub actor `Aaris-khan-don`. Push must add EXACTLY one job file, and
+   GitHub actor `sundamunda289-art`. Push must add EXACTLY one job file, and
    change/delete no other file. The job ID must match the new filename.
 2. Action validates repository, sender, commit SHA and schema BEFORE using
    the credential. It checks the existing Codespace's name and repo via
@@ -41,7 +41,7 @@ No persistent Termux or Codespace polling process is needed for this new path.
 This feature uses a **separate GitHub Actions secret** named
 `AARIS_CODESPACE_TOKEN`. The ordinary Actions `GITHUB_TOKEN` is not authorised
 for the account's personal Codespace lifecycle. Recommended: create a
-**short-expiring fine-grained token** for account `Aaris-khan-don` restricted
+**short-expiring fine-grained token** for account `sundamunda289-art` restricted
 as much as GitHub allows to this repository, with **Codespaces lifecycle admin:
 write** and **Codespaces: read**. It also needs Codespace SSH access through
 GitHub CLI; GitHub API permissions may not by themselves guarantee SSH access.
@@ -55,7 +55,7 @@ CLI, without printing it to chat, a job, logs, or a repository file:
 
 ```bash
 gh auth status
-gh auth token | gh secret set AARIS_CODESPACE_TOKEN -R Aaris-khan-don/Unity-Game-Aris
+gh auth token | gh secret set AARIS_CODESPACE_TOKEN -R sundamunda289-art/Unity-Game-Aris
 ```
 
 Use a dedicated, narrowly scoped token instead where possible. Limit who has
@@ -66,7 +66,7 @@ security-sensitive. Rotate/revoke if compromised. Never add credentials to
 ## New AI: how to send a job WITHOUT Issue #37
 
 1. Read `AGENTS.md`, this document, and the two scripts; authenticate the
-   connected GitHub app as `Aaris-khan-don` with write access. Fetch the
+   connected GitHub app as `sundamunda289-art` with write access. Fetch the
    `ai/codespace-jobs` branch and the remote Actions workflow before writing.
 2. Create one **new unique** file via GitHub's `create_file` action on branch
    `ai/codespace-jobs`, for example:
