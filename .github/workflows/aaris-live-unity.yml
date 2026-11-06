@@ -199,7 +199,9 @@ jobs:
           # Unity Editor image is a convenience, not a fake render.
           # Docker pull time on fresh hosted runners cannot be guaranteed.
           docker pull "$GAMECI_IMAGE"
+          export AARIS_HOST_UID="$(id -u)" AARIS_HOST_GID="$(id -g)"
           docker run --detach --name aaris-unity-live --shm-size=1g \
+            --env AARIS_HOST_UID --env AARIS_HOST_GID \
             --env UNITY_LICENSE --env DISPLAY=:99 \
             --env LIBGL_ALWAYS_SOFTWARE=1 --env GALLIUM_DRIVER=llvmpipe \
             --volume /tmp/.X11-unix:/tmp/.X11-unix \
@@ -208,6 +210,31 @@ jobs:
           echo 'Unity license bootstrap started inside the same container as the real Editor.'
           echo 'Sign-in links, if necessary, are shown only on the Cloudflare email-PIN gated control page.'
           echo 'Neither an email/password Secret nor a Unity service-account Secret bypasses user licensing.'
+      - name: Check Unity bootstrap health (no private OAuth values)
+        if: always()
+        run: |
+          # The Docker container can start even if the CLI later rejects the
+          # license. Surface only the controlled state string, never auth_url.
+          sleep 4
+          if [[ -f ci-live-control/license-status.json ]]; then
+            state="$(python3 - <<'PY'
+          import json
+          try:
+              obj=json.load(open('ci-live-control/license-status.json'))
+              state=str(obj.get('state','unknown'))
+              print(state if state.replace('_','').isalnum() else 'unknown')
+          except (OSError,ValueError):
+              print('unreadable_status')
+          PY
+          )"
+          else
+            state='bootstrap_not_started'
+          fi
+          echo "Unity bootstrap state: $state"
+          echo "Unity bootstrap: $state" >> "$GITHUB_STEP_SUMMARY"
+          if docker inspect -f '{{.State.Running}}' aaris-unity-live 2>/dev/null | grep -qx false; then
+            echo '::warning::Unity container exited. Check the secure browser license status and correct the activation prerequisite.'
+          fi
       - name: Keep temporary desktop session online
         run: |
           echo "Cloudflare session is active for $SESSION_MINUTES minutes."
