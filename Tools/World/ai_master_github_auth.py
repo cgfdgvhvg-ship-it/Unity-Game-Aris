@@ -22,7 +22,7 @@ import sys
 import tempfile
 from typing import Iterator, Mapping
 
-REPOSITORY = "Aaris-khan-don/Unity-Game-Aris"
+REPOSITORY = "sundamunda289-art/Unity-Game-Aris"
 READ_URL = "https://github.com/" + REPOSITORY + ".git"
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
 
