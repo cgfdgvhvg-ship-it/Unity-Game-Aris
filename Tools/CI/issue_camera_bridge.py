@@ -87,6 +87,22 @@ def process(comment):
     if type(comment_id) is not int or comment_id <= 0:
         return "ignored-invalid-comment-id"
     if comment.get("body", "").strip() == "ACTIVATE_UNITY":
+        license_state = {}
+        private_file = STATE / "license-status.json"
+        if private_file.exists():
+            try:
+                license_state = json.loads(private_file.read_text())
+            except (OSError, ValueError):
+                pass
+        if license_state.get("state") in {
+            "installing_official_unity_cli", "starting_unity_oauth",
+            "waiting_for_mobile_unity_signin", "activating_unity_personal",
+            "editor_starting"
+        }:
+            issue_comment(f"Activation request #{comment_id}: Unity is already at "
+                          f"{license_state['state']}. Follow the protected Cloudflare "
+                          "Unity login prompt if present. No second activation was started.")
+            return "activation-already-in-progress"
         # Fixed Docker command; never build shell strings from issue content.
         # Only the repository owner can reach this branch.
         running = subprocess.run(
