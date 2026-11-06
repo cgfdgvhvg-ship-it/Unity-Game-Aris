@@ -16,7 +16,7 @@ can authenticate, so secure that email account.
 ## Start on phone
 1. Ensure your UNITY_EMAIL Secret contains the mailbox that receives PINs.
 2. Open https://github.com/sundamunda289-art/Unity-Game-Aris/actions/workflows/aaris-live-unity.yml
-3. Tap Run workflow (main) and choose 15, 45 or 90 minutes.
+3. Tap Run workflow (main) and choose 15, 45, 90, 240 or 300 minutes.
 4. Read the live-desktop job's "Start Cloudflare email-protected temporary
    tunnel" step log. It prints the temporary HTTPS URL and job summary.
 5. Open the URL, authenticate with the email PIN, and use the web desktop.
@@ -126,7 +126,7 @@ implementation does NOT write every video frame to Cloudflare KV or R2.
 Source: Tools/CI/unity_personal_bootstrap.py
 Live interface: Cloudflare PIN-gated desktop URL -> /api/license
 
-The live desktop starts after an owner-authored START_DESKTOP 15/45/90
+The live desktop starts after an owner-authored START_DESKTOP 15/45/90/240/300
 command. The Python bootstrap executes **inside the same GameCI Linux Editor
 container** that must later open the actual 2km Unity scene.
 
@@ -195,3 +195,57 @@ Personal license. No machine identity spoofing or token caching is used.
 Verified repo-level unit test for command handler and the workflow's
 issue_comment path ran in GitHub Actions. An actual successful Unity
 license activation and true scene PNG have NOT yet been verified.
+
+## AI object inspection, 3D point clouds and controlled scene editing (2026-11-07)
+
+The live command relay now accepts one owner-authored JSON instruction per
+Issue #77 comment (while the real, licensed Editor is active). Do not post
+commands as arbitrary users and never include secrets in issue comments.
+
+```text
+MAP {"op":"find","target":"Tree"}
+MAP {"op":"nearby","x":-420,"y":20,"z":-210,"radius":40}
+MAP {"op":"inspect","target":"ExactRoot/ExactHouse/Wall"}
+MAP {"op":"blueprint","target":"ExactRoot/ExactTree","samples":1024}
+MAP {"op":"photo","target":"ExactRoot/ExactHouse"}
+MAP {"op":"move","target":"ExactRoot/ExactTree","x":2,"y":0,"z":-2}
+MAP {"op":"scale","target":"ExactRoot/ExactHouse/Wall","x":1.2,"y":1,"z":1}
+MAP {"op":"tree_inspect","terrain":"Terrain","index":0}
+MAP {"op":"tree_scale","terrain":"Terrain","index":0,"width":1.2,"height":1}
+MAP_SAVE
+```
+
+Use `find` first to learn *real* Unity object paths; examples above are
+templates, not a claim that those names exist. The Editor's JSON includes
+bounds, world position, object hierarchy, materials and optional mesh-vertex
+samples. `blueprint` returns a world-space PLY point cloud for external
+inspection, not a full mesh or photogrammetric CAD reconstruction. The object
+photo is a real Unity RenderTexture capture, not a Python schematic.
+
+The issue relay uploads `ai-world-<comment-id>.json` and any associated
+`.png`/`.ply` files to `live-photos` and replies with immutable links.
+`MAP_SAVE` creates a separate branch and reviewable PR with the edited Unity
+scene/TerrainData; changes are not automatically merged to main.
+
+### Six-hour limit, 300-minute sessions and recovery
+
+GitHub-hosted runs are limited to six hours **including all setup**; the
+workflow accepts 15/45/90/240/300-minute sessions and caps the job at
+355 minutes. These are requested durations, not guaranteed running time.
+The editor cannot carry across workers as a live process. A new worker must
+re-download Docker/Unity and hydrate LFS assets, re-import or restore the
+nonsecret `Library/` cache, then start the licensed Unity Editor.
+
+The live workflow periodically attempts a checksum-verified `project-checkpoint`
+release save, and an `if: always()` final save. On the next clean checkout it
+restores **only a checkpoint made from the identical source Git SHA**.
+`MAP_SAVE` additionally pushes the actual changed Unity sources to a PR
+branch (the durable record even if Releases are cleaned). GitHub cancellation,
+runner loss, unavailable Unity licensing, full disks, missing LFS objects,
+GitHub Release API failures and changed base commits can interrupt recovery.
+Never promise a guaranteed uninterrupted six-hour interactive session.
+
+Diagnostics live in Actions artifact `aaris-ai-diagnostics`, the
+`ci-live-control/ai-result.json` response, the issue relay logs, and the
+private PIN-gated `/api/license` page. A green Python selftest alone never
+proves that the native URP Unity scene actually rendered.
