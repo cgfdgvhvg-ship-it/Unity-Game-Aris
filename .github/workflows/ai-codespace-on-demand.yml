@@ -17,7 +17,7 @@ concurrency:
 jobs:
   run-owner-job:
     # Other GitHub accounts cannot trigger the privileged remote workflow.
-    if: github.actor == 'Aaris-khan-don'
+    if: github.actor == 'sundamunda289-art'
     runs-on: ubuntu-latest
     timeout-minutes: 18
     steps:
