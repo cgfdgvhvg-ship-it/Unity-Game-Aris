@@ -1892,6 +1892,80 @@ def unity_virtual_live_job(job):
     return _virtual_response(ident,seconds=17)
 
 
+
+def _sceneview_bridge_source(source):
+    """Construct only an isolated, read-only SceneView camera positioning action."""
+    switch='                    case "inspect": Inspect(request, result); break;'
+    anchor='        private static void Capture(Request request, Response result)'
+    if source.count(switch)!=1 or source.count(anchor)!=1:
+        raise ValueError("Unrecognized Unity bridge structure for read-only camera stage")
+    if 'case "view": FrameForScreenshot(request, result); break;' in source:
+        raise ValueError("SceneView patch is already present")
+    method="""        // Screenshot framing changes SceneView only: no scene/asset/mesh writes.
+        private static void FrameForScreenshot(Request request, Response result)
+        {
+            if (!Finite(request.cameraPosition) || !Finite(request.cameraTarget))
+                throw new InvalidOperationException("SceneView input must be finite");
+            Vector3 ray = request.cameraTarget - request.cameraPosition;
+            float distance = ray.magnitude;
+            if (distance < 1f || distance > 250f)
+                throw new InvalidOperationException("SceneView distance must be 1..250m");
+            SceneView view = SceneView.lastActiveSceneView;
+            if (view == null)
+                throw new InvalidOperationException("No active Unity SceneView");
+            view.orthographic = false;
+            view.LookAtDirect(request.cameraTarget,
+                Quaternion.LookRotation(ray.normalized, Vector3.up),
+                Mathf.Clamp(distance * 0.8f, 3f, 90f));
+            SceneView.RepaintAll();
+            result.position = request.cameraTarget;
+        }
+"""
+    return source.replace(switch, switch+'\n                    case "view": FrameForScreenshot(request, result); break;').replace(anchor,method+anchor)
+
+
+def unity_sceneview_prepare():
+    """Stage a bounded, zero-asset-write camera action in /tmp Unity only."""
+    scratch=BATCH_ROOT/"project"
+    bridge=_virtual_bridge_path()
+    if len(_scratch_unity_pids())!=1 or not (BATCH_ROOT/"scene-readback.json").is_file():
+        return {"exit_code":3,"stdout":"","stderr":"Verified loaded scratch Unity Editor required"}
+    if not scratch.is_dir() or scratch.is_symlink() or not bridge.is_file() or bridge.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Verified scratch Unity bridge missing"}
+    if not bridge.resolve().is_relative_to(scratch.resolve()):
+        return {"exit_code":3,"stdout":"","stderr":"Scratch bridge escapes protected temp root"}
+    source=bridge.read_text(encoding="utf-8")
+    isolated='private static readonly string Root = "/tmp/aaris-unity-batch/control";'
+    if source.count(isolated)!=1:
+        return {"exit_code":3,"stdout":"","stderr":"Scratch-only bridge command root is not isolated"}
+    if 'case "view": FrameForScreenshot(request, result); break;' in source:
+        return {"exit_code":0,"stdout":json.dumps({
+            "status":"sceneview_camera_already_staged","scratch_only":True,
+            "original_worktree_untouched":True}),"stderr":""}
+    expected=_sceneview_bridge_source(source)
+    backup=BATCH_ROOT/"sceneview-original-bridge.cs"
+    if backup.exists() or backup.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Previous SceneView source backup needs review"}
+    shutil.copy2(bridge,backup)
+    new=bridge.with_suffix(".cs.aaris-sceneview-new")
+    if new.exists() or new.is_symlink():
+        return {"exit_code":3,"stdout":"","stderr":"Unsafe SceneView staging temp file"}
+    try:
+        new.write_text(expected,encoding="utf-8")
+        os.replace(new,bridge)
+        if bridge.read_text(encoding="utf-8")!=expected:
+            raise ValueError("SceneView staged source verification failed")
+    except BaseException:
+        if new.exists(): new.unlink()
+        shutil.copy2(backup,bridge)
+        raise
+    return {"exit_code":0,"stdout":json.dumps({
+        "status":"sceneview_camera_staged_for_import","scratch_only":True,
+        "original_worktree_untouched":True,"camera_only":True,
+        "uses_unsafe_urp_render_request":False,
+        "note":"Wait for recompilation and issue bounded view; capture using X11 desktop_snapshot"}),"stderr":""}
+
+
 def unity_virtual_frame(ident):
     if not re.fullmatch(r"[a-z][a-z0-9-]{3,55}",ident):
         raise ValueError("Invalid frame command")
@@ -2241,6 +2315,7 @@ def validate_live_payload(value):
     allowed={
         "status":set(),
         "inspect":{"target","cameraTarget","radius","limit"},
+        "view":{"cameraPosition","cameraTarget"},
         "move":{"target","delta"},
         "scale":{"target","scale"},
         "move_tree":{"target","delta","expectedPosition"},
@@ -2282,7 +2357,7 @@ def validate_live_payload(value):
             r"[a-f0-9]{64}",value["expectedDigest"]
         ):
             raise ValueError("Exact fresh Unity SHA256 required for forest write")
-    if action=="capture" and not {"cameraPosition","cameraTarget"}<=set(value):
+    if action in ("capture","view") and not {"cameraPosition","cameraTarget"}<=set(value):
         raise ValueError("camera position and target required")
     if action=="inspect" and not value.get("target") and "cameraTarget" not in value:
         raise ValueError("inspect requires target or cameraTarget")
@@ -3713,6 +3788,9 @@ def execute(job):
     if op == "unity_forest_stage":
         if args: raise ValueError("Forest stage does not accept parameters")
         return unity_forest_stage()
+    if op == "unity_sceneview_prepare":
+        if args: raise ValueError("SceneView prepare takes no arguments")
+        return unity_sceneview_prepare()
     if op == "unity_virtual_live":
         return unity_virtual_live_job(job)
     if op == "unity_virtual_result":
