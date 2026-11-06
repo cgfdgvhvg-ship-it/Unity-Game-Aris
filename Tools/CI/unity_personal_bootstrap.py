@@ -266,6 +266,13 @@ def hub_personal_activation() -> None:
         visible = hub_window_visible()
         if visible:
             if not window_checked:
+                # An Xvfb screen can appear blank if another window is focused.
+                # Focus only the official Hub window; no credentials or clicks.
+                wmctrl = shutil.which("wmctrl")
+                if wmctrl:
+                    subprocess.run([wmctrl, "-a", "Unity Hub"],
+                                   env=safe_environment(), stdout=subprocess.DEVNULL,
+                                   stderr=subprocess.DEVNULL, timeout=5, check=False)
                 private_status("waiting_for_unity_hub_signin",
                                detail="Unity Hub window detected on virtual desktop. Open noVNC and sign in.")
                 window_checked = True
