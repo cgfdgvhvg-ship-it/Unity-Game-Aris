@@ -217,8 +217,8 @@ def upgrade(root):
     old=next(d for c,i,n,d in documents(sky) if n=='Material')
     old.update(m_Shader=ref(106,'0000000000000000f000000000000000',0),m_ShaderKeywords='_SUNDISK_HIGH_QUALITY')
     old['m_SavedProperties']={'serializedVersion':3,'m_TexEnvs':[],'m_Floats':[
-        {'_SunDisk':2},{'_SunSize':.035},{'_SunSizeConvergence':5},{'_AtmosphereThickness':1},{'_Exposure':1.15}],
-        'm_Colors':[{'_SkyTint':color(.50,.50,.50)},{'_GroundColor':color(.45,.47,.45)}]}
+        {'_SunDisk':2},{'_SunSize':.035},{'_SunSizeConvergence':5},{'_AtmosphereThickness':1},{'_Exposure':0.88}],
+        'm_Colors':[{'_SkyTint':color(.44,.55,.70)},{'_GroundColor':color(.30,.36,.44)}]}
     write_yaml(sky,[(21,2100000,'Material',old)])
     for name in ['Asphalt','Concrete','Sand','RoadMark']:
         path=root/'Assets/AarisWorld/Surfaces'/(name+'.png')
