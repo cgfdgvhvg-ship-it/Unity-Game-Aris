@@ -25,6 +25,7 @@ import subprocess
 import threading
 import time
 from urllib.parse import urlparse
+import xml.etree.ElementTree as ET
 from license_reuse import check_license
 
 PROJECT = Path("/project")
@@ -189,18 +190,13 @@ def hub_license_present() -> bool:
             else:
                 if not 200 <= len(raw) <= 200000 or b"\0" in raw:
                     continue
-                import xml.etree.ElementTree as ET
                 doc = ET.fromstring(raw)
                 if "license" not in doc.tag.lower():
                     continue
             return True
-        except (OSError, ValueError):
+        except (OSError, ValueError, ET.ParseError):
+            # Never print malformed or private license contents.
             continue
-        except Exception as exc:
-            # XML may be malformed; do not expose or log license details.
-            if isinstance(exc, ET.ParseError):
-                continue
-            raise
     return False
 
 
