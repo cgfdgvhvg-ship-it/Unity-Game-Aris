@@ -44,16 +44,27 @@ Never post this link in GitHub public issues or logs.</small></p></section>
 <script>
 async function go(){let data={};for(let k of ['x','y','z','yaw','pitch','distance'])
 data[k]=Number(document.getElementById(k).value);
-try{let r=await fetch('/api/camera',{method:'POST',headers:{'Content-Type':'application/json'},
-body:JSON.stringify(data)});document.getElementById('result').textContent=JSON.stringify(await r.json());}
-catch(e){document.getElementById('result').textContent=String(e);}}
-async function status(){try{let r=await fetch('/api/status');
+try{let r=await fetch('/api/camera',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+body:JSON.stringify(data)});
+if(!r.headers.get('content-type')?.includes('application/json'))
+throw Error('Cloudflare authentication expired (HTTP '+r.status+'). Reload and enter your email PIN.');
+let answer=await r.json();document.getElementById('result').textContent=JSON.stringify(answer);
+}catch(e){document.getElementById('result').textContent=String(e);}}
+async function status(){try{let r=await fetch('/api/status',{credentials:'same-origin',cache:'no-store'});
+if(!r.headers.get('content-type')?.includes('application/json'))return;
 document.getElementById('result').textContent=JSON.stringify(await r.json());}catch(e){}}
-async function licenseStatus(){try{let r=await fetch('/api/license');
-let d=await r.json();document.getElementById('licstate').textContent=(d.state||'unknown')+
-(d.detail?' — '+d.detail:'');let a=document.getElementById('authorize');
+async function licenseStatus(){let message;try{
+let r=await fetch('/api/license',{credentials:'same-origin',cache:'no-store'});
+if(r.status===401||r.status===403)throw Error('Cloudflare email PIN expired. Reload this page and sign in again.');
+if(!r.headers.get('content-type')?.includes('application/json'))
+throw Error('License endpoint returned HTTP '+r.status+' (not JSON); check your PIN session.');
+let d=await r.json();message=(d.state||'unknown')+(d.detail?' — '+d.detail:'');
+let a=document.getElementById('authorize');
 if(d.auth_url){a.href=d.auth_url;a.style.display='inline';}
-else {a.style.display='none';a.removeAttribute('href');}}catch(e){}}
+else {a.style.display='none';a.removeAttribute('href');}
+}catch(e){message='License status temporarily unavailable: '+e.message;}
+document.getElementById('licstate').textContent=message;
+}
 setInterval(status,7000);status();
 setInterval(licenseStatus,3000);licenseStatus();
 </script></html>"""
