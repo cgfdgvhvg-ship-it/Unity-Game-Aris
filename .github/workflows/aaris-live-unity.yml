@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/aaris-live-unity.yml'
       - 'Tools/CI/live_camera_server.py'
+      - 'Tools/CI/issue_camera_bridge.py'
       - 'Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs'
       - 'Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs.meta'
   workflow_dispatch:
@@ -18,7 +19,8 @@ on:
         options: ['15', '45', '90']
 
 permissions:
-  contents: read
+  contents: write
+  issues: write
 
 concurrency:
   group: aaris-one-live-editor
@@ -34,7 +36,8 @@ jobs:
           lfs: false
       - name: Verify camera API rejects unsafe inputs
         run: |
-          python3 -m py_compile Tools/CI/live_camera_server.py
+          python3 -m py_compile Tools/CI/live_camera_server.py Tools/CI/issue_camera_bridge.py
+          python3 Tools/CI/issue_camera_bridge.py --selftest
           python3 - <<'PY'
           import sys
           sys.path.insert(0,"Tools/CI")
@@ -148,6 +151,14 @@ jobs:
           echo "Open: $url" >> "$GITHUB_STEP_SUMMARY"
           echo 'Cloudflare PIN is sent to the email stored in UNITY_EMAIL.' >> "$GITHUB_STEP_SUMMARY"
           echo "Session length: $SESSION_MINUTES minutes" >> "$GITHUB_STEP_SUMMARY"
+      - name: Start owner-authorized issue camera bridge
+        run: |
+          mkdir -p ci-logs ci-live-control
+          (python3 Tools/CI/issue_camera_bridge.py --seconds "$((SESSION_MINUTES*60))" \
+            > ci-logs/issue-camera-relay.log 2>&1) &
+          echo "$!" > /tmp/aaris-issue-bridge.pid
+          echo 'Camera commands: https://github.com/sundamunda289-art/Unity-Game-Aris/issues/77'
+          echo 'Only owner-issued CAMERA x y z yaw pitch distance commands are accepted.'
       - name: Try starting real Unity Editor (without batchmode or -nographics)
         continue-on-error: true
         run: |
@@ -198,5 +209,8 @@ jobs:
           docker rm -f aaris-unity-live >/dev/null 2>&1 || true
           if [[ -f /tmp/aaris-tunnel.pid ]]; then
             kill "$(cat /tmp/aaris-tunnel.pid)" 2>/dev/null || true
+          fi
+          if [[ -f /tmp/aaris-issue-bridge.pid ]]; then
+            kill "$(cat /tmp/aaris-issue-bridge.pid)" 2>/dev/null || true
           fi
           echo 'Session ended. GitHub source and Releases remain; runner desktop is ephemeral.'
