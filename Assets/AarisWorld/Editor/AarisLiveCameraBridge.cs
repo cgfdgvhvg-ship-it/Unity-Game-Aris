@@ -500,6 +500,42 @@ namespace Aaris.MapReview.Editor
                         report.scale = new Vector3(instance.widthScale, instance.heightScale, instance.widthScale);
                         report.saved = true;
                     }
+                    else if (command.op == "part_scale")
+                    {
+                        // A Terrain tree is a native instance, not a GameObject.
+                        // Prefab-part changes necessarily affect ALL instances
+                        // sharing that prototype. Require explicit scope.
+                        if (command.scope != "prototype")
+                            throw new ArgumentException("Native tree part_scale requires scope=prototype; changes all matching trees");
+                        CheckValues(command, true);
+                        if (String.IsNullOrWhiteSpace(command.part) || command.part.Length > 160 ||
+                            command.part.StartsWith("/", StringComparison.Ordinal) || command.part.Contains(".."))
+                            throw new ArgumentException("Use an exact relative prefab child hierarchy");
+                        string prefabPath = AssetDatabase.GetAssetPath(prototype);
+                        if (String.IsNullOrEmpty(prefabPath) ||
+                            !prefabPath.StartsWith("Assets/", StringComparison.Ordinal) ||
+                            !prefabPath.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase))
+                            throw new InvalidOperationException("Prototype is not an editable .prefab; model import assets cannot be changed here");
+                        GameObject prefabRoot = PrefabUtility.LoadPrefabContents(prefabPath);
+                        try
+                        {
+                            var part = prefabRoot.transform.Find(command.part);
+                            if (part == null) throw new InvalidOperationException("Tree prefab part not found");
+                            Vector3 nextScale = Vector3.Scale(part.localScale, Vector(command));
+                            if (nextScale.x <= 0 || nextScale.y <= 0 || nextScale.z <= 0 ||
+                                nextScale.magnitude > 10000)
+                                throw new ArgumentException("Unsafe prefab part size");
+                            part.localScale = nextScale;
+                            if (PrefabUtility.SaveAsPrefabAsset(prefabRoot, prefabPath) == null)
+                                throw new IOException("Cannot save native tree prototype");
+                        }
+                        finally { PrefabUtility.UnloadPrefabContents(prefabRoot); }
+                        AssetDatabase.SaveAssets();
+                        report.scope = "shared-prototype";
+                        report.asset = prefabPath;
+                        report.saved = true;
+                        report.detail = "Entire shared tree prototype edited; every terrain tree using this prefab is affected. Re-render and check LOD/collisions.";
+                    }
                     else if (command.op == "outline")
                     {
                         report.points = OuterPoints(preview, bounds);
@@ -508,7 +544,7 @@ namespace Aaris.MapReview.Editor
                     }
                     else if (command.op == "photo") Photo(bounds);
                     else if (command.op == "inspect") report.detail = "Native tree instance; scale X/Z=widthScale, Y=heightScale";
-                    else throw new ArgumentException("Allowed tree ops: inspect, outline, photo, move, scale");
+                    else throw new ArgumentException("Allowed tree ops: inspect, outline, photo, move, scale, part_scale (prototype scope)");
                 }
                 finally { UnityEngine.Object.DestroyImmediate(preview); }
                 return;
