@@ -90,3 +90,32 @@ If Unity has not activated on that machine, no true Unity screenshot is
 created. The desktop and Cloudflare hub cannot activate Unity by themselves.
 Do not put passwords, license tokens, OAuth cookies or any private values
 in public issue comments or public release assets.
+
+
+## Start a desktop by GitHub comment (no Actions buttons)
+The repo owner or an authorized ChatGPT GitHub connector can create a comment
+on https://github.com/sundamunda289-art/Unity-Game-Aris/issues/77 with exactly
+START_DESKTOP 15
+or START_DESKTOP 45 / START_DESKTOP 90.
+
+The workflow verifies the issue number and GitHub author and validates the
+duration, then starts the temporary desktop in Actions. The runner adds a
+comment containing a temporary PIN-protected Tunnel URL. The stable
+Cloudflare hub discovers that link and displays the latest bot camera result.
+
+To move the camera while the runner is active, post an owner-authored
+CAMERA -420 22 -210 0 20 22
+comment. The runner polls comments and, only if a licensed Unity Editor is
+running, publishes an authentic PNG. An expired or unlicensed session reports
+a timeout rather than claiming rendering succeeded.
+
+### Verified tests (6 Nov 2026)
+- Owner comment START_DESKTOP 15 triggered Actions run 42239962330;
+  virtual screen, noVNC, Cloudflare protected Tunnel and issue relay started.
+- Owner comment CAMERA -420 22 -210 0 20 22 was read by the active relay.
+  The runner reported "timed out waiting for a licensed Unity Editor";
+  no genuine Unity photo was produced because UNITY_LICENSE was unavailable.
+- Independent Python layout-preview workflow continues to work without Unity.
+
+Cloudflare Worker limits matter: Workers Free has 100,000 requests/day; this
+implementation does NOT write every video frame to Cloudflare KV or R2.
