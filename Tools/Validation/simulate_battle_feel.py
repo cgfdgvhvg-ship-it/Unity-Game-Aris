@@ -99,7 +99,11 @@ def assert_regression() -> None:
 
     # No melee through cover; no hitscan overflow or behind-cover damage.
     assert "Physics.Raycast(origin, delta.normalized" in ACTION
-    assert "if (count >= hits.Length) return false;" in GUN
+    assert "saturated = count >= hits.Length;" in GUN
+    assert "if (saturated) return false;" in GUN
+    assert "SameDamageTarget" in GUN
+    assert "collider.transform.IsChildOf(owner)" in GUN
+    assert "Physics.DefaultRaycastLayers" in GUN
     assert "Vector3 muzzle" in GUN and "muzzleHit" in GUN
 
     # Pure visuals must never move gameplay capsule.
