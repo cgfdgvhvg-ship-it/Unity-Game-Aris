@@ -4,7 +4,9 @@ set -euo pipefail
 TASK="$1"
 PROJECT="/workspaces/Unity-Game-Aris"
 RUN="/tmp/aaris-codespaces"
-EDITOR="/tmp/aaris-unity-runtime/editors/6000.3.26f1/Editor/Unity"
+EDITOR="/workspaces/.aaris-unity-editors/6000.3.26f1/Editor/Unity"
+OLD_EDITOR="/tmp/aaris-unity-runtime/editors/6000.3.26f1/Editor/Unity"
+if ! test -x "$EDITOR" && test -x "$OLD_EDITOR"; then EDITOR="$OLD_EDITOR"; fi
 mkdir -p "$RUN"
 cd "$PROJECT"
 case "$TASK" in
@@ -17,6 +19,7 @@ case "$TASK" in
     printf 'workspace_free_kb=%s\n' "$(df -Pk /workspaces | awk 'NR==2{print $4}')"
     printf 'tmp_free_kb=%s\n' "$(df -Pk /tmp | awk 'NR==2{print $4}')"
     if test -x "$EDITOR"; then echo 'editor_installed=yes'; else echo 'editor_installed=no'; fi
+    if test -x /workspaces/.aaris-unity-editors/6000.3.26f1/Editor/Unity; then echo 'persistent_editor=yes'; else echo 'persistent_editor=no'; fi
     if pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then echo 'editor_running=yes'; else echo 'editor_running=no'; fi
     if DISPLAY=:99 xdpyinfo >/dev/null 2>&1; then echo 'display=ready'; else echo 'display=stopped'; fi
     if head -c 100 Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity 2>/dev/null | grep -q 'git-lfs.github.com/spec'; then
@@ -188,7 +191,8 @@ PY
   editor)
     if ! test -x "$EDITOR"; then
       echo 'EDITOR_ABSENT_INSTALLING_ON_TMP_DISK'
-      bash "$PROJECT/Tools/Codespaces/install_unity.sh" || { echo 'EDITOR_AUTO_INSTALL_FAILED'; exit 11; }
+      echo 'EDITOR_NOT_INSTALLED_USE_CS_INSTALL_FIRST'
+      exit 11
     fi
     # Put Unity's large import cache on /tmp and preserve checked-in source files.
     mkdir -p /tmp/aaris-unity-runtime/project-cache

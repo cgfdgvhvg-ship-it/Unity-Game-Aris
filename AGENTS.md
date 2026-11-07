@@ -233,3 +233,8 @@ New persistent backend: `Docs/CODESPACES_AI_CONTROL.md`, `.github/workflows/aari
 
 ## 2026-11-07: Codespace installer remediation
 - The optional Codespace Editor installer now uses the official Unity CLI via `Tools/Codespaces/install_unity.sh`; Hub CLI headless commands are deprecated. `CS LFS REPORT` is a read-only diagnostic command with sanitized pointer counts and failure kind. Preserve original LFS pointer SHA-256 and asset bytes; do not replace missing assets with generated surrogates. Genuine Unity Personal authorization may still need a one-time phone approval in the *current* Codespace. Do not print the OAuth URL on the public GitHub issue.
+
+## 2026-11-07 Fast Codespace Resume
+- One-time Editor install to persistent \`/workspaces/.aaris-unity-editors/6000.3.26f1\` using Unity CLI's supported portable \`--download-directory\` option; the Editor is reused on same Codespace stop/start.
+- On restart, \`CS START\` then \`CS EDITOR\`, followed by \`CS STATUS\` and \`CS SHOT\`. No reinstalls when persistent Editor is available. Unity Library/Temp cache remains on /tmp to avoid running out of persistent disk; import may take longer after ephemeral storage reset.
+- New account/new Codespace has its own storage and may require the initial Editor download and official Unity Personal login. Never move authentication cookies, license state, or machine IDs between Codespaces.
