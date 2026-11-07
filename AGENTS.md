@@ -217,3 +217,16 @@ JWT signed by GitHub**, scoped to this exact repo, workflow, branch, and actor.
 - An assistant using the connected Cloudflare account can read KV value under
   key `run-<GITHUB_RUN_ID>` and return the genuine link privately. Delete or
   allow the key to expire after approval. Do not paste it into Issue #77.
+
+
+## 2026-11-07: GitHub Codespaces AI terminal and screenshots (optional)
+
+New persistent backend: `Docs/CODESPACES_AI_CONTROL.md`, `.github/workflows/aaris-codespaces-control.yml`, `.devcontainer/`, and `Tools/Codespaces/`. This does not replace the existing GitHub Actions world/photographer pipeline.
+
+- As GitHub-linked repo owner `sundamunda289-art`, send one exact owner-only issue comment to Issue #77: `CS MACHINES`, `CS START`, `CS STATUS`, `CS SYNC`, `CS INSTALL`, `CS EDITOR`, `CS LICENSE`, `CS SHOT`, `CS TEST` or `CS STOP`.
+- Each comment triggers the dedicated Actions controller (after merge to main). Read the returned issue comment and per-run artifact `aaris-codespace-<run-id>` for bounded terminal output, JSON status and optional PNG. This is not streaming SSH access for the chat.
+- `CODESPACE_PAT` is a GitHub Actions Secret switched from Termux after GitHub HTTPS device authorization. The master repository remains unchanged when the Codespace account rotates; never add secrets, PAT, Unity login material, or machine IDs to source or public logs.
+- Run `CS MACHINES` before `CS START` to inspect machine availability. `CS STATUS` probes actual CPU, memory, free disk and Editor process. `CS SYNC` hydrates LFS without resetting unsaved native Unity files.
+- New Codespaces auto-install Xvfb/tools from `.devcontainer`; Unity Editor 6000.3.26f1 is installed separately on demand to `/workspaces/.aaris-unity-editors`. The project resides in `/workspaces/Unity-Game-Aris`; logs/screens in temporary `/tmp/aaris-codespaces`.
+- Do not infer a licensed Unity Editor or real scene render from process launch or nonblank screen alone. Unity Personal still needs authorized Unity Hub sign-in, especially on a different Codespace. Never spoof machine-ID or clone OAuth/license files.
+- Only checked-in task IDs can run through issue comments. No arbitrary shell, `eval`, user-provided paths, credential echoes or unsafe background command execution. New tasks require code review and static tests.
