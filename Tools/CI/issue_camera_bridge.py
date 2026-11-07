@@ -93,6 +93,20 @@ def publish_world_asset(comment_id, filename, suffix):
     gh("release", "upload", RELEASE, str(dest), "--repo", REPO)
     return f"https://github.com/{REPO}/releases/download/{RELEASE}/{dest.name}"
 
+def heartbeat_current(record, now=None):
+    """Require fresh, actual Editor-emitted evidence and a real graphics backend."""
+    if not isinstance(record, dict):
+        return False
+    stamp = record.get("unixSeconds")
+    if type(stamp) is not int:
+        return False
+    graphics = record.get("graphicsDevice")
+    if not isinstance(graphics, str) or graphics in ("", "Null"):
+        return False
+    current = time.time() if now is None else now
+    return 0 <= current - stamp <= 45
+
+
 def diagnostic_snapshot():
     """Public-safe, actionable stage report; never copy Unity OAuth URLs or logs."""
     safe_states = {
@@ -122,6 +136,14 @@ def diagnostic_snapshot():
         disk_gb = round(shutil.disk_usage(".").free / (1024 ** 3), 2)
     except OSError:
         disk_gb = None
+    try:
+        heartbeat = json.loads((STATE / "editor-heartbeat.json").read_text())
+    except (OSError, ValueError, TypeError):
+        heartbeat = {}
+    editor_responding = heartbeat_current(heartbeat)
+    camera_captured = "Camera moved and real Unity PNG saved" in camera_health().get("state", "")
+    world_photo = (last_world.get("ok") is True and
+                   last_world.get("op") in ("photo", "tree_photo"))
     git = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
                          capture_output=True, text=True, timeout=8, check=False)
     return {
@@ -134,8 +156,13 @@ def diagnostic_snapshot():
         "cloudflare_tunnel_started": Path("/tmp/aaris-tunnel-url").is_file(),
         "unity_container_running": bool(docker is not None and
                                    docker.returncode == 0 and docker.stdout.strip() == "true"),
-        "unity_editor_confirmed": bool(last_world.get("ok") is True or
-            "Camera moved and real Unity PNG saved" in camera_health().get("state", "")),
+        "unity_editor_confirmed": bool(editor_responding or
+                                      last_world.get("ok") is True or camera_captured),
+        "native_scene_open": bool(editor_responding and
+                                  heartbeat.get("nativeSceneOpen") is True),
+        "real_camera_photo_confirmed": bool(camera_captured or world_photo),
+        "unity_editor_heartbeat_age_sec": round(time.time() - heartbeat["unixSeconds"], 1)
+             if editor_responding else None,
         "last_world_op": str(last_world.get("op", ""))[:40] if
                          isinstance(last_world.get("op"), str) else "",
         "last_world_success": last_world.get("ok") is True,
@@ -390,6 +417,10 @@ def main():
         assert "auth_url" not in json.dumps(snapshot)
         assert "UNITY_PASSWORD" not in json.dumps(snapshot)
         assert "free_disk_gb" in snapshot
+        assert not heartbeat_current({"unixSeconds":1,"graphicsDevice":"OpenGLCore"},now=100)
+        assert not heartbeat_current({"unixSeconds":100,"graphicsDevice":"Null"},now=100)
+        assert heartbeat_current({"unixSeconds":100,"graphicsDevice":"OpenGLCore"},now=101)
+        assert snapshot["real_camera_photo_confirmed"] in (True, False)
         print("GitHub issue camera and explicit license retry parser selftest: PASS")
         return
     if REPO != "sundamunda289-art/Unity-Game-Aris" or ISSUE != 77:
