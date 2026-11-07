@@ -25,6 +25,8 @@ assert '"bash -s"' in (r/'Tools/Codespaces/auth_bridge.py').read_text()
 assert 'AARIS_UNITY_PY_EOF_22941' in (r/'Tools/Codespaces/auth_bridge.py').read_text()
 assert 'https://unity.com/install.sh' in (r/'Tools/Codespaces/mobile_license.py').read_text()
 assert 'Path.home()/".local/bin/unity"' in (r/'Tools/Codespaces/mobile_license.py').read_text()
+assert 'pwd.getpwuid(os.geteuid())' in (r/'Tools/Codespaces/mobile_license.py').read_text()
+assert 'UNITY_STATE_HOME_TEMPORARY' in (r/'Tools/Codespaces/mobile_license.py').read_text()
 remote=(r/'Tools/Codespaces/remote.sh').read_text()
 assert 'eval ' not in remote
 assert 'merge --ff-only' in remote
