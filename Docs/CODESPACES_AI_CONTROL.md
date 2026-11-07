@@ -69,3 +69,9 @@ Relevant official guidance: [GitHub CLI](https://cli.github.com/manual/gh_codesp
 
 ### Fast restart (persistent install)
 After the one-time Editor installation succeeds on the current Codespace, \`CS START\` and \`CS EDITOR\` reuse \`/workspaces/.aaris-unity-editors/6000.3.26f1\`; no Editor re-download on normal stop/start. On first install, portable Unity CLI \`--download-directory\` and \`--resume\` use persistent storage. Leave Unity Library/import cache on /tmp because persistent free storage is limited. For a different account's new Codespace, software is reinstalled automatically; enable GitHub Codespaces prebuilds in repository settings if the account quota/plan permits (prebuild storage consumes quota).
+
+### One-time phone Unity Personal sign-in
+
+Post `CS AUTH` as the owner to Issue #77 after setting CODESPACE_PAT. GitHub Actions holds a PRIVATE SSH stream to the Codespace while `unity auth login` runs. Its actual unity.com browser URL is intercepted by `auth_bridge.py` and sent ONLY to a Cloudflare Workers KV namespace `aaris-unity-approval-private`, key `run-<GITHUB_RUN_ID>`. No URL, token or account email is written into public GitHub Issues, workflow logs or artifacts. Signed GitHub OIDC pins owner ID, repository ID, branch, and specific approved workflow; Cloudflare KV entry expires after 480 seconds. ChatGPT retrieves the URL using connected Cloudflare and sends it in this private chat.
+
+User opens official Unity link on phone, signs into Unity account via Google/Gmail if configured, and taps Allow. Then the Codespace executes `unity auth status`, `unity license activate --personal --accept-eula`, and `unity license status`. A successful browser page alone is NOT proof of a license. If Unity Personal requires Unity Hub, report that status instead of claiming activation. Same Codespace may preserve authorized login, but new machines may require re-approval. Never copy login tokens/license files into GitHub.
