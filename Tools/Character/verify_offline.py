@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fail-closed local Unity character integrity audit (no network, no Unity license).
 
-Confirms six locally vendored FBXs are hydrated (not Git LFS pointers),
+Confirms eleven locally vendored FBXs are hydrated (not Git LFS pointers),
 checks actual Git LFS SHA256 against the Git index, authentic CC0 notices,
 and validates unique Unity .meta GUIDs for the character subtree.
 """
@@ -17,7 +17,10 @@ ROOT = Path(__file__).resolve().parents[2]
 BASE = Path("Assets/Resources/AarisCharacters/Primary")
 REQUIRED_FBX = ("Player.fbx", "Animations/idle.fbx",
                 "Animations/walk.fbx", "Animations/run.fbx",
-                "Animations/jump.fbx", "Animations/crouch.fbx")
+                "Animations/jump.fbx", "Animations/crouch.fbx",
+                "Animations/jump_start.fbx", "Animations/jump_land.fbx",
+                "Animations/crouch_walk.fbx", "Animations/punch.fbx",
+                "Animations/shoot.fbx")
 PARENT_META = ("Assets/Resources.meta", "Assets/Resources/AarisCharacters.meta",
                "Assets/Resources/AarisCharacters/Primary.meta")
 
@@ -80,7 +83,7 @@ def verify() -> None:
 def selftest() -> None:
     assert re.fullmatch(r"oid sha256:([a-f0-9]{64})", "oid sha256:" + "a" * 64)
     assert hashlib.sha256(b"test").hexdigest().startswith("9f86")
-    assert len(REQUIRED_FBX) == len(set(REQUIRED_FBX)) == 6
+    assert len(REQUIRED_FBX) == len(set(REQUIRED_FBX)) == 11
     print("Offline FBX + LFS + GUID verification selftest PASS")
 
 
