@@ -67,8 +67,14 @@ namespace Aaris.MapReview
             Vector3 destination = hasTarget ? target.point : cameraRay.GetPoint(maxRangeMetres);
             // Crosshair uses camera aim but the physical muzzle must also
             // see the target; never hit somebody behind a nearby solid wall.
+            // Fire from the *actual stance*: a fixed standing muzzle
+            // lets a prone/crouched actor shoot from above their cover.
+            AarisBattleActions actions = owner.GetComponent<AarisBattleActions>();
+            float muzzleHeight = actions != null
+                ? Mathf.Max(0.28f, actions.CameraEyeHeight - 0.15f)
+                : 1.3f;
             Vector3 muzzle = owner.transform.position +
-                Vector3.up * 1.3f + owner.transform.forward * 0.24f;
+                Vector3.up * muzzleHeight + owner.transform.forward * 0.24f;
             Vector3 segment = destination - muzzle;
             float length = segment.magnitude;
             if (length > 0.025f)
