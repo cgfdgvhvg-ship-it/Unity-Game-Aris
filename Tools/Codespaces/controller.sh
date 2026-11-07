@@ -91,25 +91,38 @@ if test "$OP" = start; then
   echo "codespace=$CS" > "$OUT/terminal.txt"
   STATE="SUCCESS"; DETAIL="existing_codespace_start_requested"; exit 0
 fi
-# For older Codespaces, place this already-reviewed script into /tmp first.
-# Avoid assuming the existing checkout already contains today's new controller files.
+# Stream the approved checked-in script over SSH stdin. No SCP or old remote checkout needed.
 PRIVATE_ERRORS="$RUNNER_TEMP/aaris-codespace-ssh-errors.log"
 trap 'finish; rm -f "$PRIVATE_ERRORS"' EXIT
-REMOTE_PATH="/tmp/aaris-control-remote.sh"
-if ! timeout 75 gh codespace cp -c "$CS" \
-    "$GITHUB_WORKSPACE/Tools/Codespaces/remote.sh" "remote:$REMOTE_PATH" \
-    >/dev/null 2>"$PRIVATE_ERRORS"; then
-  if grep -Eqi 'permission denied|authentication|forbidden|HTTP 403|unauthorized' "$PRIVATE_ERRORS"; then
-    DETAIL="codespace_copy_authorization_denied"
-  elif grep -Eqi 'timeout|timed out|deadline exceeded' "$PRIVATE_ERRORS"; then
-    DETAIL="codespace_copy_timeout"
-  elif grep -Eqi 'SSH|ssh|connection|not running|startup' "$PRIVATE_ERRORS"; then
-    DETAIL="codespace_copy_ssh_not_ready"
-  else DETAIL="codespace_copy_failed"; fi
-  rm -f "$PRIVATE_ERRORS"
-  exit 12
-fi
-REMOTE_CMD="bash $REMOTE_PATH $OP"
+
+safe_error_summary() {
+  python3 - "$PRIVATE_ERRORS" "$OUT/ssh-diagnostic.txt" <<'PY'
+from pathlib import Path
+import re,sys
+s=Path(sys.argv[1]).read_text(errors="replace") if Path(sys.argv[1]).exists() else ""
+if not s.strip():
+    reason="no_stderr_from_gh_cli"
+elif re.search(r"permission denied|not authorized|forbidden|unauthorized|HTTP 403",s,re.I):
+    reason="permission_or_token_denied"
+elif re.search(r"connection refused|connect.*failed|connect.*error|unable to connect",s,re.I):
+    reason="ssh_connection_failed"
+elif re.search(r"no such file|not found|missing",s,re.I):
+    reason="missing_binary_or_file"
+elif re.search(r"unknown flag|unknown command|invalid argument|usage:",s,re.I):
+    reason="gh_cli_invocation_invalid"
+elif re.search(r"timed out|timeout|deadline exceeded",s,re.I):
+    reason="ssh_timeout"
+elif re.search(r"could not resolve|lookup|DNS",s,re.I):
+    reason="dns_or_network"
+elif re.search(r"public key|ssh key|agent",s,re.I):
+    reason="ssh_key_failure"
+else:
+    reason="unclassified_gh_cli_error"
+# Preserve diagnostic shape without logging credentials or arbitrary remote stderr.
+Path(sys.argv[2]).write_text("diagnostic_category="+reason+"\nerror_bytes="+str(len(s.encode()))+"\n")
+PY
+}
+
 REMOTE_TIMEOUT=130
 case "$OP" in
   install) REMOTE_TIMEOUT=3000 ;;
@@ -118,27 +131,26 @@ case "$OP" in
   editor) REMOTE_TIMEOUT=350 ;;
 esac
 for attempt in 1 2; do
-  if timeout "$REMOTE_TIMEOUT" gh codespace ssh -c "$CS" -- "$REMOTE_CMD" \
+  if timeout "$REMOTE_TIMEOUT" gh codespace ssh -c "$CS" -- "bash -s -- $OP" \
+      < "$GITHUB_WORKSPACE/Tools/Codespaces/remote.sh" \
       > "$OUT/terminal.txt" 2>"$PRIVATE_ERRORS"; then
     rm -f "$PRIVATE_ERRORS"
     if test "$OP" = shot; then
-      if timeout 75 gh codespace cp -c "$CS" \
-          'remote:/tmp/aaris-codespaces/screen.png' "$OUT/screen.png" \
-          >/dev/null 2>"$PRIVATE_ERRORS"; then
+      if timeout 90 gh codespace ssh -c "$CS" -- 'base64 /tmp/aaris-codespaces/screen.png' \
+          > "$OUT/screen.b64" 2>"$PRIVATE_ERRORS"; then
+        base64 --decode "$OUT/screen.b64" > "$OUT/screen.png"
+        rm -f "$OUT/screen.b64"
+        if ! file "$OUT/screen.png" | grep -q 'PNG image data'; then
+          DETAIL="screen_invalid_png"; exit 16
+        fi
         DETAIL="screen_in_actions_artifact"
-      else DETAIL="screen_copy_failed"; rm -f "$PRIVATE_ERRORS"; exit 13; fi
+      else DETAIL="screen_transfer_failed"; safe_error_summary; exit 13; fi
     else DETAIL="remote_task_complete"; fi
     STATE="SUCCESS"; exit 0
   fi
   test "$OP" = status || break
   sleep 7
 done
-if grep -Eqi 'permission denied|authentication|forbidden|unauthorized|HTTP 403' "$PRIVATE_ERRORS"; then
-  DETAIL="SSH_auth_or_permissions"
-elif grep -Eqi 'No such file or directory|not found|cannot access' "$PRIVATE_ERRORS"; then
-  DETAIL="SSH_remote_file_missing"
-elif grep -Eqi 'timeout|timed out|deadline exceeded' "$PRIVATE_ERRORS"; then
-  DETAIL="SSH_timeout"
-else DETAIL="SSH_remote_task_failed"; fi
-rm -f "$PRIVATE_ERRORS"
+safe_error_summary
+DETAIL="SSH_execution_failed_see_diagnostic_category"
 exit 11
