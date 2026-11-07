@@ -32,7 +32,21 @@ def main():
     }
     for key,good in checks.items():
         print("OIDC_"+key+"_PASS" if good else "OIDC_"+key+"_FAIL")
-    url=WORKER.rsplit("/",1)[0]+"/probe"
+    # First check the non-sensitive health route. If blocked too, the request
+    # is being rejected by an outer access/routing layer rather than OIDC.
+    base=WORKER.rsplit("/",1)[0]
+    try:
+        with request.urlopen(request.Request(base+"/health",headers={"Accept":"application/json"}),timeout=20) as health:
+            body=json.loads(health.read(2048))
+            if health.status==200 and body.get("healthy") is True:
+                print("RELAY_HEALTH_WORKER_REACHED")
+            else:
+                print("RELAY_HEALTH_WRONG_RESPONSE")
+    except HTTPError as health_error:
+        print("RELAY_HEALTH_HTTP_"+str(health_error.code) if health_error.code in (400,401,403,404,429,500,503) else "RELAY_HEALTH_HTTP_OTHER")
+    except (URLError,OSError,ValueError):
+        print("RELAY_HEALTH_UNAVAILABLE")
+    url=base+"/probe"
     req=request.Request(url,method="POST",data=b"",headers={"Authorization":"Bearer "+jwt,"Accept":"application/json"})
     try:
         with request.urlopen(req,timeout=30) as res:
@@ -77,6 +91,18 @@ def main():
                     elif isinstance(obj.get("error"),str): print("RELAY_JSON_ERROR_STRING")
                     if isinstance(obj.get("message"),str): print("RELAY_JSON_MESSAGE_STRING")
                     if isinstance(obj.get("errors"),dict): print("RELAY_JSON_ERRORS_OBJECT")
+                    detail=obj.get("detail","")
+                    if isinstance(detail,str):
+                        detail=detail.lower()
+                        if any(term in detail for term in ("access","policy","blocked","firewall","waf","challenge")):
+                            print("RELAY_DETAIL_ACCESS_POLICY")
+                        elif any(term in detail for term in ("jwt","token","oidc","signature","authorization")):
+                            print("RELAY_DETAIL_AUTHENTICATION")
+                        elif any(term in detail for term in ("rate limit","quota","exceeded")):
+                            print("RELAY_DETAIL_RATE_LIMIT")
+                        elif any(term in detail for term in ("route","worker","script","deploy")):
+                            print("RELAY_DETAIL_WORKER_ROUTE")
+                        else: print("RELAY_DETAIL_OTHER")
         except (ValueError,OSError):
             if "html" in content_type: print("RELAY_HTML_EDGE_BLOCK")
             else: print("RELAY_RESPONSE_NOT_JSON")
