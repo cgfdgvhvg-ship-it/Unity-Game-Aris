@@ -270,6 +270,11 @@ jobs:
             > ci-logs/terminal-monitor.log 2>&1) &
           echo "$!" > /tmp/aaris-terminal-monitor.pid
           echo 'Safe 30-second runner snapshots enabled; send TERM STATUS to GitHub Issue #77.'
+      - name: Verify private approval relay using GitHub OIDC
+        continue-on-error: true
+        timeout-minutes: 2
+        run: |
+          python3 Tools/CI/private_unity_approval_publish.py --probe
       - name: Start private OTP-free Unity authorization link delivery
         run: |
           mkdir -p ci-logs ci-live-control
