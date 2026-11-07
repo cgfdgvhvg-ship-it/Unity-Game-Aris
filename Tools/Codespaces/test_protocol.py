@@ -58,6 +58,10 @@ assert 'Unity_auth_vault' not in remote
 controller=(r/'Tools/Codespaces/controller.sh').read_text()
 assert "'CS MACHINES')" in controller
 assert "'CS REBUILD')" in controller
+assert "'CS FRESH')" in controller
+assert '--devcontainer-path .devcontainer/devcontainer.json' in controller
+assert '--idle-timeout 240m' in controller
+assert 'fresh_codespace_created_preserves_old' in controller
 assert "'CS LOGS')" in controller
 assert 'codespace_logs.py' in controller
 assert (r/'Tools/Codespaces/codespace_logs.py').read_text().startswith('#!/usr/bin/env python3')
