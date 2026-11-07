@@ -274,7 +274,8 @@ namespace Aaris.MapReview
             Vector3 candidate = transform.position + horizontalVelocity * dt;
             // Original 2km map bounds and shoreline/bridge checks survive.
             if (Mathf.Abs(candidate.x) > 975f || Mathf.Abs(candidate.z) > 975f ||
-                !SafeFooting(candidate))
+                !SafeFooting(candidate) ||
+                (battle != null && !battle.CanAdvanceProne(candidate, horizontalVelocity)))
                 horizontalVelocity = Vector3.zero;
 
             if (horizontalVelocity.sqrMagnitude > 0.0025f)
