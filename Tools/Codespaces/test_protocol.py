@@ -36,6 +36,11 @@ assert 'eval ' not in remote
 assert 'merge --ff-only' in remote
 assert 'SYNC_WORKTREE_VERIFIED_RAW_IDENTICAL' in remote
 assert 'scrot -o' in remote
+assert 'glibc=%s' in remote
+assert 'docker_ready=yes' in remote
+assert 'os_version=%s' in remote
+assert 'LEGACY_EDITOR=' in remote
+assert '\\nLEGACY_EDITOR=' not in remote
 assert 'changed_files_count=' in remote
 assert 'LFS_FAIL_CATEGORY_' in remote
 assert 'lfs_unhydrated_pointer_count=' in remote
