@@ -17,6 +17,7 @@ import sys
 import time
 
 from live_camera_server import validate, STATE
+from ai_world_commands import parse as parse_world, selftest as world_selftest, EDIT_OPS
 
 ISSUE = int(os.getenv("AARIS_CAMERA_ISSUE", "77"))
 REPO = os.getenv("GITHUB_REPOSITORY", "sundamunda289-art/Unity-Game-Aris")
@@ -79,6 +80,126 @@ def publish_photo(comment_id, photo):
     url = f"https://github.com/{REPO}/releases/download/{RELEASE}/{filename}"
     return url
 
+
+def publish_world_asset(comment_id, filename, suffix):
+    source = STATE / filename
+    if not source.is_file() or source.stat().st_size == 0:
+        return None
+    if suffix == "png" and source.read_bytes()[:8] != b"\x89PNG\r\n\x1a\n":
+        raise RuntimeError("Unity object photo is not PNG")
+    ensure_release()
+    dest = STATE / f"ai-world-{comment_id}.{suffix}"
+    shutil.copyfile(source, dest)
+    gh("release", "upload", RELEASE, str(dest), "--repo", REPO)
+    return f"https://github.com/{REPO}/releases/download/{RELEASE}/{dest.name}"
+
+def process_world(comment_id, body):
+    try:
+        request = parse_world(body)
+    except (ValueError, TypeError, json.JSONDecodeError) as exc:
+        issue_comment(f"AI map request #{comment_id}: rejected ({str(exc)[:180]}).")
+        return "invalid-world-request"
+    request["nonce"] = comment_id
+    # A single command per Editor poll; the owner-only issue relay handles them sequentially.
+    tmp = STATE / "ai-command.tmp"
+    tmp.write_text(json.dumps(request))
+    os.replace(tmp, STATE / "ai-command.json")
+    response_file = STATE / "ai-result.json"
+    reply = {}
+    deadline = time.monotonic() + 110
+    while time.monotonic() < deadline:
+        time.sleep(2)
+        try:
+            reply = json.loads(response_file.read_text()) if response_file.is_file() else {}
+        except (OSError, ValueError):
+            reply = {}
+        if reply.get("nonce") == comment_id:
+            break
+    if reply.get("nonce") != comment_id:
+        issue_comment(f"AI map request #{comment_id}: timed out. A licensed Unity Editor "
+                      "must be running and the native scene fully imported.")
+        return "world-editor-timeout"
+    if not reply.get("ok"):
+        issue_comment(f"AI map request #{comment_id}: Unity reported an error: "
+                      f"{str(reply.get('message', 'unknown'))[:250]}")
+        return "world-editor-error"
+    if request["op"] in EDIT_OPS:
+        # Later edits invalidate any earlier MAP_SAVE marker. Persist them with
+        # a new MAP_SAVE before this ephemeral runner terminates.
+        (STATE / "session-saved-to-git").unlink(missing_ok=True)
+    try:
+        result_link = publish_world_asset(comment_id, "ai-result.json", "json")
+        attachments = [f"Inspector JSON / coordinates: {result_link}"]
+        if reply.get("blueprint"):
+            cloud = publish_world_asset(comment_id, "ai-blueprint.ply", "ply")
+            attachments.append(f"3D mesh-vertex point cloud (PLY): {cloud}")
+        if reply.get("photo"):
+            photo = publish_world_asset(comment_id, "ai-photo.png", "png")
+            attachments.append(f"Genuine Unity object screenshot: {photo}")
+        details = {key: reply.get(key) for key in (
+            "op", "path", "matches", "meshVertices", "sampledVertices",
+            "treeWidthScale", "treeHeightScale", "treePrototype") if key in reply}
+        issue_comment("AI map request #" + str(comment_id) +
+                      ": executed by licensed Unity Editor.\n" +
+                      "Summary: " + json.dumps(details, ensure_ascii=True)[:1100] +
+                      "\n\n" + "\n".join(attachments) +
+                      "\nEdits are saved on this runner; use MAP_SAVE to publish a Git branch.")
+        return "world-published"
+    except (OSError, subprocess.CalledProcessError, RuntimeError) as exc:
+        issue_comment(f"AI map request #{comment_id}: editor operation succeeded, but "
+                      f"publishing its evidence failed ({type(exc).__name__}).")
+        return "world-publish-failed"
+
+def process_save(comment_id):
+    # Checkpoint is recoverable while base SHA is unchanged; Git branch is the durable source.
+    checkpoint = subprocess.run(["flock", "-w", "60", "/tmp/aaris-project-checkpoint.lock",
+                                sys.executable, "Tools/CI/session_store.py", "save", "project"],
+                                capture_output=True, text=True, timeout=300, check=False)
+    changes = subprocess.run(["git", "diff", "--name-only", "HEAD", "--", "Assets/"],
+                             capture_output=True, text=True, timeout=20, check=True)
+    files = [name for name in changes.stdout.splitlines() if name]
+    approved = (".unity", ".prefab", ".asset", ".mat", ".meta")
+    if any(not name.startswith("Assets/") or not name.endswith(approved) for name in files):
+        raise RuntimeError("Refused to stage non-Unity source files")
+    if len(files) > 50:
+        raise RuntimeError("More than 50 changed Unity files; manual review required")
+    if not files:
+        issue_comment(f"MAP_SAVE #{comment_id}: no tracked Unity source edits to commit. "
+                      f"Release checkpoint status: {checkpoint.returncode}.")
+        return "world-no-changes"
+    subprocess.run(["git", "add", "--", *files], check=True, timeout=60)
+    run_id = os.environ.get("GITHUB_RUN_ID", "")
+    if not run_id.isdigit():
+        raise RuntimeError("Actions run ID missing")
+    branch = "ai-world-session-" + run_id
+    current = subprocess.run(["git", "branch", "--show-current"], capture_output=True,
+                             text=True, check=True).stdout.strip()
+    if current != branch:
+        subprocess.run(["git", "switch", "-c", branch], check=True)
+    subprocess.run(["git", "-c", "user.name=Aaris AI World",
+                    "-c", "user.email=actions@users.noreply.github.com",
+                    "commit", "-m", "Save owner-approved Unity AI scene edits"], check=True)
+    subprocess.run(["git", "push", "origin", "HEAD:refs/heads/" + branch],
+                   check=True, timeout=180)
+    pr_url = f"https://github.com/{REPO}/compare/main...{branch}"
+    opened = gh("pr", "view", branch, "--repo", REPO, "--json", "url", check=False)
+    if opened.returncode == 0:
+        try: pr_url = json.loads(opened.stdout)["url"]
+        except (KeyError, ValueError): pass
+    else:
+        made = gh("pr", "create", "--repo", REPO, "--head", branch, "--base", "main",
+                  "--title", "AI world session: Unity scene edits " + run_id,
+                  "--body", "Owner-directed changes from a real licensed Unity Editor. "
+                  "Review modified assets, LFS uploads and CI before merging.", check=False)
+        if made.returncode == 0 and made.stdout.strip():
+            pr_url = made.stdout.strip()
+    (STATE / "session-saved-to-git").write_text(branch + "\n")
+    issue_comment(f"MAP_SAVE #{comment_id}: saved {len(files)} changed Unity source files "
+                   f"to Git branch `{branch}`.\nReview: {pr_url}\n"
+                  f"Release checkpoint: {'ok' if checkpoint.returncode == 0 else 'failed'}."
+                  "\nChanges are not automatically merged into main.")
+    return "world-git-saved"
+
 def process(comment):
     author = comment.get("user") or {}
     if author.get("login") != OWNER:
@@ -127,6 +248,17 @@ def process(comment):
         issue_comment(f"Activation request #{comment_id}: Docker could not launch "
                       "the authorized Unity CLI activation process.")
         return "activation-launch-failed"
+    body = comment.get("body", "").strip()
+    if body == "MAP_SAVE":
+        try:
+            return process_save(comment_id)
+        except (OSError, RuntimeError, subprocess.CalledProcessError,
+                subprocess.TimeoutExpired) as exc:
+            issue_comment(f"MAP_SAVE #{comment_id}: save failed ({type(exc).__name__}). "
+                          "No automatic merge was attempted.")
+            return "world-save-failed"
+    if body.startswith("MAP "):
+        return process_world(comment_id, body)
     try:
         camera = parse(comment.get("body", ""))
     except ValueError:
@@ -168,6 +300,7 @@ def main():
     parser.add_argument("--seconds", type=int, default=4800)
     args = parser.parse_args()
     if args.selftest:
+        world_selftest()
         sample = parse("CAMERA -420 22 -210 0 20 22")
         assert sample["x"] == -420 and sample["pitch"] == 20
         for body in ("CAMERA 9999 22 -210 0 20 22",
@@ -212,7 +345,7 @@ def main():
         "unity_activation_requires_attention", "editor_starting",
         "fetching_unity_editor"
     }
-    until = time.monotonic() + max(15, min(args.seconds, 5400))
+    until = time.monotonic() + max(15, min(args.seconds, 18000))
     while time.monotonic() < until:
         try:
             # Public GitHub issue gets only a fixed, non-sensitive state name.
@@ -240,7 +373,7 @@ def main():
                 if isinstance(created, str) and created > since:
                     since = created
                 outcome = process(comment)
-                if outcome != "ignored-non-camera":
+                if outcome not in ("ignored-non-camera", "ignored-non-owner"):
                     print(f"Camera issue comment {comment_id}: {outcome}", flush=True)
         except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as exc:
             print("Issue relay transient error:", type(exc).__name__, flush=True)

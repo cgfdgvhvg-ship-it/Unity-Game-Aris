@@ -91,3 +91,45 @@ Personal license. No machine identity spoofing or token caching is used.
 Verified repo-level unit test for command handler and the workflow's
 issue_comment path ran in GitHub Actions. An actual successful Unity
 license activation and true scene PNG have NOT yet been verified.
+
+
+## 2026-11-07: AI developer hands and eyes (one validated command protocol)
+
+**The canonical GitHub repository is now `sundamunda289-art/Unity-Game-Aris`.** Older owner/repository links may redirect. Use `AGENTS.md` (plural), and never assume that a public dashboard showing Linux proves the Unity Editor was licensed.
+
+**Read-only discovery first.** A GitHub-connected AI should inspect `Docs/MAP_LAYOUT.json` and use the owner-authorized GitHub Issue [#77](https://github.com/sundamunda289-art/Unity-Game-Aris/issues/77) to request a *real* Unity Editor response. Only comments authored by `sundamunda289-art` are processed by the live runner, while a GitHub Actions run is active. A connected AI must use an account/connection authorized as that owner; posting as a different account will not execute the command. Do not broaden this authorization to arbitrary GitHub users.
+
+There are only three operational layers; do not create a separate script per object type:
+
+1. `Tools/CI/ai_world_commands.py`: validates strict owner-issued `MAP {JSON}` intents, exact fields, finite bounded coordinates, object paths, and allowed operations. `python3 Tools/CI/ai_world_commands.py` runs its license-free selftest. No shell or C# execution is accepted in JSON.
+2. `Assets/AarisWorld/Editor/AarisAIWorldBridge.cs`: Editor-only adapter; finds unique scene GameObjects, returns hierarchy path, world position/rotation/local scale, world-space renderer/collider bounds (metres), material names, and sampled mesh vertices. It can move/rotate/scale a selected Transform, or inspect/move/scale one native TerrainData tree instance by terrain name and zero-based index. It saves changed scenes/TerrainData through Unity's asset APIs. `blueprint` and `tree_blueprint` yield world-coordinate **PLY mesh-vertex samples** and JSON. Samples are not a watertight volume, a CAD mesh, material texture capture or a full topology reconstruction. Photo requests use a genuine Unity graphics device and reject nearly uniform blank images.
+3. `Tools/CI/issue_camera_bridge.py` + `.github/workflows/aaris-live-unity.yml`: owner-only issue relay, timestamped status, public map JSON/PLY/photo Release links, PIN-gated cloud desktop, git-branch saving and best-effort verified session checkpoint. `Tools/CI/session_store.py` handles resumable project deltas, not Unity credentials.
+
+**Supported commands** — one line per comment on Issue #77, with JSON keys/numbers exactly as shown. Start a session first, for example `START_DESKTOP 45`; allowed durations are 15, 45, 90, 240, and 300 minutes. `ACTIVATE_UNITY` can retry only an authorized activation, never bypass it.
+
+```text
+MAP {"op":"find","target":"Tree"}
+MAP {"op":"nearby","x":-420,"y":20,"z":-210,"radius":40}
+MAP {"op":"inspect","target":"Root/House/Wall"}
+MAP {"op":"blueprint","target":"Root/Tree","samples":1024}
+MAP {"op":"photo","target":"Root/House"}
+MAP {"op":"move","target":"Root/Tree","x":2,"y":0,"z":-3}
+MAP {"op":"rotate","target":"Root/Car","x":0,"y":15,"z":0}
+MAP {"op":"scale","target":"Root/House/Wall","x":1.15,"y":1,"z":1}
+MAP {"op":"tree_nearby","terrain":"Terrain","x":-420,"y":20,"z":-210,"radius":40}
+MAP {"op":"tree_inspect","terrain":"Terrain","index":12}
+MAP {"op":"tree_blueprint","terrain":"Terrain","index":12,"samples":512}
+MAP {"op":"tree_photo","terrain":"Terrain","index":12}
+MAP {"op":"tree_move","terrain":"Terrain","index":12,"x":2,"z":-3}
+MAP {"op":"tree_scale","terrain":"Terrain","index":12,"width":1.25,"height":0.9}
+CAMERA -420 22 -210 0 20 22
+MAP_SAVE
+```
+
+- First run `find`/ `nearby`, then `inspect` for the exact, uniquely identified hierarchy path. Non-unique object names fail safely. `move` uses **world-space metre offsets**; `rotate` uses **degrees**; `scale` multiplies the selected object's **local** X/Y/Z scale by the factors. For a wall's thickness, select the **individual wall child**, not its whole house; for foliage select the leaf mesh child. Confirm the axis/material/mesh before editing. An edit to a prefab instance Transform does not rewrite its source prefab.
+- Native TerrainData trees are **not ordinary GameObjects**. Use `tree_nearby` at map coordinates to discover the correct Terrain tree index and prototype, then `tree_inspect` for measured world-space 3D bounds before editing. Identify the correct Terrain and the tree index. `tree_move` uses metre offsets constrained to that Terrain tile; `tree_scale` multiplies width and height independently. This is per-instance; it does not edit shared leaf/trunk source mesh geometry. A PLY of a terrain tree is sampled from its prototype mesh and transformed approximately into world coordinates.
+- All map outputs are **discrete** command responses; chat models do not receive continuous screen video. Results are uploaded to the public `live-photos` Release as `ai-world-<comment-id>.json`, `.ply` or `.png` and linked in the issue response. Treat JSON/PLY as data and PNG as a capture to visually verify; screenshot size/variance checks alone do not prove scene quality.
+- Edits immediately save to the runner's native Unity scene or TerrainData. Run owner-authorized `MAP_SAVE` after a group of related edits to publish a **reviewable Git branch and PR**, preserving LFS filters. Do not merge automatically; review file diffs, LFS pointers, placement, collision and screenshot evidence first. No change to the source project is inferred from a schematic `Docs/MAP_LAYOUT.json` preview.
+- For an interrupted run, a background checkpoint and final `if: always()` step attempt to save changed project assets to the checksummed `project-checkpoint` Release. A fresh runner checks out and hydrates source LFS, then restores the checkpoint **only if its source Git commit SHA matches**. If a Git PR has been saved, the durable edit lives on that branch until reviewed/merged; the checkpoint is not a replacement for merging it. A hard runner kill may interrupt checkpointing. Unity's `Library/` cache is only an import accelerator; no license/password/HUB state is stored.
+- For failures, check `aaris-ai-diagnostics` Actions artifact (`issue-camera-relay.log`, `ai-result.json`, cache logs), the job summary, and the PIN-protected `/api/license` page. Never paste private OAuth URLs or license files into issues. If Editor did not activate, output an explicit failure rather than claiming screenshots or edits occurred.
+- Keep object edits narrow. Avoid unnecessary modifications to `.meta`, materials, prefabs or LFS scenes. Do not auto-commit generated files from `Library/`, `Temp/`, `ci-live-control/`, license locations or private folders. Validate the actual Editor compilation/scene before declaring the automation production-ready.
