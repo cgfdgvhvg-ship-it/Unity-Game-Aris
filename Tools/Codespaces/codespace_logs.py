@@ -22,6 +22,20 @@ PATTERNS = {
     "RECOVERY_MODE": r"recovery mode",
     "NETWORK_ERROR": r"network.*(?:timeout|unreachable)|tls.*error|certificate verify failed|connection reset",
 }
+def failure_reason(out: str) -> str:
+    text=out.lower()
+    codes=(
+        ("AUTH_SCOPE",r"authentication failed|unauthorized|forbidden|http 403|insufficient scope"),
+        ("SSH_KEY",r"ssh key|publickey|permission denied"),
+        ("CODESPACE_NOT_READY",r"codespace.*(stopped|starting|unavailable)|not running|still being created|in recovery"),
+        ("LOGS_UNAVAILABLE",r"logs? (not found|not available)|creation log.*not found"),
+        ("NETWORK",r"connection refused|connection reset|timed out|timeout|network unreachable"),
+        ("CLI_SYNTAX",r"unknown (command|flag)|unexpected argument|usage:"),
+        ("INTERACTIVE",r"prompt|passphrase|terminal|interactive"),
+        ("REMOTE",r"failed to connect|ssh"),
+    )
+    return next((name for name,pattern in codes if re.search(pattern,text)),"UNCLASSIFIED")
+
 def scan(text: str) -> list[str]:
     return [name for name, pattern in PATTERNS.items() if re.search(pattern,text,re.I)]
 def main(codespace: str) -> int:
@@ -35,7 +49,9 @@ def main(codespace: str) -> int:
     except (OSError,subprocess.TimeoutExpired):
         print("CODESPACE_LOGS_COMMAND_FAILED"); return 3
     if out.returncode:
-        print("CODESPACE_LOGS_COMMAND_NONZERO"); return 4
+        print("CODESPACE_LOGS_COMMAND_NONZERO")
+        print("CODESPACE_LOGS_FAIL_"+failure_reason(out.stderr))
+        return 4
     content=out.stdout[-700000:]
     print("CODESPACE_LOGS_ACQUIRED")
     print("CODESPACE_LOGS_EMPTY" if not content.strip() else "CODESPACE_LOGS_NONEMPTY")
@@ -48,6 +64,8 @@ def selftest():
     assert "UBUNTU_IMAGE" in scan("mcr.microsoft.com/devcontainers/base:ubuntu-22.04")
     assert "ALPINE_IMAGE" not in scan("ubuntu-22.04")
     assert not scan("Secret token=do-not-print")
+    assert failure_reason("Permission denied (publickey)")=="SSH_KEY"
+    assert failure_reason("unknown flag: -z")=="CLI_SYNTAX"
     print("CODESPACE_LOG_DIAGNOSTIC_SELFTEST_PASS")
 if __name__=="__main__":
     if "--selftest" in sys.argv: selftest()
