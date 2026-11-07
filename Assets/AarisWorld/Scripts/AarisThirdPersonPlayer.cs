@@ -117,7 +117,8 @@ namespace Aaris.MapReview
         private Vector2 ToGUI(Vector2 p) => new Vector2(p.x / uiScale, (Screen.height - p.y) / uiScale);
         private bool OverButton(Vector2 p) =>
             (!AarisBattleHUD.IsVisible && (jumpButton.Contains(p) || runButton.Contains(p))) ||
-            homeButton.Contains(p) || reportButton.Contains(p) || fpsButton.Contains(p);
+            (Debug.isDebugBuild && (homeButton.Contains(p) ||
+                reportButton.Contains(p) || fpsButton.Contains(p)));
         private void PressButton(Vector2 p)
         {
             if (!AarisBattleHUD.IsVisible && jumpButton.Contains(p)) RequestJump();
@@ -364,11 +365,14 @@ namespace Aaris.MapReview
                 GUI.Box(jumpButton, "JUMP", buttonStyle);
                 GUI.Box(runButton, running ? "RUN: ON" : "WALK", buttonStyle);
             }
-            GUI.Box(homeButton, "HOME", buttonStyle);
-            GUI.Box(reportButton, Time.unscaledTime < reportCopiedUntil ? "COPIED" : "REPORT", buttonStyle);
-            GUI.Box(fpsButton, Application.targetFrameRate == 60 ? "60 FPS" : "30 FPS", buttonStyle);
-            GUI.Label(new Rect(homeButton.xMax + 12f, homeButton.y, 420f, 44f),
-                "Move: left stick  |  Look: drag right  |  Human height: 1.78 m", labelStyle);
+            if (Debug.isDebugBuild)
+            {
+                GUI.Box(homeButton, "HOME", buttonStyle);
+                GUI.Box(reportButton, Time.unscaledTime < reportCopiedUntil ? "COPIED" : "REPORT", buttonStyle);
+                GUI.Box(fpsButton, Application.targetFrameRate == 60 ? "60 FPS" : "30 FPS", buttonStyle);
+                GUI.Label(new Rect(homeButton.xMax + 12f, homeButton.y, 420f, 44f),
+                    "Move: left stick  |  Look: drag right  |  Human height: 1.78 m", labelStyle);
+            }
             GUI.matrix = matrix; GUI.color = oldColor;
         }
     }
