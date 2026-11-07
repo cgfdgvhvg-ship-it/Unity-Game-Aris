@@ -74,6 +74,19 @@ def run():
     assert "BeginReload()" in gun_cs and "reloading" in gun_cs
     assert "semiShotQueued" in action and "equippedGun.Automatic" in action
     assert "new AarisEquippedGun[2]" in inventory
+    # Swapping should not freeze a hidden gun's reload state.
+    assert "public void RefreshReload()" in gun_cs
+    assert "RefreshReload();" in inventory and "slots[i].RefreshReload();" in inventory
+    assert "RefreshReload();" in gun_cs and "Time.time < reloadUntil" in gun_cs
+    # The FBX rotation applies at the parent socket exactly once.
+    assert "view.localRotation = Quaternion.identity;" in inventory
+    assert "view.localRotation = Quaternion.Euler(spec.handRotation)" not in inventory
+    assert "weaponModels[index].localRotation = Quaternion.Euler(Current.Spec.handRotation);" in inventory
+    # No accidental pickup while standing in a neighboring room.
+    assert "private bool CanReachPickup(AarisWeaponPickup pickup)" in world
+    assert "Physics.RaycastNonAlloc(new Ray(eye, toTarget / distance)" in world
+    assert "CanReachPickup(pickup)" in world
+    assert "if (hits >= pickupObstructions.Length) return false;" in world
     assert "SetWeaponAimFov" in player and "ApplyWeaponRecoil" in player
     assert "AarisWeaponHUD.CapturesScreenPosition" in player
     assert "MaximumActiveLoot = 40" in world
