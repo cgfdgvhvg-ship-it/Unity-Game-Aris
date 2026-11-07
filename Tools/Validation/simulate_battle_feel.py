@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic 30/60/120 FPS tuning contract for Aaris battle movement.
+"""Deterministic 10–120 FPS tuning contract for Aaris battle movement.
 
 Independent mathematical regression checks. This does NOT execute Unity or
 certify PlayerController behavior; Unity playmode and Android device profiling
@@ -33,13 +33,14 @@ def jump(fps: int, release_after_seconds: float | None) -> tuple[float, float]:
     gravity = setting("gravity")
     jump_height = setting("jumpHeight")
     extra = setting("earlyJumpReleaseGravity")
+    minimum_ascent = setting("minimumJumpAscentSeconds")
     v = math.sqrt(2 * gravity * jump_height)
     y = apex = 0.0
     dt = 1.0 / fps
     for i in range(fps * 3):
         t = i * dt
         airborne_gravity = gravity * (extra if v > 0 and release_after_seconds is not None
-                                     and t >= release_after_seconds else 1.0)
+                                     and t >= max(release_after_seconds, minimum_ascent) else 1.0)
         previous_v = v
         v = max(v - airborne_gravity * dt, -40.0)
         y += (previous_v + v) * 0.5 * dt
@@ -73,6 +74,9 @@ def assert_regression() -> None:
 
         full_apex, full_time = jump(fps, None)
         short_apex, short_time = jump(fps, 0.10)
+        quick_tap_apex, quick_tap_time = jump(fps, 0.0)
+        assert 0.68 <= quick_tap_apex <= 0.86, (fps, "quick tap from stair", quick_tap_apex)
+        assert quick_tap_time > 0.35, (fps, "quick tap must not instantly land")
         assert 0.97 <= full_apex <= 1.02, (fps, "frame-independent full jump height", full_apex)
         assert 0.25 <= short_apex < full_apex - 0.13, (fps, "short jump", short_apex)
         assert 0.36 <= short_time < full_time <= 0.75, (fps, "jump timings", short_time, full_time)
@@ -82,6 +86,13 @@ def assert_regression() -> None:
     assert "now - lastGrounded <= 0.11f" in MOTOR
     assert "jumpButtonHeld || Input.GetKey(KeyCode.Space)" in MOTOR
     assert "earlyJumpReleaseGravity" in MOTOR
+    assert "minimumJumpAscentSeconds" in MOTOR
+    assert "minimumAscentElapsed" in MOTOR
+    assert "controller.stepOffset = wasGrounded && !launchJump ? groundedStep : 0f;" in MOTOR
+    assert "controller.stepOffset = groundedStep;" in MOTOR
+    assert "float rise = savedGroundStepOffset + 0.1f;" in MOTOR
+    assert "public float GroundStepOffset" in ACTION
+    assert "0.18f : 0.075f" in ACTION
     assert "Time.deltaTime" in MOTOR and "airborneSteering" in MOTOR
     assert "previousVerticalVelocity" in MOTOR and "verticalStepSpeed" in MOTOR
     assert "(previousVerticalVelocity + verticalVelocity) * 0.5f" in MOTOR
@@ -114,7 +125,7 @@ def assert_regression() -> None:
     assert "sprintForwardLeanDegrees" in VISUAL
     assert "controller.Move(" not in VISUAL
     assert "animator.applyRootMotion = false" in VISUAL
-    print("PASS: 30/60/120 FPS sprint, braking, tap/hold jump arc, coyote/buffer, " +
+    print("PASS: 10–120 FPS sprint, braking, stair tap/hold jump arc, coyote/buffer, " +
           "downhill probe, stance clearance, combat occlusion and in-place animation contracts")
 
 
