@@ -28,13 +28,21 @@ namespace Aaris.MapReview.Editor
                 if (importer == null)
                     throw new InvalidOperationException("Unity failed FBX ModelImporter: " + path);
                 var meshFilters = model.GetComponentsInChildren<MeshFilter>(true);
-                if (meshFilters.Length == 0)
+                var skinRenderers = model.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+                if (meshFilters.Length == 0 && skinRenderers.Length == 0)
                     throw new InvalidOperationException("Weapon has no renderable mesh: " + path);
                 int thisModel = 0;
                 foreach (var filter in meshFilters)
                 {
                     if (filter.sharedMesh == null) continue;
                     thisModel += filter.sharedMesh.triangles.Length / 3;
+                }
+                // The licensed source FBXs are rigged and some use ONLY
+                // skinned meshes; checking MeshFilter alone wrongly fails.
+                foreach (var skinned in skinRenderers)
+                {
+                    if (skinned.sharedMesh == null) continue;
+                    thisModel += skinned.sharedMesh.triangles.Length / 3;
                 }
                 if (thisModel < 8 || thisModel > 180000)
                     throw new InvalidOperationException("Invalid phone mesh triangle count " +
