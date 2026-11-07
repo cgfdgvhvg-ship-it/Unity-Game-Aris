@@ -14,10 +14,14 @@ namespace Aaris.MapReview
     {
         private readonly Collider[] exitOverlap = new Collider[32];
         private readonly RaycastHit[] exitGround = new RaycastHit[32];
+        private readonly RaycastHit[] entrySight = new RaycastHit[24];
         private AarisVehicleWorld world;
         private AarisThirdPersonPlayer footMotor;
         private CharacterController capsule;
         private AarisBattleActions actions;
+        private AarisWeaponInventory inventory;
+        private AarisWeaponLootWorld lootWorld;
+        private bool previousBattleActive, previousInventoryActive, previousLootActive;
         private AarisVehicleMotor car;
         private Camera followCamera;
         private Transform originalParent;
@@ -39,6 +43,8 @@ namespace Aaris.MapReview
             footMotor = player;
             capsule = GetComponent<CharacterController>();
             actions = GetComponent<AarisBattleActions>();
+            inventory = GetComponent<AarisWeaponInventory>();
+            lootWorld = FindFirstObjectByType<AarisWeaponLootWorld>();
             followCamera = player.AimCamera;
             originalParent = transform.parent;
         }
@@ -82,11 +88,39 @@ namespace Aaris.MapReview
                 footMotor == null || followCamera == null) return false;
             if ((nearbyCar.transform.position - transform.position).sqrMagnitude > 16f)
                 return false;
+            // The DRIVE action cannot reach through a house/rock wall.
+            Vector3 eye = transform.position + Vector3.up * 1.1f;
+            Vector3 target = nearbyCar.transform.position + Vector3.up * 1.1f;
+            Vector3 delta = target - eye;
+            float distance = delta.magnitude;
+            if (distance > .01f)
+            {
+                int hitCount = Physics.RaycastNonAlloc(
+                    new Ray(eye, delta / distance), entrySight, distance,
+                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                if (hitCount >= entrySight.Length) return false;
+                for (int i = 0; i < hitCount; i++)
+                {
+                    var hit = entrySight[i];
+                    if (hit.collider == null ||
+                        hit.collider.transform.IsChildOf(transform) ||
+                        hit.collider.transform.IsChildOf(nearbyCar.transform)) continue;
+                    return false;
+                }
+            }
             if (!nearbyCar.TryTakeDriver(this)) return false;
             car = nearbyCar;
             nearbyCar = null;
             touchMove = touchSteer = 0f;
             if (actions != null) actions.SetFireHeld(false);
+            // Pause the other on-foot input authorities, not merely their
+            // canvases: E/G/V/R and loot auto-pickup must not work in a car.
+            previousBattleActive = actions != null && actions.enabled;
+            previousInventoryActive = inventory != null && inventory.enabled;
+            previousLootActive = lootWorld != null && lootWorld.enabled;
+            if (actions != null) actions.enabled = false;
+            if (inventory != null) inventory.enabled = false;
+            if (lootWorld != null) lootWorld.enabled = false;
             footMotor.SetJumpHeld(false);
             footMotor.CancelAutoSprint();
 
@@ -164,6 +198,9 @@ namespace Aaris.MapReview
                     if (hit.collider == null || hit.collider.transform.IsChildOf(t) ||
                         hit.collider.transform.IsChildOf(transform) ||
                         hit.normal.y < .707f || hit.point.y < seaLevel + .35f ||
+                        // A roof/bridge above the actual street surface
+                        // is not a safe car exit landing platform.
+                        Mathf.Abs(hit.point.y - (option.y - .71f)) > 1.5f ||
                         hit.distance >= best) continue;
                     best = hit.distance;
                     support = hit.point;
@@ -212,6 +249,9 @@ namespace Aaris.MapReview
             if (nearby != null) nearby.RefreshNow();
             capsule.enabled = true;
             footMotor.enabled = true;
+            if (actions != null) actions.enabled = previousBattleActive;
+            if (inventory != null) inventory.enabled = previousInventoryActive;
+            if (lootWorld != null) lootWorld.enabled = previousLootActive;
             footMotor.ResetCameraAfterVehicle();
             SetFootHudVisible(true);
             nextVehicleSearch = 0f;
