@@ -143,7 +143,7 @@ case "$OP" in
 esac
 if test "$OP" = auth; then
   # Intercept the remote Unity OAuth URL, keep it OFF all public logs/artifacts.
-  if timeout 555 python3 "$GITHUB_WORKSPACE/Tools/Codespaces/auth_bridge.py" "$CS" > "$OUT/terminal.txt" 2>"$PRIVATE_ERRORS"; then
+  if timeout 825 python3 "$GITHUB_WORKSPACE/Tools/Codespaces/auth_bridge.py" "$CS" > "$OUT/terminal.txt" 2>"$PRIVATE_ERRORS"; then
     STATE="SUCCESS"; DETAIL="unity_license_checked"; exit 0
   fi
   safe_error_summary
