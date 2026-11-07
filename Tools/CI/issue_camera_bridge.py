@@ -18,6 +18,7 @@ import time
 
 from live_camera_server import validate, STATE
 from ai_world_commands import parse as parse_world, selftest as world_selftest, EDIT_OPS
+from editor_runtime_diagnostics import snapshot as editor_runtime_snapshot
 
 ISSUE = int(os.getenv("AARIS_CAMERA_ISSUE", "77"))
 REPO = os.getenv("GITHUB_REPOSITORY", "sundamunda289-art/Unity-Game-Aris")
@@ -249,6 +250,11 @@ def process(comment):
                       "the authorized Unity CLI activation process.")
         return "activation-launch-failed"
     body = comment.get("body", "").strip()
+    if body == "MAP_STATUS":
+        report = editor_runtime_snapshot()
+        issue_comment("AARIS_MAP_STATUS #" + str(comment_id) + "\n" +
+                      json.dumps(report, indent=2)[:5500])
+        return "status-published"
     if body == "MAP_SAVE":
         try:
             return process_save(comment_id)
@@ -343,7 +349,7 @@ def main():
         "waiting_for_mobile_unity_signin", "activating_unity_personal",
         "unity_personal_activation_succeeded", "license_secret_installed",
         "unity_activation_requires_attention", "editor_starting",
-        "fetching_unity_editor"
+        "editor_exited", "editor_launch_failed", "fetching_unity_editor"
     }
     until = time.monotonic() + max(15, min(args.seconds, 18000))
     while time.monotonic() < until:
