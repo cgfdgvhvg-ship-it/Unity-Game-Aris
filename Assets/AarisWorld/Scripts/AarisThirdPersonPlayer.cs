@@ -50,6 +50,7 @@ namespace Aaris.MapReview
         private AarisBattleActions battle;
         private Vector3 horizontalVelocity;
         private float normalCameraFov;
+        private float savedGroundStepOffset;
         private float smoothedEyeHeight, eyeHeightVelocity;
         private bool jumpButtonHeld;
         private float lastJumpStarted = -10f;
@@ -86,6 +87,7 @@ namespace Aaris.MapReview
         private void Awake()
         {
             controller = GetComponent<CharacterController>();
+            savedGroundStepOffset = controller.stepOffset;
             terrains = Terrain.activeTerrains;
             if (followCamera == null) followCamera = Camera.main;
             if (followCamera == null) { enabled = false; Debug.LogError("Saved player camera is missing."); return; }
@@ -243,6 +245,14 @@ namespace Aaris.MapReview
                 jumpUntil = lastGrounded = -10f;
             }
 
+            // CharacterController.stepOffset is for grounded stair traversal.
+            // Applying it while rising in a jump may snap the capsule up
+            // the edge of a wall. Restore the selected stance's step height
+            // as soon as a grounded Move succeeds.
+            float groundedStep = battle != null
+                ? battle.GroundStepOffset : savedGroundStepOffset;
+            controller.stepOffset = wasGrounded && !launchJump ? groundedStep : 0f;
+
             // Sole controller motor: no extra movement component or double
             // gravity. Touch, keyboard and auto-sprint use one intent pipeline.
             if (running && moveInput.y < -0.25f) running = false;
@@ -322,9 +332,10 @@ namespace Aaris.MapReview
                 verticalVelocity = 0f;
             if ((flags & CollisionFlags.Below) != 0)
             {
-                if (!wasGrounded) lastLanding = now;
+                if (!wasGrounded && !launchJump) lastLanding = now;
                 lastGrounded = now;
                 if (verticalVelocity < 0f) verticalVelocity = -groundedDownVelocity;
+                controller.stepOffset = groundedStep;
             }
             Vector3 velocity = controller.velocity;
             travelSpeed = new Vector2(velocity.x, velocity.z).magnitude;
@@ -373,7 +384,9 @@ namespace Aaris.MapReview
             if (GroundHeight(position) >= seaLevel + 0.35f) return true;
             // Terrain may be underwater beneath a solid quay, ramp or bridge.
             // Query only near the feet so a roof overhead cannot masquerade as support.
-            float rise = controller.stepOffset + 0.1f;
+            // The stepOffset is temporarily zero during jumps. Keep the
+            // original ground-probe range when moving over bridge steps.
+            float rise = savedGroundStepOffset + 0.1f;
             if (!Physics.Raycast(position + Vector3.up * rise, Vector3.down, out RaycastHit support,
                 rise + jumpHeight + 0.5f, WorldMask, QueryTriggerInteraction.Ignore)) return false;
             return support.point.y >= seaLevel + 0.35f
@@ -424,6 +437,8 @@ namespace Aaris.MapReview
             horizontalVelocity = Vector3.zero;
             running = false;
             if (battle != null) { battle.SetFireHeld(false); battle.TryStand(); }
+            controller.stepOffset = battle != null
+                ? battle.GroundStepOffset : savedGroundStepOffset;
             lastGrounded = -10f; gait = travelSpeed = 0f;
             lastJumpStarted = lastLanding = -10f;
             if (followCamera != null) followCamera.fieldOfView = normalCameraFov;
