@@ -65,13 +65,15 @@ jobs:
           lfs: false
       - name: Verify camera API rejects unsafe inputs
         run: |
-          python3 -m py_compile Tools/CI/live_camera_server.py Tools/CI/issue_camera_bridge.py Tools/CI/ai_world_commands.py Tools/CI/unity_personal_bootstrap.py Tools/CI/editor_runtime_diagnostics.py Tools/CI/terminal_control.py
+          python3 -m py_compile Tools/CI/live_camera_server.py Tools/CI/issue_camera_bridge.py Tools/CI/ai_world_commands.py Tools/CI/unity_personal_bootstrap.py Tools/CI/editor_runtime_diagnostics.py Tools/CI/terminal_control.py Tools/CI/private_unity_approval_publish.py
           python3 Tools/CI/ai_world_commands.py
           python3 Tools/CI/unity_personal_bootstrap.py --selftest
           python3 Tools/CI/license_reuse.py --selftest
           python3 Tools/CI/issue_camera_bridge.py --selftest
           python3 Tools/CI/editor_runtime_diagnostics.py --selftest
           python3 Tools/CI/terminal_control.py --selftest
+          python3 Tools/CI/private_unity_approval_publish.py --selftest
+          node --check Tools/CI/cloudflare_private_approval_worker.mjs
           node --check Tools/CI/cloudflare_live_hub.mjs
           python3 - <<'PY'
           import sys
@@ -92,6 +94,11 @@ jobs:
           PY
 
   live-desktop:
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'issue_comment' && github.event.issue.number == 77 && github.event.comment.user.login == 'sundamunda289-art' && (startsWith(github.event.comment.body, 'START_DESKTOP ') || startsWith(github.event.comment.body, 'ACTIVATE_UNITY ')))
     needs: verify
     runs-on: ubuntu-latest
@@ -263,6 +270,16 @@ jobs:
             > ci-logs/terminal-monitor.log 2>&1) &
           echo "$!" > /tmp/aaris-terminal-monitor.pid
           echo 'Safe 30-second runner snapshots enabled; send TERM STATUS to GitHub Issue #77.'
+      - name: Start private OTP-free Unity authorization link delivery
+        run: |
+          mkdir -p ci-logs ci-live-control
+          # The background publisher authenticates to a dedicated Cloudflare
+          # Worker using signed GitHub OIDC; only the linked account can read KV.
+          # If it fails, the existing PIN-protected Unity sign-in remains usable.
+          (python3 Tools/CI/private_unity_approval_publish.py --seconds "$((SESSION_MINUTES*60))" \
+            > ci-logs/approval-relay.log 2>&1) &
+          echo "$!" > /tmp/aaris-private-approval-pid
+          echo 'Short-lived Unity approval URLs are not posted to public Issues or Actions logs.'
       - name: Start real Unity Editor with authorized ULF or Unity CLI Personal sign-in
         continue-on-error: true
         timeout-minutes: 35
@@ -448,6 +465,7 @@ jobs:
             ci-live-control/editor-runtime.json
             ci-live-control/editor-runtime-diagnostics-safe.json
             ci-live-control/terminal-timeline-safe.jsonl
+            ci-live-control/approval-bridge-status.json
             ci-live-control/status.json
             ci-live-control/ai-result.json
           retention-days: 7
@@ -467,5 +485,8 @@ jobs:
           fi
           if [[ -f /tmp/aaris-terminal-monitor.pid ]]; then
             kill "$(cat /tmp/aaris-terminal-monitor.pid)" 2>/dev/null || true
+          fi
+          if [[ -f /tmp/aaris-private-approval-pid ]]; then
+            kill "$(cat /tmp/aaris-private-approval-pid)" 2>/dev/null || true
           fi
           echo 'Session ended. GitHub source and Releases remain; runner desktop is ephemeral.'
