@@ -1,0 +1,46 @@
+{
+  "vehicles": [
+    {
+      "id": "Sedan",
+      "modelResource": "AarisVehicles/Models/sedan",
+      "weight": 6,
+      "maxSpeedMetres": 25.5,
+      "massKg": 1250
+    },
+    {
+      "id": "SUV",
+      "modelResource": "AarisVehicles/Models/suv",
+      "weight": 5,
+      "maxSpeedMetres": 23.5,
+      "massKg": 1650
+    },
+    {
+      "id": "Sports",
+      "modelResource": "AarisVehicles/Models/sedan-sports",
+      "weight": 2,
+      "maxSpeedMetres": 28,
+      "massKg": 1140
+    },
+    {
+      "id": "Hatchback",
+      "modelResource": "AarisVehicles/Models/hatchback-sports",
+      "weight": 4,
+      "maxSpeedMetres": 24,
+      "massKg": 1040
+    },
+    {
+      "id": "Van",
+      "modelResource": "AarisVehicles/Models/van",
+      "weight": 2,
+      "maxSpeedMetres": 20,
+      "massKg": 1950
+    },
+    {
+      "id": "Utility",
+      "modelResource": "AarisVehicles/Models/truck-flat",
+      "weight": 2,
+      "maxSpeedMetres": 21,
+      "massKg": 2050
+    }
+  ]
+}
