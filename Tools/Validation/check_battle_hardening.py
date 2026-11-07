@@ -84,6 +84,40 @@ def audit() -> None:
     assert "SafeFooting(candidate)" in motor
     assert "CanAdvanceProne(candidate, horizontalVelocity)" in motor
 
+    # Airborne stair climbing is disabled, and the old step offset is
+    # restored for the first grounded Move. This preserves automatic stair
+    # traversal while preventing jumps from auto-mantling wall ledges.
+    assert "savedGroundStepOffset = controller.stepOffset;" in motor
+    assert "controller.stepOffset = wasGrounded && !launchJump ? groundedStep : 0f;" in motor
+    assert "controller.stepOffset = groundedStep;" in motor
+    assert "savedGroundStepOffset + 0.1f" in motor
+    assert "public float GroundStepOffset" in state
+    assert "0.18f : 0.075f" in state
+    assert "minimumAscentElapsed" in motor
+    assert "minimumJumpAscentSeconds" in motor
+
+    # Check the REAL current map layout, not an invented uniform staircase.
+    report = json.loads((ROOT / "Docs/MOBILE_REVIEW_REPORT.json").read_text(encoding="utf-8"))
+    towers = [p for p in report["placements"] if p["kind"] == "tower"]
+    assert len(towers) == 4, "Saved ramp towers changed"
+    for tower in towers:
+        step = tower["riser_m"]
+        assert 0.0 < step < 0.18, ("Crouch should walk up the authored stair", tower["name"], step)
+        assert step < 0.30, ("Standing should step up the authored stair", tower["name"])
+        assert step > 0.075, ("Prone should NOT auto-step up the authored stair", tower["name"])
+        assert tower["stair_width_m"] >= 1.7
+        assert tower["standing_height_m"] == 12
+
+    # The world enables dense static wall/stair colliders around the player
+    # before the motor runs. Its 55m activation radius must comfortably exceed
+    # the maximum 6.5 m/s sprint displacement (even across 150ms frames).
+    nearby = source("AarisNearbyColliders.cs")
+    assert "DefaultExecutionOrder(-250)" in nearby
+    assert "activationDistance = 55" in nearby
+    assert "nextCheck = Time.unscaledTime + .25f;" in nearby
+    assert "Physics.SyncTransforms();" in nearby
+    assert (6.5 * (0.25 + 0.15)) < 55 - 2.0
+
     # 10–120 FPS: the controller must integrate a full second at common
     # mobile rates even when Unity frames are slower than 20 FPS.
     for fps in (10, 15, 20, 30, 60, 90, 120):
