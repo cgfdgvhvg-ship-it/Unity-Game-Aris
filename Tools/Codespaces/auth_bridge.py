@@ -110,7 +110,8 @@ def run(codespace):
         if code:
             private_stderr.seek(0)
             raw=private_stderr.read(81920).decode("utf-8","replace").lower()
-            if "permissionerror" in raw: category="PYTHON_PATH_PERMISSION"\n            elif "permission denied" in raw: category="SSH_OR_SHELL_PERMISSION"
+            if "permissionerror" in raw: category="PYTHON_PATH_PERMISSION"
+            elif "permission denied" in raw: category="SSH_OR_SHELL_PERMISSION"
             elif "syntaxerror" in raw or "indentationerror" in raw: category="PYTHON_SYNTAX"
             elif "modulenotfounderror" in raw or "importerror" in raw: category="PYTHON_DEPENDENCY"
             elif "no such file or directory" in raw: category="MISSING_FILE"
