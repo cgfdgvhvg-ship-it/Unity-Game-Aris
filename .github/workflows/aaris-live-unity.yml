@@ -61,11 +61,12 @@ jobs:
           lfs: false
       - name: Verify camera API rejects unsafe inputs
         run: |
-          python3 -m py_compile Tools/CI/live_camera_server.py Tools/CI/issue_camera_bridge.py Tools/CI/ai_world_commands.py Tools/CI/unity_personal_bootstrap.py
+          python3 -m py_compile Tools/CI/live_camera_server.py Tools/CI/issue_camera_bridge.py Tools/CI/ai_world_commands.py Tools/CI/unity_personal_bootstrap.py Tools/CI/editor_runtime_diagnostics.py
           python3 Tools/CI/ai_world_commands.py
           python3 Tools/CI/unity_personal_bootstrap.py --selftest
           python3 Tools/CI/license_reuse.py --selftest
           python3 Tools/CI/issue_camera_bridge.py --selftest
+          python3 Tools/CI/editor_runtime_diagnostics.py --selftest
           node --check Tools/CI/cloudflare_live_hub.mjs
           python3 - <<'PY'
           import sys
@@ -401,6 +402,29 @@ jobs:
               python3 Tools/CI/session_store.py save project || \
               echo '::warning::Project checkpoint failed; check diagnostic artifact.'
           fi
+      - name: Verify Editor runtime, record classified failure if unresponsive
+        if: always()
+        run: |
+          python3 Tools/CI/editor_runtime_diagnostics.py
+          python3 - <<'PY'
+          import json, os
+          info=json.load(open("ci-live-control/editor-runtime-diagnostics-safe.json",encoding="utf-8"))
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a",encoding="utf-8") as out:
+              out.write("\n### Unity Editor: actual process / scene verification\n")
+              out.write(f"- License stage: {info['stage']}\n")
+              out.write(f"- Container running: {info['unity_container_running']}\n")
+              out.write(f"- Editor process detected: {info['editor_process_detected']}\n")
+              out.write(f"- Editor exit code: {info['editor_exit_code']}\n")
+              out.write(f"- Editor responding: {info['unity_editor_confirmed']}\n")
+              out.write(f"- Native scene open: {info['native_scene_open']}\n")
+              out.write(f"- Genuine camera photo: {info['real_camera_photo_confirmed']}\n")
+              out.write(f"- Classified errors (no private log text): {info['logs']}\n")
+              out.write("- Download aaris-ai-diagnostics artifact for machine-readable evidence.\n")
+          if not info["unity_editor_confirmed"]:
+              print("::error::Unity Editor not responsive. Login and running Docker do not establish an active Editor.")
+              print("::error::Read editor-runtime-diagnostics-safe.json for process exit, OOM and classified startup errors.")
+              raise SystemExit(1)
+          PY
       - name: Upload AI bridge diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -409,6 +433,8 @@ jobs:
           path: |
             ci-logs/issue-camera-relay.log
             ci-logs/project-auto-checkpoint.log
+            ci-live-control/editor-runtime.json
+            ci-live-control/editor-runtime-diagnostics-safe.json
             ci-live-control/status.json
             ci-live-control/ai-result.json
           retention-days: 7
