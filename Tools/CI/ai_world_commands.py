@@ -22,6 +22,7 @@ OPS = {
     "tree_nearby": ("terrain", "x", "y", "z", "radius"),
     "tree_inspect": ("terrain", "index"),
     "tree_blueprint": ("terrain", "index"),
+    "tree_photo": ("terrain", "index"),
     "tree_move": ("terrain", "index", "x", "z"),
     "tree_scale": ("terrain", "index", "width", "height"),
 }
@@ -73,6 +74,7 @@ def selftest():
     assert a["x"] == 2
     assert validate({"op":"tree_scale","terrain":"Terrain","index":42,"width":1.2,"height":0.9})
     assert validate({"op":"blueprint","target":"Tree","samples":2048})
+    assert validate({"op":"tree_photo","terrain":"Terrain","index":10})
     assert validate({"op":"tree_nearby","terrain":"Terrain","x":-420,"y":20,"z":-210,"radius":40})
     bad=[
         'MAP {"op":"move","target":"Tree","x":200,"y":0,"z":0}',
