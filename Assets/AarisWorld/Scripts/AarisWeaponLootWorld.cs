@@ -380,7 +380,9 @@ namespace Aaris.MapReview
                     if (hit.collider == null ||
                         hit.collider.transform.IsChildOf(player) ||
                         hit.normal.y < 0.83f || hit.distance >= best ||
-                        hit.point.y <= SeaLevel + .7f) continue;
+                        hit.point.y <= SeaLevel + .7f ||
+                        Mathf.Abs(hit.point.y - player.position.y) > .75f)
+                        continue; // Do not throw a gun off a roof/cliff below the player.
                     floor = hit.collider;
                     hitPoint = hit.point;
                     best = hit.distance;
