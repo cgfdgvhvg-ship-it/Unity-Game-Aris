@@ -28,13 +28,15 @@ namespace Aaris.MapReview
         private readonly Collider[] nearHits = new Collider[32];
         private PlayerStance stance;
         private bool fireHeld;
+        private bool semiShotQueued;
         private int attackSequence;
         private float lastPunchTime = -10f;
         private float lastShootTime = -10f;
 
         public PlayerStance Stance => stance;
         public bool FireHeld => fireHeld;
-        public bool IsArmed => equippedGun != null && equippedGun.isActiveAndEnabled;
+        public bool IsArmed => equippedGun != null &&
+            equippedGun.isActiveAndEnabled && equippedGun.Configured;
         public float CameraEyeHeight => stance == PlayerStance.Prone ? 0.54f
             : stance == PlayerStance.Crouching ? 0.94f : 1.45f;
         public int AttackSequence => attackSequence;
@@ -62,11 +64,16 @@ namespace Aaris.MapReview
         {
             equippedGun = gun;
             nextAttack = 0f;
+            semiShotQueued = false;
         }
 
         public void SetFireHeld(bool held)
         {
+            // Semi-auto must fire on a NEW press only, never repeatedly
+            // while held. Full-auto retains the original held cadence.
+            if (held && !fireHeld) semiShotQueued = true;
             fireHeld = held;
+            if (!held) semiShotQueued = false;
             if (held && motor != null) motor.CancelAutoSprint();
         }
 
@@ -181,6 +188,8 @@ namespace Aaris.MapReview
             if (!fireHeld || Time.time < nextAttack) return;
             if (IsArmed)
             {
+                if (!equippedGun.Automatic && !semiShotQueued) return;
+                if (!equippedGun.Automatic) semiShotQueued = false;
                 if (equippedGun.TryFire(motor.AimCamera, gameObject))
                 {
                     attackSequence++;
@@ -238,7 +247,7 @@ namespace Aaris.MapReview
             AarisEquippedGun.ApplyDamage(victim, punchDamage, gameObject);
         }
 
-        private void OnDisable() => fireHeld = false;
+        private void OnDisable() { fireHeld = false; semiShotQueued = false; }
         private void OnApplicationPause(bool paused)
         {
             if (paused) fireHeld = false;
