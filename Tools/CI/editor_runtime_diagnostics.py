@@ -99,6 +99,7 @@ def snapshot():
         "fetching_unity_editor", "installing_official_unity_cli", "starting_unity_oauth",
         "waiting_for_mobile_unity_signin", "activating_unity_personal",
         "unity_personal_activation_succeeded", "license_secret_installed",
+        "verifying_unity_cli_auth", "unity_cli_auth_verified",
         "unity_activation_requires_attention", "editor_starting", "editor_exited",
         "editor_launch_failed", "editor_ready",
     }
@@ -109,6 +110,7 @@ def snapshot():
     failure_code = license_status.get("failure_code")
     safe_codes = {
         "unity_browser_signin_timeout", "unity_browser_signin_failed",
+        "unity_cli_auth_not_verified", "unity_license_activation_not_verified",
         "unity_personal_license_refused", "unity_cli_download_failed",
         "unity_cli_install_failed", "unity_cli_binary_missing",
         "unity_editor_binary_missing", "unity_scene_lfs_not_downloaded",

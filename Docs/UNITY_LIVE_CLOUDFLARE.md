@@ -288,3 +288,45 @@ A 30-second diagnostics timeline is saved to the `aaris-ai-diagnostics` artifact
 The separate `ACTIVATE_UNITY` command can retry legitimate licensing if required.
 There is **no general-purpose shell** over public GitHub issues: arbitrary shell
 commands would expose credentials and could execute untrusted code.
+
+## Approval without the email-PIN gate: authenticated GitHub SSO setup
+
+The temporary Quick Tunnel currently uses `cloudflared --allowed-mail`, which
+**always requires a Cloudflare email one-time PIN**. It cannot secretly skip
+that requirement; removing `--allowed-mail` from the existing tunnel would
+expose the desktop, Unity auth URL, and local APIs publicly. Do not remove it.
+
+For a proper **GitHub-sign-in instead of email PIN**, an account admin must
+first enable **Cloudflare Zero Trust / Access**, register a GitHub OAuth app,
+configure GitHub as an Access Identity Provider, and protect a **named
+Cloudflare Tunnel + Access application** (not the anonymous Quick Tunnel).
+This must be separately completed and verified before swapping the existing
+tunnel. The Cloudflare account currently has Access **not enabled**.
+
+Official setup links:
+
+- Enable Access: https://one.dash.cloudflare.com/
+- Create a GitHub OAuth App: https://github.com/settings/applications/new
+- Cloudflare's GitHub IdP guide:
+  https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/github/
+- Access applications:
+  https://developers.cloudflare.com/cloudflare-one/applications/
+
+**Security**: Never paste OAuth app client secrets, private Unity approval
+links, ULF files or Cloudflare tokens in this public repo, Issues, Actions
+summaries or screenshots. Configure the secret only in the corresponding
+provider secret store. The Access policy must grant only the owner's GitHub
+identity, not all GitHub users.
+
+Until the named Tunnel + Access app is configured, the existing PIN gate
+remains necessary. A generic https://id.unity.com/ sign-in is **not**
+equivalent to approving a specific Unity CLI instance; each live run emits
+its own time-limited Unity-owned authorization URL. The script keeps that
+URL private and shows it only after the current approved gateway login.
+This is a deliberate authentication boundary, not an Editor bug.
+
+**Verification after approval**: The bootstrap now checks official Unity CLI
+`auth status` *on the GitHub runner* and then `license status`, both with
+output suppressed. The owner-only `TERM LICENSE` command reports a fixed,
+non-secret reason code when either check fails; no "successful login"
+claims are made solely because the phone browser displayed a success page.
