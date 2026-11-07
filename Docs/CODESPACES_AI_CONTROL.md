@@ -66,3 +66,6 @@ Relevant official guidance: [GitHub CLI](https://cli.github.com/manual/gh_codesp
 
 ### 2026-11-07 CLI + LFS diagnostics
 `CS INSTALL` uses the current, official Unity CLI instead of deprecated Unity Hub headless CLI. The installer and Editor live in the larger temporary filesystem; installer logs remain private in the Codespace. `CS LFS REPORT` enumerates hydrated/pointer counts and classifies the last LFS failure without exposing credentials. A missing remote LFS object must be recovered from authentic matching bytes, never fabricated or replaced by a placeholder. Check Unity license and native scene separately after installation.
+
+### Fast restart (persistent install)
+After the one-time Editor installation succeeds on the current Codespace, \`CS START\` and \`CS EDITOR\` reuse \`/workspaces/.aaris-unity-editors/6000.3.26f1\`; no Editor re-download on normal stop/start. On first install, portable Unity CLI \`--download-directory\` and \`--resume\` use persistent storage. Leave Unity Library/import cache on /tmp because persistent free storage is limited. For a different account's new Codespace, software is reinstalled automatically; enable GitHub Codespaces prebuilds in repository settings if the account quota/plan permits (prebuild storage consumes quota).
