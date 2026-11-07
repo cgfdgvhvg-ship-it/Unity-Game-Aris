@@ -479,6 +479,9 @@ namespace Aaris.MapReview
         /// <summary>Release the vehicle chase camera back to the walking motor.</summary>
         public void ResetCameraAfterVehicle()
         {
+            // Clear any stale left/right finger IDs captured before entering
+            // the car; a held arrow must not turn into an on-foot joystick.
+            ClearInput();
             cameraVelocity = Vector3.zero;
             lastMouse = Input.mousePosition;
             PlaceCamera(true);
