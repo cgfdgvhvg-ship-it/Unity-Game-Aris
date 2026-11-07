@@ -221,7 +221,10 @@ namespace Aaris.MapReview
         {
             if (battle == null) battle = GetComponent<AarisBattleActions>();
             ReadInput();
-            float dt = Mathf.Min(Time.deltaTime, 0.05f);
+            // Do not silently discard elapsed time on 10–20 FPS phones.
+            // A 50ms cap previously made a character at 10 FPS move at
+            // HALF speed. Cap only exceptional >150ms hitches for safety.
+            float dt = Mathf.Clamp(Time.deltaTime, 0f, 0.15f);
             if (dt <= 0f) return;
             float now = Time.unscaledTime;
             // CharacterController.isGrounded reflects the PREVIOUS Move.
