@@ -13,6 +13,7 @@ namespace Aaris.MapReview
     {
         private const float WheelRadius = 0.39f;
         private readonly WheelCollider[] wheels = new WheelCollider[4];
+        private readonly Transform[] visualWheels = new Transform[4];
         private Rigidbody body;
         private AarisVehicleSession driver;
         private float forward, steering, smoothSteer;
@@ -81,6 +82,63 @@ namespace Aaris.MapReview
             wheel.sidewaysFriction = sideGrip;
             wheels[index] = wheel;
         }
+
+        /// <summary>
+        /// Instantiate REAL separate FBX wheel geometry, not primitive
+        /// cylinders. Synchronize rendered pose to each WheelCollider.
+        /// No duplicated physics colliders exist on the visible wheels.
+        /// </summary>
+        public bool AttachWheelModels(GameObject wheelPrefab, Material palette)
+        {
+            if (wheelPrefab == null || palette == null) return false;
+            for (int i = 0; i < wheels.Length; i++)
+            {
+                var instance = Instantiate(wheelPrefab, transform, false);
+                instance.name = "Kenney Wheel Visual " + i;
+                foreach (var obstacle in instance.GetComponentsInChildren<Collider>(true))
+                    obstacle.enabled = false;
+                var renderers = instance.GetComponentsInChildren<Renderer>(true);
+                if (renderers.Length == 0)
+                {
+                    Destroy(instance);
+                    return false;
+                }
+                Bounds combined = renderers[0].bounds;
+                foreach (var renderer in renderers)
+                {
+                    combined.Encapsulate(renderer.bounds);
+                    int n = Mathf.Max(1, renderer.sharedMaterials.Length);
+                    var materials = new Material[n];
+                    for (int j = 0; j < n; j++) materials[j] = palette;
+                    renderer.sharedMaterials = materials;
+                }
+                float maxDimension = Mathf.Max(combined.size.x,
+                    Mathf.Max(combined.size.y, combined.size.z));
+                if (maxDimension < .001f)
+                {
+                    Destroy(instance);
+                    return false;
+                }
+                instance.transform.localScale *=
+                    Mathf.Clamp(2f * WheelRadius / maxDimension, .01f, 30f);
+                visualWheels[i] = instance.transform;
+            }
+            SyncVisibleWheels();
+            return true;
+        }
+
+        private void SyncVisibleWheels()
+        {
+            for (int i = 0; i < wheels.Length; i++)
+            {
+                if (wheels[i] == null || visualWheels[i] == null) continue;
+                wheels[i].GetWorldPose(out Vector3 worldPosition,
+                    out Quaternion worldRotation);
+                visualWheels[i].SetPositionAndRotation(worldPosition, worldRotation);
+            }
+        }
+
+        private void LateUpdate() => SyncVisibleWheels();
 
         public bool TryTakeDriver(AarisVehicleSession session)
         {
