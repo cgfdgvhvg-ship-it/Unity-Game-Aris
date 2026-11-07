@@ -27,6 +27,7 @@ if test -n "$ISSUE"; then
     'CS START') OP=start ;;
     'CS REBUILD') OP=rebuild ;;
     'CS STATUS') OP=status ;;
+    'CS LOGS') OP=logs ;;
     'CS INFO') OP=info ;;
     'CS SYNC') OP=sync ;;
     'CS LFS') OP=lfs ;;
@@ -44,7 +45,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|start|rebuild|status|sync|lfs|lfs_report|changes|install|editor|license|auth|probe|shot|test|stop) ;;
+  machines|info|start|rebuild|status|logs|sync|lfs|lfs_report|changes|install|editor|license|auth|probe|shot|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test -z "$GH_TOKEN"; then DETAIL="CODESPACE_PAT_missing"; exit 3; fi
@@ -82,6 +83,12 @@ fi
 if test -z "$CS"; then STATE="NO_CODESPACE"; DETAIL="run_CS_START"; exit 0; fi
 [[ "$CS" =~ ^[A-Za-z0-9-]+$ ]] || { DETAIL="bad_codespace_name"; exit 9; }
 # Read Codespace machine and state without SSH. Safe when the old container is unavailable.
+if test "$OP" = logs; then
+  if timeout 110 python3 "$GITHUB_WORKSPACE/Tools/Codespaces/codespace_logs.py" "$CS" > "$OUT/terminal.txt" 2>/dev/null; then
+    STATE="SUCCESS"; DETAIL="codespace_logs_classified_without_raw_output"; exit 0
+  fi
+  DETAIL="codespace_logs_command_failed"; exit 25
+fi
 if test "$OP" = info; then
   if gh codespace view -c "$CS" --json name,machineName,state,idleTimeoutMinutes,devcontainerPath \
       --jq '[("codespace=" + .name), ("machine=" + .machineName), ("state=" + .state), ("idle_minutes=" + (.idleTimeoutMinutes|tostring)), ("devcontainer=" + (.devcontainerPath // "default"))] | .[]' > "$OUT/terminal.txt" 2>/dev/null; then
