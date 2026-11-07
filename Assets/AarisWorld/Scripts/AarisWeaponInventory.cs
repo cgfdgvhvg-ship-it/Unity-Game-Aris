@@ -17,6 +17,7 @@ namespace Aaris.MapReview
         private int selected = -1;
         private bool aiming;
         private Transform hand;
+        private float nextRigSearch;
 
         public AarisEquippedGun Current =>
             selected >= 0 && selected < slots.Length ? slots[selected] : null;
@@ -102,8 +103,11 @@ namespace Aaris.MapReview
         private void AttachModelToHand(int index)
         {
             if (weaponModels[index] == null) return;
-            if (hand == null)
+            if (hand == null && Time.unscaledTime >= nextRigSearch)
             {
+                // Humanoid visual may not be imported yet; avoid allocating
+                // an Animator array in LateUpdate every mobile frame.
+                nextRigSearch = Time.unscaledTime + 1f;
                 var animators = GetComponentsInChildren<Animator>(true);
                 foreach (var animator in animators)
                     if (animator != null && animator.avatar != null && animator.avatar.isHuman)
