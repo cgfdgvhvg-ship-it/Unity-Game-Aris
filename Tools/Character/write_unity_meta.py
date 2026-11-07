@@ -27,14 +27,20 @@ def make_meta(path: Path, is_folder: bool) -> bool:
     relative = path.relative_to(ROOT).as_posix()
     meta = Path(str(path) + ".meta")
     if meta.exists():
+        # Early vendor builds escaped newlines as text (backslash+n). Repair
+        # only those malformed generated headers, retaining the same GUID.
+        current = meta.read_text(encoding="utf-8")
+        if "\\n" in current and "\n" not in current:
+            meta.write_text(current.replace("\\n", "\n"), encoding="utf-8")
+            return True
         return False
     guid = uuid.uuid5(uuid.NAMESPACE_URL, "https://aaris-game.example/internal-unity-meta/" + relative).hex
     if is_folder:
-        data = (f"fileFormatVersion: 2\\nguid: {guid}\\nfolderAsset: yes\\n"
-                "DefaultImporter:\\n  externalObjects: {}\\n  userData: \\n"
-                "  assetBundleName: \\n  assetBundleVariant: \\n")
+        data = (f"fileFormatVersion: 2\nguid: {guid}\nfolderAsset: yes\n"
+                "DefaultImporter:\n  externalObjects: {}\n  userData: \n"
+                "  assetBundleName: \n  assetBundleVariant: \n")
     else:
-        data = f"fileFormatVersion: 2\\nguid: {guid}\\n"
+        data = f"fileFormatVersion: 2\nguid: {guid}\n"
     meta.write_text(data, encoding="utf-8")
     return True
 
