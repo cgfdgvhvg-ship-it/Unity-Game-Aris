@@ -1,0 +1,140 @@
+name: Aaris Vendor Offline Male Character (CC0)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/rigged-character-locomotion-20261107
+    paths:
+      - .github/workflows/aaris-character-vendor.yml
+      - Tools/Character/vendor_quaternius.py
+      - Tools/Character/export_quaternius_blender.py
+      - Tools/Character/write_unity_meta.py
+      - Tools/Character/verify_offline.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: aaris-offline-character-vendor
+  cancel-in-progress: false
+
+jobs:
+  vendor:
+    if: github.repository == 'sundamunda289-art/Unity-Game-Aris' && github.ref == 'refs/heads/feat/rigged-character-locomotion-20261107'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          persist-credentials: true
+          fetch-depth: 1
+      - name: Check source-vendoring scripts (no Unity license required)
+        run: |
+          set -euo pipefail
+          python3 -m py_compile Tools/Character/vendor_quaternius.py Tools/Character/export_quaternius_blender.py Tools/Character/write_unity_meta.py
+          python3 Tools/Character/vendor_quaternius.py --selftest
+          python3 Tools/Character/write_unity_meta.py --selftest
+          python3 Tools/Character/verify_offline.py --selftest
+      - name: Verify committed local FBX and LFS objects
+        id: existing
+        run: |
+          set -euo pipefail
+          dir=Assets/Resources/AarisCharacters/Primary
+          motion_ready=true
+          for clip in idle walk run jump crouch jump_start jump_land crouch_walk punch shoot; do
+            if [[ ! -f "$dir/Animations/${clip}.fbx" ]]; then motion_ready=false; fi
+          done
+          if [[ "$motion_ready" == true && -f "$dir/Player.fbx" ]] &&
+             grep -Fq 'git-lfs.github.com/spec' "$dir/Player.fbx"; then
+            echo "Reusing locally committed Quaternius FBX binaries."
+            git lfs install --local
+            git lfs pull --include="Assets/Resources/AarisCharacters/Primary/**" --exclude=""
+            python3 Tools/Character/verify_offline.py
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install one-time asset conversion tools
+        if: steps.existing.outputs.ready != 'true'
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq blender git-lfs python3-numpy
+          blender --version | head -n 2
+          git lfs version
+      - name: Download, SHA-256 verify and convert CC0 source locally
+        if: steps.existing.outputs.ready != 'true'
+        run: |
+          set -euo pipefail
+          python3 Tools/Character/vendor_quaternius.py
+          python3 Tools/Character/write_unity_meta.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          metadata = sorted(Path("Assets/Resources").rglob("*.meta"))
+          assert metadata, "No Unity meta files produced"
+          for meta in metadata:
+              raw = meta.read_text(encoding="utf-8")
+              assert not (r"\n" in raw and "\n" not in raw), f"Malformed escaped newlines: {meta}"
+              assert re.match(r"^fileFormatVersion: 2\nguid: [0-9a-f]{32}\n", raw), f"Invalid Unity GUID: {meta}"
+          print(f"Validated {len(metadata)} Unity GUID metadata files")
+          PY
+          test -s Assets/Resources/AarisCharacters/Primary/Player.fbx
+          for clip in idle walk run jump crouch jump_start jump_land crouch_walk punch shoot; do
+            test -s "Assets/Resources/AarisCharacters/Primary/Animations/${clip}.fbx"
+          done
+      - name: Commit actual offline FBX textures animation source licenses and Unity GUIDs
+        if: steps.existing.outputs.ready != 'true'
+        run: |
+          set -euo pipefail
+          git lfs install --local
+          git lfs track 'Assets/Resources/AarisCharacters/Primary/*.fbx'
+          git lfs track 'Assets/Resources/AarisCharacters/Primary/Animations/*.fbx'
+          git lfs track 'Assets/Resources/AarisCharacters/Primary/Textures/*.png'
+          git add .gitattributes Assets/Resources/ Assets/Resources.meta
+          if git diff --cached --quiet; then
+            echo 'All character asset bytes already tracked; nothing to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Vendor CC0 male rig and animation FBXs locally in Git LFS'
+          # Under bash pipefail, grep -q may close the pipe early and cause
+          # git-lfs SIGPIPE (141) on repos with thousands of map LFS objects.
+          git lfs ls-files > /tmp/aaris-character-lfs-list.txt
+          if ! grep -F 'AarisCharacters/Primary/Player.fbx' /tmp/aaris-character-lfs-list.txt; then
+            echo '::error::Committed male FBX must be in Git LFS.'
+            exit 1
+          fi
+          grep -F 'AarisCharacters/Primary' /tmp/aaris-character-lfs-list.txt
+          # Another reviewer may have committed C# or documentation while
+          # Blender converted the binary assets. Rebase rather than dropping
+          # their changes or force-pushing the protected review branch.
+          # Discard only ephemeral, unstaged LFS smudge changes after the
+          # targeted character files above have already been committed.
+          # Git LFS may rehydrate legacy map files during a checkout even
+          # when they were not staged. Disable smudge for this ephemeral
+          # worktree normalization. Never stage or commit map asset changes.
+          git -c filter.lfs.process= -c filter.lfs.smudge= \
+              -c filter.lfs.required=false reset --hard HEAD
+          git -c filter.lfs.process= -c filter.lfs.smudge= \
+              -c filter.lfs.required=false restore --source=HEAD --worktree -- Assets/AarisWorld/Props/
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo '::error::Refusing to rebase with unintended dirty source/map files.'
+            git status --short
+            exit 1
+          fi
+          git fetch origin feat/rigged-character-locomotion-20261107
+          git -c filter.lfs.process= -c filter.lfs.smudge= \
+              -c filter.lfs.required=false rebase origin/feat/rigged-character-locomotion-20261107
+          git push origin 'HEAD:refs/heads/feat/rigged-character-locomotion-20261107'
+      - name: Report vendored payload
+        if: always()
+        run: |
+          echo '### Aaris CC0 offline character' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Original author: Quaternius; license: CC0-1.0.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Source bytes are SHA-256 pinned and only downloaded during one-time vendoring.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'The Unity runtime never loads characters over HTTP.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'The real Unity Editor / Android build still needs a licensed runner for visual QA.' >> "$GITHUB_STEP_SUMMARY"

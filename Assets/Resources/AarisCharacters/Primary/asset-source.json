@@ -1,0 +1,36 @@
+{
+  "title": "Aaris male superhero rigged character + locomotion",
+  "original_author": "Quaternius",
+  "license": "CC0-1.0",
+  "model_source": "https://quaternius.com/packs/universalbasecharacters.html",
+  "animation_source": "https://quaternius.com/packs/universalanimationlibrary.html",
+  "source_redistributor": "Seyamalam/blood-league-kickoff (audited CC0)",
+  "files": [
+    {
+      "file": "night-striker.glb",
+      "sha256": "a466828c67a4acc9b2413212ce6d9cde235e3aed9b675680c14fd9673858f118",
+      "size": 6465208,
+      "gitblob": "14697e33502e41ddbc1b7fdbf56bbf0478027700"
+    },
+    {
+      "file": "universal-animation-library.glb",
+      "sha256": "4c748767741a3e495d89667b9a218b690ba9810b9517a12e960780e3ca72c4e9",
+      "size": 2714756,
+      "gitblob": "4fccf561b9b2ef73f611efe21981ef8739080065"
+    }
+  ],
+  "vendor_output": [
+    "Player.fbx",
+    "Animations/crouch.fbx",
+    "Animations/crouch_walk.fbx",
+    "Animations/idle.fbx",
+    "Animations/jump.fbx",
+    "Animations/jump_land.fbx",
+    "Animations/jump_start.fbx",
+    "Animations/punch.fbx",
+    "Animations/run.fbx",
+    "Animations/shoot.fbx",
+    "Animations/walk.fbx"
+  ],
+  "runtime_network_required": false
+}
