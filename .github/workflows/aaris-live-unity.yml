@@ -401,6 +401,26 @@ jobs:
               python3 Tools/CI/session_store.py save project || \
               echo '::warning::Project checkpoint failed; check diagnostic artifact.'
           fi
+      - name: Report editor readiness and generate safe diagnostics
+        if: always()
+        run: |
+          python3 Tools/CI/issue_camera_bridge.py --diagnose
+          python3 - <<'PY'
+          import json, os
+          report=json.load(open("ci-live-control/ai-diagnostics-safe.json", encoding="utf-8"))
+          with open(os.environ["GITHUB_STEP_SUMMARY"],"a",encoding="utf-8") as summary:
+              summary.write("\n### Unity AI readiness (verified facts)\\n")
+              summary.write(f"- License stage: {report['stage']}\\n")
+              summary.write(f"- Container running: {report['unity_container_running']}\\n")
+              summary.write(f"- Real Editor response verified: {report['unity_editor_confirmed']}\\n")
+              summary.write(f"- Free cloud disk (GiB): {report['free_disk_gb']}\\n")
+              summary.write("- See aaris-ai-diagnostics artifact for the sanitized details.\\n")
+          if not report["unity_editor_confirmed"]:
+              print("::warning::Unity Editor response not verified. A live Linux desktop is NOT evidence of an active Unity license or scene capture.")
+          if report["stage"] == "unity_activation_requires_attention" and not report["unity_editor_confirmed"]:
+              print("::error::Unity activation requires attention; the cloud desktop alone cannot edit or photograph the native scene.")
+              raise SystemExit(1)
+          PY
       - name: Upload AI bridge diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -409,6 +429,7 @@ jobs:
           path: |
             ci-logs/issue-camera-relay.log
             ci-logs/project-auto-checkpoint.log
+            ci-live-control/ai-diagnostics-safe.json
             ci-live-control/status.json
             ci-live-control/ai-result.json
           retention-days: 7
