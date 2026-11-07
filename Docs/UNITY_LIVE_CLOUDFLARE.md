@@ -212,6 +212,7 @@ MAP {"op":"move","target":"ExactRoot/ExactTree","x":2,"y":0,"z":-2}
 MAP {"op":"scale","target":"ExactRoot/ExactHouse/Wall","x":1.2,"y":1,"z":1}
 MAP {"op":"tree_nearby","terrain":"Terrain","x":-420,"y":20,"z":-210,"radius":40}
 MAP {"op":"tree_inspect","terrain":"Terrain","index":0}
+MAP {"op":"tree_photo","terrain":"Terrain","index":0}
 MAP {"op":"tree_scale","terrain":"Terrain","index":0,"width":1.2,"height":1}
 MAP_SAVE
 ```
