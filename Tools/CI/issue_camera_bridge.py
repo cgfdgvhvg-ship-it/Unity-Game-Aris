@@ -186,13 +186,16 @@ def process_world(comment_id, body):
         attachments = [f"Inspector JSON / coordinates: {result_link}"]
         if reply.get("blueprint"):
             cloud = publish_world_asset(comment_id, "ai-blueprint.ply", "ply")
-            attachments.append(f"3D mesh-vertex point cloud (PLY): {cloud}")
+            attachments.append(f"3D point samples (PLY; JSON identifies approximation): {cloud}")
         if reply.get("photo"):
             photo = publish_world_asset(comment_id, "ai-photo.png", "png")
             attachments.append(f"Genuine Unity object screenshot: {photo}")
         details = {key: reply.get(key) for key in (
             "op", "path", "matches", "meshVertices", "sampledVertices",
+            "boundsFallbackPoints", "blueprintSampling",
             "treeWidthScale", "treeHeightScale", "treePrototype") if key in reply}
+        if isinstance(reply.get("parts"), list):
+            details["measurable_parts"] = len(reply["parts"])
         issue_comment("AI map request #" + str(comment_id) +
                       ": executed by licensed Unity Editor.\n" +
                       "Summary: " + json.dumps(details, ensure_ascii=True)[:1100] +
