@@ -23,6 +23,9 @@ namespace Aaris.MapReview
             int mask = Physics.DefaultRaycastLayers & ~(1 << owner.layer);
             int count = Physics.RaycastNonAlloc(ray, hits, maxRangeMetres, mask,
                 QueryTriggerInteraction.Ignore);
+            // A saturated unsorted query cannot reliably identify the first
+            // wall or opponent; fail closed instead of shooting through cover.
+            if (count >= hits.Length) return false;
             int bestIndex = -1;
             float bestDistance = float.PositiveInfinity;
             for (int i = 0; i < count; i++)
@@ -34,6 +37,22 @@ namespace Aaris.MapReview
                     bestDistance = hits[i].distance;
                     bestIndex = i;
                 }
+            }
+            Vector3 intended = bestIndex >= 0
+                ? hits[bestIndex].point
+                : ray.GetPoint(maxRangeMetres);
+            // The camera is offset behind a shoulder. Prevent a target seen
+            // by the camera from being hit through a solid wall near the body.
+            Vector3 muzzle = owner.transform.position +
+                Vector3.up * 1.3f + owner.transform.forward * 0.24f;
+            Vector3 path = intended - muzzle;
+            float pathLength = path.magnitude;
+            if (pathLength > 0.025f &&
+                Physics.Raycast(muzzle, path / pathLength, out RaycastHit muzzleHit,
+                    pathLength, mask, QueryTriggerInteraction.Ignore))
+            {
+                if (bestIndex < 0 || muzzleHit.collider != hits[bestIndex].collider)
+                    return true; // The wall catches this shot; no damage behind it.
             }
             if (bestIndex >= 0) ApplyDamage(hits[bestIndex].collider, damage, owner);
             return true;
