@@ -12,7 +12,9 @@ SAFE={
  "UNITY_AUTH_NOT_COMPLETED","UNITY_LICENSE_ALREADY_ACTIVE",
  "UNITY_PERSONAL_ACTIVATION_START","UNITY_PERSONAL_ACTIVATION_ERROR",
  "UNITY_PERSONAL_NOT_ACTIVE_HUB_MAY_BE_REQUIRED",
- "UNITY_PERSONAL_LICENSE_VERIFIED","UNITY_CLI_MISSING_RUN_CS_INSTALL_FIRST"}
+ "UNITY_PERSONAL_LICENSE_VERIFIED","UNITY_CLI_MISSING_RUN_CS_INSTALL_FIRST",
+ "UNITY_CLI_BOOTSTRAPPING","UNITY_CLI_READY","UNITY_CLI_DOWNLOAD_FAILED",
+ "UNITY_CLI_INSTALL_FAILED","UNITY_CLI_BOOTSTRAP_ERROR","UNITY_CLI_BINARY_NOT_FOUND"}
 def encrypted_issue_delivery(url,run_id):
     """Post only RSA-OAEP ciphertext. The private key never leaves this chat session."""
     if not allowed_url(url) or not re.fullmatch(r"[0-9]{6,18}",run_id):
@@ -93,7 +95,7 @@ def run(codespace):
         for line in p.stdout:
             result=sanitize(line,run_id)
             print(result,flush=True)
-            if result=="UNITY_PRIVATE_APPROVAL_LINK_READY": link_sent=True
+            if result in ("UNITY_PRIVATE_APPROVAL_LINK_READY","UNITY_ENCRYPTED_APPROVAL_POSTED"): link_sent=True
         code=p.wait()
     if code and not link_sent: print("UNITY_AUTH_INCOMPLETE",flush=True)
     return code
