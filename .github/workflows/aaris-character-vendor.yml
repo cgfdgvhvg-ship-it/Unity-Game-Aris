@@ -69,7 +69,7 @@ jobs:
           git lfs track 'Assets/Resources/AarisCharacters/Primary/*.fbx'
           git lfs track 'Assets/Resources/AarisCharacters/Primary/Animations/*.fbx'
           git lfs track 'Assets/Resources/AarisCharacters/Primary/Textures/*.png'
-          git add .gitattributes Assets/Resources/
+          git add .gitattributes Assets/Resources/ Assets/Resources.meta
           if git diff --cached --quiet; then
             echo 'All character asset bytes already tracked; nothing to commit.'
             exit 0
@@ -88,6 +88,7 @@ jobs:
           # Another reviewer may have committed C# or documentation while
           # Blender converted the binary assets. Rebase rather than dropping
           # their changes or force-pushing the protected review branch.
+          git status --short
           git fetch origin feat/rigged-character-locomotion-20261107
           git rebase origin/feat/rigged-character-locomotion-20261107
           git push origin 'HEAD:refs/heads/feat/rigged-character-locomotion-20261107'
