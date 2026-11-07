@@ -90,19 +90,30 @@ namespace Aaris.MapReview
 
         private bool HasRoomAbove(float proposedHeight)
         {
+            // Query only the *newly occupied headroom*, never the full
+            // expanded standing capsule. A full-body overlap intersects the
+            // ground TerrainCollider when the player stands on a slope and
+            // can incorrectly lock crouch/prone forever.
             float floor = standingCenter.y - standingHeight * 0.5f;
-            float radius = Mathf.Max(0.05f, capsule.radius - capsule.skinWidth * 0.5f);
-            Vector3 low = transform.TransformPoint(new Vector3(standingCenter.x, floor + radius, standingCenter.z));
-            Vector3 high = transform.TransformPoint(new Vector3(
-                standingCenter.x, floor + proposedHeight - radius, standingCenter.z));
-            // The project reserves layer 8 for the player; do not hit its own limb meshes.
+            float currentTop = floor + capsule.height;
+            float targetTop = floor + proposedHeight;
+            float radius = Mathf.Max(0.05f, capsule.radius - capsule.skinWidth);
+            float from = Mathf.Max(floor + radius, currentTop - radius * 0.35f);
+            float to = Mathf.Max(from, targetTop - radius);
+            Vector3 low = transform.TransformPoint(
+                new Vector3(standingCenter.x, from, standingCenter.z));
+            Vector3 high = transform.TransformPoint(
+                new Vector3(standingCenter.x, to, standingCenter.z));
+            // Mask the saved player layer, never mask real ceilings/branches.
             int mask = Physics.DefaultRaycastLayers & ~(1 << gameObject.layer);
-            int count = Physics.OverlapCapsuleNonAlloc(low, high, radius, nearHits, mask,
-                QueryTriggerInteraction.Ignore);
-            if (count == nearHits.Length) return false; // Fail closed on buffer overflow.
+            int count = Physics.OverlapCapsuleNonAlloc(low, high, radius, nearHits,
+                mask, QueryTriggerInteraction.Ignore);
+            if (count == nearHits.Length) return false; // Buffer saturation: stay low.
             for (int i = 0; i < count; i++)
-                if (nearHits[i] != null && !nearHits[i].transform.IsChildOf(transform))
-                    return false;
+            {
+                Collider hit = nearHits[i];
+                if (hit != null && !hit.transform.IsChildOf(transform)) return false;
+            }
             return true;
         }
 
@@ -150,7 +161,19 @@ namespace Aaris.MapReview
                     best = i;
                 }
             }
-            if (best >= 0) AarisEquippedGun.ApplyDamage(nearHits[best], punchDamage, gameObject);
+            if (count >= nearHits.Length) return; // Do not select a random hit on overflow.
+            if (best < 0) return;
+            Collider victim = nearHits[best];
+            Vector3 point = victim.ClosestPoint(origin);
+            Vector3 delta = point - origin;
+            // A fist cannot hit a player through a wall or a solid rock.
+            if (delta.sqrMagnitude > 0.0025f &&
+                Physics.Raycast(origin, delta.normalized, out RaycastHit obstruction,
+                    delta.magnitude, mask, QueryTriggerInteraction.Ignore) &&
+                obstruction.collider != victim &&
+                !obstruction.collider.transform.IsChildOf(victim.transform))
+                return;
+            AarisEquippedGun.ApplyDamage(victim, punchDamage, gameObject);
         }
 
         private void OnDisable() => fireHeld = false;
