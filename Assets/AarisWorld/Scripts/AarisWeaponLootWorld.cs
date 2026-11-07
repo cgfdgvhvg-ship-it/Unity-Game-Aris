@@ -30,7 +30,6 @@ namespace Aaris.MapReview
         private const float ActivationMetres = 42f; // below the 55m collider streaming radius
         private const float ReleaseMetres = 69f;
         private const int MaximumActiveLoot = 40;
-        private const int MaximumSelectedLoot = 170;
         private const float SeaLevel = -38.07552f;
 
         private readonly List<AarisWeaponPickup> active = new List<AarisWeaponPickup>(32);
@@ -98,7 +97,12 @@ namespace Aaris.MapReview
             for (int i = 0; i < candidates.Length; i++)
             {
                 var c = candidates[i];
-                if (!WithinMap(c) || selected >= MaximumSelectedLoot) continue;
+                // Apply the probability to ALL sectors. An early cap on
+                // sorted candidates unfairly stocked the west side first
+                // and left the east half of the 2km map with no outdoor loot.
+                // Memory is bounded by 514 authored slots; instantiated
+                // GameObjects are separately capped at MaximumActiveLoot.
+                if (!WithinMap(c)) continue;
                 bool indoor = c.kind == "indoor";
                 float chance = indoor ? 0.72f : 0.32f;
                 if (AarisWeaponRandom.Next01(ref rng) > chance) continue;
