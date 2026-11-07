@@ -235,7 +235,7 @@ New persistent backend: `Docs/CODESPACES_AI_CONTROL.md`, `.github/workflows/aari
 - The optional Codespace Editor installer now uses the official Unity CLI via `Tools/Codespaces/install_unity.sh`; Hub CLI headless commands are deprecated. `CS LFS REPORT` is a read-only diagnostic command with sanitized pointer counts and failure kind. Preserve original LFS pointer SHA-256 and asset bytes; do not replace missing assets with generated surrogates. Genuine Unity Personal authorization may still need a one-time phone approval in the *current* Codespace. Do not print the OAuth URL on the public GitHub issue.
 
 ## 2026-11-07 Fast Codespace Resume
-- One-time Editor install to persistent \`/workspaces/.aaris-unity-editors/6000.3.26f1\` using Unity CLI's supported portable \`--download-directory\` option; the Editor is reused on same Codespace stop/start.
+- One-time Editor install to persistent \`~/.local/share/aaris-unity-editors/6000.3.26f1\` using Unity CLI's supported portable \`--download-directory\` option; the Editor is reused on same Codespace stop/start.
 - On restart, \`CS START\` then \`CS EDITOR\`, followed by \`CS STATUS\` and \`CS SHOT\`. No reinstalls when persistent Editor is available. Unity Library/Temp cache remains on /tmp to avoid running out of persistent disk; import may take longer after ephemeral storage reset.
 - New account/new Codespace has its own storage and may require the initial Editor download and official Unity Personal login. Never move authentication cookies, license state, or machine IDs between Codespaces.
 
@@ -254,3 +254,5 @@ The owner's Termux can run Tools/Codespaces/termux_unity_allow.sh, which reuses 
 ## 2026-11-07: GitHub encrypted OAuth fallback
 - If `workers.dev/health` is blocked by provider access policy, `CS AUTH` publishes only RSA-OAEP-SHA256 encrypted Unity URL chunks in Issue #77 using the GitHub-provided token, never a plaintext Unity authorization link.
 - The private key is not on GitHub, in the repository, or in Codespaces. Only decrypt privately with the matching key and deliver the genuine URL in private ChatGPT. The current key may be ephemeral; regenerate public/private pair together if the private key is unavailable next time.
+
+Unity CLI and the re-usable Editor now use the Codespace user's writable home directory, because the /workspaces root can reject writes. The original Unity project stays under /workspaces/Unity-Game-Aris. /tmp is only for transient caches and downloads.

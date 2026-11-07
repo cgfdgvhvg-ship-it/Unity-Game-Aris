@@ -5,8 +5,8 @@ set -Eeuo pipefail
 VERSION="6000.3.26f1"
 CHANGESET="de8167e7440c"
 RUN="/tmp/aaris-codespaces"
-EDITOR_ROOT="/workspaces/.aaris-unity-editors"
-CLI_HOME="/workspaces/.aaris-unity-cli"
+EDITOR_ROOT="$HOME/.local/share/aaris-unity-editors"
+CLI_HOME="$HOME/.local/share/aaris-unity-cli"
 # Unity's official Linux installer normally puts the executable in ~/.local/bin.
 # UNITY_CLI_HOME stores configuration/session; it does not set executable location.
 find_cli() {
@@ -24,7 +24,7 @@ if test -x "$EDITOR_ROOT/$VERSION/Editor/Unity"; then
   echo "UNITY_PERSISTENT_EDITOR_READY"
   exit 0
 fi
-FREE_KB="$(df -Pk /workspaces | awk 'NR==2{print $4}')"
+FREE_KB="$(df -Pk "$HOME" | awk 'NR==2{print $4}')"
 if (( FREE_KB < 8000000 )); then
   echo "UNITY_PERSISTENT_SPACE_INSUFFICIENT"
   echo "UNITY_REQUIRED_FREE_KB_MIN=8000000"
