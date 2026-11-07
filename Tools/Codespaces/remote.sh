@@ -4,7 +4,7 @@ set -euo pipefail
 TASK="$1"
 PROJECT="/workspaces/Unity-Game-Aris"
 RUN="/tmp/aaris-codespaces"
-EDITOR="/workspaces/.aaris-unity-editors/6000.3.26f1/Editor/Unity"
+EDITOR="/tmp/aaris-unity-runtime/editors/6000.3.26f1/Editor/Unity"
 mkdir -p "$RUN"
 cd "$PROJECT"
 case "$TASK" in
@@ -35,7 +35,27 @@ case "$TASK" in
     bash "$PROJECT/Tools/Codespaces/install_unity.sh"
     ;;
   editor)
-    test -x "$EDITOR" || { echo 'EDITOR_NOT_INSTALLED'; exit 11; }
+    if ! test -x "$EDITOR"; then
+      echo 'EDITOR_ABSENT_INSTALLING_ON_TMP_DISK'
+      bash "$PROJECT/Tools/Codespaces/install_unity.sh" || { echo 'EDITOR_AUTO_INSTALL_FAILED'; exit 11; }
+    fi
+    # Put Unity's large import cache on /tmp and preserve checked-in source files.
+    mkdir -p /tmp/aaris-unity-runtime/project-cache
+    for name in Library Temp Logs obj; do
+      target="$PROJECT/$name"
+      if test -L "$target"; then continue; fi
+      if test -d "$target"; then
+        if test -n "$(ls -A "$target" 2>/dev/null)"; then
+          echo "CACHE_DIRECTORY_NONEMPTY_$name"
+          continue
+        fi
+        rmdir "$target"
+      fi
+      if ! test -e "$target"; then
+        mkdir -p "/tmp/aaris-unity-runtime/project-cache/$name"
+        ln -s "/tmp/aaris-unity-runtime/project-cache/$name" "$target"
+      fi
+    done
     bash "$PROJECT/.devcontainer/start_screen.sh" >/dev/null
     if ! pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then
       mkdir -p "$RUN/UnityTemp"
