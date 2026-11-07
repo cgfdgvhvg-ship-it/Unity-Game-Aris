@@ -66,7 +66,7 @@ def audit():
     assert "DeleteDrop(id);" in world
     assert "TryFindDropSpot(out Vector3 point)" in world
     assert "inventory.TryRemove(out AarisWeaponState removed)" in world
-    assert "record.visible = null;" in world
+    assert "rec.visible = null;" in world
     assert "if (record.visible != null) continue;" in world
     assert "Time.unscaledTime < record.blockedUntil" in world
     assert "(!inventory.HasGun && allowInitialAutoPickup &&" in world
