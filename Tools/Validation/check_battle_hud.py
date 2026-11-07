@@ -26,6 +26,8 @@ def check() -> None:
         "AarisThirdPersonPlayer.cs",
         "AarisBattleActions.cs",
         "AarisBattleHUD.cs",
+        "AarisHudButton.cs",
+        "AarisEquippedGun.cs",
         "AarisHudGlyphs.cs",
         "AarisCharacterVisual.cs",
     )
@@ -46,13 +48,15 @@ def check() -> None:
     state = text("AarisBattleActions.cs")
     hud = text("AarisBattleHUD.cs")
     glyph = text("AarisHudGlyphs.cs")
+    button = text("AarisHudButton.cs")
+    gun = text("AarisEquippedGun.cs")
     visual = text("AarisCharacterVisual.cs")
 
     controls = re.findall(r"^\s+Add\(Action\.(\w+),", hud, flags=re.MULTILINE)
     assert controls == ["Sprint", "Fire", "Jump", "Crouch", "Prone"], controls
     assert len(set(controls)) == 5
     assert "Screen.safeArea" in hud and "CanvasScaler.ScaleMode.ScaleWithScreenSize" in hud
-    assert "OnPointerDown" in hud and "OnPointerUp" in hud
+    assert "OnPointerDown" in button and "OnPointerUp" in button
     assert "SetFireHeld(false)" in hud and "CapturesScreenPosition" in hud
     assert "standaloneInputModule" not in hud  # Do not rely on arbitrary user-provided code.
 
@@ -77,7 +81,8 @@ def check() -> None:
     assert "Physics.OverlapCapsuleNonAlloc" in state
     assert "TrySetStance(PlayerStance.Standing)" in state
     assert "OverlapSphereNonAlloc" in state and "equippedGun.TryFire" in state
-    assert "IAarisDamageable" in state
+    assert "Physics.RaycastNonAlloc" in gun
+    assert "IAarisDamageable" in gun
     assert "Animator.applyRootMotion = false" not in state
     assert "animator.applyRootMotion = false" in visual
     assert 'FindClip("crouch", "crouch")' in visual and "LastPunchTime" in visual
