@@ -25,6 +25,7 @@ if test -n "$ISSUE"; then
   case "$ISSUE" in
     'CS MACHINES') OP=machines ;;
     'CS START') OP=start ;;
+    'CS REBUILD') OP=rebuild ;;
     'CS STATUS') OP=status ;;
     'CS INFO') OP=info ;;
     'CS SYNC') OP=sync ;;
@@ -43,7 +44,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|start|status|sync|lfs|lfs_report|changes|install|editor|license|auth|probe|shot|test|stop) ;;
+  machines|info|start|rebuild|status|sync|lfs|lfs_report|changes|install|editor|license|auth|probe|shot|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test -z "$GH_TOKEN"; then DETAIL="CODESPACE_PAT_missing"; exit 3; fi
@@ -102,6 +103,110 @@ if test "$OP" = start; then
   echo "codespace=$CS" > "$OUT/terminal.txt"
   STATE="SUCCESS"; DETAIL="existing_codespace_start_requested"; exit 0
 fi
+# GitHub documents that /workspaces persists across container rebuilds.
+# The current Alpine runtime cannot host Unity CLI (glibc >= 2.34 required).
+# Only the repository owner's exact CS REBUILD command can reach here.
+if test "$OP" = rebuild; then
+  if ! jq -e '.image == "mcr.microsoft.com/devcontainers/base:ubuntu-22.04" and .remoteUser == "vscode"' \
+      "$GITHUB_WORKSPACE/.devcontainer/devcontainer.json" >/dev/null; then
+    DETAIL="ubuntu_devcontainer_configuration_missing"; exit 21
+  fi
+  if ! timeout 120 gh codespace ssh -c "$CS" -- "bash -s" \
+        < "$GITHUB_WORKSPACE/Tools/Codespaces/rebuild_preflight.sh" \
+        > "$OUT/terminal.txt" 2>/dev/null; then
+    DETAIL="rebuild_preflight_workspace_unverified"; exit 22
+  fi
+  if ! grep -q '^AARIS_REBUILD_PREFLIGHT_READY
+PRIVATE_ERRORS="$RUNNER_TEMP/aaris-codespace-ssh-errors.log"
+trap 'finish; rm -f "$PRIVATE_ERRORS"' EXIT
+
+safe_error_summary() {
+  python3 - "$PRIVATE_ERRORS" "$OUT/ssh-diagnostic.txt" <<'PY'
+from pathlib import Path
+import re,sys
+s=Path(sys.argv[1]).read_text(errors="replace") if Path(sys.argv[1]).exists() else ""
+if not s.strip():
+    reason="no_stderr_from_gh_cli"
+elif re.search(r"permission denied|not authorized|forbidden|unauthorized|HTTP 403",s,re.I):
+    reason="permission_or_token_denied"
+elif re.search(r"connection refused|connect.*failed|connect.*error|unable to connect",s,re.I):
+    reason="ssh_connection_failed"
+elif re.search(r"no such file|not found|missing",s,re.I):
+    reason="missing_binary_or_file"
+elif re.search(r"unknown flag|unknown command|invalid argument|usage:",s,re.I):
+    reason="gh_cli_invocation_invalid"
+elif re.search(r"timed out|timeout|deadline exceeded",s,re.I):
+    reason="ssh_timeout"
+elif re.search(r"could not resolve|lookup|DNS",s,re.I):
+    reason="dns_or_network"
+elif re.search(r"public key|ssh key|agent",s,re.I):
+    reason="ssh_key_failure"
+else:
+    reason="unclassified_gh_cli_error"
+# Preserve diagnostic shape without logging credentials or arbitrary remote stderr.
+Path(sys.argv[2]).write_text("diagnostic_category="+reason+"\nerror_bytes="+str(len(s.encode()))+"\n")
+PY
+}
+
+REMOTE_TIMEOUT=130
+case "$OP" in
+  install) REMOTE_TIMEOUT=3000 ;;
+  sync|lfs) REMOTE_TIMEOUT=1200 ;;
+  test) REMOTE_TIMEOUT=500 ;;
+  editor) REMOTE_TIMEOUT=350 ;;
+esac
+if test "$OP" = auth; then
+  # Intercept the remote Unity OAuth URL, keep it OFF all public logs/artifacts.
+  if timeout 825 python3 "$GITHUB_WORKSPACE/Tools/Codespaces/auth_bridge.py" "$CS" > "$OUT/terminal.txt" 2>"$PRIVATE_ERRORS"; then
+    STATE="SUCCESS"; DETAIL="unity_license_checked"; exit 0
+  fi
+  safe_error_summary
+  DETAIL="unity_auth_incomplete_see_private_link"
+  exit 17
+fi
+SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/remote.sh"
+REMOTE_SHELL="bash -s -- $OP"
+if test "$OP" = install; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/install_unity.sh"
+  REMOTE_SHELL="bash -s"
+fi
+for attempt in 1 2; do
+  if timeout "$REMOTE_TIMEOUT" gh codespace ssh -c "$CS" -- "$REMOTE_SHELL" \
+      < "$SCRIPT_FILE" \
+      > "$OUT/terminal.txt" 2>"$PRIVATE_ERRORS"; then
+    rm -f "$PRIVATE_ERRORS"
+    if test "$OP" = shot; then
+      if timeout 90 gh codespace ssh -c "$CS" -- 'base64 /tmp/aaris-codespaces/screen.png' \
+          > "$OUT/screen.b64" 2>"$PRIVATE_ERRORS"; then
+        base64 --decode "$OUT/screen.b64" > "$OUT/screen.png"
+        rm -f "$OUT/screen.b64"
+        if ! file "$OUT/screen.png" | grep -q 'PNG image data'; then
+          DETAIL="screen_invalid_png"; exit 16
+        fi
+        DETAIL="screen_in_actions_artifact"
+      else DETAIL="screen_transfer_failed"; safe_error_summary; exit 13; fi
+    else DETAIL="remote_task_complete"; fi
+    STATE="SUCCESS"; exit 0
+  fi
+  test "$OP" = status || break
+  sleep 7
+done
+safe_error_summary
+DETAIL="SSH_execution_failed_see_diagnostic_category"
+exit 11
+ "$OUT/terminal.txt"; then
+    DETAIL="rebuild_preflight_not_ready"; exit 23
+  fi
+  # GitHub's non-full rebuild preserves /workspaces, including uncommitted files.
+  # Never reset the repo, clean untracked assets, force push or alter Git LFS.
+  if timeout 2400 gh codespace rebuild -c "$CS" > /dev/null 2> /dev/null; then
+    echo 'AARIS_UBUNTU_REBUILD_REQUEST_COMPLETED' >> "$OUT/terminal.txt"
+    STATE="SUCCESS"; DETAIL="rebuild_command_completed_verify_status"; exit 0
+  fi
+  echo 'AARIS_UBUNTU_REBUILD_COMMAND_FAILED' >> "$OUT/terminal.txt"
+  DETAIL="codespace_rebuild_failed_or_timed_out"; exit 24
+fi
+
 # Stream the approved checked-in script over SSH stdin. No SCP or old remote checkout needed.
 PRIVATE_ERRORS="$RUNNER_TEMP/aaris-codespace-ssh-errors.log"
 trap 'finish; rm -f "$PRIVATE_ERRORS"' EXIT
