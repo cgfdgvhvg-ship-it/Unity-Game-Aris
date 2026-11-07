@@ -21,6 +21,20 @@
     ]
   },
   "jump": {
+    "source_action": "Jump_Loop_Armature",
+    "frames": [
+      0,
+      60
+    ]
+  },
+  "jump_start": {
+    "source_action": "Jump_Start_Armature",
+    "frames": [
+      0,
+      32
+    ]
+  },
+  "jump_land": {
     "source_action": "Jump_Land_Armature",
     "frames": [
       0,
@@ -32,6 +46,27 @@
     "frames": [
       0,
       70
+    ]
+  },
+  "crouch_walk": {
+    "source_action": "Crouch_Fwd_Loop_Armature",
+    "frames": [
+      0,
+      48
+    ]
+  },
+  "punch": {
+    "source_action": "Punch_Jab_Armature",
+    "frames": [
+      0,
+      20
+    ]
+  },
+  "shoot": {
+    "source_action": "Pistol_Shoot_Armature",
+    "frames": [
+      0,
+      15
     ]
   }
 }

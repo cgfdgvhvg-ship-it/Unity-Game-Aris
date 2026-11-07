@@ -22,9 +22,14 @@
   "vendor_output": [
     "Player.fbx",
     "Animations/crouch.fbx",
+    "Animations/crouch_walk.fbx",
     "Animations/idle.fbx",
     "Animations/jump.fbx",
+    "Animations/jump_land.fbx",
+    "Animations/jump_start.fbx",
+    "Animations/punch.fbx",
     "Animations/run.fbx",
+    "Animations/shoot.fbx",
     "Animations/walk.fbx"
   ],
   "runtime_network_required": false
