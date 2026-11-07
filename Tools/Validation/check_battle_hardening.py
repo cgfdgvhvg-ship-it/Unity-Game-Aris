@@ -67,7 +67,7 @@ def audit() -> None:
     # A crouched/prone bullet must leave the actor's actual eye-height,
     # not a standing muzzle that could see through low cover.
     assert "actions.CameraEyeHeight - 0.15f" in gun
-    assert "SameDamageTarget" in gun and "TryFirstOtherHit" in gun
+    assert "SameTarget" in gun and "FirstExternalHit" in gun
 
     # Lying flat on stairs and bridge meshes must not be blocked because a
     # supporting floor shares an overlap region with the horizontal body.
