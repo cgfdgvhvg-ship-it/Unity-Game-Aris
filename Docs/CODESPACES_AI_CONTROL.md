@@ -98,3 +98,6 @@ When Unity CLI installer returns UNSUPPORTED_GLIBC, run `CS STATUS` to report th
 
 ### Ubuntu repair for inherited Alpine Codespace
 Owner-only `CS REBUILD` verifies the existing Codespace has `/workspaces/Unity-Game-Aris/.devcontainer/devcontainer.json` requesting the official Ubuntu 22.04 base, checks that the Git working directory exists, then calls GitHub's supported `gh codespace rebuild -c` (non-full). GitHub guarantees existing `/workspaces` files and unsaved edits are preserved over this devcontainer rebuild. Data and programs outside `/workspaces` (including `/tmp`, global packages and prior home auth) are **not** preserved. Never use git clean/reset/force push as part of a rebuild. Afterward run `CS STATUS` and verify `os_id=ubuntu` and `glibc>=2.34` before Unity CLI or Editor installation. If rebuilding fails, do not delete the Codespace; inspect the rebuild log through GitHub Codespaces.
+
+### Sanitized Codespace creation logs
+Owner can post `CS LOGS` to Issue #77; workflow retrieves Codespace creation logs using `gh codespace logs` even if SSH is down, and prints fixed error categories only (OS image, SSH/server setup, post-create failures). The raw creation log stays in a mode-0600 ephemeral file on the GitHub Actions runner and is deleted after classification. This is diagnostic only; it does not modify Git, native scene or Git LFS assets.
