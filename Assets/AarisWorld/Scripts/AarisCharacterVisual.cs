@@ -22,7 +22,9 @@ namespace Aaris.MapReview
 
         [SerializeField, Range(-180f, 180f)] private float modelYawOffset;
         [SerializeField, Range(0.1f, 0.8f)] private float blendResponseSeconds = 0.2f;
-        [SerializeField] private float fullRunSpeed = 6.2f;
+        [SerializeField] private float fullRunSpeed = 6.5f;
+        [SerializeField, Range(0f, 8f)] private float sprintForwardLeanDegrees = 4f;
+        [SerializeField, Range(0f, 0.12f)] private float landingCompressionMetres = 0.055f;
 
         private CharacterController controller;
         private GameObject visual;
@@ -285,11 +287,25 @@ namespace Aaris.MapReview
             // The source CC0 pack contains a crouch clip, not a full prone
             // crawl clip. Tilt/ground-align the mesh as a visual fallback;
             // the actual prone collision capsule is authoritative.
+            // Runtime animator owns limb poses; this shallow, visual-only
+            // secondary motion adds sprint anticipation and soft landing.
+            // It never moves the physical CharacterController.
+            Vector3 velocityNow = controller.velocity;
+            float planar = new Vector2(velocityNow.x, velocityNow.z).magnitude;
+            float leaning = Mathf.InverseLerp(4.2f, fullRunSpeed, planar) *
+                sprintForwardLeanDegrees * (1f - proneBlend);
+            Quaternion upright = restingLocalRotation * Quaternion.Euler(leaning, 0f, 0f);
             Quaternion proneRotation = restingLocalRotation * Quaternion.Euler(80f, 0f, 0f);
-            visual.transform.localRotation = Quaternion.Slerp(
-                restingLocalRotation, proneRotation, proneBlend);
+            visual.transform.localRotation = Quaternion.Slerp(upright, proneRotation, proneBlend);
+
+            float landingAge = GetComponent<AarisThirdPersonPlayer>() != null
+                ? Time.unscaledTime - GetComponent<AarisThirdPersonPlayer>().LastLandingTime
+                : 10f;
+            float landingDip = landingAge >= 0f && landingAge <= 0.2f
+                ? Mathf.Sin(Mathf.PI * landingAge / 0.2f) * landingCompressionMetres
+                : 0f;
             visual.transform.localPosition = restingLocalPosition +
-                new Vector3(0f, proneBlend * 0.36f, proneBlend * 0.14f);
+                new Vector3(0f, proneBlend * 0.36f - landingDip, proneBlend * 0.14f);
 
             if (graphReady)
             {
