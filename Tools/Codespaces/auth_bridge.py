@@ -40,10 +40,10 @@ def encrypted_issue_delivery(url,run_id):
         if not chunks or len(chunks)>24:
             return "UNITY_ENCRYPTED_APPROVAL_BAD_CHUNK_COUNT"
         message=(
-           "AARIS_UNITY_ENCRYPTED_APPROVAL_V1\\n"
-           "RUN="+run_id+"\\n"
-           "SHA256="+hashlib.sha256(raw).hexdigest()+"\\n"
-           "CIPHERTEXT_BEGIN\\n"+"\\n".join(chunks)+"\\nCIPHERTEXT_END\\n"
+           "AARIS_UNITY_ENCRYPTED_APPROVAL_V1\n"
+           "RUN="+run_id+"\n"
+           "SHA256="+hashlib.sha256(raw).hexdigest()+"\n"
+           "CIPHERTEXT_BEGIN\n"+"\n".join(chunks)+"\nCIPHERTEXT_END\n"
         )
         # NEVER write the OAuth URL; only encrypted chunks to a mode-0600 file.
         with tempfile.NamedTemporaryFile(mode="w",encoding="utf-8",prefix="aaris-cipher-",
