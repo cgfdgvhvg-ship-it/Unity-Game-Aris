@@ -33,6 +33,7 @@ namespace Aaris.MapReview
         private const float SeaLevel = -38.07552f;
 
         private readonly List<AarisWeaponPickup> active = new List<AarisWeaponPickup>(32);
+        private readonly RaycastHit[] pickupObstructions = new RaycastHit[24];
         private AarisLootCandidate[] candidates;
         private AarisWeaponSpec[] choices;
         private bool[] consumed;
@@ -228,6 +229,29 @@ namespace Aaris.MapReview
             return true;
         }
 
+        private bool CanReachPickup(AarisWeaponPickup pickup)
+        {
+            // Range is not enough: a weapon behind a solid wall must not be
+            // collected through that wall. Ignore only the player's own
+            // colliders, not all colliders on the player layer.
+            Vector3 eye = player.position + Vector3.up * .95f;
+            Vector3 target = pickup.transform.position + Vector3.up * .24f;
+            Vector3 toTarget = target - eye;
+            float distance = toTarget.magnitude;
+            if (distance <= 0.001f) return true;
+            int hits = Physics.RaycastNonAlloc(new Ray(eye, toTarget / distance),
+                pickupObstructions, distance,
+                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            if (hits >= pickupObstructions.Length) return false;
+            for (int i = 0; i < hits; i++)
+            {
+                var collider = pickupObstructions[i].collider;
+                if (collider == null || collider.transform.IsChildOf(player)) continue;
+                return false;
+            }
+            return true;
+        }
+
         private void Update()
         {
             if (player == null || inventory == null || candidates == null) return;
@@ -245,7 +269,8 @@ namespace Aaris.MapReview
                     continue;
                 }
                 float d2 = (pickup.transform.position - playerPosition).sqrMagnitude;
-                if (d2 < 2.15f * 2.15f && inventory.HasCapacity)
+                if (d2 < 2.15f * 2.15f && inventory.HasCapacity &&
+                    CanReachPickup(pickup))
                 {
                     if (inventory.TryPickup(pickup.Spec,
                         matchSeed ^ (uint)(pickup.CandidateIndex + 1)))
