@@ -25,7 +25,7 @@ assert 'unityhub --headless' not in (r/'Tools/Codespaces/install_unity.sh').read
 assert 'lfs.storage' in remote
 assert '/tmp/aaris-unity-runtime/editors' in remote
 assert 'project-cache' in remote
-assert '/tmp/aaris-unity-runtime/editors' in (r/'Tools/Codespaces/install_unity.sh').read_text()
+assert 'EDITOR_ROOT="$RUNTIME/editors"' in (r/'Tools/Codespaces/install_unity.sh').read_text()
 assert 'machine-id' not in remote
 assert 'Unity_auth_vault' not in remote
 controller=(r/'Tools/Codespaces/controller.sh').read_text()
