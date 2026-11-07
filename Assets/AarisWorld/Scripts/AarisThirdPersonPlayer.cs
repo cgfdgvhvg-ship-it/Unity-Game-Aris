@@ -51,6 +51,20 @@ namespace Aaris.MapReview
         private AarisBattleActions battle;
         private Vector3 horizontalVelocity;
         private float normalCameraFov;
+        private float weaponAimFov = -1f;
+
+        /// <summary>Single camera authority: scopes cannot fight sprint FOV.</summary>
+        public void SetWeaponAimFov(float fov)
+        {
+            weaponAimFov = fov > 0f ? Mathf.Clamp(fov, 8f, normalCameraFov) : -1f;
+        }
+
+        public void ApplyWeaponRecoil(float pitchKick, float yawKick)
+        {
+            pitch = Mathf.Clamp(pitch - Mathf.Clamp(pitchKick, 0f, 20f),
+                minLookPitch, maxLookPitch);
+            yaw += Mathf.Clamp(yawKick, -5f, 5f);
+        }
         private float savedGroundStepOffset;
         private float smoothedEyeHeight, eyeHeightVelocity;
         private bool jumpButtonHeld;
@@ -348,7 +362,8 @@ namespace Aaris.MapReview
             travelSpeed = new Vector2(velocity.x, velocity.z).magnitude;
             AnimateWalk(dt);
 
-            float targetFov = normalCameraFov + (sprinting && travelSpeed > 4f ? 6f : 0f);
+            float targetFov = weaponAimFov > 0f ? weaponAimFov :
+                normalCameraFov + (sprinting && travelSpeed > 4f ? 6f : 0f);
             if (followCamera != null)
                 followCamera.fieldOfView = Mathf.Lerp(followCamera.fieldOfView,
                     targetFov, 1f - Mathf.Exp(-5f * dt));
@@ -449,6 +464,7 @@ namespace Aaris.MapReview
             lastGrounded = -10f; gait = travelSpeed = 0f;
             lastJumpStarted = lastLanding = -10f;
             if (followCamera != null) followCamera.fieldOfView = normalCameraFov;
+            weaponAimFov = -1f;
             cameraVelocity = Vector3.zero;
             ClearInput(); PlaceCamera(true);
         }
