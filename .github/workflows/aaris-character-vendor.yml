@@ -47,6 +47,17 @@ jobs:
           set -euo pipefail
           python3 Tools/Character/vendor_quaternius.py
           python3 Tools/Character/write_unity_meta.py
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          metadata = sorted(Path("Assets/Resources").rglob("*.meta"))
+          assert metadata, "No Unity meta files produced"
+          for meta in metadata:
+              raw = meta.read_text(encoding="utf-8")
+              assert not (r"\n" in raw and "\n" not in raw), f"Malformed escaped newlines: {meta}"
+              assert re.match(r"^fileFormatVersion: 2\nguid: [0-9a-f]{32}\n", raw), f"Invalid Unity GUID: {meta}"
+          print(f"Validated {len(metadata)} Unity GUID metadata files")
+          PY
           test -s Assets/Resources/AarisCharacters/Primary/Player.fbx
           for clip in idle walk run jump; do
             test -s "Assets/Resources/AarisCharacters/Primary/Animations/${clip}.fbx"
@@ -63,8 +74,8 @@ jobs:
             echo 'All character asset bytes already tracked; nothing to commit.'
             exit 0
           fi
-          if ! git diff --cached --name-only | grep -q 'Assets/Resources/AarisCharacters/Primary/Player.fbx'; then
-            echo '::error::No local male FBX in staged assets.'
+          if ! git lfs ls-files | grep -q 'Assets/Resources/AarisCharacters/Primary/Player.fbx'; then
+            echo '::error::The committed male FBX must have an actual Git LFS object.'
             exit 1
           fi
           git config user.name 'github-actions[bot]'
