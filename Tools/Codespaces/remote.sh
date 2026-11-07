@@ -35,7 +35,22 @@ for entry in entries:
         path=entry[3:]
         if path and path.startswith(('Assets/','Docs/','Tools/','Packages/','ProjectSettings/','.github/')):
             files.append(path)
+raw_identical = 0
+raw_different = 0
+for path in files:
+    try:
+        index = subprocess.check_output(['git','ls-files','-s','--',path],text=True)
+        expected = index.split(chr(9))[0].split()[1]
+        current = subprocess.check_output(['git','hash-object','--no-filters','--',path],text=True).strip()
+        if current == expected:
+            raw_identical += 1
+        else:
+            raw_different += 1
+    except (IndexError, subprocess.CalledProcessError):
+        raw_different += 1
 print('changed_files_count='+str(len(files)))
+print('raw_identical_count='+str(raw_identical))
+print('raw_different_count='+str(raw_different))
 for path in sorted(files)[:70]:
     if all(c.isalnum() or c in ' /._-()' for c in path):
         print('change='+path)
