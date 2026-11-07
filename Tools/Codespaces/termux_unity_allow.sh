@@ -5,12 +5,14 @@ umask 077
 REPO="$(printenv MAIN_REPO || echo sundamunda289-art/Unity-Game-Aris)"
 PROFILE="$HOME/.config/aaris-ai/codespace-gh"
 command -v pkg >/dev/null || { echo 'Please run inside Termux'; exit 2; }
-pkg install -y -qq gh python openssh jq curl
+pkg install -y gh python openssh jq curl
 if ! GH_CONFIG_DIR="$PROFILE" gh auth status -h github.com >/dev/null 2>&1; then
   echo 'Codespace GitHub login missing. Run aaris-switch.sh once first.'
   exit 3
 fi
 export GH_CONFIG_DIR="$PROFILE"
+# Prevent tokens from a different shell environment overriding the selected profile.
+unset GH_TOKEN GITHUB_TOKEN
 LIST="$(gh codespace list -R "$REPO" --json name,displayName,state --limit 30)" || {
   echo 'Cannot list Codespaces'; exit 4;
 }
