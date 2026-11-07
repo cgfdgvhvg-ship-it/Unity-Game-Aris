@@ -245,3 +245,8 @@ New persistent backend: `Docs/CODESPACES_AI_CONTROL.md`, `.github/workflows/aari
 - Retrieve with connected Cloudflare KV `aaris-unity-approval-private`, key `run-<Github Actions run id>`. Give the URL ONLY privately in ChatGPT, never in a GitHub public Issue, log, artifact or commit.
 - User opens official Unity page on phone, signs into Unity (Google/Gmail if configured), taps Allow. Then the automation checks Unity login and attempts Personal entitlement activation, verifying final license status on the Codespace itself. Hub activation fallback may be required.
 - User interaction is required when OAuth asks; no reuse of hardware IDs or login cookies across accounts.
+
+
+## Simplest Unity Personal approval on Android without Cloudflare
+
+The owner's Termux can run Tools/Codespaces/termux_unity_allow.sh, which reuses the saved GitHub Codespace account and opens the genuine Unity-owned, Codespace-bound OAuth URL directly in the phone browser via termux-open-url. The remote reviewed mobile_license.py attempts official Unity Personal activation and checks status after Allow. Do not invent generic authorization URLs, share credentials through GitHub Issues/Actions, or clone Unity auth state across machines. Use this method in preference to the optional Cloudflare CS AUTH relay when that relay fails.

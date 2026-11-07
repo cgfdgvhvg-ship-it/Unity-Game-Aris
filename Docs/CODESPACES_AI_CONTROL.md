@@ -78,3 +78,8 @@ User opens official Unity link on phone, signs into Unity account via Google/Gma
 
 ### Private OAuth relay troubleshooting
 `CS PROBE` verifies the exact GitHub Actions OIDC claim comparisons and Cloudflare Worker `/probe` without starting Unity or exposing secrets. It outputs only booleans and HTTP status codes, never a token. Run it before asking for phone authorization if `CS AUTH` reports `UNITY_PRIVATE_APPROVAL_RELAY_FAILED`.
+
+
+### Direct phone-only Unity Allow, no Cloudflare
+
+The simpler recommended method uses Tools/Codespaces/termux_unity_allow.sh on the owner's Android Termux. Download the script from the repository main branch using curl, then run it with bash. It reuses the existing authenticated Codespace GitHub CLI profile under ~/.config/aaris-ai/codespace-gh. It selects the existing Codespace and streams the reviewed mobile_license.py over SSH. The phone immediately opens the genuine session-specific Unity login link with termux-open-url (and prints a fallback link privately on the phone). Sign in through the official Unity-owned page using the associated Google/Gmail account and tap Allow. Keep the Termux session alive. The Codespace then attempts the official Unity Personal activation and verifies the license; Hub fallback may be required. No Cloudflare, email PIN, ULF file, or GitHub public OAuth logs are involved. A generic static Unity login URL cannot authorize a specific remote CLI session. The old CS AUTH Cloudflare method remains optional, not required for this phone method.
