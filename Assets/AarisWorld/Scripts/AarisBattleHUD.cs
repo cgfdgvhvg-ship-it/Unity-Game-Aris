@@ -16,6 +16,7 @@ namespace Aaris.MapReview
         internal enum Action { Fire, Jump, Crouch, Prone, Sprint }
 
         private static AarisBattleHUD instance;
+        public static bool IsVisible => instance != null && instance.isActiveAndEnabled;
         private readonly List<AarisHudButton> buttons = new List<AarisHudButton>(5);
         private AarisBattleActions actions;
         private AarisThirdPersonPlayer player;
