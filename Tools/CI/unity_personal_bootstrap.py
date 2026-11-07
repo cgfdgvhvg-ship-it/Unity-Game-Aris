@@ -35,9 +35,37 @@ CANDIDATES = (
     "/usr/local/bin/unity-editor",
 )
 
-def private_status(state: str, *, url: str | None = None, detail: str = "") -> None:
+# Fixed, non-sensitive reason identifiers for GitHub issue terminal reports.
+# Do not expose raw CLI stderr, OAuth URLs, or arbitrary exception strings publicly.
+FAILURE_REASONS = (
+    ("Unity sign-in was not completed in this session", "unity_browser_signin_timeout"),
+    ("Unity's approved sign-in flow did not complete", "unity_browser_signin_failed"),
+    ("Unity CLI Personal activation was refused", "unity_personal_license_refused"),
+    ("Unity official CLI installer could not be downloaded", "unity_cli_download_failed"),
+    ("Unity official CLI installation failed", "unity_cli_install_failed"),
+    ("Unity CLI binary was not found after installation", "unity_cli_binary_missing"),
+    ("No Unity Editor binary found", "unity_editor_binary_missing"),
+    ("Native Unity scene is an LFS pointer", "unity_scene_lfs_not_downloaded"),
+    ("Unity scene is an LFS pointer", "unity_scene_lfs_not_downloaded"),
+    ("Unity Editor process exited", "unity_editor_exited"),
+    ("The UNITY_LICENSE Secret is not a valid ULF", "unity_license_secret_invalid"),
+)
+
+def classify_failure(reason: str) -> str:
+    for needle, code in FAILURE_REASONS:
+        if needle in reason:
+            return code
+    return "unity_failure_unclassified"
+
+def private_status(state: str, *, url: str | None = None, detail: str = "",
+                   failure_code: str | None = None) -> None:
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     record = {"state": state, "detail": detail}
+    if failure_code:
+        codes = {code for _, code in FAILURE_REASONS} | {"unity_failure_unclassified"}
+        if failure_code not in codes:
+            raise ValueError("Unknown public-safe failure code")
+        record["failure_code"] = failure_code
     if url:
         record["auth_url"] = url
     temp = STATE_DIR / "license-status.tmp"
@@ -230,6 +258,8 @@ def selftest() -> None:
     assert extract_auth_url('{"type":"progress","message":"auth_url=https://id.unity.com/connect?x=123"}')
     assert extract_auth_url("auth_url=https://id.unity.com/start") == "https://id.unity.com/start"
     assert extract_auth_url("https://example.com/bad") is None
+    assert classify_failure("Unity's approved sign-in flow did not complete") == "unity_browser_signin_failed"
+    assert classify_failure("bad-password-token-secret") == "unity_failure_unclassified"
     # Regression: private status must remain owner-readable and valid JSON.
     import tempfile
     global STATE_DIR
@@ -269,8 +299,9 @@ def main() -> int:
         except (OSError, ValueError):
             previous = ""
         stage = "editor_launch_failed" if previous == "editor_starting" else "unity_activation_requires_attention"
-        private_status(stage, detail=msg)
-        print("Unity bootstrap failure (no tokens or login URLs):", type(error).__name__, flush=True)
+        private_status(stage, detail=msg, failure_code=classify_failure(msg))
+        print("Unity bootstrap failure (no tokens or login URLs):",
+              classify_failure(msg), flush=True)
         # Keep Docker alive so protected VNC and local status remain available.
         time.sleep(5)
         return 1

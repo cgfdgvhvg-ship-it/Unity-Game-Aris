@@ -178,6 +178,7 @@ def history():
 
 def license(info):
     return {"stage": info["stage"],
+            "failure_code": info["license_failure_code"],
             "editor_start_recorded": info["editor_start_recorded"],
             "editor_exit_recorded": info["editor_exit_recorded"],
             "editor_exit_code": info["editor_exit_code"],
@@ -186,7 +187,7 @@ def license(info):
                           " if activation is waiting; never post OAuth URL publicly.")}
 
 def editor(info):
-    keys = ("stage", "unity_container_running", "editor_process_detected",
+    keys = ("stage", "license_failure_code", "unity_container_running", "editor_process_detected",
             "editor_start_recorded", "editor_exit_recorded", "editor_exit_code",
             "editor_heartbeat_recent", "editor_heartbeat_age_sec",
             "editor_graphics_backend", "unity_editor_confirmed",

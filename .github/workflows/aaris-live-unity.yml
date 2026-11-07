@@ -43,8 +43,12 @@ permissions:
   issues: write
   pull-requests: write
 
+# Only actual START_DESKTOP/ACTIVATE_UNITY launch requests compete for the one
+# long-running runner. Read-only TERM/MAP_STATUS/CAMERA issue comments must NOT
+# replace a queued launch; GitHub concurrency otherwise cancels the older pending
+# run even when cancel-in-progress is false.
 concurrency:
-  group: aaris-one-live-editor-${{ github.event_name }}
+  group: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'issue_comment' && github.event.issue.number == 77 && github.event.comment.user.login == 'sundamunda289-art' && (startsWith(github.event.comment.body, 'START_DESKTOP ') || startsWith(github.event.comment.body, 'ACTIVATE_UNITY ')))) && 'aaris-live-editor-launch' || format('aaris-no-launch-{0}', github.run_id) }}
   cancel-in-progress: false
 
 jobs:
