@@ -3,8 +3,10 @@
 ## Status
 The saved native 2 km Unity scene and its original player prefab remain untouched.
 The existing player physics/controller/camera/mobile joystick are preserved.
-The new `AarisCharacterVisual.cs` is a visual rig adapter with a five-way
-Unity Playables mixer for **Idle / Walk / Run / Jump / Fall**. It runs from
+The new `AarisCharacterVisual.cs` is a visual rig adapter with an eleven-input
+Unity Playables mixer for **Idle / Walk / Sprint / Jump Start / Jump Loop /
+Jump Land / Crouch Idle / Crouch Walk / Punch Jab / Pistol Shoot** and
+falling fallback. It runs from
 local `Resources` assets; there are no runtime character CDN or external URL
 requests. The previous primitive body is retained as a visible fallback until
 the imported humanoid passes Unity validation.
@@ -27,8 +29,9 @@ the imported humanoid passes Unity validation.
 ```text
 Assets/Resources/AarisCharacters/Primary/
   Player.fbx
-  Animations/{idle,walk,run,jump}.fbx
-  Animations/fall.fbx                  # when included in source library
+  Animations/{idle,walk,run,jump,crouch}.fbx
+  Animations/{jump_start,jump_land,crouch_walk,punch,shoot}.fbx
+  Animations/clip-sources.json        # exact source action provenance
   Textures/*.png
   LICENSE-BASE-CHARACTERS.txt
   LICENSE-ANIMATIONS.txt
@@ -69,9 +72,12 @@ git push
   1.78 m capsule; old primitive MeshRenderers alone are hidden, not deleted.
 - Imported motion is in-place (`Animator.applyRootMotion=false`) so the
   collision controller remains the gameplay authority.
-- The Playables mixer interpolates the visible character using actual player
-  velocity and grounded/airborne state. Frame-independent interpolation
-  and shared gait phase reduce blending discontinuities/foot mismatch.
+- The Playables mixer uses explicit source-correct takeoff, airborne and
+  landing clips; crouch/walk variants and one-shot punch/shoot clips; it
+  interpolates using real player velocity and grounded state. Takeoff,
+  landing and attacks reset clip time on events, rather than playing a
+  random animation from the source pack. A prone pose is still a visual
+  fallback because the verified 43-animation library has no crawl/prone clip.
 - `AarisCharacterImport.cs` supplies deterministic Unity Humanoid FBX imports.
 
 ## Test gates before merging
@@ -89,3 +95,16 @@ git push
 
 No native terrain, road, house, map scene or vehicle LFS objects are edited
 by this branch until a reviewed scene change is explicitly required.
+
+## Verified input animation source upgrade (2026-11-07)
+The pinned Quaternius GLB contains **43 source motions**; a separate
+SHA-256-verified audit found Jump_Start, Jump_Loop, Jump_Land,
+Crouch_Fwd_Loop, Punch_Jab and Pistol_Shoot. The original first import
+accidentally bound `Jump_Land` as `jump.fbx`. This was corrected by
+explicit source selectors; all 10 animation FBXs plus 1 character model
+are now persisted in Git LFS. The CI verifier reports **11 hydrated FBX
+objects, 20 unique Unity .meta GUIDs and both CC0 licenses**.
+
+Source audit workflow: `.github/workflows/aaris-motion-audit.yml`.
+Import verification: `Aaris.MapReview.Editor.AarisCharacterImport.Validate`.
+**Actual Unity Editor humanoid retarget and screenshot QA remain pending.**
