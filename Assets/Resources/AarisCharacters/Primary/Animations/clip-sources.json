@@ -1,0 +1,37 @@
+{
+  "idle": {
+    "source_action": "Idle_Loop_Armature",
+    "frames": [
+      0,
+      60
+    ]
+  },
+  "walk": {
+    "source_action": "Walk_Loop_Armature",
+    "frames": [
+      0,
+      32
+    ]
+  },
+  "run": {
+    "source_action": "Sprint_Loop_Armature",
+    "frames": [
+      0,
+      16
+    ]
+  },
+  "jump": {
+    "source_action": "Jump_Land_Armature",
+    "frames": [
+      0,
+      30
+    ]
+  },
+  "crouch": {
+    "source_action": "Crouch_Idle_Loop_Armature",
+    "frames": [
+      0,
+      70
+    ]
+  }
+}
