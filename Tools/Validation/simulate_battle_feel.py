@@ -19,7 +19,7 @@ GUN = (ROOT / "Assets/AarisWorld/Scripts/AarisEquippedGun.cs").read_text("utf-8"
 
 
 def setting(name: str) -> float:
-    match = re.search(r"\\b" + re.escape(name) + r"\\s*=\\s*([0-9.]+)f\\b", MOTOR)
+    match = re.search(r"\b" + re.escape(name) + r"\s*=\s*([0-9.]+)f\b", MOTOR)
     if match is None:
         raise AssertionError("Missing numeric tuning constant: " + name)
     return float(match.group(1))
