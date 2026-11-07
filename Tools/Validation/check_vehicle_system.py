@@ -99,7 +99,7 @@ def test():
     assert "Physics.OverlapBoxNonAlloc" in world
     assert "Physics.RaycastNonAlloc" in world
     assert "record.previouslySpawned" in world and "record.rotation" in world
-    assert "record.visible.CanPark" in world and "record.visible.IsOccupied" not in world
+    assert "record.visible.CanPark" in world and "record.visible.IsOccupied" in world
     assert "Resources.Load<GameObject>(item.modelResource)" in world
     assert "Resources.Load<Texture2D>" in world
     assert "Universal Render Pipeline/Lit" in world
