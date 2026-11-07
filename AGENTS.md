@@ -139,13 +139,13 @@ MAP_SAVE
 
 **Purpose:** You do not need Codespaces, Termux, or direct SSH to find out whether the
 GitHub Actions computer is ready. Once a fresh live workflow run has started, an
-AI connected as \`sundamunda289-art\` may comment on [Issue #77](https://github.com/sundamunda289-art/Unity-Game-Aris/issues/77)
+AI connected as `sundamunda289-art` may comment on [Issue #77](https://github.com/sundamunda289-art/Unity-Game-Aris/issues/77)
 and read back **sanitized live computer facts**. The bridge lives in
-\`Tools/CI/terminal_control.py\`; the relay is \`Tools/CI/issue_camera_bridge.py\`.
+`Tools/CI/terminal_control.py`; the relay is `Tools/CI/issue_camera_bridge.py`.
 
 Exact accepted commands (one comment per request):
 
-\`\`\`text
+```text
 TERM PING
 TERM HELP
 TERM STATUS
@@ -158,31 +158,31 @@ TERM NETWORK
 TERM LFS
 TERM HISTORY
 TERM ALL
-\`\`\`
+```
 
-- \`TERM STATUS\`: Editor/license/scene/photo status, last known compiler/error categories,
-  free disk. \`TERM DISK\`: workspace/tmp/root free space and memory/CPU.
-  \`TERM PROCESSES\`: bounded known process counts and Docker/Editor exit info.
-  \`TERM ERRORS\`: only safe compiler error IDs, exception classes and error categories.
-  \`TERM NETWORK\`: localhost VNC/API port checks. \`TERM LFS\`: checks native
-  scene hydration and LFS count. \`TERM HISTORY\`: recent 30-second sampling.
-  \`TERM ALL\`: comprehensive bounded state. \`TERM PING\`: confirm relay alive.
-- Every owner-authorized command returns \`AARIS_TERMINAL #<comment-ID>\` with a
+- `TERM STATUS`: Editor/license/scene/photo status, last known compiler/error categories,
+  free disk. `TERM DISK`: workspace/tmp/root free space and memory/CPU.
+  `TERM PROCESSES`: bounded known process counts and Docker/Editor exit info.
+  `TERM ERRORS`: only safe compiler error IDs, exception classes and error categories.
+  `TERM NETWORK`: localhost VNC/API port checks. `TERM LFS`: checks native
+  scene hydration and LFS count. `TERM HISTORY`: recent 30-second sampling.
+  `TERM ALL`: comprehensive bounded state. `TERM PING`: confirm relay alive.
+- Every owner-authorized command returns `AARIS_TERMINAL #<comment-ID>` with a
   machine-readable JSON response from the **actual current runner**. The output
   is PUBLIC on this GitHub issue; OAuth URLs, email addresses, authentication
   tokens, actual CLI arguments and raw Unity logs are never echoed.
 - New sessions also write a sanitized 30-second health timeline to
-  \`ci-live-control/terminal-timeline-safe.jsonl\`; the file is bundled into the
-  \`aaris-ai-diagnostics\` Actions artifact when the job finishes.
+  `ci-live-control/terminal-timeline-safe.jsonl`; the file is bundled into the
+  `aaris-ai-diagnostics` Actions artifact when the job finishes.
 - This is an allowlisted read-only terminal, **not general shell access**.
-  Never add \`bash -c\`, arbitrary Docker exec from comments, paths supplied by
-  users, raw \`tail\`/log dumps, or full shell access over public issues.
-  To retry authorized licensing, use the existing distinct \`ACTIVATE_UNITY\`
+  Never add `bash -c`, arbitrary Docker exec from comments, paths supplied by
+  users, raw `tail`/log dumps, or full shell access over public issues.
+  To retry authorized licensing, use the existing distinct `ACTIVATE_UNITY`
   command; it cannot bypass Unity Personal entitlement or approvals.
-- \`editor_starting\` means the GUI process was invoked, not that Unity Editor
+- `editor_starting` means the GUI process was invoked, not that Unity Editor
   imported a scene. Require a real Editor heartbeat, successful map command,
   or genuine PNG capture to claim usable Unity Editor status. A running Docker
   container and a green verify job alone are not enough.
-- CI regression test: \`python3 Tools/CI/terminal_control.py --selftest\`.
-  \`TERM\` commands are supported only in sessions created *after* the changes
+- CI regression test: `python3 Tools/CI/terminal_control.py --selftest`.
+  `TERM` commands are supported only in sessions created *after* the changes
   are merged; an already running runner uses its old checked-out code.
