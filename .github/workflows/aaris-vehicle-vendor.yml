@@ -45,7 +45,8 @@ jobs:
                   print('SOURCE FAILED',url,type(exc).__name__,str(exc)[:100],flush=True)
           if not archive:
               raise SystemExit('No official/author-hosted Kenney car-kit ZIP matched pinned source bytes and SHA256')
-          wanted=['sedan','suv','sedan-sports','hatchback-sports','van','truck-flat']
+          wanted=['sedan','suv','sedan-sports','hatchback-sports','van','truck-flat',
+                  'wheel-default','wheel-racing','wheel-truck']
           root=pathlib.Path('Assets/Resources/AarisVehicles/Models')
           root.mkdir(parents=True,exist_ok=True)
           with zipfile.ZipFile(io.BytesIO(archive)) as z:
@@ -84,7 +85,7 @@ jobs:
               else:
                   body='DefaultImporter:\n  externalObjects: {}\n'
               meta.write_text(f'fileFormatVersion: 2\nguid: {guid}\n'+body,encoding='utf-8')
-          print('PASS: 6 committed FBX models, color atlas, verified source license; no game-time URLs')
+          print('PASS: 6 car FBXs + 3 separate wheels, color atlas, verified source license; no game-time URLs')
           PY
           git add Assets/Resources/AarisVehicles
           if git diff --cached --quiet; then
@@ -93,7 +94,7 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'Vendor 6 exact SHA256-vetted Kenney CC0 vehicle FBXs and palette locally'
+          git commit -m 'Vendor 6 car FBXs and 3 wheel FBXs from exact SHA256-vetted Kenney CC0 archive and palette locally'
           git fetch origin feat/aaris-vehicle-driving-20261107
           git -c filter.lfs.process= -c filter.lfs.smudge= -c filter.lfs.required=false \
             rebase origin/feat/aaris-vehicle-driving-20261107
