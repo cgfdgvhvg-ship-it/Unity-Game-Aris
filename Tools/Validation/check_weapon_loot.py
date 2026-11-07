@@ -99,7 +99,7 @@ def run():
     assert "TryDropEquipped()" in world and "TryFindDropSpot" in world
     assert "TryRemove(out AarisWeaponState removed)" in world
     assert "MaximumDroppedLoot = 320" in world
-    assert "record.visible = null;" in world and "record.state" in world
+    assert "rec.visible = null;" in world and "record.state" in world
     # Deliberate exchange, never auto-pick a recently dropped gun.
     assert "(!inventory.HasGun && allowInitialAutoPickup &&" in world
     assert "requestPickupUntil = Time.unscaledTime + 0.7f;" in world
