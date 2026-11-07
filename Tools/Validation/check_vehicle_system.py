@@ -16,6 +16,9 @@ HASHES={
     "hatchback-sports":("ecd7df3d2be99bd0c798836031e093a02c259cfa0a4841233d4ab62e35cdd4bf",116032),
     "van":("0717a81e7770300e96faa0a52910bea287f591ec8d0b956667f74819c5df0bbb",115488),
     "truck-flat":("5502e87aa979b1051e5071eca8ad910623e7e6aa918600a9da0910272f9c8ec6",124896),
+    "wheel-default":("241da720d24a74b839ff18c4e6b30b8ea5f0cc8a925fa04c01327b0be5277ce8",34144),
+    "wheel-racing":("c779dba6ca48b46df4ed1244a026132eb84ba426370d945a3c1b8eef76b41dbe",35456),
+    "wheel-truck":("21090484ab58c404b3001fbfce09221a790f41faf5c9fd010b895c4846ce392e",37696),
 }
 
 def script(name):
@@ -59,7 +62,10 @@ def test():
                    for box in source["buildings"])
 
     types=catalog["vehicles"]
-    assert {x["modelResource"].split("/")[-1] for x in types}==set(HASHES)
+    assert {x["modelResource"].split("/")[-1] for x in types}==set(HASHES)-{
+        "wheel-default","wheel-racing","wheel-truck"}
+    assert {x["wheelResource"].split("/")[-1] for x in types}=={
+        "wheel-default","wheel-racing","wheel-truck"}
     assert all(8<=x["maxSpeedMetres"]<=28 and 800<x["massKg"]<2400
                and x["weight"]>0 for x in types)
     for n,(expected,size) in HASHES.items():
@@ -102,6 +108,10 @@ def test():
     assert "UnityWebRequest" not in world
 
     # Full WheelCollider physics without fake step velocity teleports.
+    assert "wheelPrefabs[i] = Resources.Load<GameObject>(item.wheelResource);" in world
+    assert "motor.AttachWheelModels(wheelSource, paletteMaterial)" in world
+    assert "visualWheels[i].SetPositionAndRotation(worldPosition, worldRotation);" in motor
+    assert "wheels[i].GetWorldPose(out Vector3 worldPosition," in motor
     assert "new WheelCollider[4]" in motor
     assert "WheelCollider" in motor and "JointSpring" in motor
     assert "wheel.forwardFriction" in motor and "wheel.sidewaysFriction" in motor
@@ -166,7 +176,7 @@ def test():
         assert len(seen)>=14
         assert 22<=len(selected)<=26,(seed,len(selected))
     print("PASS: 45 real garages +33 authored roadside points, 14 500m sectors, "
-          "300 balanced 26-car plans, 6 actual SHA256-verified FBX models, "
+          "300 balanced 26-car plans, 6 real car + 3 real wheel FBX models, "
           "WheelCollider physics, safe enter/exit and 4-arrow mobile UX.")
     print("NOT TESTED: Unity Editor FBX import, in-game car handling, Android rendering/FPS.")
 
