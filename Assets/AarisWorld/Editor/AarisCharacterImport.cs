@@ -27,8 +27,31 @@ namespace Aaris.MapReview.Editor
             importer.animationType = ModelImporterAnimationType.Human;
             importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
             importer.autoGenerateAvatarMappingIfUnspecified = true;
-            importer.importAnimation = assetPath.StartsWith(Anim, StringComparison.Ordinal);
+            bool isMotion = assetPath.StartsWith(Anim, StringComparison.Ordinal);
+            importer.importAnimation = isMotion;
+            importer.materialImportMode = isMotion
+                ? ModelImporterMaterialImportMode.None
+                : ModelImporterMaterialImportMode.ImportViaMaterialDescription;
             importer.importBlendShapes = true;
+            if (isMotion)
+            {
+                // In-place human motions. The CharacterController, not the
+                // animation track, controls x/z/y world-space displacement.
+                var clips = importer.defaultClipAnimations;
+                bool loop = assetPath.EndsWith("idle.fbx", StringComparison.OrdinalIgnoreCase)
+                    || assetPath.EndsWith("walk.fbx", StringComparison.OrdinalIgnoreCase)
+                    || assetPath.EndsWith("run.fbx", StringComparison.OrdinalIgnoreCase)
+                    || assetPath.EndsWith("crouch.fbx", StringComparison.OrdinalIgnoreCase);
+                foreach (var clip in clips)
+                {
+                    clip.loopTime = loop;
+                    clip.loopPose = loop;
+                    clip.lockRootRotation = true;
+                    clip.lockRootHeightY = true;
+                    clip.lockRootPositionXZ = true;
+                }
+                if (clips.Length > 0) importer.clipAnimations = clips;
+            }
             importer.addCollider = false;
             importer.isReadable = false;
             importer.optimizeMeshPolygons = true;
