@@ -121,7 +121,7 @@ def diagnostic_snapshot():
         raw_state = json.loads(private.read_text()).get("state") if private.exists() else None
     except (OSError, ValueError, TypeError):
         raw_state = None
-    license_state = raw_state if raw_state in safe_states else "unavailable"
+    license_state = raw_state if isinstance(raw_state, str) and raw_state in safe_states else "unavailable"
     try:
         docker = subprocess.run(
             ["docker", "inspect", "--format", "{{.State.Running}}", "aaris-unity-live"],
@@ -140,8 +140,12 @@ def diagnostic_snapshot():
         heartbeat = json.loads((STATE / "editor-heartbeat.json").read_text())
     except (OSError, ValueError, TypeError):
         heartbeat = {}
+    if not isinstance(heartbeat, dict):
+        heartbeat = {}
+    if not isinstance(last_world, dict):
+        last_world = {}
     editor_responding = heartbeat_current(heartbeat)
-    camera_captured = "Camera moved and real Unity PNG saved" in camera_health().get("state", "")
+    camera_captured = "Camera moved and real Unity PNG saved" in str(camera_health().get("state", ""))
     world_photo = (last_world.get("ok") is True and
                    last_world.get("op") in ("photo", "tree_photo"))
     git = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
