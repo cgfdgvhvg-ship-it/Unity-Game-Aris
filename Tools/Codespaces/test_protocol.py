@@ -58,6 +58,9 @@ assert 'Unity_auth_vault' not in remote
 controller=(r/'Tools/Codespaces/controller.sh').read_text()
 assert "'CS MACHINES')" in controller
 assert "'CS REBUILD')" in controller
+assert "'CS LOGS')" in controller
+assert 'creation_logs' in (r/'Tools/Codespaces/issue_response.py').read_text()
+assert (r/'Tools/Codespaces/classify_creation_logs.py').exists()
 assert 'gh codespace rebuild -c "$CS"' in controller
 assert 'rebuild_preflight.sh' in controller
 assert 'bash -s -- $OP' in controller
