@@ -87,9 +87,9 @@ def run(codespace):
     run_id=os.environ.get("GITHUB_RUN_ID","")
     if not re.fullmatch(r"[0-9]{6,18}",run_id): return 2
     path=ROOT/"Tools/Codespaces/mobile_license.py"
-    with path.open("rb") as source:
+    with path.open("rb") as source, tempfile.TemporaryFile() as private_stderr:
         p=subprocess.Popen(["gh","codespace","ssh","-c",codespace,"--","python3 -u -"],
-                           stdin=source,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
+                           stdin=source,stdout=subprocess.PIPE,stderr=private_stderr,
                            text=True,encoding="utf-8",errors="replace",bufsize=1)
         link_sent=False
         for line in p.stdout:
@@ -97,6 +97,20 @@ def run(codespace):
             print(result,flush=True)
             if result in ("UNITY_PRIVATE_APPROVAL_LINK_READY","UNITY_ENCRYPTED_APPROVAL_POSTED"): link_sent=True
         code=p.wait()
+        if code:
+            private_stderr.seek(0)
+            raw=private_stderr.read(81920).decode("utf-8","replace").lower()
+            if "permissionerror" in raw or "permission denied" in raw: category="PERMISSION_DENIED"
+            elif "syntaxerror" in raw or "indentationerror" in raw: category="PYTHON_SYNTAX"
+            elif "modulenotfounderror" in raw or "importerror" in raw: category="PYTHON_DEPENDENCY"
+            elif "no such file or directory" in raw: category="MISSING_FILE"
+            elif "traceback" in raw: category="PYTHON_RUNTIME"
+            elif "authentication failed" in raw or "unauthorized" in raw: category="SSH_AUTHORIZATION"
+            elif "timed out" in raw or "connection" in raw: category="SSH_TRANSPORT"
+            elif "unknown" in raw and "command" in raw: category="GH_CLI_ARGUMENT"
+            elif not raw.strip(): category="NO_STDERR"
+            else: category="REMOTE_EXECUTION"
+            print("UNITY_REMOTE_DIAGNOSTIC_"+category,flush=True)
     if code and not link_sent: print("UNITY_AUTH_INCOMPLETE",flush=True)
     return code
 if __name__=="__main__":
