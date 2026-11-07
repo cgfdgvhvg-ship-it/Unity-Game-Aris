@@ -87,10 +87,20 @@ def run(codespace):
     run_id=os.environ.get("GITHUB_RUN_ID","")
     if not re.fullmatch(r"[0-9]{6,18}",run_id): return 2
     path=ROOT/"Tools/Codespaces/mobile_license.py"
-    with path.open("rb") as source, tempfile.TemporaryFile() as private_stderr:
-        p=subprocess.Popen(["gh","codespace","ssh","-c",codespace,"--","python3 -u -"],
-                           stdin=source,stdout=subprocess.PIPE,stderr=private_stderr,
-                           text=True,encoding="utf-8",errors="replace",bufsize=1)
+    # Reuse exactly the proven CS STATUS SSH transport (remote bash -s).
+    # Bash executes the trusted Python program from the SSH stdin here-document,
+    # so the gh CLI never attempts to exec a remote command containing spaces.
+    source=path.read_text(encoding="utf-8")
+    marker="AARIS_UNITY_PY_EOF_22941"
+    if marker in source: return 2
+    shell="python3 -u - <<'"+marker+"'\n"+source+"\n"+marker+"\n"
+    with tempfile.TemporaryFile() as private_stderr:
+        p=subprocess.Popen(["gh","codespace","ssh","-c",codespace,"--","bash -s"],
+                           stdin=subprocess.PIPE,stdout=subprocess.PIPE,
+                           stderr=private_stderr,text=True,
+                           encoding="utf-8",errors="replace",bufsize=1)
+        p.stdin.write(shell)
+        p.stdin.close()
         link_sent=False
         for line in p.stdout:
             result=sanitize(line,run_id)
@@ -100,7 +110,8 @@ def run(codespace):
         if code:
             private_stderr.seek(0)
             raw=private_stderr.read(81920).decode("utf-8","replace").lower()
-            if "permissionerror" in raw or "permission denied" in raw: category="PERMISSION_DENIED"
+            if "permissionerror" in raw: category="PYTHON_PATH_PERMISSION"
+            elif "permission denied" in raw: category="SSH_OR_SHELL_PERMISSION"
             elif "syntaxerror" in raw or "indentationerror" in raw: category="PYTHON_SYNTAX"
             elif "modulenotfounderror" in raw or "importerror" in raw: category="PYTHON_DEPENDENCY"
             elif "no such file or directory" in raw: category="MISSING_FILE"
