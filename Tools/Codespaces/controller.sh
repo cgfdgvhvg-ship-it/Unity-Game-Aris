@@ -110,8 +110,15 @@ if ! timeout 75 gh codespace cp -c "$CS" \
   exit 12
 fi
 REMOTE_CMD="bash $REMOTE_PATH $OP"
+REMOTE_TIMEOUT=130
+case "$OP" in
+  install) REMOTE_TIMEOUT=3000 ;;
+  sync) REMOTE_TIMEOUT=1200 ;;
+  test) REMOTE_TIMEOUT=500 ;;
+  editor) REMOTE_TIMEOUT=350 ;;
+esac
 for attempt in 1 2; do
-  if timeout 85 gh codespace ssh -c "$CS" -- "$REMOTE_CMD" \
+  if timeout "$REMOTE_TIMEOUT" gh codespace ssh -c "$CS" -- "$REMOTE_CMD" \
       > "$OUT/terminal.txt" 2>"$PRIVATE_ERRORS"; then
     rm -f "$PRIVATE_ERRORS"
     if test "$OP" = shot; then
