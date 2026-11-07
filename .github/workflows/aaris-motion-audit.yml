@@ -1,0 +1,26 @@
+name: Aaris Verified Humanoid Motion Audit
+
+on:
+  push:
+    branches:
+      - feat/rigged-character-locomotion-20261107
+    paths:
+      - Tools/Character/audit_motion_names.py
+      - .github/workflows/aaris-motion-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Check exact pinned character source for native jump and crouch animations
+        run: |
+          set -euo pipefail
+          python3 Tools/Character/audit_motion_names.py
