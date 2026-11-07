@@ -30,6 +30,7 @@ namespace Aaris.MapReview
         private bool fireHeld;
         private int attackSequence;
         private float lastPunchTime = -10f;
+        private float lastShootTime = -10f;
 
         public PlayerStance Stance => stance;
         public bool FireHeld => fireHeld;
@@ -38,6 +39,7 @@ namespace Aaris.MapReview
             : stance == PlayerStance.Crouching ? 0.94f : 1.45f;
         public int AttackSequence => attackSequence;
         public float LastPunchTime => lastPunchTime;
+        public float LastShootTime => lastShootTime;
 
         private void Awake()
         {
@@ -125,6 +127,7 @@ namespace Aaris.MapReview
                 if (equippedGun.TryFire(motor.AimCamera, gameObject))
                 {
                     attackSequence++;
+                    lastShootTime = Time.time;
                     nextAttack = Time.time + equippedGun.SecondsBetweenShots;
                 }
                 else nextAttack = Time.time + 0.04f;
