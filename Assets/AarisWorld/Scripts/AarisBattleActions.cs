@@ -110,7 +110,9 @@ namespace Aaris.MapReview
             Vector3 high = transform.TransformPoint(
                 new Vector3(standingCenter.x, to, standingCenter.z));
             // Mask the saved player layer, never mask real ceilings/branches.
-            int mask = Physics.DefaultRaycastLayers & ~(1 << gameObject.layer);
+            // Include other players even if they share the saved player's layer;
+            // skip ONLY colliders belonging to this player in the hit loop.
+            int mask = Physics.DefaultRaycastLayers;
             int count = Physics.OverlapCapsuleNonAlloc(low, high, radius, nearHits,
                 mask, QueryTriggerInteraction.Ignore);
             if (count == nearHits.Length) return false; // Buffer saturation: stay low.
@@ -141,7 +143,9 @@ namespace Aaris.MapReview
             Vector3 center = position + Vector3.up * 0.31f;
             Vector3 head = center + fwd * 0.55f;
             Vector3 legs = center - fwd * 0.55f;
-            int mask = Physics.DefaultRaycastLayers & ~(1 << gameObject.layer);
+            // Include other players even if they share the saved player's layer;
+            // skip ONLY colliders belonging to this player in the hit loop.
+            int mask = Physics.DefaultRaycastLayers;
             int count = Physics.OverlapCapsuleNonAlloc(head, legs, 0.245f, nearHits,
                 mask, QueryTriggerInteraction.Ignore);
             if (count == nearHits.Length) return false;
@@ -183,7 +187,9 @@ namespace Aaris.MapReview
             Vector3 origin = transform.position + Vector3.up *
                 (stance == PlayerStance.Prone ? 0.4f : stance == PlayerStance.Crouching ? 0.73f : 1.15f);
             Vector3 center = origin + transform.forward * (punchReach * 0.58f);
-            int mask = Physics.DefaultRaycastLayers & ~(1 << gameObject.layer);
+            // Include other players even if they share the saved player's layer;
+            // skip ONLY colliders belonging to this player in the hit loop.
+            int mask = Physics.DefaultRaycastLayers;
             int count = Physics.OverlapSphereNonAlloc(center, 0.48f, nearHits, mask,
                 QueryTriggerInteraction.Ignore);
             int best = -1;
