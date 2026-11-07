@@ -6,6 +6,7 @@ r=Path(__file__).resolve().parents[2]
 d=json.loads((r/'.devcontainer/devcontainer.json').read_text())
 assert d['postCreateCommand']=='bash .devcontainer/bootstrap.sh'
 assert d['postStartCommand']=='bash .devcontainer/start_screen.sh'
+assert d['features']['ghcr.io/devcontainers/features/sshd:1']['version']=='latest'
 wf=(r/'.github/workflows/aaris-codespaces-control.yml').read_text()
 assert "github.event.comment.user.login == 'sundamunda289-art'" in wf
 assert "github.event.issue.number == 77" in wf
