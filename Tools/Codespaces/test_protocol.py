@@ -35,9 +35,9 @@ assert 'lfs_error_kind=' in remote
 assert 'UNITY_CLI_HOME' in (r/'Tools/Codespaces/install_unity.sh').read_text()
 assert 'unityhub --headless' not in (r/'Tools/Codespaces/install_unity.sh').read_text()
 assert 'lfs.storage' in remote
-assert '/workspaces/.aaris-unity-editors' in remote
+assert 'aaris-unity-editors' in remote
 assert 'project-cache' in remote
-assert 'EDITOR_ROOT="/workspaces/.aaris-unity-editors"' in (r/'Tools/Codespaces/install_unity.sh').read_text()
+assert 'EDITOR_ROOT="$HOME/.local/share/aaris-unity-editors"' in (r/'Tools/Codespaces/install_unity.sh').read_text()
 assert '--download-directory "$EDITOR_ROOT"' in (r/'Tools/Codespaces/install_unity.sh').read_text()
 assert '--resume' in (r/'Tools/Codespaces/install_unity.sh').read_text()
 assert 'machine-id' not in remote
