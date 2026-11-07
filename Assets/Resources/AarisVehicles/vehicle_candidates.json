@@ -1,0 +1,789 @@
+{
+  "schema": 1,
+  "sizeMetres": 2000,
+  "source": "Docs/MAP_LAYOUT.json",
+  "hubCount": 45,
+  "roadsideCount": 33,
+  "candidates": [
+    {
+      "id": "hub-01",
+      "kind": "hub",
+      "district": "ClockTowerTown",
+      "x": 289.2,
+      "y": -11.937,
+      "z": 209,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_01"
+    },
+    {
+      "id": "hub-02",
+      "kind": "hub",
+      "district": "ClockTowerTown",
+      "x": 410.8,
+      "y": -11.937,
+      "z": 209,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_02"
+    },
+    {
+      "id": "hub-03",
+      "kind": "hub",
+      "district": "ClockTowerTown",
+      "x": 350,
+      "y": -11.937,
+      "z": 179.783,
+      "yaw": 0,
+      "origin": "VehicleSpawnPoint_03"
+    },
+    {
+      "id": "hub-04",
+      "kind": "hub",
+      "district": "HighlandObservatory",
+      "x": 522,
+      "y": 23.759,
+      "z": -641,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_04"
+    },
+    {
+      "id": "hub-05",
+      "kind": "hub",
+      "district": "HighlandObservatory",
+      "x": 618,
+      "y": 23.759,
+      "z": -641,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_05"
+    },
+    {
+      "id": "hub-06",
+      "kind": "hub",
+      "district": "HighlandObservatory",
+      "x": 522,
+      "y": 23.759,
+      "z": -660.917,
+      "yaw": 0,
+      "origin": "VehicleSpawnPoint_06"
+    },
+    {
+      "id": "hub-07",
+      "kind": "hub",
+      "district": "HighlandObservatory",
+      "x": 618,
+      "y": 23.759,
+      "z": -658.375,
+      "yaw": 0,
+      "origin": "VehicleSpawnPoint_07"
+    },
+    {
+      "id": "hub-08",
+      "kind": "hub",
+      "district": "EasternPort",
+      "x": 798.4,
+      "y": -31.079,
+      "z": 339,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_08"
+    },
+    {
+      "id": "hub-09",
+      "kind": "hub",
+      "district": "EasternPort",
+      "x": 881.6,
+      "y": -31.079,
+      "z": 339,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_09"
+    },
+    {
+      "id": "hub-10",
+      "kind": "hub",
+      "district": "EasternPort",
+      "x": 798.4,
+      "y": -31.079,
+      "z": 362.517,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_10"
+    },
+    {
+      "id": "hub-11",
+      "kind": "hub",
+      "district": "EasternPort",
+      "x": 881.6,
+      "y": -31.079,
+      "z": 359.975,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_11"
+    },
+    {
+      "id": "hub-12",
+      "kind": "hub",
+      "district": "SouthernAirfield",
+      "x": 72,
+      "y": 24.955,
+      "z": -413,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_12"
+    },
+    {
+      "id": "hub-13",
+      "kind": "hub",
+      "district": "SouthernAirfield",
+      "x": 285,
+      "y": 24.955,
+      "z": -413,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_13"
+    },
+    {
+      "id": "hub-14",
+      "kind": "hub",
+      "district": "FreightDistrict",
+      "x": 492.4,
+      "y": -1.072,
+      "z": -171,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_14"
+    },
+    {
+      "id": "hub-15",
+      "kind": "hub",
+      "district": "FreightDistrict",
+      "x": 607.6,
+      "y": -1.072,
+      "z": -171,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_15"
+    },
+    {
+      "id": "hub-16",
+      "kind": "hub",
+      "district": "FreightDistrict",
+      "x": 497,
+      "y": -1.072,
+      "z": -154.125,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_16"
+    },
+    {
+      "id": "hub-17",
+      "kind": "hub",
+      "district": "FreightDistrict",
+      "x": 603,
+      "y": -1.072,
+      "z": -154.125,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_17"
+    },
+    {
+      "id": "hub-18",
+      "kind": "hub",
+      "district": "FreightDistrict",
+      "x": 495,
+      "y": -1.072,
+      "z": -195.517,
+      "yaw": 0,
+      "origin": "VehicleSpawnPoint_18"
+    },
+    {
+      "id": "hub-19",
+      "kind": "hub",
+      "district": "FreightDistrict",
+      "x": 602,
+      "y": -1.072,
+      "z": -192.975,
+      "yaw": 0,
+      "origin": "VehicleSpawnPoint_19"
+    },
+    {
+      "id": "hub-20",
+      "kind": "hub",
+      "district": "CanalMarket",
+      "x": -171.2,
+      "y": -31.079,
+      "z": 639,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_20"
+    },
+    {
+      "id": "hub-21",
+      "kind": "hub",
+      "district": "CanalMarket",
+      "x": -68.8,
+      "y": -31.079,
+      "z": 639,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_21"
+    },
+    {
+      "id": "hub-22",
+      "kind": "hub",
+      "district": "CanalMarket",
+      "x": -68.8,
+      "y": -31.079,
+      "z": 662.517,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_22"
+    },
+    {
+      "id": "hub-23",
+      "kind": "hub",
+      "district": "CanalMarket",
+      "x": -171.2,
+      "y": -31.079,
+      "z": 621.625,
+      "yaw": 0,
+      "origin": "VehicleSpawnPoint_23"
+    },
+    {
+      "id": "hub-24",
+      "kind": "hub",
+      "district": "OldVillage",
+      "x": -587.6,
+      "y": 1.712,
+      "z": -601,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_24"
+    },
+    {
+      "id": "hub-25",
+      "kind": "hub",
+      "district": "OldVillage",
+      "x": -472.4,
+      "y": 1.712,
+      "z": -601,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_25"
+    },
+    {
+      "id": "hub-26",
+      "kind": "hub",
+      "district": "OldVillage",
+      "x": -587.6,
+      "y": 1.712,
+      "z": -580.025,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_26"
+    },
+    {
+      "id": "hub-27",
+      "kind": "hub",
+      "district": "OldVillage",
+      "x": -530,
+      "y": 1.712,
+      "z": -620.917,
+      "yaw": 0,
+      "origin": "VehicleSpawnPoint_27"
+    },
+    {
+      "id": "hub-28",
+      "kind": "hub",
+      "district": "LakesideHamlet",
+      "x": -761.6,
+      "y": -2.659,
+      "z": 54,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_28"
+    },
+    {
+      "id": "hub-29",
+      "kind": "hub",
+      "district": "LakesideHamlet",
+      "x": -678.4,
+      "y": -2.659,
+      "z": 54,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_29"
+    },
+    {
+      "id": "hub-30",
+      "kind": "hub",
+      "district": "ValleySettlement",
+      "x": -474.4,
+      "y": 15.409,
+      "z": -221,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_30"
+    },
+    {
+      "id": "hub-31",
+      "kind": "hub",
+      "district": "ValleySettlement",
+      "x": -365.6,
+      "y": 15.409,
+      "z": -221,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_31"
+    },
+    {
+      "id": "hub-32",
+      "kind": "hub",
+      "district": "ValleySettlement",
+      "x": -474.4,
+      "y": 15.409,
+      "z": -244.017,
+      "yaw": 0,
+      "origin": "VehicleSpawnPoint_32"
+    },
+    {
+      "id": "hub-33",
+      "kind": "hub",
+      "district": "ValleySettlement",
+      "x": -365.6,
+      "y": 15.409,
+      "z": -241.475,
+      "yaw": 0,
+      "origin": "VehicleSpawnPoint_33"
+    },
+    {
+      "id": "hub-34",
+      "kind": "hub",
+      "district": "ValleySettlement",
+      "x": -420,
+      "y": 15.409,
+      "z": -244.017,
+      "yaw": 0,
+      "origin": "VehicleSpawnPoint_34"
+    },
+    {
+      "id": "hub-35",
+      "kind": "hub",
+      "district": "NorthernRidgeTown",
+      "x": 242.4,
+      "y": -30.834,
+      "z": 639,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_35"
+    },
+    {
+      "id": "hub-36",
+      "kind": "hub",
+      "district": "NorthernRidgeTown",
+      "x": 357.6,
+      "y": -30.834,
+      "z": 639,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_36"
+    },
+    {
+      "id": "hub-37",
+      "kind": "hub",
+      "district": "NorthernRidgeTown",
+      "x": 242.4,
+      "y": -30.834,
+      "z": 662.517,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_37"
+    },
+    {
+      "id": "hub-38",
+      "kind": "hub",
+      "district": "NorthernRidgeTown",
+      "x": 357.6,
+      "y": -30.834,
+      "z": 659.975,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_38"
+    },
+    {
+      "id": "hub-39",
+      "kind": "hub",
+      "district": "NorthernRidgeTown",
+      "x": 300,
+      "y": -30.834,
+      "z": 615.983,
+      "yaw": 0,
+      "origin": "VehicleSpawnPoint_39"
+    },
+    {
+      "id": "hub-40",
+      "kind": "hub",
+      "district": "CoastalHamlet",
+      "x": 602,
+      "y": -18.212,
+      "z": 639,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_40"
+    },
+    {
+      "id": "hub-41",
+      "kind": "hub",
+      "district": "CoastalHamlet",
+      "x": 698,
+      "y": -18.212,
+      "z": 639,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_41"
+    },
+    {
+      "id": "hub-42",
+      "kind": "hub",
+      "district": "SoutheastLighthouse",
+      "x": 799,
+      "y": 40.044,
+      "z": -762,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_42"
+    },
+    {
+      "id": "hub-43",
+      "kind": "hub",
+      "district": "SoutheastLighthouse",
+      "x": 851,
+      "y": 40.044,
+      "z": -762,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_43"
+    },
+    {
+      "id": "hub-44",
+      "kind": "hub",
+      "district": "ForestLookout",
+      "x": -676,
+      "y": 6.766,
+      "z": -137,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_44"
+    },
+    {
+      "id": "hub-45",
+      "kind": "hub",
+      "district": "ForestLookout",
+      "x": -624,
+      "y": 6.766,
+      "z": -137,
+      "yaw": 180,
+      "origin": "VehicleSpawnPoint_45"
+    },
+    {
+      "id": "road-001",
+      "kind": "roadside",
+      "district": "road",
+      "x": 343.039,
+      "y": -7.483,
+      "z": 43.769,
+      "yaw": 149,
+      "origin": "ClockTowerTown__FreightDistrict"
+    },
+    {
+      "id": "road-002",
+      "kind": "roadside",
+      "district": "road",
+      "x": 423.769,
+      "y": -4.286,
+      "z": -49.375,
+      "yaw": 179.73,
+      "origin": "ClockTowerTown__FreightDistrict"
+    },
+    {
+      "id": "road-003",
+      "kind": "roadside",
+      "district": "road",
+      "x": 184.2,
+      "y": -17.664,
+      "z": 288.532,
+      "yaw": 0.01,
+      "origin": "ClockTowerTown__NorthernRidgeTown"
+    },
+    {
+      "id": "road-004",
+      "kind": "roadside",
+      "district": "road",
+      "x": 254.685,
+      "y": -21.786,
+      "z": 387.618,
+      "yaw": 19.51,
+      "origin": "ClockTowerTown__NorthernRidgeTown"
+    },
+    {
+      "id": "road-005",
+      "kind": "roadside",
+      "district": "road",
+      "x": 264.171,
+      "y": -29.376,
+      "z": 505.969,
+      "yaw": 0.23,
+      "origin": "ClockTowerTown__NorthernRidgeTown"
+    },
+    {
+      "id": "road-006",
+      "kind": "roadside",
+      "district": "road",
+      "x": 432.486,
+      "y": -25.75,
+      "z": 527.337,
+      "yaw": 86.66,
+      "origin": "NorthernRidgeTown__CoastalHamlet"
+    },
+    {
+      "id": "road-007",
+      "kind": "roadside",
+      "district": "road",
+      "x": 551.83,
+      "y": -22.664,
+      "z": 520.2,
+      "yaw": 90,
+      "origin": "NorthernRidgeTown__CoastalHamlet"
+    },
+    {
+      "id": "road-008",
+      "kind": "roadside",
+      "district": "road",
+      "x": 655.287,
+      "y": -16.977,
+      "z": 488.384,
+      "yaw": 176.4,
+      "origin": "CoastalHamlet__EasternPort"
+    },
+    {
+      "id": "road-009",
+      "kind": "roadside",
+      "district": "road",
+      "x": 694.157,
+      "y": -26.198,
+      "z": 380.474,
+      "yaw": 147.16,
+      "origin": "CoastalHamlet__EasternPort"
+    },
+    {
+      "id": "road-010",
+      "kind": "roadside",
+      "district": "road",
+      "x": 97.609,
+      "y": -27.214,
+      "z": 536.2,
+      "yaw": -90,
+      "origin": "NorthernRidgeTown__CanalMarket"
+    },
+    {
+      "id": "road-011",
+      "kind": "roadside",
+      "district": "road",
+      "x": -22.391,
+      "y": -29.78,
+      "z": 551.8,
+      "yaw": -90,
+      "origin": "NorthernRidgeTown__CanalMarket"
+    },
+    {
+      "id": "road-012",
+      "kind": "roadside",
+      "district": "road",
+      "x": 506.265,
+      "y": 3.595,
+      "z": -330.93,
+      "yaw": -147.16,
+      "origin": "FreightDistrict__SouthernAirfield"
+    },
+    {
+      "id": "road-013",
+      "kind": "roadside",
+      "district": "road",
+      "x": 423.003,
+      "y": 13.092,
+      "z": -415.946,
+      "yaw": -144.85,
+      "origin": "FreightDistrict__SouthernAirfield"
+    },
+    {
+      "id": "road-014",
+      "kind": "roadside",
+      "district": "road",
+      "x": 407.388,
+      "y": 22.879,
+      "z": -534.621,
+      "yaw": -176.64,
+      "origin": "FreightDistrict__SouthernAirfield"
+    },
+    {
+      "id": "road-015",
+      "kind": "roadside",
+      "district": "road",
+      "x": 303.321,
+      "y": 32.802,
+      "z": -576.2,
+      "yaw": -90,
+      "origin": "FreightDistrict__SouthernAirfield"
+    },
+    {
+      "id": "road-016",
+      "kind": "roadside",
+      "district": "road",
+      "x": 182.866,
+      "y": 29.421,
+      "z": -591.709,
+      "yaw": -86.65,
+      "origin": "FreightDistrict__SouthernAirfield"
+    },
+    {
+      "id": "road-017",
+      "kind": "roadside",
+      "district": "road",
+      "x": 372.927,
+      "y": 39.775,
+      "z": -698.28,
+      "yaw": 124.97,
+      "origin": "SouthernAirfield__HighlandObservatory"
+    },
+    {
+      "id": "road-018",
+      "kind": "roadside",
+      "district": "road",
+      "x": 471.359,
+      "y": 29.508,
+      "z": -752.196,
+      "yaw": 90.26,
+      "origin": "SouthernAirfield__HighlandObservatory"
+    },
+    {
+      "id": "road-019",
+      "kind": "roadside",
+      "district": "road",
+      "x": 587.569,
+      "y": 28.716,
+      "z": -767.89,
+      "yaw": 93.35,
+      "origin": "HighlandObservatory__SoutheastLighthouse"
+    },
+    {
+      "id": "road-020",
+      "kind": "roadside",
+      "district": "road",
+      "x": 706.436,
+      "y": 37.273,
+      "z": -776.148,
+      "yaw": 86.91,
+      "origin": "HighlandObservatory__SoutheastLighthouse"
+    },
+    {
+      "id": "road-021",
+      "kind": "roadside",
+      "district": "road",
+      "x": 78.542,
+      "y": 25.711,
+      "z": -536.2,
+      "yaw": -90,
+      "origin": "SouthernAirfield__ValleySettlement"
+    },
+    {
+      "id": "road-022",
+      "kind": "roadside",
+      "district": "road",
+      "x": -42.671,
+      "y": 17.672,
+      "z": -536.515,
+      "yaw": -48.56,
+      "origin": "SouthernAirfield__ValleySettlement"
+    },
+    {
+      "id": "road-023",
+      "kind": "roadside",
+      "district": "road",
+      "x": -146.088,
+      "y": 10.444,
+      "z": -492.568,
+      "yaw": -65.42,
+      "origin": "SouthernAirfield__ValleySettlement"
+    },
+    {
+      "id": "road-024",
+      "kind": "roadside",
+      "district": "road",
+      "x": -260.331,
+      "y": 8.881,
+      "z": -472.065,
+      "yaw": -86.64,
+      "origin": "SouthernAirfield__ValleySettlement"
+    },
+    {
+      "id": "road-025",
+      "kind": "roadside",
+      "district": "road",
+      "x": -355.457,
+      "y": 8.745,
+      "z": -399.252,
+      "yaw": -52.84,
+      "origin": "SouthernAirfield__ValleySettlement"
+    },
+    {
+      "id": "road-026",
+      "kind": "roadside",
+      "district": "road",
+      "x": -502.294,
+      "y": 19.089,
+      "z": -339.482,
+      "yaw": -68.24,
+      "origin": "ValleySettlement__ForestLookout"
+    },
+    {
+      "id": "road-027",
+      "kind": "roadside",
+      "district": "road",
+      "x": -579.32,
+      "y": 14.395,
+      "z": -252.645,
+      "yaw": -31,
+      "origin": "ValleySettlement__ForestLookout"
+    },
+    {
+      "id": "road-028",
+      "kind": "roadside",
+      "district": "road",
+      "x": -418.97,
+      "y": 6.404,
+      "z": -495.578,
+      "yaw": 158.25,
+      "origin": "ValleySettlement__OldVillage"
+    },
+    {
+      "id": "road-029",
+      "kind": "roadside",
+      "district": "road",
+      "x": -447.225,
+      "y": 6.647,
+      "z": -705.989,
+      "yaw": -106.73,
+      "origin": "ValleySettlement__OldVillage"
+    },
+    {
+      "id": "road-030",
+      "kind": "roadside",
+      "district": "road",
+      "x": -8.139,
+      "y": 29.032,
+      "z": -655.801,
+      "yaw": -90.27,
+      "origin": "SouthernAirfield__OldVillage"
+    },
+    {
+      "id": "road-031",
+      "kind": "roadside",
+      "district": "road",
+      "x": -109.076,
+      "y": 20.559,
+      "z": -702.471,
+      "yaw": -106.72,
+      "origin": "SouthernAirfield__OldVillage"
+    },
+    {
+      "id": "road-032",
+      "kind": "roadside",
+      "district": "road",
+      "x": -226.59,
+      "y": 10.688,
+      "z": -719.8,
+      "yaw": -90,
+      "origin": "SouthernAirfield__OldVillage"
+    },
+    {
+      "id": "road-033",
+      "kind": "roadside",
+      "district": "road",
+      "x": -346.59,
+      "y": 4.876,
+      "z": -704.2,
+      "yaw": -90,
+      "origin": "SouthernAirfield__OldVillage"
+    }
+  ]
+}
