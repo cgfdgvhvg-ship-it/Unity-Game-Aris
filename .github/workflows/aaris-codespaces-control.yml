@@ -24,7 +24,7 @@ on:
         type: choice
         required: true
         default: machines
-        options: [machines, info, start, rebuild, status, sync, lfs, lfs_report, changes, install, editor, license, auth, probe, shot, test, stop]
+        options: [machines, info, start, rebuild, status, logs, sync, lfs, lfs_report, changes, install, editor, license, auth, probe, shot, test, stop]
       machine:
         description: 'Optional exact machine name, from machines result'
         type: string
@@ -57,6 +57,7 @@ jobs:
           python3 Tools/Codespaces/auth_bridge.py --selftest
           openssl pkey -pubin -in Tools/Codespaces/approval_relay_public.pem -noout
           node --check Tools/CI/cloudflare_private_approval_worker.mjs
+          python3 Tools/Codespaces/codespace_logs.py --selftest
           python3 Tools/Codespaces/test_protocol.py
           echo "CODESPACE_STATIC_PASS"
   control:
