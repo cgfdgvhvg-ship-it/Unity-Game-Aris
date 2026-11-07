@@ -4,15 +4,15 @@ Canonical repo: `sundamunda289-art/Unity-Game-Aris`. This system is separate fro
 
 ## One-time Termux login / change Codespace account
 
-Open Termux and run:
+Open Termux and run this lightweight setup. No giant Unity Git LFS clone is needed on your phone:
 
 ```bash
-pkg install -y gh git jq
-git clone https://github.com/sundamunda289-art/Unity-Game-Aris.git ~/Unity-Game-Aris
-bash ~/Unity-Game-Aris/Tools/Codespaces/termux_switch.sh
+pkg install -y gh curl jq
+curl -fsSL https://raw.githubusercontent.com/sundamunda289-art/Unity-Game-Aris/main/Tools/Codespaces/termux_switch.sh -o "$HOME/aaris-switch.sh"
+bash "$HOME/aaris-switch.sh"
 ```
 
-If already cloned, update the script with `cd ~/Unity-Game-Aris && git pull --ff-only` (do not overwrite local changes). The script performs official HTTPS GitHub device/browser login for two accounts: the main repo owner (once) and the selected Codespace-billed account (each switch). Credentials are kept in distinct local Termux CLI profiles, not in Git or the script. Only the `CODESPACE_PAT` Actions Secret is replaced. Never paste your PAT, Unity license, OAuth link or password into public issues or commits.
+This downloads only the reviewed switch script. It performs official GitHub device/browser login for the main repo owner (once) and the Codespace account, saves them in isolated private local CLI profiles, and rotates only the `CODESPACE_PAT` GitHub Actions Secret. Do not paste tokens, passwords, ULFs or OAuth links into public issues.
 
 Repeat the same Termux script to change the account used for Codespaces. The account must be permitted to use Codespaces on this repo under GitHub's billing/quota policies. The repository does not need to be transferred.
 
