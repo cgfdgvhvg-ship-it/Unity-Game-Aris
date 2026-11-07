@@ -22,6 +22,7 @@ As repo owner `sundamunda289-art`, post exactly one of these strings to [GitHub 
 
 ```text
 CS MACHINES
+CS INFO
 CS START
 CS STATUS
 CS SYNC
@@ -33,7 +34,7 @@ CS TEST
 CS STOP
 ```
 
-- `CS MACHINES` reads available machine IDs, CPU cores and RAM. Choose machine first.
+- `CS MACHINES` reads available machine IDs, CPU cores and RAM. `CS INFO` reports the existing Codespace's actual machine name, state and configured idle timeout without using SSH. Choose machine first.
 - `CS START` creates/starts the selected account's Codespace. If no machine was selected in the workflow form, it picks an available machine with at least 4 CPUs and 16 GiB RAM. A specific machine can be specified in Actions > Run workflow.
 - `CS STATUS` reports CPU, memory, free storage, Editor process and screen status from the Codespace terminal.
 - `CS SYNC` updates to main and downloads Git LFS assets; refuses dirty worktrees and non-fast-forward overwrites.
