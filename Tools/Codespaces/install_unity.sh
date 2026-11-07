@@ -13,7 +13,7 @@ find_cli() {
   local file
   for file in "$CLI_HOME/bin/unity" "$HOME/.local/bin/unity" "$HOME/.unity/bin/unity" \
               "/home/vscode/.local/bin/unity" "/tmp/aaris-unity-runtime/cli/bin/unity"; do
-    if test -x "$file"; then printf '%s\\n' "$file"; return 0; fi
+    if test -x "$file"; then printf '%s\n' "$file"; return 0; fi
   done
   command -v unity || return 1
 }
