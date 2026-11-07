@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Codespace-side OAuth; URL is intercepted privately by the Actions controller."""
-import os, sys, re, time, queue, threading, subprocess, shutil, pwd
+import os, sys, re, time, queue, threading, subprocess, shutil, pwd, tempfile
 from pathlib import Path
 from urllib.parse import urlsplit
 CLI_DIR=Path.home()/".local/share/aaris-unity-cli"
@@ -122,11 +122,28 @@ def main():
             install_env={**os.environ,"UNITY_CLI_CHANNEL":"beta",
                          "HOME":str(user_home),
                          "UNITY_CLI_HOME":str(CLI_DIR),"DO_NOT_TRACK":"1"}
-            setup=subprocess.run(["bash",str(script)],env=install_env,
-                                 stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
-                                 timeout=200,check=False)
-            if setup.returncode:
-                print("UNITY_CLI_INSTALL_FAILED",flush=True);return 11
+            # Keep installer output in an unlinked private file; never surface
+            # its URLs, emails or arbitrary messages on the public GitHub Issue.
+            with tempfile.TemporaryFile() as private_log:
+                setup=subprocess.run(["bash",str(script)],env=install_env,
+                                     stdout=private_log,stderr=subprocess.STDOUT,
+                                     timeout=200,check=False)
+                if setup.returncode:
+                    private_log.seek(0)
+                    raw=private_log.read(125000).decode("utf-8","replace").lower()
+                    checks=(
+                        ("ACCESS_POLICY",r"access denied|access policy|blocked by|http 403|forbidden"),
+                        ("PERMISSION",r"permission denied|operation not permitted|cannot create directory"),
+                        ("MISSING_TOOL",r"command not found|unzip: not found|tar: not found|jq: not found"),
+                        ("UNSUPPORTED_GLIBC",r"glibc|unsupported operating system|unsupported platform"),
+                        ("NETWORK",r"could not resolve|certificate|connection failed|timeout|curl:|wget:"),
+                        ("DISK_FULL",r"no space left|out of disk|disk full"),
+                        ("SCRIPT_FORMAT",r"<!doctype|<html|syntax error near unexpected token|not a shell script"),
+                    )
+                    category=next((name for name,pattern in checks if re.search(pattern,raw)),"UNCLASSIFIED")
+                    print("UNITY_CLI_INSTALL_CATEGORY_"+category,flush=True)
+                    print("UNITY_CLI_INSTALL_FAILED",flush=True)
+                    return 11
         except (OSError,subprocess.TimeoutExpired):
             print("UNITY_CLI_BOOTSTRAP_ERROR",flush=True);return 11
         finally:
