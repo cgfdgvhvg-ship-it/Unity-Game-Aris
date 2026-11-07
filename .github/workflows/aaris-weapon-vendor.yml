@@ -1,0 +1,68 @@
+name: Aaris Vendor Five CC0 Weapon FBXs Offline
+
+on:
+  push:
+    branches: [feat/offline-weapons-loot-20261107]
+    paths:
+      - '.github/workflows/aaris-weapon-vendor.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+          persist-credentials: true
+      - name: Fetch five exact pinned CC0 FBX meshes into this repository
+        run: |
+          set -euo pipefail
+          mkdir -p Assets/Resources/AarisWeapons/Models
+          root=Assets/Resources/AarisWeapons/Models
+          source_repo='https://raw.githubusercontent.com/petroulacl/fps-asset-kit/a19b7458a593598211c95ec46ef4eb4b6d1f94d7/weapons/flat_guns_east/Flat%20Guns%20East/FBX'
+          while IFS='|' read -r target source sha bytes; do
+            [[ -n "$target" ]] || continue
+            path="$root/$target.fbx"
+            if [[ -f "$path" ]] && [[ "$(git hash-object "$path")" == "$sha" ]]; then
+              echo "Already present locally: $target"
+              continue
+            fi
+            curl -fLsS --retry 3 --connect-timeout 10 --max-time 80 \
+              "$source_repo/$source" -o "$path"
+            actual="$(git hash-object "$path")"
+            [[ "$actual" == "$sha" ]] || { echo "::error::$target source Git hash mismatch"; exit 1; }
+            [[ "$(wc -c < "$path" | tr -d ' ')" == "$bytes" ]] || {
+              echo "::error::$target source byte length mismatch"; exit 1;
+            }
+            python3 - "$path" <<'PY'
+          from pathlib import Path
+          import sys
+          assert Path(sys.argv[1]).read_bytes().startswith(b"Kaydara FBX Binary"), sys.argv[1]
+          PY
+            echo "Verified $target FBX, SHA-1 $sha"
+          done <<'MODELS'
+          SMG|SMG_Compact_East.Rig.fbx|2fadbba99ac6d3373b8f6b04786374c42c54394f|70348
+          AssaultRifle|Rifle_Assault_East.Rig.fbx|8f2109f415755ad0af8aaa1d911ddfea7c2064cd|92204
+          BattleRifle|Rifle_Battle_East.RIg.fbx|24f2bfee4166e2208cb070b3de273f0989fafc9d|91644
+          Sniper|Sniper_Rifle_East.Rig.fbx|a743e79ea184966021aba937d30cb6876e2cbaba|86636
+          Shotgun|Shotgun_Pump_East.RIg.fbx|3590c4b06c378037190edd870ca0c24fdaf5ae8a|60604
+          MODELS
+          git add -- "$root/SMG.fbx" "$root/AssaultRifle.fbx" "$root/BattleRifle.fbx" \
+            "$root/Sniper.fbx" "$root/Shotgun.fbx"
+          git diff --cached --name-only
+          if git diff --cached --quiet; then echo 'All models were already committed'; exit 0; fi
+          test "$(git diff --cached --name-only | wc -l)" -eq 5
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Vendor five pinned, verified CC0 Pichuliru firearm FBX assets locally'
+          # Do not smudge/modify existing unrelated terrain LFS pointers.
+          git fetch origin feat/offline-weapons-loot-20261107
+          git -c filter.lfs.process= -c filter.lfs.smudge= -c filter.lfs.required=false \
+            rebase origin/feat/offline-weapons-loot-20261107
+          git push origin HEAD:refs/heads/feat/offline-weapons-loot-20261107
