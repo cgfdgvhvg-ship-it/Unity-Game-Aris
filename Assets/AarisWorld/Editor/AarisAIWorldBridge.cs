@@ -92,7 +92,7 @@ namespace Aaris.MapReview.Editor
         private static void Validate(Intent r)
         {
             string[] valid = { "find", "nearby", "inspect", "blueprint", "photo",
-                "move", "rotate", "scale", "tree_nearby", "tree_inspect", "tree_blueprint", "tree_move", "tree_scale" };
+                "move", "rotate", "scale", "tree_nearby", "tree_inspect", "tree_blueprint", "tree_photo", "tree_move", "tree_scale" };
             if (r.nonce <= 0 || !valid.Contains(r.op)) throw new ArgumentException("Unknown op or nonce");
             if (!Finite(r.x) || !Finite(r.y) || !Finite(r.z) ||
                 !Finite(r.width) || !Finite(r.height) || !Finite(r.radius))
@@ -311,6 +311,11 @@ namespace Aaris.MapReview.Editor
             reply.materials = prefab.GetComponentsInChildren<Renderer>(true)
                 .SelectMany(renderer => renderer.sharedMaterials).Where(material => material != null)
                 .Select(material => material.name).Distinct().Take(100).ToArray();
+            if (r.op == "tree_photo")
+            {
+                reply.photo = "ai-photo.png";
+                Capture(measured, Path.Combine(State, reply.photo));
+            }
             if (r.op == "tree_blueprint")
             {
                 var cloud = new List<Point>();
