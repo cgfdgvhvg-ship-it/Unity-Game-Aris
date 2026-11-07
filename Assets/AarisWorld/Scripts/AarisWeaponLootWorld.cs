@@ -84,15 +84,20 @@ namespace Aaris.MapReview
                 enabled = false;
                 return;
             }
-            candidates = doc.candidates;
-            consumed = new bool[candidates.Length];
-            choices = new AarisWeaponSpec[candidates.Length];
-
             // Different each match; deterministic once seed is chosen. A
             // future authoritative server can provide this seed to clients.
             matchSeed = unchecked((uint)DateTime.UtcNow.Ticks) ^
                 unchecked((uint)Environment.TickCount) ^ 0x59371FA3u;
             rng = matchSeed;
+
+            // 4 tiles hold around 7,500 native trees. Sample just a few
+            // distributed tree cover nodes ONCE at match boot, never every
+            // frame and never one loot item for every vegetation instance.
+            var allCandidates = new List<AarisLootCandidate>(doc.candidates);
+            AppendNativeTreeCover(allCandidates);
+            candidates = allCandidates.ToArray();
+            consumed = new bool[candidates.Length];
+            choices = new AarisWeaponSpec[candidates.Length];
             int selected = 0;
             for (int i = 0; i < candidates.Length; i++)
             {
@@ -104,7 +109,8 @@ namespace Aaris.MapReview
                 // GameObjects are separately capped at MaximumActiveLoot.
                 if (!WithinMap(c)) continue;
                 bool indoor = c.kind == "indoor";
-                float chance = indoor ? 0.72f : 0.32f;
+                float chance = indoor ? 0.72f :
+                    c.kind == "tree" ? 0.75f : 0.32f;
                 if (AarisWeaponRandom.Next01(ref rng) > chance) continue;
                 var spec = AarisWeaponCatalog.Select(ref rng, indoor);
                 if (spec == null) continue;
@@ -113,6 +119,51 @@ namespace Aaris.MapReview
             }
             Debug.Log("Aaris: match seed " + matchSeed + ", planned " + selected +
                 " offline pickups (actual ground/collision validated near player).");
+        }
+
+        private void AppendNativeTreeCover(List<AarisLootCandidate> result)
+        {
+            foreach (var terrain in Terrain.activeTerrains)
+            {
+                if (terrain == null || terrain.terrainData == null) continue;
+                var data = terrain.terrainData;
+                // TreeInstance[] is requested ONCE per tile, not once per
+                // update. The saved map currently contains ~7.5k instances
+                // in total. Keep the sample budget fixed for mobile memory.
+                TreeInstance[] trees = data.treeInstances;
+                if (trees == null || trees.Length == 0) continue;
+                int accepted = 0, attempts = 0;
+                Vector3 origin = terrain.transform.position;
+                Vector3 size = data.size;
+                while (accepted < 12 && attempts++ < 72)
+                {
+                    int idx = (int)(AarisWeaponRandom.Next(ref rng) % (uint)trees.Length);
+                    Vector3 tree = origin + Vector3.Scale(trees[idx].position, size);
+                    float angle = AarisWeaponRandom.Next01(ref rng) * Mathf.PI * 2f;
+                    float distance = 2f + AarisWeaponRandom.Next01(ref rng) * 7f;
+                    float x = tree.x + Mathf.Cos(angle) * distance;
+                    float z = tree.z + Mathf.Sin(angle) * distance;
+                    if (x < -955f || x > 955f || z < -955f || z > 955f) continue;
+                    bool nearExistingTreeCandidate = false;
+                    foreach (var c in result)
+                    {
+                        if (c.kind != "tree") continue;
+                        float dx = c.x - x, dz = c.z - z;
+                        if (dx * dx + dz * dz < 32f * 32f)
+                        {
+                            nearExistingTreeCandidate = true;
+                            break;
+                        }
+                    }
+                    if (nearExistingTreeCandidate) continue;
+                    result.Add(new AarisLootCandidate
+                    {
+                        kind = "tree", x = x, y = 0f, z = z,
+                        origin = "native Terrain tree", slot = idx
+                    });
+                    accepted++;
+                }
+            }
         }
 
         private static bool WithinMap(AarisLootCandidate c) =>
