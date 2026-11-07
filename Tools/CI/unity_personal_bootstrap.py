@@ -40,6 +40,8 @@ CANDIDATES = (
 FAILURE_REASONS = (
     ("Unity sign-in was not completed in this session", "unity_browser_signin_timeout"),
     ("Unity's approved sign-in flow did not complete", "unity_browser_signin_failed"),
+    ("Unity CLI session is not authenticated after browser approval", "unity_cli_auth_not_verified"),
+    ("Unity CLI reported activation but no active editor license", "unity_license_activation_not_verified"),
     ("Unity CLI Personal activation was refused", "unity_personal_license_refused"),
     ("Unity official CLI installer could not be downloaded", "unity_cli_download_failed"),
     ("Unity official CLI installation failed", "unity_cli_install_failed"),
@@ -146,6 +148,28 @@ def install_official_cli() -> str:
         raise RuntimeError("Unity CLI binary was not found after installation")
     return binary
 
+def cli_session_authenticated(binary: str, environment: dict) -> bool:
+    """Official CLI auth status exit 0 means valid; code 3 means signed out.
+
+    Never copy output to stdout, GitHub issues or logs: it can include
+    account emails and machine-bound authentication metadata.
+    """
+    result = subprocess.run(
+        [binary, "auth", "status", "--format", "json", "--non-interactive"],
+        env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        timeout=40, check=False)
+    return result.returncode == 0
+
+
+def cli_license_active(binary: str, environment: dict) -> bool:
+    """Official license status returns nonzero when no license is active."""
+    result = subprocess.run(
+        [binary, "license", "status", "--format", "json", "--non-interactive"],
+        env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        timeout=45, check=False)
+    return result.returncode == 0
+
+
 def login_via_authorized_browser(binary: str) -> None:
     private_status("starting_unity_oauth")
     # Never allow a service-account env to impersonate a user entitlement.
@@ -186,8 +210,19 @@ def login_via_authorized_browser(binary: str) -> None:
         try: process.wait(timeout=5)
         except subprocess.TimeoutExpired: process.kill()
         raise RuntimeError("Unity sign-in was not completed in this session")
-    if process.wait() != 0:
+    exit_code = process.wait()
+    private_status("verifying_unity_cli_auth")
+    # A Unity-owned browser saying "Login completed" is not proof that the
+    # headless cloud machine received credentials. Validate *on that machine*.
+    # A CLI may report a nonzero login exit even though a session was saved;
+    # rely on official auth status, not on the webpage or process alone.
+    if cli_session_authenticated(binary, environment):
+        private_status("unity_cli_auth_verified",
+                       detail="Cloud runner authenticated via official Unity CLI status.")
+        return
+    if exit_code != 0:
         raise RuntimeError("Unity's approved sign-in flow did not complete")
+    raise RuntimeError("Unity CLI session is not authenticated after browser approval")
 
 def activate_personal(binary: str) -> None:
     private_status("activating_unity_personal")
@@ -200,6 +235,8 @@ def activate_personal(binary: str) -> None:
                             stderr=subprocess.DEVNULL, timeout=180)
     if result.returncode != 0:
         raise RuntimeError("Unity CLI Personal activation was refused; Unity Hub may be required for this account")
+    if not cli_license_active(binary, environment):
+        raise RuntimeError("Unity CLI reported activation but no active editor license")
     private_status("unity_personal_activation_succeeded",
                    detail="Unity CLI reported success; Editor still must validate licensing.")
 
@@ -260,6 +297,8 @@ def selftest() -> None:
     assert extract_auth_url("https://example.com/bad") is None
     assert classify_failure("Unity's approved sign-in flow did not complete") == "unity_browser_signin_failed"
     assert classify_failure("bad-password-token-secret") == "unity_failure_unclassified"
+    assert classify_failure("Unity CLI session is not authenticated after browser approval") == "unity_cli_auth_not_verified"
+    assert classify_failure("Unity CLI reported activation but no active editor license") == "unity_license_activation_not_verified"
     # Regression: private status must remain owner-readable and valid JSON.
     import tempfile
     global STATE_DIR
