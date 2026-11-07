@@ -457,7 +457,7 @@ jobs:
               "session_run_id": str(__import__("os").environ.get("GITHUB_RUN_ID", "")),
               "source_commit": str(__import__("os").environ.get("GITHUB_SHA", "")),
               "license_state": safe_license_state(),
-              "unity_container_alive": success(["docker", "inspect", "-f", "{{.State.Running}}", "aaris-unity-live"]),
+              "unity_container_alive": success(["docker", "exec", "aaris-unity-live", "true"]),
               "unity_editor_process_detected": success(["docker", "exec", "aaris-unity-live", "pgrep", "-x", "Unity"]),
               "native_scene_present": path.is_file(),
               "native_scene_is_lfs_pointer": is_pointer,
