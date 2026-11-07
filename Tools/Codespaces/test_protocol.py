@@ -60,6 +60,9 @@ controller=(r/'Tools/Codespaces/controller.sh').read_text()
 assert "'CS MACHINES')" in controller
 assert "'CS REBUILD')" in controller
 assert "'CS FRESH')" in controller
+assert "'CS FRESH SSHD')" in controller
+assert 'aaris-ai-ubuntu-sshd' in controller
+assert 'ghcr.io/devcontainers/features/sshd:1' in controller
 assert '--devcontainer-path .devcontainer/devcontainer.json' in controller
 assert '--idle-timeout 240m' in controller
 assert 'fresh_codespace_created_preserves_old' in controller
