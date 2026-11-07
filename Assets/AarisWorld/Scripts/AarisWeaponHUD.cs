@@ -6,15 +6,16 @@ using UnityEngine.UI;
 namespace Aaris.MapReview
 {
     /// <summary>
-    /// Compact weapon-only toolbar (ADS / slot swap / reload). The original
-    /// five mobility/combat buttons are unchanged. Only visible when armed.
+    /// Compact utility HUD: ADS, intentional PICK exchange, DROP and RELOAD.
+    /// The original five movement/combat buttons remain unchanged.
+    /// Only PICK is available while empty-handed near floor loot.
     /// </summary>
     public sealed class AarisWeaponHUD : MonoBehaviour
     {
         private static AarisWeaponHUD instance;
-        private readonly List<RectTransform> hitRects = new List<RectTransform>(3);
-        private readonly List<Button> buttons = new List<Button>(3);
-        private readonly List<Text> captions = new List<Text>(3);
+        private readonly List<RectTransform> hitRects = new List<RectTransform>(4);
+        private readonly List<Button> buttons = new List<Button>(4);
+        private readonly List<Text> captions = new List<Text>(4);
         private AarisWeaponInventory inventory;
         private RectTransform safeRoot;
         private Vector2 previousScreen;
@@ -58,9 +59,10 @@ namespace Aaris.MapReview
             var area = new GameObject("Safe Area", typeof(RectTransform));
             area.transform.SetParent(go.transform, false);
             safeRoot = area.GetComponent<RectTransform>();
-            Add("ADS", new Vector2(-224f, -57f), () => inventory.ToggleAim());
-            Add("SWAP", new Vector2(-138f, -57f), () => inventory.CycleWeapon());
-            Add("RELOAD", new Vector2(-52f, -57f), () => inventory.Reload());
+            Add("ADS", new Vector2(-309f, -57f), () => inventory.ToggleAim());
+            Add("PICK", new Vector2(-225f, -57f), () => inventory.RequestPickup());
+            Add("DROP", new Vector2(-141f, -57f), () => inventory.DropCurrent());
+            Add("RELOAD", new Vector2(-57f, -57f), () => inventory.Reload());
             UpdateArea(true);
         }
 
@@ -113,21 +115,27 @@ namespace Aaris.MapReview
         private void LateUpdate()
         {
             UpdateArea(false);
-            bool armed = inventory != null && inventory.Current != null;
+            bool armed = inventory != null && inventory.HasGun;
+            bool canPick = inventory != null && inventory.PickupAvailable;
             for (int i = 0; i < buttons.Count; i++)
-                buttons[i].gameObject.SetActive(armed);
+            {
+                bool show = i == 1 ? canPick : armed;
+                if (buttons[i].gameObject.activeSelf != show)
+                    buttons[i].gameObject.SetActive(show);
+            }
             if (!armed) return;
             captions[0].text = inventory.Aiming ? "ADS ON" : "ADS";
-            captions[1].text = "SLOT " + (inventory.SelectedSlot + 1);
+            captions[1].text = "PICK";
+            captions[2].text = "DROP";
             var gun = inventory.Current;
-            captions[2].text = gun.Reloading ? "LOADING" :
+            captions[3].text = gun.Reloading ? "LOADING" :
                 gun.Magazine + "/" + gun.Reserve;
         }
 
         public static bool CapturesScreenPosition(Vector2 screenPosition)
         {
-            if (instance == null || !instance.isActiveAndEnabled ||
-                instance.inventory == null || instance.inventory.Current == null) return false;
+            // PICK must also consume touch when the player is unarmed.
+            if (instance == null || !instance.isActiveAndEnabled) return false;
             foreach (var rect in instance.hitRects)
                 if (rect != null && rect.gameObject.activeInHierarchy &&
                     RectTransformUtility.RectangleContainsScreenPoint(rect, screenPosition, null))
