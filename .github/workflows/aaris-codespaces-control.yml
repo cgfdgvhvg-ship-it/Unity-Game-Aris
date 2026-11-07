@@ -1,0 +1,91 @@
+name: Aaris Codespaces AI Terminal and Screenshots
+on:
+  push:
+    paths:
+      - '.github/workflows/aaris-codespaces-control.yml'
+      - '.devcontainer/**'
+      - 'Tools/Codespaces/**'
+      - 'Docs/CODESPACES_AI_CONTROL.md'
+      - 'AGENTS.md'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/aaris-codespaces-control.yml'
+      - '.devcontainer/**'
+      - 'Tools/Codespaces/**'
+      - 'Docs/CODESPACES_AI_CONTROL.md'
+      - 'AGENTS.md'
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Safe Codespaces task'
+        type: choice
+        required: true
+        default: machines
+        options: [machines, start, status, sync, install, editor, license, shot, test, stop]
+      machine:
+        description: 'Optional exact machine name, from machines result'
+        type: string
+        required: false
+        default: ''
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: aaris-codespace-control
+  cancel-in-progress: false
+jobs:
+  static-check:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Validate commands without Codespace credentials
+        run: |
+          set -euo pipefail
+          bash -n .devcontainer/bootstrap.sh .devcontainer/start_screen.sh Tools/Codespaces/*.sh
+          python3 -m json.tool .devcontainer/devcontainer.json >/dev/null
+          python3 Tools/Codespaces/test_protocol.py
+          echo "CODESPACE_STATIC_PASS"
+  control:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.number == 77 &&
+       github.event.comment.user.login == 'sundamunda289-art' &&
+       startsWith(github.event.comment.body, 'CS '))
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Execute reviewed Codespace task
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+          ISSUE_COMMAND: ${{ github.event_name == 'issue_comment' && github.event.comment.body || '' }}
+          REQUEST_OPERATION: ${{ inputs.operation }}
+          REQUEST_MACHINE: ${{ inputs.machine }}
+        run: bash Tools/Codespaces/controller.sh
+      - name: Upload bounded outputs and screen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-codespace-${{ github.run_id }}
+          path: codespace-results/
+          if-no-files-found: warn
+          retention-days: 2
+      - name: Reply to owner control issue
+        if: always() && github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 Tools/Codespaces/issue_response.py codespace-results/ > /tmp/aaris-response.md
+          printf '\n[Run details and screenshot artifact](https://github.com/%s/actions/runs/%s)\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> /tmp/aaris-response.md
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" -F /tmp/aaris-response.md
