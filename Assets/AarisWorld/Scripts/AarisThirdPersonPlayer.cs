@@ -19,6 +19,7 @@ namespace Aaris.MapReview
         [SerializeField, Min(0.01f)] private float horizontalBraking = 19f;
         [Header("Jump, slope and third-person camera feel")]
         [SerializeField, Min(1.1f)] private float earlyJumpReleaseGravity = 2.15f;
+        [SerializeField, Range(0.0f, 0.18f)] private float minimumJumpAscentSeconds = 0.075f;
         [SerializeField, Range(0f, 0.6f)] private float downhillProbeDistance = 0.32f;
         [SerializeField, Min(0.1f)] private float groundedDownVelocity = 5.5f;
         [SerializeField, Range(0.2f, 1f)] private float airborneSteering = 0.58f;
@@ -299,7 +300,13 @@ namespace Aaris.MapReview
             // Releasing Jump early shortens the arc; holding it gives the
             // designed full height without any second gravity controller.
             bool jumpingHeld = jumpButtonHeld || Input.GetKey(KeyCode.Space);
-            float gravityMultiplier = verticalVelocity > 0f && !jumpingHeld
+            // Guarantee the take-off impulse survives at least one real
+            // input sampling window. An extremely quick tap otherwise loses
+            // most of its height before the first Android physics frame,
+            // especially at 10-20 FPS or when jumping from a stair tread.
+            bool minimumAscentElapsed = now - lastJumpStarted >= minimumJumpAscentSeconds;
+            float gravityMultiplier = verticalVelocity > 0f &&
+                !jumpingHeld && minimumAscentElapsed
                 ? earlyJumpReleaseGravity : 1f;
             float previousVerticalVelocity = verticalVelocity;
             verticalVelocity = Mathf.Max(verticalVelocity - gravity * gravityMultiplier * dt, -40f);
