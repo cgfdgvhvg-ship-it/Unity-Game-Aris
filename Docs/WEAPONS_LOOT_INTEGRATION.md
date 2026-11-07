@@ -117,5 +117,6 @@ The 514 baked indoor/grid candidates are reproducible from the
 existing `Docs/MAP_LAYOUT.json`; the optional bounded tree sampling
 runs at the start of the match, not at build time.
 
-This feature is reviewed in PR #94 and does not alter native scene,
-terrain, houses or Git LFS map assets.
+Original five-gun feature merged as PR #94; the one-gun pickup/drop upgrade
+is reviewed in PR #95. Neither modifies the native scene, Terrain, houses
+or original Git LFS map assets.
