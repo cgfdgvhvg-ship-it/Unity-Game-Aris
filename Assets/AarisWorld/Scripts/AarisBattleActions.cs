@@ -81,6 +81,9 @@ namespace Aaris.MapReview
             // CharacterController cannot be shorter than its diameter.
             height = Mathf.Max(height, capsule.radius * 2f + 0.015f);
             if (height > capsule.height && !HasRoomAbove(height)) return false;
+            if (target == PlayerStance.Prone &&
+                !HasProneClearance(transform.position, transform.forward))
+                return false;
 
             float floorRelative = standingCenter.y - standingHeight * 0.5f;
             capsule.height = height;
@@ -115,6 +118,41 @@ namespace Aaris.MapReview
             {
                 Collider hit = nearHits[i];
                 if (hit != null && !hit.transform.IsChildOf(transform)) return false;
+            }
+            return true;
+        }
+
+        public bool CanAdvanceProne(Vector3 worldPosition, Vector3 travelDirection)
+        {
+            if (stance != PlayerStance.Prone) return true;
+            Vector3 direction = travelDirection.sqrMagnitude > 0.0025f
+                ? travelDirection.normalized : transform.forward;
+            return HasProneClearance(worldPosition, direction);
+        }
+
+        private bool HasProneClearance(Vector3 position, Vector3 forward)
+        {
+            // The built-in CharacterController is vertical; its short prone
+            // height alone would let the visual body's head pass through
+            // house walls. Check an approximate *horizontal* body footprint
+            // before lying down and before each prone movement.
+            Vector3 fwd = new Vector3(forward.x, 0f, forward.z).normalized;
+            if (fwd.sqrMagnitude < 0.9f) fwd = transform.forward;
+            Vector3 center = position + Vector3.up * 0.31f;
+            Vector3 head = center + fwd * 0.55f;
+            Vector3 legs = center - fwd * 0.55f;
+            int mask = Physics.DefaultRaycastLayers & ~(1 << gameObject.layer);
+            int count = Physics.OverlapCapsuleNonAlloc(head, legs, 0.245f, nearHits,
+                mask, QueryTriggerInteraction.Ignore);
+            if (count == nearHits.Length) return false;
+            for (int i = 0; i < count; i++)
+            {
+                Collider obstacle = nearHits[i];
+                if (obstacle == null || obstacle.transform.IsChildOf(transform)) continue;
+                // The character rests ON terrain; a ground collider cannot
+                // be treated as a house wall obstructing prone crawling.
+                if (obstacle is TerrainCollider) continue;
+                return false;
             }
             return true;
         }
