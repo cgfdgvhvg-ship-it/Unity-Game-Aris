@@ -45,6 +45,38 @@ case "$TASK" in
       echo 'scene=lfs_pointer'
     else echo 'scene=hydrated_or_missing'; fi
     ;;
+  preflight)
+    echo 'AARIS_CODESPACE_SAFE_PREFLIGHT'
+    printf 'commit=%s\n' "$(git rev-parse --short HEAD)"
+    BRANCH="$(git symbolic-ref --short -q HEAD || true)"
+    if test "$BRANCH" = main; then echo 'branch_main=yes'; else echo 'branch_main=no'; fi
+    if test -r .devcontainer/devcontainer.json &&
+        grep -Fq 'mcr.microsoft.com/devcontainers/base:ubuntu-22.04' .devcontainer/devcontainer.json; then
+      echo 'ubuntu_devcontainer_config=yes'
+    else echo 'ubuntu_devcontainer_config=no'; fi
+    if git status --porcelain=v1 --untracked-files=no > "$RUN/preflight-tracked.txt" 2>/dev/null; then
+      echo 'git_status_readable=yes'
+      printf 'tracked_changed_count=%s\n' "$(wc -l < "$RUN/preflight-tracked.txt" | tr -d ' ')"
+    else
+      echo 'git_status_readable=no'
+    fi
+    if git ls-files --others --exclude-standard > "$RUN/preflight-untracked.txt" 2>/dev/null; then
+      echo 'untracked_inventory_readable=yes'
+      printf 'untracked_count=%s\n' "$(wc -l < "$RUN/preflight-untracked.txt" | tr -d ' ')"
+    else
+      echo 'untracked_inventory_readable=no'
+    fi
+    if test -f Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity; then
+      if head -c 100 Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity | grep -q 'git-lfs.github.com/spec'; then
+        echo 'native_scene=pointer'
+      else
+        echo 'native_scene=present'
+      fi
+    else echo 'native_scene=missing'; fi
+    if test -d /workspaces/Unity-Game-Aris/.git; then
+      echo 'persistent_repo_git=yes'
+    else echo 'persistent_repo_git=no'; fi
+    ;;
   changes)
     # Read-only filenames; never expose diff contents or files outside normal project paths.
     python3 - <<'PY'
