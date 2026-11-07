@@ -8,6 +8,27 @@ namespace Aaris.MapReview
     /// muzzle and applies damage only via the game-side IAarisDamageable hook.
     /// Single-player prototype; online sessions need server authority.
     /// </summary>
+    /// <summary>
+    /// Persistent local magazine state for a single owned or dropped gun.
+    /// The weapon configuration is immutable catalog data; remaining ammo
+    /// travels with the physical pickup so swapping cannot refill magazines.
+    /// </summary>
+    public struct AarisWeaponState
+    {
+        public AarisWeaponSpec Spec;
+        public int Magazine;
+        public int Reserve;
+        public bool HasSavedAmmo;
+
+        public static AarisWeaponState Fresh(AarisWeaponSpec spec) => new AarisWeaponState
+        {
+            Spec = spec,
+            Magazine = spec != null ? spec.magazineSize : 0,
+            Reserve = spec != null ? spec.reserveAmmo : 0,
+            HasSavedAmmo = true
+        };
+    }
+
     [DisallowMultipleComponent]
     public sealed class AarisEquippedGun : MonoBehaviour
     {
@@ -29,19 +50,38 @@ namespace Aaris.MapReview
         public AarisWeaponSpec Spec => spec;
 
         public void Configure(AarisWeaponSpec weapon, uint matchSeed)
+            => Configure(AarisWeaponState.Fresh(weapon), matchSeed);
+
+        public void Configure(AarisWeaponState state, uint matchSeed)
         {
-            if (weapon == null || !weapon.Valid)
+            if (state.Spec == null || !state.Spec.Valid)
             {
                 Debug.LogError("Aaris: invalid weapon configured.");
                 enabled = false;
                 return;
             }
-            spec = weapon;
-            magazine = spec.magazineSize;
-            reserve = spec.reserveAmmo;
+            spec = state.Spec;
+            magazine = state.HasSavedAmmo
+                ? Mathf.Clamp(state.Magazine, 0, spec.magazineSize)
+                : spec.magazineSize;
+            reserve = state.HasSavedAmmo
+                ? Mathf.Clamp(state.Reserve, 0, spec.reserveAmmo)
+                : spec.reserveAmmo;
             spreadSeed = matchSeed ^ 0x7F4A7C15u;
             nextFire = 0f;
-            reloading = false;
+            reloading = false; // Dropping deliberately cancels a reload.
+        }
+
+        public AarisWeaponState CaptureState()
+        {
+            RefreshReload();
+            return new AarisWeaponState
+            {
+                Spec = spec,
+                Magazine = magazine,
+                Reserve = reserve,
+                HasSavedAmmo = true
+            };
         }
 
         private void Update() => RefreshReload();
