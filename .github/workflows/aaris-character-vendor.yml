@@ -42,7 +42,12 @@ jobs:
         run: |
           set -euo pipefail
           dir=Assets/Resources/AarisCharacters/Primary
-          if [[ -f "$dir/Player.fbx" ]] && grep -Fq 'git-lfs.github.com/spec' "$dir/Player.fbx"; then
+          motion_ready=true
+          for clip in idle walk run jump crouch jump_start jump_land crouch_walk punch shoot; do
+            if [[ ! -f "$dir/Animations/${clip}.fbx" ]]; then motion_ready=false; fi
+          done
+          if [[ "$motion_ready" == true && -f "$dir/Player.fbx" ]] &&
+             grep -Fq 'git-lfs.github.com/spec' "$dir/Player.fbx"; then
             echo "Reusing locally committed Quaternius FBX binaries."
             git lfs install --local
             git lfs pull --include="Assets/Resources/AarisCharacters/Primary/**" --exclude=""
@@ -77,7 +82,7 @@ jobs:
           print(f"Validated {len(metadata)} Unity GUID metadata files")
           PY
           test -s Assets/Resources/AarisCharacters/Primary/Player.fbx
-          for clip in idle walk run jump; do
+          for clip in idle walk run jump crouch jump_start jump_land crouch_walk punch shoot; do
             test -s "Assets/Resources/AarisCharacters/Primary/Animations/${clip}.fbx"
           done
       - name: Commit actual offline FBX textures animation source licenses and Unity GUIDs
