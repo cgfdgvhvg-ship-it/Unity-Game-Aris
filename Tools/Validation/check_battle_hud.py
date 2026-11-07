@@ -8,6 +8,7 @@ and that all new C# script GUIDs are checked in.
 from __future__ import annotations
 
 import re
+import json
 from pathlib import Path
 from tree_sitter import Language, Parser
 import tree_sitter_c_sharp
@@ -87,6 +88,28 @@ def check() -> None:
     assert "Animator.applyRootMotion = false" not in state
     assert "animator.applyRootMotion = false" in visual
     assert 'FindClip("crouch", "crouch")' in visual and "LastPunchTime" in visual
+    assert "AnimationMixerPlayable.Create(graph, 11)" in visual
+    assert "LastJumpStartedTime" in motor and "LastLandingTime" in motor
+    assert "jumpStartPlayable" in visual and "jumpLandPlayable" in visual
+    assert 'FindClip("crouch_walk", "crouch")' in visual
+    assert 'FindClip("punch", "punch")' in visual
+    assert 'FindClip("shoot", "shoot")' in visual
+    source = json.loads((ROOT / "Assets/Resources/AarisCharacters/Primary/Animations/clip-sources.json")
+                        .read_text(encoding="utf-8"))
+    expected = {
+        "jump": "Jump_Loop",
+        "jump_start": "Jump_Start",
+        "jump_land": "Jump_Land",
+        "crouch": "Crouch_Idle",
+        "crouch_walk": "Crouch_Fwd",
+        "punch": "Punch_Jab",
+        "shoot": "Pistol_Shoot",
+    }
+    for clip, action_name in expected.items():
+        assert action_name in source[clip]["source_action"], (clip, source[clip])
+        base = ROOT / "Assets/Resources/AarisCharacters/Primary/Animations"
+        assert (base / (clip + ".fbx")).is_file(), f"Missing native {clip} FBX LFS pointer"
+        assert (base / (clip + ".fbx.meta")).is_file(), f"Missing Unity GUID for {clip}"
 
     # Glyphs are locally rasterized once, without asset download links.
     assert "new Texture2D(Size, Size" in glyph and "Sprite.Create" in glyph
