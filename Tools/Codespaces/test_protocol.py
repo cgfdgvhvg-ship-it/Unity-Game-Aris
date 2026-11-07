@@ -28,6 +28,8 @@ assert 'Path.home()/".local/bin/unity"' in (r/'Tools/Codespaces/mobile_license.p
 assert 'pwd.getpwuid(os.geteuid())' in (r/'Tools/Codespaces/mobile_license.py').read_text()
 assert 'except OSError:' in (r/'Tools/Codespaces/mobile_license.py').read_text()
 assert 'def find_cli(candidates):' in (r/'Tools/Codespaces/mobile_license.py').read_text()
+assert 'UNITY_CLI_INSTALL_CATEGORY_' in (r/'Tools/Codespaces/mobile_license.py').read_text()
+assert 'tempfile.TemporaryFile()' in (r/'Tools/Codespaces/mobile_license.py').read_text()
 assert 'UNITY_STATE_HOME_TEMPORARY' in (r/'Tools/Codespaces/mobile_license.py').read_text()
 remote=(r/'Tools/Codespaces/remote.sh').read_text()
 assert 'eval ' not in remote
