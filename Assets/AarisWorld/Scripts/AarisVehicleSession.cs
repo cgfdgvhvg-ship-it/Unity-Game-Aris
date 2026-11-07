@@ -26,6 +26,7 @@ namespace Aaris.MapReview
         private Canvas[] footCanvases;
         private GraphicRaycaster[] footRaycasters;
         private float nextVehicleSearch;
+        private float touchMove, touchSteer;
         private AarisVehicleMotor nearbyCar;
         private Vector3 cameraVelocity;
         public bool IsDriving => car != null;
@@ -52,12 +53,25 @@ namespace Aaris.MapReview
             }
             if (Input.GetKeyDown(KeyCode.F) && !IsDriving) TryEnterOrExit();
             if (Input.GetKeyDown(KeyCode.X) && IsDriving) TryEnterOrExit();
-            if (car != null && followCamera != null) FollowCarCamera();
+            if (car != null)
+            {
+                // Four arrow keys / WASD match the four touchscreen arrows.
+                // Touch state remains held until its own PointerUp/Cancel.
+                float keyboardMove = (Input.GetKey(KeyCode.UpArrow) || Input.GetKey(KeyCode.W) ? 1f : 0f)
+                    - (Input.GetKey(KeyCode.DownArrow) || Input.GetKey(KeyCode.S) ? 1f : 0f);
+                float keyboardSteer = (Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.D) ? 1f : 0f)
+                    - (Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.A) ? 1f : 0f);
+                car.SetInput(Mathf.Abs(keyboardMove) > .05f ? keyboardMove : touchMove,
+                    Mathf.Abs(keyboardSteer) > .05f ? keyboardSteer : touchSteer);
+                if (followCamera != null) FollowCarCamera();
+            }
         }
 
         public void SetSteering(float move, float steer)
         {
-            if (car != null) car.SetInput(move, steer);
+            touchMove = Mathf.Clamp(move, -1f, 1f);
+            touchSteer = Mathf.Clamp(steer, -1f, 1f);
+            if (car != null) car.SetInput(touchMove, touchSteer);
         }
 
         public bool TryEnterOrExit() => IsDriving ? TryExit() : TryEnter();
@@ -71,6 +85,7 @@ namespace Aaris.MapReview
             if (!nearbyCar.TryTakeDriver(this)) return false;
             car = nearbyCar;
             nearbyCar = null;
+            touchMove = touchSteer = 0f;
             if (actions != null) actions.SetFireHeld(false);
             footMotor.SetJumpHeld(false);
             footMotor.CancelAutoSprint();
@@ -185,6 +200,7 @@ namespace Aaris.MapReview
             AarisVehicleMotor previous = car;
             previous.ReleaseDriver(this);
             car = null;
+            touchMove = touchSteer = 0f;
             transform.SetParent(originalParent, true);
             transform.SetPositionAndRotation(safeExit,
                 Quaternion.Euler(0f, previous.transform.eulerAngles.y, 0f));
