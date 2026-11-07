@@ -4,9 +4,9 @@ set -euo pipefail
 TASK="$1"
 PROJECT="/workspaces/Unity-Game-Aris"
 RUN="/tmp/aaris-codespaces"
-EDITOR="/workspaces/.aaris-unity-editors/6000.3.26f1/Editor/Unity"
+EDITOR="$HOME/.local/share/aaris-unity-editors/6000.3.26f1/Editor/Unity"\nLEGACY_EDITOR="/workspaces/.aaris-unity-editors/6000.3.26f1/Editor/Unity"
 OLD_EDITOR="/tmp/aaris-unity-runtime/editors/6000.3.26f1/Editor/Unity"
-if ! test -x "$EDITOR" && test -x "$OLD_EDITOR"; then EDITOR="$OLD_EDITOR"; fi
+if ! test -x "$EDITOR" && test -x "$LEGACY_EDITOR"; then EDITOR="$LEGACY_EDITOR"; fi\nif ! test -x "$EDITOR" && test -x "$OLD_EDITOR"; then EDITOR="$OLD_EDITOR"; fi
 mkdir -p "$RUN"
 cd "$PROJECT"
 case "$TASK" in
@@ -19,7 +19,7 @@ case "$TASK" in
     printf 'workspace_free_kb=%s\n' "$(df -Pk /workspaces | awk 'NR==2{print $4}')"
     printf 'tmp_free_kb=%s\n' "$(df -Pk /tmp | awk 'NR==2{print $4}')"
     if test -x "$EDITOR"; then echo 'editor_installed=yes'; else echo 'editor_installed=no'; fi
-    if test -x /workspaces/.aaris-unity-editors/6000.3.26f1/Editor/Unity; then echo 'persistent_editor=yes'; else echo 'persistent_editor=no'; fi
+    if test -x "$HOME/.local/share/aaris-unity-editors/6000.3.26f1/Editor/Unity"; then echo 'persistent_editor=yes'; else echo 'persistent_editor=no'; fi
     if pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then echo 'editor_running=yes'; else echo 'editor_running=no'; fi
     if DISPLAY=:99 xdpyinfo >/dev/null 2>&1; then echo 'display=ready'; else echo 'display=stopped'; fi
     if head -c 100 Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity 2>/dev/null | grep -q 'git-lfs.github.com/spec'; then
@@ -222,10 +222,10 @@ PY
     else echo 'EDITOR_LAUNCH_FAILED'; exit 12; fi
     ;;
   license)
-    CLI="/workspaces/.aaris-unity-cli/bin/unity"
-    if ! test -x "$CLI"; then CLI="/tmp/aaris-unity-runtime/cli/bin/unity"; fi
+    CLI="$HOME/.local/bin/unity"
+    if ! test -x "$CLI"; then CLI="$HOME/.unity/bin/unity"; fi\n    if ! test -x "$CLI"; then CLI="/tmp/aaris-unity-runtime/cli/bin/unity"; fi
     if test -x "$CLI"; then
-      if env UNITY_CLI_HOME=/workspaces/.aaris-unity-cli "$CLI" license status --format json --non-interactive >/dev/null 2>&1; then
+      if env UNITY_CLI_HOME="$HOME/.local/share/aaris-unity-cli" "$CLI" license status --format json --non-interactive >/dev/null 2>&1; then
         echo 'UNITY_PERSONAL_OR_SUBSCRIPTION_LICENSE_ACTIVE'
       else echo 'UNITY_LICENSE_NOT_VERIFIED'; fi
     else echo 'UNITY_CLI_NOT_INSTALLED'; fi
