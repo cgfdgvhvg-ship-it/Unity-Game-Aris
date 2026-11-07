@@ -374,12 +374,16 @@ namespace Aaris.MapReview
                 float shootWeight = lastShootAge >= 0f && lastShootAge < 0.2f
                     ? Mathf.Clamp01((0.2f - lastShootAge) / 0.07f) : 0f;
 
-                // Jumps/landings win over combat, which wins over locomotion.
-                float primary = Mathf.Max(startWeight, landWeight);
-                punchWeight *= 1f - primary;
-                shootWeight *= 1f - primary;
+                // Strictly normalize mutually exclusive animation priorities.
+                // Landing and a newly queued jump can overlap in the same
+                // 0.28s window. Their weights must NOT sum above 1.
+                if (startWeight > 0f) landWeight = 0f; // New takeoff wins.
+                float primary = Mathf.Clamp01(startWeight + landWeight);
                 if (shootWeight > 0f) punchWeight = 0f;
-                float baseWeight = 1f - Mathf.Clamp01(primary + punchWeight + shootWeight);
+                float combat = Mathf.Max(punchWeight, shootWeight) * (1f - primary);
+                punchWeight = punchWeight > 0f ? combat : 0f;
+                shootWeight = shootWeight > 0f ? combat : 0f;
+                float baseWeight = 1f - primary - combat;
                 mixer.SetInputWeight(0, baseWeight * grounded * (1f - runBlend));
                 mixer.SetInputWeight(1, baseWeight * grounded * runBlend * (1f - walkRunBlend));
                 mixer.SetInputWeight(2, baseWeight * grounded * runBlend * walkRunBlend);
