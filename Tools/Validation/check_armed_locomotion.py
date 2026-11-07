@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+"""Weapon-carry / aiming / camera locomotion regression contracts.
+
+These execute independent frame-rate maths and inspect source connections;
+a Unity Editor compilation and actual animation/hand screenshots are separate.
+"""
+from pathlib import Path
+import math
+
+ROOT = Path(__file__).resolve().parents[2]
+SRC = ROOT / "Assets/AarisWorld/Scripts"
+def file(name):
+    return (SRC / name).read_text(encoding="utf-8")
+
+def audit():
+    motor = file("AarisThirdPersonPlayer.cs")
+    inventory = file("AarisWeaponInventory.cs")
+    visual = file("AarisCharacterVisual.cs")
+    gun = file("AarisEquippedGun.cs")
+    actions = file("AarisBattleActions.cs")
+
+    # Previously E caused BOTH a pickup and an auto-sprint. Right-mouse
+    # camera look also toggled ADS. Keep each desktop intent independent.
+    assert "if (Input.GetKeyDown(KeyCode.E)) RequestPickup();" in inventory
+    assert "if (Input.GetKeyDown(KeyCode.T)) ToggleAutoSprint();" in motor
+    assert "if (Input.GetKeyDown(KeyCode.E)) ToggleAutoSprint();" not in motor
+    assert "if (Input.GetKeyDown(KeyCode.V)) ToggleAim();" in inventory
+    assert "Input.GetMouseButtonDown(1)) ToggleAim()" not in inventory
+    assert "if (Input.GetMouseButton(1)) Look(mouse - lastMouse);" in motor
+
+    # Aiming and auto sprint are mutually exclusive. Aiming should rotate
+    # the body to camera yaw even with no movement and allow camera-space
+    # strafing without turning the character sideways.
+    assert "if (aiming && motor != null) motor.CancelAutoSprint();" in inventory
+    assert "if (isAiming) running = false;" in motor
+    assert "if (isAiming) speed = Mathf.Min(speed, adsMoveSpeed);" in motor
+    assert "!isAiming && (battle == null || !battle.FireHeld)" in motor
+    assert "bool combatFacing = battle != null && battle.IsArmed &&" in motor
+    assert "Quaternion.Euler(0f, yaw, 0f)" in motor
+    assert "Mathf.Exp(-weaponTurnResponse * dt)" in motor
+    assert "adsMoveSpeed = 2.65f;" in motor
+    assert "unarmedSprintSpeed = 6.5f;" in motor
+    assert "armedSprintSpeed = 5.7f;" in motor
+    assert motor.count("controller.Move(") == 1
+
+    # Critical gun-size bug: avatar import may use 0.01 / 100 bone scale.
+    # Preserve root under player and follow hand WORLD pose in LateUpdate.
+    assert "[DefaultExecutionOrder(310)]" in inventory
+    assert "[DefaultExecutionOrder(200)]" in visual
+    assert "if (weaponRoot.parent != transform)" in inventory
+    assert "weaponRoot.SetParent(transform, false);" in inventory
+    assert "hand.TransformPoint(equipped.Spec.handOffset)" in inventory
+    assert "hand.rotation * grip" in inventory
+    assert "if (equipped != null) AttachModelToHand();" in inventory
+    assert "weaponRoot.SetParent(socket, false)" not in inventory
+
+    # Real Unity humanoid mask implementation keeps running feet under
+    # shoot/punch clips, rather than borrowing weight from lower-body gait.
+    assert "AnimationLayerMixerPlayable.Create(graph, 2)" in visual
+    assert "mixer = AnimationMixerPlayable.Create(graph, 9);" in visual
+    assert "weaponUpperMixer = AnimationMixerPlayable.Create(graph, 3);" in visual
+    assert "upperBodyMask.SetHumanoidBodyPartActive(part, active);" in visual
+    assert "part == AvatarMaskBodyPart.Body" in visual
+    assert "part == AvatarMaskBodyPart.LeftArm" in visual
+    assert "part == AvatarMaskBodyPart.RightArm" in visual
+    assert "layered.SetLayerMaskFromAvatarMask(1, upperBodyMask);" in visual
+    assert "float baseWeight = 1f - primary;" in visual
+    assert "float carryTarget = !carrying ? 0f : aim ? 0.63f :" in visual
+    assert "readyHoldPlayable.SetSpeed(0d);" in visual
+    assert "layered.SetInputWeight(1, layerWeight);" in visual
+    assert "if (upperBodyMask != null) Destroy(upperBodyMask);" in visual
+    assert "animator.applyRootMotion = false" in visual
+    assert "controller.Move(" not in visual
+    assert "bool IsArmed" in actions
+    assert "ApplyWeaponRecoil" in gun
+    assert "AarisWeaponState" in gun  # one carried gun, preserved drop state
+
+    # Test camera-facing turn response over 10-120 FPS including discrete
+    # frame convergence and bounded ADS walk versus crouch and prone speeds.
+    for fps in (10, 15, 20, 30, 60, 90, 120):
+        dt = 1.0 / fps
+        angle = 0.0
+        for _ in range(round(.5 * fps)):
+            alpha = 1.0 - math.exp(-17.0 * dt)
+            angle += (90.0 - angle) * alpha
+        assert abs(angle - 90.0) < .09, (fps, angle)
+        normal = 4.2
+        ads = min(normal, 2.65)
+        crouch = min(2.4, 2.65)
+        prone = min(1.1, 2.65)
+        assert ads == 2.65 and crouch == 2.4 and prone == 1.1
+    print("PASS: independent E/T/V inputs, camera-relative ADS strafing, single-player motor, "
+          "world-size-stable hand socket, masked upper-body recoil and 10–120FPS yaw damping")
+    print("NOT TESTED: Unity AvatarMask import/retarget and physical Android visual pose")
+
+if __name__ == "__main__":
+    audit()

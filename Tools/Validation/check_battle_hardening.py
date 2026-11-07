@@ -44,7 +44,16 @@ def audit() -> None:
     assert "heldPointers.Clear()" in button
     assert "float primary = Mathf.Clamp01(startWeight + landWeight);" in visual
     assert "if (startWeight > 0f) landWeight = 0f;" in visual
-    assert "float baseWeight = 1f - primary - combat;" in visual
+    assert "float baseWeight = 1f - primary;" in visual
+    assert "AnimationLayerMixerPlayable.Create(graph, 2)" in visual
+    assert "upperBodyMask.SetHumanoidBodyPartActive(part, active);" in visual
+    assert "part == AvatarMaskBodyPart.LeftArm" in visual
+    assert "part == AvatarMaskBodyPart.RightArm" in visual
+    assert "layered.SetLayerMaskFromAvatarMask(1, upperBodyMask);" in visual
+    assert "mixer = AnimationMixerPlayable.Create(graph, 9);" in visual
+    assert "weaponUpperMixer.SetInputWeight(0, 1f - attackRatio);" in visual
+    assert "layered.SetInputWeight(1, layerWeight);" in visual
+    assert "mixer.SetInputWeight(9" not in visual and "mixer.SetInputWeight(10" not in visual
     assert "HasProneClearance" in state
     assert "count == nearHits.Length" in state
     assert "muzzleHit" in gun
@@ -124,9 +133,9 @@ def audit() -> None:
         elapsed = sum(min(1 / fps, 0.15) for _ in range(fps))
         assert math.isclose(elapsed, 1.0, rel_tol=0, abs_tol=1e-9), (fps, elapsed)
 
-    # Simulate attack + jump/landing/crouch/air transition combinatorics.
-    # These independent calculations match the authored C# weight algebra;
-    # even a new jump within an old landing envelope must sum to ONE.
+    # The full-body base graph must ALWAYS remain normalized to 1.0.
+    # Shot/punch actions blend through a separate humanoid upper-body
+    # override and must NEVER steal the running/jumping leg weights.
     rng = random.Random(20261107)
     for _ in range(12000):
         start = rng.random()
@@ -139,30 +148,37 @@ def audit() -> None:
         walk_blend = rng.random()
         sprint_blend = rng.random()
         jumping = rng.random()
+        armed_ready = rng.random() * .63
         if start > 0:
             land = 0.0
         primary = min(1.0, start + land)
+        base = 1.0 - primary
         if shoot > 0:
             punch = 0.0
-        combat = max(punch, shoot) * (1.0 - primary)
-        punch = combat if punch > 0 else 0.0
-        shoot = combat if shoot > 0 else 0.0
-        base = 1.0 - primary - combat
+        punch_upper = punch * (1.0 - primary)
+        shoot_upper = shoot * (1.0 - primary)
+        attack_upper = max(punch_upper, shoot_upper)
+        layer = min(1.0, max(armed_ready, attack_upper))
+        ratio = attack_upper / layer if layer > 1e-4 else 0
+        upper_hold = 1.0 - ratio
+        upper_punch = punch_upper / layer if layer > 1e-4 else 0
+        upper_shoot = shoot_upper / layer if layer > 1e-4 else 0
+        assert 0.0 <= layer <= 1.0
+        assert abs(upper_hold + upper_punch + upper_shoot - 1.0) < 1e-6
         pose = min(1.0, crouch_blend + prone_blend)
         motion = walk_blend * crouch_blend * (1.0 - prone_blend)
         crouch_rest = pose - motion
         ground = (1.0 - air) * (1.0 - pose)
-        total = (
+        base_total = (
             base * ground * (1 - walk_blend)
             + base * ground * walk_blend * (1 - sprint_blend)
             + base * ground * walk_blend * sprint_blend
             + base * air * jumping * (1 - pose)
             + base * air * (1 - jumping) * (1 - pose)
             + base * crouch_rest + base * motion
-            + start + land + punch + shoot
+            + start + land
         )
-        assert abs(total - 1.0) < 1e-6, ("animation blend overflow", total)
-        assert 0 <= base <= 1 and 0 <= combat <= 1
+        assert abs(base_total - 1.0) < 1e-6, ("legs blended away", base_total)
 
     print("PASS: Unity 6.3 HUD/animation packages, 10-120 FPS elapsed time, "
           "12k adversarial blend combinations, multi-pointer hold/release, "
