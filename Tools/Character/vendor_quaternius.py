@@ -47,7 +47,7 @@ def verify(asset: dict, data: bytes) -> None:
         raise ValueError("Unexpected binary size: " + asset["file"])
     if hashlib.sha256(data).hexdigest() != asset["sha256"]:
         raise ValueError("SHA-256 mismatch: " + asset["file"])
-    blob = b"blob " + str(len(data)).encode("ascii") + b"\\0" + data
+    blob = b"blob " + str(len(data)).encode("ascii") + b"\0" + data
     if hashlib.sha1(blob).hexdigest() != asset["gitblob"]:
         raise ValueError("Git blob SHA mismatch: " + asset["file"])
     if data[:4] != b"glTF" or int.from_bytes(data[4:8], "little") != 2:
