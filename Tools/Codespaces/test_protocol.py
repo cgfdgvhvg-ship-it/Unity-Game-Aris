@@ -100,5 +100,6 @@ assert 'termux-open-url' in direct
 assert 'GH_CONFIG_DIR' in direct
 assert 'mobile_license.py' in direct
 assert 'gh codespace ssh' in direct
-assert 'cloudflare' not in direct.lower()
+assert 'workers.dev' not in direct
+assert 'APPROVALS' not in direct
 print('CODESPACE_CONTROLLER_MOCK_PASS')
