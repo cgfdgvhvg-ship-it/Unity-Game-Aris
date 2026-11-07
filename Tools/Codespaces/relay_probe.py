@@ -68,7 +68,15 @@ def main():
                     print("RELAY_RESPONSE_CLOUDFLARE_API_ENVELOPE")
                 elif obj.get("error") in {"forbidden","access_denied","authentication_required","unauthorized"}:
                     print("RELAY_RESPONSE_ACCESS_LAYER")
-                else: print("RELAY_JSON_WITHOUT_DIAGNOSTIC")
+                else:
+                    print("RELAY_JSON_WITHOUT_DIAGNOSTIC")
+                    # Only schema markers, NEVER the values of arbitrary response fields.
+                    for name in ("error","message","errors","success","code","status","category","detail"):
+                        if name in obj: print("RELAY_JSON_FIELD_"+name.upper())
+                    if isinstance(obj.get("error"),dict): print("RELAY_JSON_ERROR_OBJECT")
+                    elif isinstance(obj.get("error"),str): print("RELAY_JSON_ERROR_STRING")
+                    if isinstance(obj.get("message"),str): print("RELAY_JSON_MESSAGE_STRING")
+                    if isinstance(obj.get("errors"),dict): print("RELAY_JSON_ERRORS_OBJECT")
         except (ValueError,OSError):
             if "html" in content_type: print("RELAY_HTML_EDGE_BLOCK")
             else: print("RELAY_RESPONSE_NOT_JSON")
