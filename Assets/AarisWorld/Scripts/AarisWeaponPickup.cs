@@ -9,28 +9,38 @@ namespace Aaris.MapReview
     [DisallowMultipleComponent]
     public sealed class AarisWeaponPickup : MonoBehaviour
     {
-        private AarisWeaponSpec spec;
+        private AarisWeaponState state;
         private int candidateIndex;
         private Transform model;
         private LineRenderer beacon;
 
-        public AarisWeaponSpec Spec => spec;
+        public AarisWeaponSpec Spec => state != null ? state.Spec : null;
+        public AarisWeaponState State => state;
+        // Non-negative = baked match node; negative = a player-dropped gun.
         public int CandidateIndex => candidateIndex;
 
-        public void Initialize(AarisWeaponSpec weapon, int index)
+        public bool Initialize(AarisWeaponState gunState, int index)
         {
-            spec = weapon;
+            if (gunState == null || gunState.Spec == null ||
+                !gunState.Spec.Valid) return false;
+            state = gunState;
             candidateIndex = index;
-            GameObject prefab = Resources.Load<GameObject>(spec.modelResource);
+            GameObject prefab = Resources.Load<GameObject>(state.Spec.modelResource);
             if (prefab == null)
             {
-                Debug.LogError("Missing baked weapon FBX: " + spec.modelResource);
+                Debug.LogError("Missing local weapon FBX: " + state.Spec.modelResource);
                 enabled = false;
-                return;
+                return false;
             }
             var visible = Instantiate(prefab, transform);
+            if (visible.GetComponentInChildren<Renderer>(true) == null)
+            {
+                Destroy(visible);
+                enabled = false;
+                return false;
+            }
             model = visible.transform;
-            model.name = "Local " + spec.displayName + " Model";
+            model.name = "Local " + state.Spec.displayName + " Model";
             // Loot never interferes with player or map physics.
             foreach (var collider in visible.GetComponentsInChildren<Collider>(true))
                 collider.enabled = false;
@@ -68,6 +78,7 @@ namespace Aaris.MapReview
                 beacon.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 beacon.receiveShadows = false;
             }
+            return true;
         }
 
         private void Update()
