@@ -21,7 +21,7 @@ namespace Aaris.MapReview
     [Serializable]
     internal sealed class AarisVehicleType
     {
-        public string id, modelResource;
+        public string id, modelResource, wheelResource;
         public int weight;
         public float maxSpeedMetres, massKg;
     }
@@ -65,6 +65,7 @@ namespace Aaris.MapReview
         private uint randomState;
         private AarisVehicleType[] vehicleTypes;
         private GameObject[] prefabs;
+        private GameObject[] wheelPrefabs;
         private int validModels;
         private Material paletteMaterial;
 
@@ -117,6 +118,7 @@ namespace Aaris.MapReview
             }
             vehicleTypes = definitions.vehicles;
             prefabs = new GameObject[vehicleTypes.Length];
+            wheelPrefabs = new GameObject[vehicleTypes.Length];
             int availableWeight = 0;
             for (int i = 0; i < vehicleTypes.Length; i++)
             {
@@ -124,8 +126,11 @@ namespace Aaris.MapReview
                 if (item == null || item.weight <= 0 || item.maxSpeedMetres < 8f ||
                     item.maxSpeedMetres > 28f) continue;
                 prefabs[i] = Resources.Load<GameObject>(item.modelResource);
-                if (prefabs[i] == null) continue; // NEVER create fake cube vehicles.
-                if (prefabs[i].GetComponentInChildren<Renderer>(true) == null) continue;
+                wheelPrefabs[i] = Resources.Load<GameObject>(item.wheelResource);
+                if (prefabs[i] == null || wheelPrefabs[i] == null) continue;
+                if (prefabs[i].GetComponentInChildren<Renderer>(true) == null ||
+                    wheelPrefabs[i].GetComponentInChildren<Renderer>(true) == null)
+                    continue;
                 availableWeight += item.weight;
                 validModels++;
             }
@@ -214,11 +219,12 @@ namespace Aaris.MapReview
             }
             int total = 0;
             for (int i = 0; i < vehicleTypes.Length; i++)
-                if (prefabs[i] != null) total += vehicleTypes[i].weight;
+                if (prefabs[i] != null && wheelPrefabs[i] != null)
+                    total += vehicleTypes[i].weight;
             int pick = (int)(Next() % (uint)total), which = -1;
             for (int i = 0; i < vehicleTypes.Length; i++)
             {
-                if (prefabs[i] == null) continue;
+                if (prefabs[i] == null || wheelPrefabs[i] == null) continue;
                 pick -= vehicleTypes[i].weight;
                 if (pick < 0) { which = i; break; }
             }
@@ -323,13 +329,18 @@ namespace Aaris.MapReview
         private bool Build(AarisVehicleRecord record, Vector3 pos)
         {
             GameObject source = null;
+            GameObject wheelSource = null;
             foreach (var type in vehicleTypes)
             {
                 if (type != record.type) continue;
                 for (int i = 0; i < vehicleTypes.Length; i++)
-                    if (vehicleTypes[i] == type) source = prefabs[i];
+                    if (vehicleTypes[i] == type)
+                    {
+                        source = prefabs[i];
+                        wheelSource = wheelPrefabs[i];
+                    }
             }
-            if (source == null) return false;
+            if (source == null || wheelSource == null) return false;
             var root = new GameObject("Aaris Vehicle " + record.type.id + " " + record.point.id);
             root.transform.SetParent(transform, false);
             root.transform.SetPositionAndRotation(pos, record.rotation);
@@ -365,6 +376,11 @@ namespace Aaris.MapReview
             mesh.transform.position += targetCenter - bounds.center;
             var motor = root.AddComponent<AarisVehicleMotor>();
             motor.Configure(record.type.id, record.type.maxSpeedMetres, record.type.massKg);
+            if (!motor.AttachWheelModels(wheelSource, paletteMaterial))
+            {
+                Destroy(root);
+                return false;
+            }
             record.visible = motor;
             if (Debug.isDebugBuild)
                 Debug.Log("AARIS_CAR_PLACED " + record.point.id + " " +
