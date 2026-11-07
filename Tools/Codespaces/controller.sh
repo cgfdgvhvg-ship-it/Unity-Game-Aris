@@ -25,6 +25,7 @@ if test -n "$ISSUE"; then
   case "$ISSUE" in
     'CS MACHINES') OP=machines ;;
     'CS START') OP=start ;;
+    'CS FRESH') OP=fresh ;;
     'CS REBUILD') OP=rebuild ;;
     'CS STATUS') OP=status ;;
     'CS LOGS') OP=logs ;;
@@ -45,7 +46,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|start|rebuild|status|logs|sync|lfs|lfs_report|changes|install|editor|license|auth|probe|shot|test|stop) ;;
+  machines|info|start|fresh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|editor|license|auth|probe|shot|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test -z "$GH_TOKEN"; then DETAIL="CODESPACE_PAT_missing"; exit 3; fi
@@ -65,6 +66,31 @@ fi
 LIST="$(gh codespace list -R "$REPO" --json name,displayName,machineName,state --limit 30 2>/dev/null)" || {
   DETAIL="codespace_list_failed_token_scope"; exit 6
 }
+# A new Codespace is safer than another rebuild of an inaccessible container.
+# Never delete or reset the old Codespace or its /workspaces and Git LFS assets.
+if test "$OP" = fresh; then
+  EXISTING="$(jq -r '[.[] | select(.displayName=="aaris-ai-unity")][0].name // ""' <<< "$LIST")"
+  if test -n "$EXISTING"; then
+    printf "codespace=%s\n" "$EXISTING" > "$OUT/terminal.txt"
+    STATE="SUCCESS"; DETAIL="existing_fresh_codespace_selected"; exit 0
+  fi
+  if ! jq -e '.image == "mcr.microsoft.com/devcontainers/base:ubuntu-22.04" and .remoteUser == "vscode"' "$GITHUB_WORKSPACE/.devcontainer/devcontainer.json" >/dev/null; then
+    DETAIL="ubuntu_devcontainer_configuration_missing"; exit 26
+  fi
+  if ! gh api "/repos/$REPO/codespaces/machines" --jq '.machines[].name' 2>/dev/null | grep -qxF "standardLinux32gb"; then
+    DETAIL="fresh_standard_4core_16gb_unavailable"; exit 27
+  fi
+  if ! NEW="$(timeout 1200 gh codespace create -R "$REPO" -b main -m standardLinux32gb --devcontainer-path .devcontainer/devcontainer.json --idle-timeout 240m --display-name aaris-ai-unity --default-permissions 2>/dev/null)"; then
+    DETAIL="fresh_codespace_creation_failed_check_quota"; exit 28
+  fi
+  NEW="$(printf "%s\n" "$NEW" | tail -n 1 | tr -d "[:space:]")"
+  if [[ ! "$NEW" =~ ^[A-Za-z0-9-]+$ ]]; then
+    DETAIL="fresh_creation_response_unverified"; exit 29
+  fi
+  printf "codespace=%s\nmachine=standardLinux32gb\n" "$NEW" > "$OUT/terminal.txt"
+  echo "AARIS_FRESH_UBUNTU_DEVCONTAINER_REQUESTED" >> "$OUT/terminal.txt"
+  STATE="SUCCESS"; DETAIL="fresh_codespace_created_preserves_old"; exit 0
+fi
 CS="$(jq -r '[.[] | select(.displayName=="aaris-ai-unity")][0].name // .[0].name // ""' <<< "$LIST")"
 if test -z "$CS" && test "$OP" = start; then
   if test -z "$MACHINE"; then

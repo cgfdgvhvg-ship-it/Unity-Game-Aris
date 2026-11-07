@@ -24,7 +24,7 @@ on:
         type: choice
         required: true
         default: machines
-        options: [machines, info, start, rebuild, status, logs, sync, lfs, lfs_report, changes, install, editor, license, auth, probe, shot, test, stop]
+        options: [machines, info, start, fresh, rebuild, status, logs, sync, lfs, lfs_report, changes, install, editor, license, auth, probe, shot, test, stop]
       machine:
         description: 'Optional exact machine name, from machines result'
         type: string
