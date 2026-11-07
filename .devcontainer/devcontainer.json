@@ -1,0 +1,11 @@
+{
+  "name": "Aaris Unity AI Codespace",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspaces/Unity-Game-Aris",
+  "containerEnv": {
+    "DISPLAY": ":99"
+  },
+  "postCreateCommand": "bash .devcontainer/bootstrap.sh",
+  "postStartCommand": "bash .devcontainer/start_screen.sh"
+}
