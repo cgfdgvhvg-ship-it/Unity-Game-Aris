@@ -13,7 +13,8 @@ assert 'secrets.CODESPACE_PAT' in wf
 assert 'actions/upload-artifact@v4' in wf
 remote=(r/'Tools/Codespaces/remote.sh').read_text()
 assert 'eval ' not in remote
-assert 'git merge --ff-only' in remote
+assert 'merge --ff-only' in remote
+assert 'SYNC_WORKTREE_VERIFIED_RAW_IDENTICAL' in remote
 assert 'scrot -o' in remote
 assert 'changed_files_count=' in remote
 assert '/tmp/aaris-unity-runtime/editors' in remote
