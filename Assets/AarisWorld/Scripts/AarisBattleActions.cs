@@ -41,6 +41,13 @@ namespace Aaris.MapReview
         public float LastPunchTime => lastPunchTime;
         public float LastShootTime => lastShootTime;
 
+        // Keep 30 cm standing stairs, but do not let prone movement
+        // automatically climb a ledge as high as a crouched torso.
+        // This is independent from the temporary stepOffset=0 in the air.
+        public float GroundStepOffset => stance == PlayerStance.Standing
+            ? standingStepOffset : Mathf.Min(standingStepOffset,
+                stance == PlayerStance.Crouching ? 0.18f : 0.075f);
+
         private void Awake()
         {
             capsule = GetComponent<CharacterController>();
@@ -88,8 +95,8 @@ namespace Aaris.MapReview
             float floorRelative = standingCenter.y - standingHeight * 0.5f;
             capsule.height = height;
             capsule.center = new Vector3(standingCenter.x, floorRelative + height * 0.5f, standingCenter.z);
-            capsule.stepOffset = Mathf.Min(standingStepOffset, Mathf.Max(0.08f, height * 0.3f));
             stance = target;
+            capsule.stepOffset = GroundStepOffset;
             return true;
         }
 
