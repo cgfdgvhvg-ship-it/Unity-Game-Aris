@@ -204,7 +204,8 @@ namespace Aaris.MapReview
             // gravity. Touch, keyboard and auto-sprint use one intent pipeline.
             if (running && moveInput.y < -0.25f) running = false;
             if (battle != null && battle.FireHeld) running = false;
-            bool sprinting = running || Input.GetKey(KeyCode.LeftShift);
+            bool sprinting = (running || Input.GetKey(KeyCode.LeftShift)) &&
+                (battle == null || !battle.FireHeld);
             if (sprinting && battle != null && !battle.TryStand())
                 sprinting = false;
             Vector2 intent = moveInput;
