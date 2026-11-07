@@ -95,4 +95,10 @@ esac
     assert run.returncode==0,run.stderr
     result=json.loads((working/'codespace-results/result.json').read_text())
     assert result['status']=='SUCCESS' and result['codespace']=='mock-codespace'
+direct=(r/'Tools/Codespaces/termux_unity_allow.sh').read_text()
+assert 'termux-open-url' in direct
+assert 'GH_CONFIG_DIR' in direct
+assert 'mobile_license.py' in direct
+assert 'gh codespace ssh' in direct
+assert 'cloudflare' not in direct.lower()
 print('CODESPACE_CONTROLLER_MOCK_PASS')
