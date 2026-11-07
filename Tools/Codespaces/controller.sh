@@ -116,7 +116,21 @@ if test "$OP" = rebuild; then
         > "$OUT/terminal.txt" 2>/dev/null; then
     DETAIL="rebuild_preflight_workspace_unverified"; exit 22
   fi
-  if ! grep -q '^AARIS_REBUILD_PREFLIGHT_READY
+  if ! grep -qx 'AARIS_REBUILD_PREFLIGHT_READY' "$OUT/terminal.txt"; then
+    DETAIL="rebuild_preflight_not_ready"; exit 23
+  fi
+  # The remote preflight has verified the persistent project and Ubuntu target.
+  # GitHub documents that /workspaces files and uncommitted edits survive rebuild.
+  # Only restart the devcontainer, never delete/reset/clean the map or LFS data.
+  echo 'AARIS_REBUILD_PREFLIGHT_PASSED' >> "$OUT/terminal.txt"
+  if GH_PROMPT_DISABLED=1 timeout 1500 gh codespace rebuild -c "$CS" -R "$REPO" \
+       > /dev/null 2>"$RUNNER_TEMP/aaris-rebuild-private-errors.log"; then
+    echo 'AARIS_CODESPACE_REBUILD_COMPLETED' >> "$OUT/terminal.txt"
+    STATE="SUCCESS"; DETAIL="codespace_rebuild_completed_verify_os"; exit 0
+  fi
+  rm -f "$RUNNER_TEMP/aaris-rebuild-private-errors.log"
+  DETAIL="codespace_rebuild_failed_review_codespace_log"; exit 24
+fi
 PRIVATE_ERRORS="$RUNNER_TEMP/aaris-codespace-ssh-errors.log"
 trap 'finish; rm -f "$PRIVATE_ERRORS"' EXIT
 
