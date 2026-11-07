@@ -56,6 +56,7 @@ namespace Aaris.MapReview
         private float lastLanding = -10f;
         public bool IsInAir => controller != null && !controller.isGrounded;
         public float LastLandingTime => lastLanding;
+        public float LastJumpStartedTime => lastJumpStarted;
         public Camera AimCamera => followCamera;
         public bool IsAutoSprinting => running;
 
