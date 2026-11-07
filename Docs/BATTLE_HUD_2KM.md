@@ -14,8 +14,10 @@ Unity UI and locally rasterized, original white silhouette icons:
 | Crouch | Right low corner | Toggle crouch / stand, resize the existing collision capsule |
 | Prone | Right-bottom beside crouch | Toggle lie down / stand; downsize capsule for crawling |
 
-Legacy movement joystick, aim/swipe and diagnostic buttons remain part
-of the original saved map-review player. New action icons are **not** URL-loaded:
+Legacy movement joystick and right-thumb camera look remain unchanged.
+The saved HOME / REPORT / FPS diagnostics are available only in Unity Editor
+or development builds; a release APK keeps just the five action buttons
+and the movement joystick. New action icons are **not** URL-loaded:
 `AarisHudGlyphs.cs` draws textures once inside the app.
 `AarisBattleHUD.cs` handles safe-area constraints, responsive canvas scaling
 and multi-finger pointer capture. `AarisHudButton.cs` releases hold-fire on
