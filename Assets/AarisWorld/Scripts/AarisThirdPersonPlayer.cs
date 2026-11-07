@@ -17,6 +17,12 @@ namespace Aaris.MapReview
         [SerializeField, Min(0f)] private float combatMoveSpeed = 2.0f;
         [SerializeField, Min(0.01f)] private float horizontalAcceleration = 13f;
         [SerializeField, Min(0.01f)] private float horizontalBraking = 19f;
+        [Header("Jump, slope and third-person camera feel")]
+        [SerializeField, Min(1.1f)] private float earlyJumpReleaseGravity = 2.15f;
+        [SerializeField, Range(0f, 0.6f)] private float downhillProbeDistance = 0.32f;
+        [SerializeField, Min(0.1f)] private float groundedDownVelocity = 5.5f;
+        [SerializeField, Range(0.2f, 1f)] private float airborneSteering = 0.58f;
+        [SerializeField, Range(0.05f, 0.6f)] private float stanceCameraBlendSeconds = 0.15f;
         [SerializeField] private float jumpHeight = 1.0f, gravity = 24f;
         [SerializeField] private float followDistance = 4.2f, pivotHeight = 1.45f;
         [SerializeField] private float lookSensitivity = 0.12f;
@@ -44,6 +50,12 @@ namespace Aaris.MapReview
         private AarisBattleActions battle;
         private Vector3 horizontalVelocity;
         private float normalCameraFov;
+        private float smoothedEyeHeight, eyeHeightVelocity;
+        private bool jumpButtonHeld;
+        private float lastJumpStarted = -10f;
+        private float lastLanding = -10f;
+        public bool IsInAir => controller != null && !controller.isGrounded;
+        public float LastLandingTime => lastLanding;
         public Camera AimCamera => followCamera;
         public bool IsAutoSprinting => running;
 
@@ -60,7 +72,14 @@ namespace Aaris.MapReview
         {
             if (battle == null) battle = GetComponent<AarisBattleActions>();
             if (battle != null && !battle.TryStand()) return;
+            // Accept taps slightly before landing and shortly after leaving a ledge.
             jumpUntil = Time.unscaledTime + 0.17f;
+        }
+
+        public void SetJumpHeld(bool held)
+        {
+            jumpButtonHeld = held;
+            if (held) RequestJump();
         }
 
         private void Awake()
@@ -70,6 +89,7 @@ namespace Aaris.MapReview
             if (followCamera == null) followCamera = Camera.main;
             if (followCamera == null) { enabled = false; Debug.LogError("Saved player camera is missing."); return; }
             normalCameraFov = followCamera.fieldOfView;
+            smoothedEyeHeight = pivotHeight;
             previousSimulateMouse = Input.simulateMouseWithTouches;
             Input.simulateMouseWithTouches = false;
             inputConfigured = true;
@@ -97,7 +117,16 @@ namespace Aaris.MapReview
         }
         private void OnApplicationFocus(bool focus) { ClearInput(); lastMouse = Input.mousePosition; }
         private void OnApplicationPause(bool paused) { if (paused) ClearInput(); }
-        private void ClearInput() { moveFinger = lookFinger = -1; moveInput = Vector2.zero; jumpUntil = -10f; }
+        private void ClearInput()
+        {
+            moveFinger = lookFinger = -1;
+            moveInput = Vector2.zero;
+            jumpUntil = -10f;
+            jumpButtonHeld = false;
+            running = false;
+            horizontalVelocity = Vector3.zero;
+            if (battle != null) battle.SetFireHeld(false);
+        }
 
         private void Layout()
         {
@@ -194,10 +223,19 @@ namespace Aaris.MapReview
             float dt = Mathf.Min(Time.deltaTime, 0.05f);
             if (dt <= 0f) return;
             float now = Time.unscaledTime;
-            if (controller.isGrounded) { lastGrounded = now; if (verticalVelocity < 0f) verticalVelocity = -2f; }
-            if (now <= jumpUntil && now - lastGrounded <= 0.1f)
+            // CharacterController.isGrounded reflects the PREVIOUS Move.
+            // Single movement authority retains short coyote/buffer windows.
+            bool wasGrounded = controller.isGrounded;
+            if (wasGrounded)
+            {
+                lastGrounded = now;
+                if (verticalVelocity < 0f) verticalVelocity = -groundedDownVelocity;
+            }
+            bool launchJump = now <= jumpUntil && now - lastGrounded <= 0.11f;
+            if (launchJump)
             {
                 verticalVelocity = Mathf.Sqrt(2f * gravity * jumpHeight);
+                lastJumpStarted = now;
                 jumpUntil = lastGrounded = -10f;
             }
 
@@ -229,6 +267,7 @@ namespace Aaris.MapReview
             Vector3 desiredVelocity = wish * speed;
             float response = desiredVelocity.sqrMagnitude < 0.001f
                 ? horizontalBraking : horizontalAcceleration;
+            if (!wasGrounded) response *= airborneSteering;
             horizontalVelocity = Vector3.MoveTowards(horizontalVelocity,
                 desiredVelocity, response * dt);
             Vector3 candidate = transform.position + horizontalVelocity * dt;
@@ -242,11 +281,41 @@ namespace Aaris.MapReview
                     Quaternion.LookRotation(horizontalVelocity),
                     1f - Mathf.Exp(-14f * dt));
 
-            verticalVelocity = Mathf.Max(verticalVelocity - gravity * dt, -40f);
+            // Releasing Jump early shortens the arc; holding it gives the
+            // designed full height without any second gravity controller.
+            bool jumpingHeld = jumpButtonHeld || Input.GetKey(KeyCode.Space);
+            float gravityMultiplier = verticalVelocity > 0f && !jumpingHeld
+                ? earlyJumpReleaseGravity : 1f;
+            verticalVelocity = Mathf.Max(verticalVelocity - gravity * gravityMultiplier * dt, -40f);
+
+            // A short support sweep reduces floating when downhill terrain
+            // drops away between frames. Skip while ascending from a jump.
+            if (!wasGrounded && !launchJump && verticalVelocity <= 0f &&
+                now - lastJumpStarted > 0.16f && downhillProbeDistance > 0f)
+            {
+                float radius = Mathf.Max(0.07f, controller.radius - controller.skinWidth);
+                Vector3 feet = transform.TransformPoint(
+                    controller.center + Vector3.down * (controller.height * 0.5f - radius));
+                Vector3 start = feet + Vector3.up * 0.04f;
+                if (Physics.SphereCast(start, radius, Vector3.down,
+                    out RaycastHit support, downhillProbeDistance + 0.04f,
+                    WorldMask, QueryTriggerInteraction.Ignore) &&
+                    support.normal.y >= Mathf.Cos(controller.slopeLimit * Mathf.Deg2Rad))
+                {
+                    verticalVelocity = Mathf.Min(verticalVelocity, -groundedDownVelocity);
+                }
+            }
+
             CollisionFlags flags = controller.Move(
                 (horizontalVelocity + Vector3.up * verticalVelocity) * dt);
             if ((flags & CollisionFlags.Above) != 0 && verticalVelocity > 0f)
                 verticalVelocity = 0f;
+            if ((flags & CollisionFlags.Below) != 0)
+            {
+                if (!wasGrounded) lastLanding = now;
+                lastGrounded = now;
+                if (verticalVelocity < 0f) verticalVelocity = -groundedDownVelocity;
+            }
             Vector3 velocity = controller.velocity;
             travelSpeed = new Vector2(velocity.x, velocity.z).magnitude;
             AnimateWalk(dt);
@@ -314,8 +383,19 @@ namespace Aaris.MapReview
         private void PlaceCamera(bool instant)
         {
             if (followCamera == null) return;
-            float eyeHeight = battle != null ? battle.CameraEyeHeight : pivotHeight;
-            Vector3 pivot = transform.position + Vector3.up * eyeHeight;
+            float targetEyeHeight = battle != null ? battle.CameraEyeHeight : pivotHeight;
+            if (instant)
+            {
+                smoothedEyeHeight = targetEyeHeight;
+                eyeHeightVelocity = 0f;
+            }
+            else
+            {
+                smoothedEyeHeight = Mathf.SmoothDamp(smoothedEyeHeight,
+                    targetEyeHeight, ref eyeHeightVelocity, stanceCameraBlendSeconds,
+                    Mathf.Infinity, Mathf.Min(Time.deltaTime, 0.05f));
+            }
+            Vector3 pivot = transform.position + Vector3.up * smoothedEyeHeight;
             Quaternion orbit = Quaternion.Euler(pitch, yaw, 0f);
             Vector3 wanted = pivot - orbit * Vector3.forward * followDistance + orbit * Vector3.right * 0.30f;
             wanted = ObstructionSafe(pivot, wanted);
@@ -335,6 +415,8 @@ namespace Aaris.MapReview
             running = false;
             if (battle != null) { battle.SetFireHeld(false); battle.TryStand(); }
             lastGrounded = -10f; gait = travelSpeed = 0f;
+            lastJumpStarted = lastLanding = -10f;
+            if (followCamera != null) followCamera.fieldOfView = normalCameraFov;
             cameraVelocity = Vector3.zero;
             ClearInput(); PlaceCamera(true);
         }
