@@ -26,6 +26,7 @@ if test -n "$ISSUE"; then
     'CS MACHINES') OP=machines ;;
     'CS START') OP=start ;;
     'CS STATUS') OP=status ;;
+    'CS INFO') OP=info ;;
     'CS SYNC') OP=sync ;;
     'CS INSTALL') OP=install ;;
     'CS EDITOR') OP=editor ;;
@@ -37,7 +38,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|start|status|sync|install|editor|license|shot|test|stop) ;;
+  machines|info|start|status|sync|install|editor|license|shot|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test -z "$GH_TOKEN"; then DETAIL="CODESPACE_PAT_missing"; exit 3; fi
@@ -48,7 +49,7 @@ if test "$OP" = machines; then
   fi
   DETAIL="machine_API_unavailable"; exit 5
 fi
-LIST="$(gh codespace list -R "$REPO" --json name,displayName,state --limit 30 2>/dev/null)" || {
+LIST="$(gh codespace list -R "$REPO" --json name,displayName,machineName,state --limit 30 2>/dev/null)" || {
   DETAIL="codespace_list_failed_token_scope"; exit 6
 }
 CS="$(jq -r '[.[] | select(.displayName=="aaris-ai-unity")][0].name // .[0].name // ""' <<< "$LIST")"
@@ -68,6 +69,14 @@ if test -z "$CS" && test "$OP" = start; then
 fi
 if test -z "$CS"; then STATE="NO_CODESPACE"; DETAIL="run_CS_START"; exit 0; fi
 [[ "$CS" =~ ^[A-Za-z0-9-]+$ ]] || { DETAIL="bad_codespace_name"; exit 9; }
+# Read Codespace machine and state without SSH. Safe when the old container is unavailable.
+if test "$OP" = info; then
+  if gh codespace view -c "$CS" --json name,machineName,state,idleTimeoutMinutes,devcontainerPath \
+      --jq '[("codespace=" + .name), ("machine=" + .machineName), ("state=" + .state), ("idle_minutes=" + (.idleTimeoutMinutes|tostring)), ("devcontainer=" + (.devcontainerPath // "default"))] | .[]' > "$OUT/terminal.txt" 2>/dev/null; then
+    STATE="SUCCESS"; DETAIL="codespace_machine_and_state"; exit 0
+  fi
+  DETAIL="codespace_view_failed"; exit 14
+fi
 if test "$OP" = stop; then
   gh codespace stop -c "$CS" >/dev/null 2>&1 || { DETAIL="codespace_stop_failed"; exit 10; }
   STATE="SUCCESS"; DETAIL="codespace_stopped"; exit 0
@@ -79,21 +88,50 @@ if test "$OP" = start; then
     echo 'START_API_NOT_CONFIRMED_CHECK_STATUS' > "$OUT/terminal.txt"
     STATE="UNKNOWN"; DETAIL="check_status"; exit 0
   }
+  echo "codespace=$CS" > "$OUT/terminal.txt"
   STATE="SUCCESS"; DETAIL="existing_codespace_start_requested"; exit 0
 fi
-REMOTE_CMD="bash /workspaces/Unity-Game-Aris/Tools/Codespaces/remote.sh $OP"
-for attempt in 1 2 3 4 5 6; do
-  if timeout 230 gh codespace ssh -c "$CS" -- "$REMOTE_CMD" > "$OUT/terminal.txt" 2>/dev/null; then
+# For older Codespaces, place this already-reviewed script into /tmp first.
+# Avoid assuming the existing checkout already contains today's new controller files.
+PRIVATE_ERRORS="$RUNNER_TEMP/aaris-codespace-ssh-errors.log"
+trap 'rm -f "$PRIVATE_ERRORS"' EXIT
+REMOTE_PATH="/tmp/aaris-control-remote.sh"
+if ! timeout 75 gh codespace cp -c "$CS" \
+    "$GITHUB_WORKSPACE/Tools/Codespaces/remote.sh" "remote:$REMOTE_PATH" \
+    >/dev/null 2>"$PRIVATE_ERRORS"; then
+  if grep -Eqi 'permission denied|authentication|forbidden|HTTP 403|unauthorized' "$PRIVATE_ERRORS"; then
+    DETAIL="codespace_copy_authorization_denied"
+  elif grep -Eqi 'timeout|timed out|deadline exceeded' "$PRIVATE_ERRORS"; then
+    DETAIL="codespace_copy_timeout"
+  elif grep -Eqi 'SSH|ssh|connection|not running|startup' "$PRIVATE_ERRORS"; then
+    DETAIL="codespace_copy_ssh_not_ready"
+  else DETAIL="codespace_copy_failed"; fi
+  rm -f "$PRIVATE_ERRORS"
+  exit 12
+fi
+REMOTE_CMD="bash $REMOTE_PATH $OP"
+for attempt in 1 2; do
+  if timeout 85 gh codespace ssh -c "$CS" -- "$REMOTE_CMD" \
+      > "$OUT/terminal.txt" 2>"$PRIVATE_ERRORS"; then
+    rm -f "$PRIVATE_ERRORS"
     if test "$OP" = shot; then
-      if gh codespace cp -c "$CS" 'remote:/tmp/aaris-codespaces/screen.png' "$OUT/screen.png" >/dev/null 2>&1; then
+      if timeout 75 gh codespace cp -c "$CS" \
+          'remote:/tmp/aaris-codespaces/screen.png' "$OUT/screen.png" \
+          >/dev/null 2>"$PRIVATE_ERRORS"; then
         DETAIL="screen_in_actions_artifact"
-      else DETAIL="screen_copy_failed"; exit 13; fi
+      else DETAIL="screen_copy_failed"; rm -f "$PRIVATE_ERRORS"; exit 13; fi
     else DETAIL="remote_task_complete"; fi
     STATE="SUCCESS"; exit 0
   fi
-  # Retry only read-only status: mutating commands must never double-apply on SSH errors.
   test "$OP" = status || break
-  sleep 12
+  sleep 7
 done
-DETAIL="remote_task_or_SSH_failed_see_terminal_artifact"
+if grep -Eqi 'permission denied|authentication|forbidden|unauthorized|HTTP 403' "$PRIVATE_ERRORS"; then
+  DETAIL="SSH_auth_or_permissions"
+elif grep -Eqi 'No such file or directory|not found|cannot access' "$PRIVATE_ERRORS"; then
+  DETAIL="SSH_remote_file_missing"
+elif grep -Eqi 'timeout|timed out|deadline exceeded' "$PRIVATE_ERRORS"; then
+  DETAIL="SSH_timeout"
+else DETAIL="SSH_remote_task_failed"; fi
+rm -f "$PRIVATE_ERRORS"
 exit 11
