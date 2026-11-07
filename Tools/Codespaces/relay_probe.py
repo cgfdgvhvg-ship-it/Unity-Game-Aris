@@ -46,6 +46,13 @@ def main():
             print("RELAY_PROBE_HTTP_"+str(e.code))
         else:
             print("RELAY_PROBE_HTTP_OTHER")
+        try:
+            obj=json.loads(e.read(1024))
+            category=obj.get("category","")
+            if category in {"TOKEN_LENGTH","TOKEN_FORMAT","HEADER","AUDIENCE_ISSUER","TOKEN_TIME","CLAIMS","JWKS_NETWORK","JWKS_KEY","SIGNATURE","UNCLASSIFIED"}:
+                print("RELAY_REJECT_STAGE_"+category)
+        except (ValueError,OSError):
+            pass
         return 5
     except (URLError,OSError,ValueError):
         print("RELAY_PROBE_NETWORK_ERROR")
