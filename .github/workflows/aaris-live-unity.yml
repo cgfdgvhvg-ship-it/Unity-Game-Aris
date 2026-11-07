@@ -61,12 +61,13 @@ jobs:
           lfs: false
       - name: Verify camera API rejects unsafe inputs
         run: |
-          python3 -m py_compile Tools/CI/live_camera_server.py Tools/CI/issue_camera_bridge.py Tools/CI/ai_world_commands.py Tools/CI/unity_personal_bootstrap.py Tools/CI/editor_runtime_diagnostics.py
+          python3 -m py_compile Tools/CI/live_camera_server.py Tools/CI/issue_camera_bridge.py Tools/CI/ai_world_commands.py Tools/CI/unity_personal_bootstrap.py Tools/CI/editor_runtime_diagnostics.py Tools/CI/terminal_control.py
           python3 Tools/CI/ai_world_commands.py
           python3 Tools/CI/unity_personal_bootstrap.py --selftest
           python3 Tools/CI/license_reuse.py --selftest
           python3 Tools/CI/issue_camera_bridge.py --selftest
           python3 Tools/CI/editor_runtime_diagnostics.py --selftest
+          python3 Tools/CI/terminal_control.py --selftest
           node --check Tools/CI/cloudflare_live_hub.mjs
           python3 - <<'PY'
           import sys
@@ -251,6 +252,13 @@ jobs:
               > ci-logs/project-auto-checkpoint.log 2>&1 || true
           done) &
           echo "$!" > /tmp/aaris-auto-checkpoint.pid
+      - name: Start terminal-like safe runner health recorder
+        run: |
+          mkdir -p ci-logs ci-live-control
+          (python3 Tools/CI/terminal_control.py --monitor --seconds "$((SESSION_MINUTES*60))" \
+            > ci-logs/terminal-monitor.log 2>&1) &
+          echo "$!" > /tmp/aaris-terminal-monitor.pid
+          echo 'Safe 30-second runner snapshots enabled; send TERM STATUS to GitHub Issue #77.'
       - name: Start real Unity Editor with authorized ULF or Unity CLI Personal sign-in
         continue-on-error: true
         timeout-minutes: 35
@@ -435,6 +443,7 @@ jobs:
             ci-logs/project-auto-checkpoint.log
             ci-live-control/editor-runtime.json
             ci-live-control/editor-runtime-diagnostics-safe.json
+            ci-live-control/terminal-timeline-safe.jsonl
             ci-live-control/status.json
             ci-live-control/ai-result.json
           retention-days: 7
@@ -451,5 +460,8 @@ jobs:
           fi
           if [[ -f /tmp/aaris-license-watch.pid ]]; then
             kill "$(cat /tmp/aaris-license-watch.pid)" 2>/dev/null || true
+          fi
+          if [[ -f /tmp/aaris-terminal-monitor.pid ]]; then
+            kill "$(cat /tmp/aaris-terminal-monitor.pid)" 2>/dev/null || true
           fi
           echo 'Session ended. GitHub source and Releases remain; runner desktop is ephemeral.'
