@@ -66,6 +66,20 @@ def publish(approval, run_id):
         if res.status != 202 or json.loads(res.read(2048)).get("accepted") is not True:
             raise RuntimeError("Private relay rejected request")
 
+def probe():
+    """Check real GitHub OIDC -> Worker trust without storing a fake Unity link."""
+    token = oidc_token()
+    destination = WORKER.rsplit("/", 1)[0] + "/probe"
+    req = request.Request(destination, data=b"", method="POST", headers={
+        "Authorization": "Bearer " + token,
+        "Accept": "application/json",
+    })
+    with request.urlopen(req, timeout=25) as res:
+        if res.status != 200 or json.loads(res.read(2048)).get("accepted") is not True:
+            raise RuntimeError("Private relay OIDC probe rejected")
+    print("Signed GitHub Actions -> private Cloudflare worker OIDC probe: PASS")
+
+
 def state():
     try:
         value = json.loads(SOURCE.read_text("utf-8"))
@@ -120,9 +134,12 @@ def selftest():
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--selftest", action="store_true")
+    p.add_argument("--probe", action="store_true")
     p.add_argument("--seconds", type=int, default=2700)
     args = p.parse_args()
     if args.selftest:
         selftest()
+    elif args.probe:
+        probe()
     else:
         watch(args.seconds)
