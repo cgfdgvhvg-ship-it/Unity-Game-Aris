@@ -28,6 +28,7 @@ if test -n "$ISSUE"; then
     'CS REBUILD') OP=rebuild ;;
     'CS STATUS') OP=status ;;
     'CS INFO') OP=info ;;
+    'CS LOGS') OP=creation_logs ;;
     'CS SYNC') OP=sync ;;
     'CS LFS') OP=lfs ;;
     'CS LFS REPORT') OP=lfs_report ;;
@@ -44,7 +45,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|start|rebuild|status|sync|lfs|lfs_report|changes|install|editor|license|auth|probe|shot|test|stop) ;;
+  machines|info|creation_logs|start|rebuild|status|sync|lfs|lfs_report|changes|install|editor|license|auth|probe|shot|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test -z "$GH_TOKEN"; then DETAIL="CODESPACE_PAT_missing"; exit 3; fi
@@ -88,6 +89,19 @@ if test "$OP" = info; then
     STATE="SUCCESS"; DETAIL="codespace_machine_and_state"; exit 0
   fi
   DETAIL="codespace_view_failed"; exit 14
+fi
+if test "$OP" = creation_logs; then
+  PRIVATE_LOG="$RUNNER_TEMP/aaris-codespace-creation-private.log"
+  : > "$PRIVATE_LOG"
+  chmod 600 "$PRIVATE_LOG"
+  if GH_PROMPT_DISABLED=1 timeout 95 gh codespace logs -c "$CS" -R "$REPO" > "$PRIVATE_LOG" 2>&1; then
+    python3 "$GITHUB_WORKSPACE/Tools/Codespaces/classify_creation_logs.py" "$PRIVATE_LOG" > "$OUT/terminal.txt"
+    rm -f "$PRIVATE_LOG"
+    STATE="SUCCESS"; DETAIL="creation_log_sanitized"; exit 0
+  fi
+  python3 "$GITHUB_WORKSPACE/Tools/Codespaces/classify_creation_logs.py" "$PRIVATE_LOG" > "$OUT/terminal.txt" || true
+  rm -f "$PRIVATE_LOG"
+  DETAIL="codespace_creation_log_unavailable"; exit 25
 fi
 if test "$OP" = stop; then
   gh codespace stop -c "$CS" >/dev/null 2>&1 || { DETAIL="codespace_stop_failed"; exit 10; }
