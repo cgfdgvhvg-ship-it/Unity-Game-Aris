@@ -64,7 +64,7 @@ jobs:
               tex='colormap.png'
               if tex not in catalog: raise SystemExit('Color texture missing from CC0 ZIP')
               texture=z.read(catalog[tex])
-              if texture[:8] != b'\\x89PNG\\r\\n\\x1a\\n': raise SystemExit('Invalid Kenney PNG')
+              if texture[:8] != bytes((137, 80, 78, 71, 13, 10, 26, 10)): raise SystemExit('Invalid Kenney PNG')
               (root/tex).write_bytes(texture)
               print('VENDORED',tex,len(texture),hashlib.sha256(texture).hexdigest())
               if 'license.txt' not in catalog: raise SystemExit('No source license')
