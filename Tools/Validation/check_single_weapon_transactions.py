@@ -69,8 +69,9 @@ def audit():
     assert "record.visible = null;" in world
     assert "if (record.visible != null) continue;" in world
     assert "Time.unscaledTime < record.blockedUntil" in world
-    assert "(!inventory.HasGun && bestPickup.CandidateIndex >= 0)" in world
+    assert "(!inventory.HasGun && allowInitialAutoPickup &&" in world
     assert "requestPickupUntil = Time.unscaledTime + 0.7f;" in world
+    assert "allowInitialAutoPickup = false;" in world
     assert "HasPickupInRange = bestPickup != null;" in world
     assert "Physics.RaycastNonAlloc(new Ray(eye, toTarget / distance)" in world
     assert "Physics.RaycastNonAlloc(new Ray(start, Vector3.down)" in world
