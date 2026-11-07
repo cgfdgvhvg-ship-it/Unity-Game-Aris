@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Codespace-side OAuth; URL is intercepted privately by the Actions controller."""
-import os, sys, re, time, queue, threading, subprocess, shutil
+import os, sys, re, time, queue, threading, subprocess, shutil, pwd
 from pathlib import Path
 from urllib.parse import urlsplit
 CLI_DIR=Path.home()/".local/share/aaris-unity-cli"
@@ -56,10 +56,42 @@ def login(cli,env):
     if check(cli,env,"auth"):
         print("UNITY_AUTH_VERIFIED",flush=True);return True
     print("UNITY_AUTH_NOT_COMPLETED",flush=True);return False
+def choose_writable_home():
+    # A GitHub Codespace SSH session may report HOME=/root even though the
+    # actual SSH user cannot write to that directory. Use passwd's UID home.
+    candidates=[Path(pwd.getpwuid(os.geteuid()).pw_dir),
+                Path.home(),Path("/home/vscode"),Path("/home/codespace"),
+                Path("/tmp")/("aaris-unity-home-"+str(os.geteuid()))]
+    seen=set()
+    for home in candidates:
+        if str(home) in seen: continue
+        seen.add(str(home))
+        try:
+            home.mkdir(parents=True,exist_ok=True)
+            state=home/".local/share/aaris-unity-cli"
+            state.mkdir(parents=True,exist_ok=True)
+            marker=state/(".aaris-write-test-"+str(os.getpid()))
+            with marker.open("wb") as check: check.write(b"ok")
+            marker.unlink()
+            os.chmod(state,0o700)
+            if str(home).startswith("/tmp/"):
+                print("UNITY_STATE_HOME_TEMPORARY",flush=True)
+            else:
+                print("UNITY_STATE_HOME_PERSISTENT",flush=True)
+            return home,state
+        except OSError:
+            continue
+    print("UNITY_STATE_DIRECTORY_UNWRITABLE",flush=True)
+    return None,None
+
 def main():
+    global CLI_DIR
     os.umask(0o077)
-    CLI_DIR.mkdir(parents=True,exist_ok=True)
-    cli=next((str(x) for x in PATHS if x.is_file() and os.access(x,os.X_OK)),shutil.which("unity"))
+    user_home,state=choose_writable_home()
+    if state is None: return 16
+    CLI_DIR=state
+    candidates=[state/"bin/unity",user_home/".local/bin/unity"]+PATHS
+    cli=next((str(x) for x in candidates if x.is_file() and os.access(x,os.X_OK)),shutil.which("unity"))
     if not cli:
         print("UNITY_CLI_BOOTSTRAPPING",flush=True)
         # Unity's current installer installs to ~/.local/bin on Linux, NOT
@@ -76,6 +108,7 @@ def main():
             if got.returncode:
                 print("UNITY_CLI_DOWNLOAD_FAILED",flush=True);return 11
             install_env={**os.environ,"UNITY_CLI_CHANNEL":"beta",
+                         "HOME":str(user_home),
                          "UNITY_CLI_HOME":str(CLI_DIR),"DO_NOT_TRACK":"1"}
             setup=subprocess.run(["bash",str(script)],env=install_env,
                                  stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
@@ -87,12 +120,12 @@ def main():
         finally:
             try: script.unlink(missing_ok=True)
             except OSError: pass
-        cli=next((str(x) for x in PATHS if x.is_file() and os.access(x,os.X_OK)),shutil.which("unity"))
+        cli=next((str(x) for x in candidates if x.is_file() and os.access(x,os.X_OK)),shutil.which("unity"))
         if not cli:
             print("UNITY_CLI_BINARY_NOT_FOUND",flush=True);return 11
     print("UNITY_CLI_READY",flush=True)
     env={k:v for k,v in os.environ.items() if k not in ("UNITY_PASSWORD","UNITY_SERVICE_ACCOUNT_ID","UNITY_SERVICE_ACCOUNT_SECRET")}
-    env["UNITY_CLI_HOME"]=str(CLI_DIR);env["DO_NOT_TRACK"]="1"
+    env["HOME"]=str(user_home);env["UNITY_CLI_HOME"]=str(CLI_DIR);env["DO_NOT_TRACK"]="1"
     if not login(cli,env): return 12
     if check(cli,env,"license"):
         print("UNITY_LICENSE_ALREADY_ACTIVE",flush=True);return 0
