@@ -46,13 +46,26 @@ def main():
             print("RELAY_PROBE_HTTP_"+str(e.code))
         else:
             print("RELAY_PROBE_HTTP_OTHER")
+        # Diagnose the transport layer without leaking a JWT, account, or body.
+        content_type=(e.headers.get("Content-Type") or "").lower()
+        server=(e.headers.get("Server") or "").lower()
+        if "json" in content_type: print("RELAY_RESPONSE_JSON")
+        elif "html" in content_type: print("RELAY_RESPONSE_HTML")
+        else: print("RELAY_RESPONSE_OTHER_CONTENT_TYPE")
+        if "cloudflare" in server: print("RELAY_SERVER_CLOUDFLARE")
         try:
-            obj=json.loads(e.read(1024))
-            category=obj.get("category","")
-            if category in {"TOKEN_LENGTH","TOKEN_FORMAT","HEADER","AUDIENCE_ISSUER","TOKEN_TIME","CLAIMS","JWKS_NETWORK","JWKS_KEY","SIGNATURE","UNCLASSIFIED"}:
-                print("RELAY_REJECT_STAGE_"+category)
+            payload=e.read(2048)
+            obj=json.loads(payload)
+            if isinstance(obj,dict):
+                category=obj.get("category","")
+                if category in {"TOKEN_LENGTH","TOKEN_FORMAT","HEADER","AUDIENCE_ISSUER","TOKEN_TIME","CLAIMS","JWKS_NETWORK","JWKS_KEY","SIGNATURE","UNCLASSIFIED"}:
+                    print("RELAY_REJECT_STAGE_"+category)
+                elif obj.get("error")=="github_workflow_identity_rejected":
+                    print("RELAY_REJECT_OLD_WORKER_VERSION")
+                else: print("RELAY_JSON_WITHOUT_DIAGNOSTIC")
         except (ValueError,OSError):
-            pass
+            if "html" in content_type: print("RELAY_HTML_EDGE_BLOCK")
+            else: print("RELAY_RESPONSE_NOT_JSON")
         return 5
     except (URLError,OSError,ValueError):
         print("RELAY_PROBE_NETWORK_ERROR")
