@@ -251,3 +251,40 @@ Diagnostics live in Actions artifact `aaris-ai-diagnostics`, the
 `ci-live-control/ai-result.json` response, the issue relay logs, and the
 private PIN-gated `/api/license` page. A green Python selftest alone never
 proves that the native URP Unity scene actually rendered.
+
+## Owner-only remote terminal (GitHub Actions)
+
+While a **new** live desktop session is running, the repository owner can post
+these fixed commands on [GitHub Issue #77](https://github.com/sundamunda289-art/Unity-Game-Aris/issues/77):
+
+```text
+TERM PING
+TERM STATUS
+TERM EDITOR
+TERM LICENSE
+TERM ERRORS
+TERM DISK
+TERM PROCESSES
+TERM NETWORK
+TERM LFS
+TERM HISTORY
+TERM ALL
+TERM HELP
+```
+
+The GitHub Actions runner processes owner-authored commands and replies in the same
+issue with `AARIS_TERMINAL #<comment-id>` plus bounded JSON. An AI with GitHub owner
+access can issue the command and inspect the response without asking the phone
+owner to use Termux. All data comes from the **running** machine; it is not a
+permanent SSH session. No command runs when that GitHub Actions session has ended.
+
+`TERM ERRORS` classifies Unity log errors and extracts only predefined C#
+compiler codes / exception types. **Raw logs, private sign-in URLs and credentials
+are never posted to public issues.** `TERM DISK` checks available disk and memory,
+`TERM PROCESSES` reports known process counts, and `TERM EDITOR` reveals whether
+the real Editor is responsive versus Docker/noVNC simply being online.
+
+A 30-second diagnostics timeline is saved to the `aaris-ai-diagnostics` artifact.
+The separate `ACTIVATE_UNITY` command can retry legitimate licensing if required.
+There is **no general-purpose shell** over public GitHub issues: arbitrary shell
+commands would expose credentials and could execute untrusted code.
