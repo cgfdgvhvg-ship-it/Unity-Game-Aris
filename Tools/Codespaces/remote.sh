@@ -99,6 +99,39 @@ PY
     git lfs pull >/dev/null 2>&1 || { echo 'SYNC_LFS_FAILED'; exit 10; }
     echo 'SYNC_LFS_READY'
     ;;
+  lfs)
+    mkdir -p /tmp/aaris-unity-runtime/lfs
+    if ! git lfs version >/dev/null 2>&1; then
+      echo 'GIT_LFS_CLI_MISSING'
+      exit 19
+    fi
+    echo 'GIT_LFS_CLI_PRESENT'
+    git config --local lfs.storage /tmp/aaris-unity-runtime/lfs
+    if git lfs pull > "$RUN/lfs-pull.log" 2>&1; then
+      echo 'LFS_DOWNLOAD_OK'
+    else
+      python3 - "$RUN/lfs-pull.log" <<'PY'
+import sys,re,pathlib
+s=pathlib.Path(sys.argv[1]).read_text(errors='replace')[-20000:]
+if re.search(r'quota|bandwidth|data transfer limit|billing|over its data',s,re.I):
+    reason='quota_or_bandwidth'
+elif re.search(r'403|permission denied|not authorized|authentication|unauthorized',s,re.I):
+    reason='authorization'
+elif re.search(r'404|not found|does not exist',s,re.I):
+    reason='missing_lfs_object'
+elif re.search(r'no space left|insufficient space',s,re.I):
+    reason='disk_full'
+elif re.search(r'network|connection|timeout|TLS|certificate',s,re.I):
+    reason='network'
+elif re.search(r'not a git command|git-lfs is not installed',s,re.I):
+    reason='lfs_cli_missing'
+else:
+    reason='unclassified'
+print('LFS_FAIL_CATEGORY_'+reason.upper())
+PY
+      exit 20
+    fi
+    ;;
   install)
     bash "$PROJECT/Tools/Codespaces/install_unity.sh"
     ;;
