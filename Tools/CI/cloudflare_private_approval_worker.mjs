@@ -80,7 +80,23 @@ export default {
     if (Number(request.headers.get("Content-Length") || "0") > 5200) return response(413, {error:"payload_too_large"});
     let claims;
     try { claims = await verifyGithubOidc(header.slice(7)); }
-    catch (_) { return response(403, {error: "github_workflow_identity_rejected"}); }
+    catch (err) {
+      const categories = {
+        "bad token": "TOKEN_LENGTH",
+        "malformed token": "TOKEN_FORMAT",
+        "invalid algorithm": "HEADER",
+        "invalid issuer/audience": "AUDIENCE_ISSUER",
+        "invalid token lifetime": "TOKEN_TIME",
+        "unauthorized GitHub workflow": "CLAIMS",
+        "OIDC verifier unavailable": "JWKS_NETWORK",
+        "unrecognized signing key": "JWKS_KEY",
+        "invalid token signature": "SIGNATURE",
+      };
+      // A PROBE never accepts an OAuth link and exposes ONLY a fixed diagnostic code.
+      const category = categories[err?.message] || "UNCLASSIFIED";
+      if (path === "/probe") return response(403, {error: "identity_rejected", category});
+      return response(403, {error: "github_workflow_identity_rejected"});
+    }
     if (path === "/probe") return response(200, {accepted:true,run_id:String(claims.run_id)});
     let body;
     try { body = await request.json(); } catch (_) { return response(400, {error:"bad_json"}); }
