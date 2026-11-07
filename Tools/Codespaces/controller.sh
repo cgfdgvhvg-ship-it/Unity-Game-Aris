@@ -28,6 +28,7 @@ if test -n "$ISSUE"; then
     'CS STATUS') OP=status ;;
     'CS INFO') OP=info ;;
     'CS SYNC') OP=sync ;;
+    'CS CHANGES') OP=changes ;;
     'CS INSTALL') OP=install ;;
     'CS EDITOR') OP=editor ;;
     'CS LICENSE') OP=license ;;
@@ -38,7 +39,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|start|status|sync|install|editor|license|shot|test|stop) ;;
+  machines|info|start|status|sync|changes|install|editor|license|shot|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test -z "$GH_TOKEN"; then DETAIL="CODESPACE_PAT_missing"; exit 3; fi
