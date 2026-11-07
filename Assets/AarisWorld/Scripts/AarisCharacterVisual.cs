@@ -273,6 +273,13 @@ namespace Aaris.MapReview
             walkPlayable.SetApplyFootIK(true);
             runPlayable.SetApplyFootIK(true);
             crouchWalkPlayable.SetApplyFootIK(true);
+            // All gait clips use distance-driven SetTime in LateUpdate.
+            // Freeze their independent clocks so the graph cannot advance
+            // them a second time and introduce foot-slide at variable FPS.
+            idlePlayable.SetSpeed(0d);
+            walkPlayable.SetSpeed(0d);
+            runPlayable.SetSpeed(0d);
+            crouchWalkPlayable.SetSpeed(0d);
             var inputs = new[]
             {
                 idlePlayable, walkPlayable, runPlayable,
@@ -369,10 +376,15 @@ namespace Aaris.MapReview
                     ? Mathf.Clamp01((0.28f - touchdownAge) / 0.18f) : 0f;
                 float lastPunchAge = actions != null ? Time.time - actions.LastPunchTime : 10f;
                 float lastShootAge = actions != null ? Time.time - actions.LastShootTime : 10f;
+                // Smoothly attack and release rather than snapping all
+                // full-body animation weight from 0 to 1 in one frame.
+                // 0.65 cap retains a visible underlying running gait.
                 float punchWeight = lastPunchAge >= 0f && lastPunchAge < 0.43f
-                    ? Mathf.Clamp01((0.43f - lastPunchAge) / 0.12f) : 0f;
+                    ? 0.65f * Mathf.Min(Mathf.Clamp01(lastPunchAge / 0.065f),
+                                       Mathf.Clamp01((0.43f - lastPunchAge) / 0.14f)) : 0f;
                 float shootWeight = lastShootAge >= 0f && lastShootAge < 0.2f
-                    ? Mathf.Clamp01((0.2f - lastShootAge) / 0.07f) : 0f;
+                    ? 0.65f * Mathf.Min(Mathf.Clamp01(lastShootAge / 0.035f),
+                                       Mathf.Clamp01((0.2f - lastShootAge) / 0.07f)) : 0f;
 
                 // Strictly normalize mutually exclusive animation priorities.
                 // Landing and a newly queued jump can overlap in the same
