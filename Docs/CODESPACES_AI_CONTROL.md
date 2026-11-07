@@ -50,7 +50,7 @@ The workflow responds under the issuing comment with a bounded, credential-safe 
 
 ## Workspace and licensing
 
-`/workspaces/Unity-Game-Aris` holds the project; `/workspaces/.aaris-unity-editors` holds the Editor installation; `/tmp/aaris-codespaces` holds transient logs and screenshots. An existing Codespace preserves files while stopped but processes terminate; the next task restarts the display and Editor as needed. A new Codespace repeats the scripted environment setup, not manual software provisioning.
+`/workspaces/Unity-Game-Aris` holds the project; `/tmp/aaris-unity-runtime/editors` holds the Editor installation; `/tmp/aaris-codespaces` holds transient logs and screenshots. An existing Codespace preserves files while stopped but processes terminate; the next task restarts the display and Editor as needed. A new Codespace repeats scripted setup, not manual software provisioning. Unity Editor and Library cache use the large ephemeral /tmp volume, so installation/import may need to run again after Codespace restart if the temporary disk is cleared.
 
 **Unity Personal:** legitimate activation requires Unity Hub sign-in; the same Codespace may retain authorized state across stop/start, but another account's new Codespace can require another approval. Do not clone hardware IDs, GitHub-publish license files or transfer login cookies between devices. Licensing and successful scene render are separate verification steps.
 
