@@ -55,8 +55,11 @@ namespace Aaris.MapReview
                 float longest = Mathf.Max(bounds.x, bounds.y, bounds.z);
                 view.localScale = Vector3.one * Mathf.Clamp(0.86f / longest, 0.001f, 10f);
             }
-            view.localPosition = spec.handOffset;
-            view.localRotation = Quaternion.Euler(spec.handRotation);
+            // Only the parent weapon socket owns hand alignment. Applying
+            // the same Euler angles to the imported FBX AND the socket
+            // rotated some weapons twice (e.g. 90° + 90° = backwards).
+            view.localPosition = Vector3.zero;
+            view.localRotation = Quaternion.identity;
             view.localScale *= spec.handScale;
             slots[at] = equipped;
             weaponModels[at] = root.transform;
@@ -75,6 +78,7 @@ namespace Aaris.MapReview
             for (int i = 0; i < slots.Length; i++)
                 if (slots[i] != null) slots[i].gameObject.SetActive(i == slot);
             combat.Equip(slots[selected]);
+            slots[selected].RefreshReload();
             AttachModelToHand(slot);
         }
 
@@ -134,6 +138,11 @@ namespace Aaris.MapReview
 
         private void Update()
         {
+            // Complete background reloads without enabling invisible gun
+            // renderers or allocating a second firing motor.
+            for (int i = 0; i < slots.Length; i++)
+                if (slots[i] != null) slots[i].RefreshReload();
+
             if (Input.GetKeyDown(KeyCode.Q)) CycleWeapon();
             if (Input.GetKeyDown(KeyCode.R)) Reload();
             if (Input.GetMouseButtonDown(1)) ToggleAim();
