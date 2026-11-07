@@ -93,6 +93,9 @@ def assert_regression() -> None:
     assert "floor + radius" in ACTION
     assert "capsule.radius - capsule.skinWidth" in ACTION
     assert "count == nearHits.Length" in ACTION
+    assert "HasProneClearance" in ACTION
+    assert "Physics.OverlapCapsuleNonAlloc(head, legs" in ACTION
+    assert "CanAdvanceProne(candidate, horizontalVelocity)" in MOTOR
 
     # No melee through cover; no hitscan overflow or behind-cover damage.
     assert "Physics.Raycast(origin, delta.normalized" in ACTION
