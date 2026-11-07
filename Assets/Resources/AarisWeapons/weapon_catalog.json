@@ -1,0 +1,149 @@
+{
+  "weapons": [
+    {
+      "id": "SMG",
+      "displayName": "Compact SMG",
+      "modelResource": "AarisWeapons/Models/SMG",
+      "category": "SMG",
+      "automatic": true,
+      "rpm": 780,
+      "magazineSize": 36,
+      "reserveAmmo": 144,
+      "pellets": 1,
+      "damage": 20,
+      "rangeMetres": 85,
+      "spreadDegrees": 1.6,
+      "recoilPitchDegrees": 0.55,
+      "reloadSeconds": 2.1,
+      "adsFov": 47,
+      "weight": 42,
+      "handOffset": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "handRotation": {
+        "x": 0,
+        "y": 90,
+        "z": 0
+      },
+      "handScale": 1
+    },
+    {
+      "id": "AssaultRifle",
+      "displayName": "Tactical AR",
+      "modelResource": "AarisWeapons/Models/AssaultRifle",
+      "category": "AR",
+      "automatic": true,
+      "rpm": 660,
+      "magazineSize": 30,
+      "reserveAmmo": 120,
+      "pellets": 1,
+      "damage": 33,
+      "rangeMetres": 240,
+      "spreadDegrees": 0.8,
+      "recoilPitchDegrees": 1.05,
+      "reloadSeconds": 2.5,
+      "adsFov": 40,
+      "weight": 27,
+      "handOffset": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "handRotation": {
+        "x": 0,
+        "y": 90,
+        "z": 0
+      },
+      "handScale": 1
+    },
+    {
+      "id": "BattleRifle",
+      "displayName": "Heavy Battle Rifle",
+      "modelResource": "AarisWeapons/Models/BattleRifle",
+      "category": "AR",
+      "automatic": true,
+      "rpm": 520,
+      "magazineSize": 25,
+      "reserveAmmo": 100,
+      "pellets": 1,
+      "damage": 42,
+      "rangeMetres": 270,
+      "spreadDegrees": 1.1,
+      "recoilPitchDegrees": 1.8,
+      "reloadSeconds": 2.75,
+      "adsFov": 38,
+      "weight": 15,
+      "handOffset": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "handRotation": {
+        "x": 0,
+        "y": 90,
+        "z": 0
+      },
+      "handScale": 1
+    },
+    {
+      "id": "Sniper",
+      "displayName": "Bolt Sniper",
+      "modelResource": "AarisWeapons/Models/Sniper",
+      "category": "Sniper",
+      "automatic": false,
+      "rpm": 48,
+      "magazineSize": 5,
+      "reserveAmmo": 25,
+      "pellets": 1,
+      "damage": 112,
+      "rangeMetres": 480,
+      "spreadDegrees": 0.1,
+      "recoilPitchDegrees": 4.5,
+      "reloadSeconds": 3.1,
+      "adsFov": 14,
+      "weight": 8,
+      "handOffset": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "handRotation": {
+        "x": 0,
+        "y": 90,
+        "z": 0
+      },
+      "handScale": 1
+    },
+    {
+      "id": "Shotgun",
+      "displayName": "Pump Shotgun",
+      "modelResource": "AarisWeapons/Models/Shotgun",
+      "category": "Shotgun",
+      "automatic": false,
+      "rpm": 85,
+      "magazineSize": 6,
+      "reserveAmmo": 36,
+      "pellets": 8,
+      "damage": 11,
+      "rangeMetres": 45,
+      "spreadDegrees": 5.5,
+      "recoilPitchDegrees": 3.2,
+      "reloadSeconds": 3.4,
+      "adsFov": 48,
+      "weight": 8,
+      "handOffset": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "handRotation": {
+        "x": 0,
+        "y": 90,
+        "z": 0
+      },
+      "handScale": 1
+    }
+  ]
+}
