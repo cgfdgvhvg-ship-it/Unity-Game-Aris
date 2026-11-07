@@ -18,15 +18,39 @@ namespace Aaris.MapReview
         private AarisVehicleSession driver;
         private float forward, steering, smoothSteer;
         private float topSpeed;
-        private float brakeTorque = 3200f;
-        private float lastDriven;
+        private const float ServiceBrakeTorque = 3200f;
+        private const float ParkingBrakeTorque = 3600f;
+        private const float AntiRollStrength = 4800f;
+        private float nextTelemetryAt;
         public string VehicleId { get; private set; }
         public bool IsOccupied => driver != null;
         public bool CanPark => !IsOccupied && body != null &&
-            body.linearVelocity.sqrMagnitude < 0.7f &&
-            body.angularVelocity.sqrMagnitude < .25f;
+            body.linearVelocity.sqrMagnitude < .20f &&
+            body.angularVelocity.sqrMagnitude < .16f;
         public float SpeedMetresPerSecond => body != null
             ? Vector3.Dot(body.linearVelocity, transform.forward) : 0f;
+        public float TotalSpeedMetresPerSecond => body != null
+            ? body.linearVelocity.magnitude : 0f;
+
+        /// <summary>
+        /// Reject EXIT while sliding sideways, rotating, upside-down or
+        /// airborne. Checking only longitudinal speed permitted exiting
+        /// a sideways-sliding car at road speed.
+        /// </summary>
+        public bool IsSafeToExit
+        {
+            get
+            {
+                if (body == null || TotalSpeedMetresPerSecond >= 1.1f ||
+                    body.angularVelocity.magnitude >= .5f ||
+                    Vector3.Dot(transform.up, Vector3.up) < .72f)
+                    return false;
+                int grounded = 0;
+                foreach (var wheel in wheels)
+                    if (wheel != null && wheel.isGrounded) grounded++;
+                return grounded >= 2;
+            }
+        }
 
         public void Configure(string id, float maxSpeedMetres, float kilograms)
         {
@@ -146,7 +170,6 @@ namespace Aaris.MapReview
                 body.linearVelocity.magnitude > 2f) return false;
             driver = session;
             forward = steering = smoothSteer = 0f;
-            lastDriven = Time.time;
             return true;
         }
 
@@ -155,7 +178,6 @@ namespace Aaris.MapReview
             if (driver == null) return;
             forward = Mathf.Clamp(forwardAxis, -1f, 1f);
             steering = Mathf.Clamp(steerAxis, -1f, 1f);
-            lastDriven = Time.time;
         }
 
         public void ReleaseDriver(AarisVehicleSession session)
@@ -167,7 +189,7 @@ namespace Aaris.MapReview
                 if (wheels[i] != null)
                 {
                     wheels[i].motorTorque = 0f;
-                    wheels[i].brakeTorque = 420f;
+                    wheels[i].brakeTorque = ParkingBrakeTorque;
                 }
         }
 
@@ -186,19 +208,19 @@ namespace Aaris.MapReview
             float drive = 0f, brake = 0f;
             if (throttle > .08f)
             {
-                if (speed < -1f) brake = brakeTorque * throttle;
+                if (speed < -.55f) brake = ServiceBrakeTorque * throttle;
                 else if (speed < topSpeed) drive = torque * throttle;
             }
             else if (throttle < -.08f)
             {
-                if (speed > 1f) brake = brakeTorque * -throttle;
+                if (speed > .55f) brake = ServiceBrakeTorque * -throttle;
                 else if (speed > -7f) drive = -torque * .48f * -throttle;
             }
             else
             {
                 // Realistic rolling drag; touching neither arrow coasts
                 // rather than stopping instantly in mid-air.
-                brake = driver == null ? 600f : 155f;
+                brake = driver == null ? ParkingBrakeTorque : 155f;
             }
             // Downhill speed control: apply brake instead of directly
             // overwriting velocity, which would ignore collision impulses.
@@ -216,15 +238,74 @@ namespace Aaris.MapReview
             smoothSteer = Mathf.MoveTowards(smoothSteer, target, 125f * Time.fixedDeltaTime);
             wheels[0].steerAngle = wheels[1].steerAngle = smoothSteer;
 
+            // Axle load transfer: counter excessive roll on fast bends and
+            // uneven slopes without freezing Rigidbody rotation or faking
+            // wheel contact. Only grounded wheels receive corrective force.
+            ApplyAntiRoll(0, 1);
+            ApplyAntiRoll(2, 3);
+
             // Mild aero downforce supports handling but cannot defeat walls.
             if (speedAbs > 6f)
                 body.AddForce(-transform.up * Mathf.Min(18000f, 20f * speedAbs * speedAbs),
                     ForceMode.Force);
+
+            // Diagnostic telemetry is development-build only and bounded to
+            // one line every three seconds while occupied. This lets actual
+            // Unity/Android logs prove whether wheels contact terrain, how
+            // fast the car drives, and whether steering/brakes work.
+            if (Debug.isDebugBuild && driver != null && Time.time >= nextTelemetryAt)
+            {
+                nextTelemetryAt = Time.time + 3f;
+                int grounded = 0;
+                for (int i = 0; i < wheels.Length; i++)
+                    if (wheels[i] != null && wheels[i].isGrounded) grounded++;
+                Debug.Log("AARIS_DRIVE_TELEMETRY id=" + VehicleId +
+                    " speed_mps=" + speed.ToString("F2") +
+                    " total_mps=" + TotalSpeedMetresPerSecond.ToString("F2") +
+                    " wheels_grounded=" + grounded +
+                    " steer_deg=" + smoothSteer.ToString("F1") +
+                    " throttle=" + throttle.ToString("F2") +
+                    " brake_Nm=" + brake.ToString("F0") +
+                    " roll_deg=" + Vector3.Angle(transform.up, Vector3.up).ToString("F1"));
+            }
+        }
+
+        private void ApplyAntiRoll(int leftIndex, int rightIndex)
+        {
+            var left = wheels[leftIndex];
+            var right = wheels[rightIndex];
+            if (left == null || right == null || body == null) return;
+
+            bool leftGrounded = left.GetGroundHit(out WheelHit leftHit);
+            bool rightGrounded = right.GetGroundHit(out WheelHit rightHit);
+            float leftTravel = 1f, rightTravel = 1f;
+            if (leftGrounded)
+                leftTravel = Mathf.Clamp01(
+                    (-left.transform.InverseTransformPoint(leftHit.point).y -
+                        left.radius) / Mathf.Max(.01f, left.suspensionDistance));
+            if (rightGrounded)
+                rightTravel = Mathf.Clamp01(
+                    (-right.transform.InverseTransformPoint(rightHit.point).y -
+                        right.radius) / Mathf.Max(.01f, right.suspensionDistance));
+            float force = Mathf.Clamp((leftTravel - rightTravel) * AntiRollStrength,
+                -AntiRollStrength, AntiRollStrength);
+            if (leftGrounded)
+                body.AddForceAtPosition(left.transform.up * -force,
+                    left.transform.position, ForceMode.Force);
+            if (rightGrounded)
+                body.AddForceAtPosition(right.transform.up * force,
+                    right.transform.position, ForceMode.Force);
         }
 
         private void OnDisable()
         {
             forward = steering = 0f;
+            foreach (var wheel in wheels)
+            {
+                if (wheel == null) continue;
+                wheel.motorTorque = 0f;
+                wheel.brakeTorque = ParkingBrakeTorque;
+            }
         }
     }
 }

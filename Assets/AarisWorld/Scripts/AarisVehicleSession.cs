@@ -9,12 +9,14 @@ namespace Aaris.MapReview
     /// Exit performs a real collision/ground check before restoring the
     /// CharacterController; otherwise it safely stays in the car.
     /// </summary>
-    [DisallowMultipleComponent, DefaultExecutionOrder(50)]
+    // Camera follows interpolated physics AFTER gameplay Update.
+    [DisallowMultipleComponent, DefaultExecutionOrder(250)]
     public sealed class AarisVehicleSession : MonoBehaviour
     {
         private readonly Collider[] exitOverlap = new Collider[32];
         private readonly RaycastHit[] exitGround = new RaycastHit[32];
         private readonly RaycastHit[] entrySight = new RaycastHit[24];
+        private readonly RaycastHit[] cameraObstacles = new RaycastHit[32];
         private AarisVehicleWorld world;
         private AarisThirdPersonPlayer footMotor;
         private CharacterController capsule;
@@ -69,8 +71,14 @@ namespace Aaris.MapReview
                     - (Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.A) ? 1f : 0f);
                 car.SetInput(Mathf.Abs(keyboardMove) > .05f ? keyboardMove : touchMove,
                     Mathf.Abs(keyboardSteer) > .05f ? keyboardSteer : touchSteer);
-                if (followCamera != null) FollowCarCamera();
             }
+        }
+
+        private void LateUpdate()
+        {
+            // Update reads inputs; LateUpdate tracks Rigidbody interpolation.
+            // Following the car in Update caused visible camera jitter.
+            if (car != null && followCamera != null) FollowCarCamera();
         }
 
         public void SetSteering(float move, float steer)
@@ -231,8 +239,7 @@ namespace Aaris.MapReview
 
         private bool TryExit()
         {
-            if (car == null || car.SpeedMetresPerSecond > 1.1f ||
-                car.SpeedMetresPerSecond < -1.1f ||
+            if (car == null || !car.IsSafeToExit ||
                 !TryFindExit(out Vector3 safeExit)) return false;
             AarisVehicleMotor previous = car;
             previous.ReleaseDriver(this);
@@ -261,31 +268,49 @@ namespace Aaris.MapReview
 
         private void FollowCarCamera()
         {
-            var t = car.transform;
-            Vector3 aim = t.position + Vector3.up * 1.65f;
-            Vector3 goal = t.position - t.forward * 6.7f + Vector3.up * 3.1f;
-            Vector3 delta = goal - aim;
-            float distance = delta.magnitude;
-            if (distance > .01f)
+            if (car == null || followCamera == null) return;
+            var vehicle = car.transform;
+            Vector3 aim = vehicle.position + Vector3.up * 1.65f;
+            Vector3 start = aim + Vector3.up * .85f;
+            Vector3 requested = vehicle.position - vehicle.forward * 6.7f +
+                Vector3.up * 3.1f;
+            Vector3 ray = requested - start;
+            float length = ray.magnitude;
+            Vector3 goal = requested;
+            if (length > .001f)
             {
-                // Start outside the chassis and do not replace the actual
-                // terrain/building collision system with camera teleport.
-                Vector3 start = aim + Vector3.up * 1.3f;
-                Vector3 ray = goal - start;
-                float length = ray.magnitude;
-                if (length > .01f && Physics.SphereCast(start, .22f, ray / length,
-                    out RaycastHit wall, length, Physics.DefaultRaycastLayers,
-                    QueryTriggerInteraction.Ignore))
+                Vector3 direction = ray / length;
+                // SphereCast (single-hit) can hit our own body first and
+                // incorrectly ignore a wall BEHIND it. Scan bounded hits
+                // and choose the closest obstacle not owned by car/player.
+                int count = Physics.SphereCastNonAlloc(new Ray(start, direction),
+                    .22f, cameraObstacles, length, Physics.DefaultRaycastLayers,
+                    QueryTriggerInteraction.Ignore);
+                float nearest = length;
+                if (count >= cameraObstacles.Length)
                 {
-                    if (!wall.collider.transform.IsChildOf(t))
-                        goal = start + ray / length * Mathf.Max(.3f, wall.distance - .2f);
+                    // Fail closed when the nonalloc buffer is saturated:
+                    // prioritize a clear view over clipping through a wall.
+                    nearest = .45f;
                 }
+                else for (int i = 0; i < count; i++)
+                {
+                    var hit = cameraObstacles[i];
+                    if (hit.collider == null ||
+                        hit.collider.transform.IsChildOf(vehicle) ||
+                        hit.collider.transform.IsChildOf(transform))
+                        continue;
+                    nearest = Mathf.Min(nearest, hit.distance);
+                }
+                if (nearest < length)
+                    goal = start + direction * Mathf.Max(.35f, nearest - .24f);
             }
             followCamera.transform.position = Vector3.SmoothDamp(
                 followCamera.transform.position, goal, ref cameraVelocity,
                 .12f, Mathf.Infinity, Mathf.Min(.05f, Time.deltaTime));
-            followCamera.transform.rotation = Quaternion.LookRotation(
-                aim - followCamera.transform.position);
+            Vector3 look = aim - followCamera.transform.position;
+            if (look.sqrMagnitude > .001f)
+                followCamera.transform.rotation = Quaternion.LookRotation(look);
             followCamera.fieldOfView = Mathf.Lerp(followCamera.fieldOfView,
                 65f, 1f - Mathf.Exp(-5f * Time.deltaTime));
         }
