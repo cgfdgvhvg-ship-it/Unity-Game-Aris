@@ -17,6 +17,8 @@ assert 'merge --ff-only' in remote
 assert 'SYNC_WORKTREE_VERIFIED_RAW_IDENTICAL' in remote
 assert 'scrot -o' in remote
 assert 'changed_files_count=' in remote
+assert 'LFS_FAIL_CATEGORY_' in remote
+assert 'lfs.storage' in remote
 assert '/tmp/aaris-unity-runtime/editors' in remote
 assert 'project-cache' in remote
 assert '/tmp/aaris-unity-runtime/editors' in (r/'Tools/Codespaces/install_unity.sh').read_text()
