@@ -19,6 +19,7 @@ import time
 from live_camera_server import validate, STATE
 from ai_world_commands import parse as parse_world, selftest as world_selftest, EDIT_OPS
 from editor_runtime_diagnostics import snapshot as editor_runtime_snapshot
+from terminal_control import parse as parse_terminal, safe_reply as terminal_reply
 
 ISSUE = int(os.getenv("AARIS_CAMERA_ISSUE", "77"))
 REPO = os.getenv("GITHUB_REPOSITORY", "sundamunda289-art/Unity-Game-Aris")
@@ -250,6 +251,21 @@ def process(comment):
                       "the authorized Unity CLI activation process.")
         return "activation-launch-failed"
     body = comment.get("body", "").strip()
+    if body.startswith("TERM"):
+        try:
+            operation = parse_terminal(body)
+            answer = terminal_reply(operation)
+            issue_comment("AARIS_TERMINAL #" + str(comment_id) + "\n" +
+                          "```json\n" + answer + "\n```")
+            return "terminal-replied"
+        except ValueError:
+            issue_comment("AARIS_TERMINAL #" + str(comment_id) +
+                          ": rejected. Use TERM HELP; arbitrary shell is disabled.")
+            return "terminal-rejected"
+        except (OSError, RuntimeError, subprocess.TimeoutExpired) as exc:
+            issue_comment("AARIS_TERMINAL #" + str(comment_id) +
+                          ": diagnostic unavailable (" + type(exc).__name__ + ").")
+            return "terminal-error"
     if body == "MAP_STATUS":
         report = editor_runtime_snapshot()
         issue_comment("AARIS_MAP_STATUS #" + str(comment_id) + "\n" +
@@ -319,6 +335,7 @@ def main():
             else:
                 raise AssertionError("Unsafe camera intent was accepted")
         assert "ACTIVATE_UNITY" != "ACTIVATE_UNITY 15"
+        assert parse_terminal("TERM STATUS") == "STATUS"
         assert parse("CAMERA -420 22 -210 0 20 22")["distance"] == 22
         print("GitHub issue camera and explicit license retry parser selftest: PASS")
         return
