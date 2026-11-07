@@ -177,17 +177,30 @@ namespace Aaris.MapReview
             return false;
         }
 
-        private void OnApplicationPause(bool paused)
+        private void ReleaseAllPointers()
         {
-            if (!paused) return;
+            // On Android a fingerprint can disappear during app switching
+            // without any PointerUp/Cancel from the UI EventSystem.
+            // Otherwise the next touch cannot press these buttons again.
+            foreach (var button in buttons)
+                if (button != null) button.CancelHold();
             if (actions != null) actions.SetFireHeld(false);
             if (player != null) player.SetJumpHeld(false);
         }
 
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused) ReleaseAllPointers();
+        }
+
+        private void OnApplicationFocus(bool focused)
+        {
+            if (!focused) ReleaseAllPointers();
+        }
+
         private void OnDisable()
         {
-            if (actions != null) actions.SetFireHeld(false);
-            if (player != null) player.SetJumpHeld(false);
+            ReleaseAllPointers();
             if (instance == this) instance = null;
         }
     }
