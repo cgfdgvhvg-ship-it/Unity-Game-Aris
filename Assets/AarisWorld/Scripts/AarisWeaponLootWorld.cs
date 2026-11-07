@@ -62,6 +62,7 @@ namespace Aaris.MapReview
         private Transform player;
         private float nextRefresh, requestPickupUntil;
         private int nextDropId = -1;
+        private bool allowInitialAutoPickup = true;
         private uint rng, matchSeed;
         public bool HasPickupInRange { get; private set; }
 
@@ -424,6 +425,9 @@ namespace Aaris.MapReview
                 return false;
             }
             requestPickupUntil = 0f;
+            // A voluntary DROP means the player intends to be unarmed.
+            // Do not automatically equip another floor gun a frame later.
+            allowInitialAutoPickup = false;
             return true;
         }
 
@@ -514,7 +518,8 @@ namespace Aaris.MapReview
             HasPickupInRange = bestPickup != null;
             if (bestPickup != null &&
                 (explicitPickup ||
-                    (!inventory.HasGun && bestPickup.CandidateIndex >= 0)))
+                    (!inventory.HasGun && allowInitialAutoPickup &&
+                        bestPickup.CandidateIndex >= 0)))
             {
                 if (TryTake(bestPickup)) return;
             }
