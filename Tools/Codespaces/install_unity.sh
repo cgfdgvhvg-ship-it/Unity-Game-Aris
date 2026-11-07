@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 VERSION="6000.3.26f1"
-INSTALL_ROOT="/workspaces/.aaris-unity-editors"
+INSTALL_ROOT="/tmp/aaris-unity-runtime/editors"
+# Use the large temporary disk, not the ~10 GiB persistent /workspaces volume.
+FREE_KB="$(df -Pk /tmp | awk 'NR==2{print $4}')"
+if (( FREE_KB < 12000000 )); then echo "UNITY_TMP_DISK_INSUFFICIENT"; exit 7; fi
 mkdir -p "$INSTALL_ROOT" /tmp/aaris-codespaces
 if test -x "$INSTALL_ROOT/$VERSION/Editor/Unity"; then echo 'UNITY_ALREADY_INSTALLED'; exit 0; fi
 # Official Unity Hub Linux apt repository + documented headless Editor installer.
