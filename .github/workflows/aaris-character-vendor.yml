@@ -77,11 +77,14 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'Vendor CC0 male rig and animation FBXs locally in Git LFS'
-          if ! git lfs ls-files | grep -q 'AarisCharacters/Primary/Player.fbx'; then
+          # Under bash pipefail, grep -q may close the pipe early and cause
+          # git-lfs SIGPIPE (141) on repos with thousands of map LFS objects.
+          git lfs ls-files > /tmp/aaris-character-lfs-list.txt
+          if ! grep -F 'AarisCharacters/Primary/Player.fbx' /tmp/aaris-character-lfs-list.txt; then
             echo '::error::Committed male FBX must be in Git LFS.'
             exit 1
           fi
-          git lfs ls-files | grep 'AarisCharacters/Primary'
+          grep -F 'AarisCharacters/Primary' /tmp/aaris-character-lfs-list.txt
           # Another reviewer may have committed C# or documentation while
           # Blender converted the binary assets. Rebase rather than dropping
           # their changes or force-pushing the protected review branch.
