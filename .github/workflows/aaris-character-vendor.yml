@@ -114,9 +114,21 @@ jobs:
           # their changes or force-pushing the protected review branch.
           # Discard only ephemeral, unstaged LFS smudge changes after the
           # targeted character files above have already been committed.
-          git reset --hard HEAD
+          # Git LFS may rehydrate legacy map files during a checkout even
+          # when they were not staged. Disable smudge for this ephemeral
+          # worktree normalization. Never stage or commit map asset changes.
+          git -c filter.lfs.process= -c filter.lfs.smudge= \
+              -c filter.lfs.required=false reset --hard HEAD
+          git -c filter.lfs.process= -c filter.lfs.smudge= \
+              -c filter.lfs.required=false restore --source=HEAD --worktree -- Assets/AarisWorld/Props/
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo '::error::Refusing to rebase with unintended dirty source/map files.'
+            git status --short
+            exit 1
+          fi
           git fetch origin feat/rigged-character-locomotion-20261107
-          git rebase origin/feat/rigged-character-locomotion-20261107
+          git -c filter.lfs.process= -c filter.lfs.smudge= \
+              -c filter.lfs.required=false rebase origin/feat/rigged-character-locomotion-20261107
           git push origin 'HEAD:refs/heads/feat/rigged-character-locomotion-20261107'
       - name: Report vendored payload
         if: always()
