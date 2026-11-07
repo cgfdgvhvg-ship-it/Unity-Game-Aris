@@ -51,6 +51,7 @@ jobs:
           with zipfile.ZipFile(io.BytesIO(archive)) as z:
               if z.testzip() is not None: raise SystemExit('Bad ZIP CRC')
               catalog={pathlib.PurePosixPath(x.filename).name.lower():x for x in z.infolist() if not x.is_dir()}
+              print('KENNEY_AVAILABLE_WHEEL_FBXS',sorted(k for k in catalog if 'wheel' in k and k.endswith('.fbx')),flush=True)
               for name in wanted:
                   key=name+'.fbx'
                   if key not in catalog: raise SystemExit('FBX missing '+key+'; found '+str(sorted(k for k in catalog if k.endswith('.fbx'))))
