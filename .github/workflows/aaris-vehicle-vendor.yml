@@ -30,7 +30,9 @@ jobs:
           req=urllib.request.Request(url,headers={'User-Agent':'Aaris-Game-CC0-Acquisition/1.0'})
           with urllib.request.urlopen(req,timeout=90) as response:
               archive=response.read(5500000)
-          if len(archive)!=4814237 or hashlib.sha256(archive).hexdigest()!=expected:
+          measured=hashlib.sha256(archive).hexdigest()
+          print('Kenney archive verification: actual_bytes=',len(archive),'actual_sha256=',measured,'expected_sha256=',expected)
+          if len(archive)!=4814237 or measured!=expected:
               raise SystemExit('Kenney source ZIP SHA256/size changed; refusing unknown assets')
           wanted=['sedan','suv','sedan-sports','hatchback-sports','van','truck-flat']
           root=pathlib.Path('Assets/Resources/AarisVehicles/Models')
