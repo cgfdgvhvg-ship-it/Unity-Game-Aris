@@ -153,9 +153,17 @@ namespace Aaris.MapReview
             {
                 Collider obstacle = nearHits[i];
                 if (obstacle == null || obstacle.transform.IsChildOf(transform)) continue;
-                // The character rests ON terrain; a ground collider cannot
-                // be treated as a house wall obstructing prone crawling.
+                // The character rests ON terrain or paved bridges/steps.
+                // The horizontal prone footprint must not interpret a flat
+                // MeshCollider floor as a wall when crossing a bridge.
+                // Only ignore real support below the chest; an upright wall,
+                // overhead slab or steeper face still blocks crawling.
                 if (obstacle is TerrainCollider) continue;
+                Ray floorProbe = new Ray(center + Vector3.up * 0.45f, Vector3.down);
+                if (obstacle.Raycast(floorProbe, out RaycastHit floorHit, 1.1f) &&
+                    floorHit.point.y <= center.y - 0.11f &&
+                    floorHit.normal.y >= Mathf.Cos(capsule.slopeLimit * Mathf.Deg2Rad))
+                    continue;
                 return false;
             }
             return true;
