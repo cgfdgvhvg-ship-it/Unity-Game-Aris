@@ -20,6 +20,10 @@ assert 'Unity_auth_vault' not in remote
 controller=(r/'Tools/Codespaces/controller.sh').read_text()
 assert "'CS MACHINES')" in controller
 assert 'REMOTE_CMD=' in controller
+assert "'CS INFO')" in controller
+assert 'gh codespace view -c' in controller
+assert 'gh codespace cp -c' in controller
+assert 'trap \'finish; rm -f' in controller
 termux=(r/'Tools/Codespaces/termux_switch.sh').read_text()
 assert 'gh secret set CODESPACE_PAT' in termux
 assert 'printf ' in termux and '"$CS_TOKEN"' in termux
