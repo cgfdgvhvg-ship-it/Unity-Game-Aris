@@ -59,6 +59,8 @@ namespace Aaris.MapReview
 
         public void OnCancel(BaseEventData eventData) => Release();
 
+        internal void CancelHold() => Release();
+
         private void Release()
         {
             if (heldPointers.Count == 0) return;
