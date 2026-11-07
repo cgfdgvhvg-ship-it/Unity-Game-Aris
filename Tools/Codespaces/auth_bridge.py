@@ -93,7 +93,7 @@ def run(codespace):
     source=path.read_text(encoding="utf-8")
     marker="AARIS_UNITY_PY_EOF_22941"
     if marker in source: return 2
-    shell="python3 -u - <<'"+marker+"'\\n"+source+"\\n"+marker+"\\n"
+    shell="python3 -u - <<'"+marker+"'\n"+source+"\n"+marker+"\n"
     with tempfile.TemporaryFile() as private_stderr:
         p=subprocess.Popen(["gh","codespace","ssh","-c",codespace,"--","bash -s"],
                            stdin=subprocess.PIPE,stdout=subprocess.PIPE,
