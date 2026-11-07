@@ -210,12 +210,13 @@ MAP {"op":"blueprint","target":"ExactRoot/ExactTree","samples":1024}
 MAP {"op":"photo","target":"ExactRoot/ExactHouse"}
 MAP {"op":"move","target":"ExactRoot/ExactTree","x":2,"y":0,"z":-2}
 MAP {"op":"scale","target":"ExactRoot/ExactHouse/Wall","x":1.2,"y":1,"z":1}
+MAP {"op":"tree_nearby","terrain":"Terrain","x":-420,"y":20,"z":-210,"radius":40}
 MAP {"op":"tree_inspect","terrain":"Terrain","index":0}
 MAP {"op":"tree_scale","terrain":"Terrain","index":0,"width":1.2,"height":1}
 MAP_SAVE
 ```
 
-Use `find` first to learn *real* Unity object paths; examples above are
+Use `find` first to learn *real* Unity object paths; for native Terrain trees use `tree_nearby` to discover an actual zero-based index before `tree_inspect` or edits. examples above are
 templates, not a claim that those names exist. The Editor's JSON includes
 bounds, world position, object hierarchy, materials and optional mesh-vertex
 samples. `blueprint` returns a world-space PLY point cloud for external
