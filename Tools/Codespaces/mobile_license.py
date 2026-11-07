@@ -56,6 +56,17 @@ def login(cli,env):
     if check(cli,env,"auth"):
         print("UNITY_AUTH_VERIFIED",flush=True);return True
     print("UNITY_AUTH_NOT_COMPLETED",flush=True);return False
+def find_cli(candidates):
+    # Path.is_file raises PermissionError on some Python/Linux combinations
+    # when the SSH user's inherited HOME points to root-owned directories.
+    for candidate in candidates:
+        try:
+            if candidate.is_file() and os.access(candidate,os.X_OK):
+                return str(candidate)
+        except OSError:
+            continue
+    return shutil.which("unity")
+
 def choose_writable_home():
     # A GitHub Codespace SSH session may report HOME=/root even though the
     # actual SSH user cannot write to that directory. Use passwd's UID home.
@@ -91,7 +102,8 @@ def main():
     if state is None: return 16
     CLI_DIR=state
     candidates=[state/"bin/unity",user_home/".local/bin/unity"]+PATHS
-    cli=next((str(x) for x in candidates if x.is_file() and os.access(x,os.X_OK)),shutil.which("unity"))
+    print("UNITY_CLI_DISCOVERY_START",flush=True)
+    cli=find_cli(candidates)
     if not cli:
         print("UNITY_CLI_BOOTSTRAPPING",flush=True)
         # Unity's current installer installs to ~/.local/bin on Linux, NOT
@@ -120,7 +132,7 @@ def main():
         finally:
             try: script.unlink(missing_ok=True)
             except OSError: pass
-        cli=next((str(x) for x in candidates if x.is_file() and os.access(x,os.X_OK)),shutil.which("unity"))
+        cli=find_cli(candidates)
         if not cli:
             print("UNITY_CLI_BINARY_NOT_FOUND",flush=True);return 11
     print("UNITY_CLI_READY",flush=True)
