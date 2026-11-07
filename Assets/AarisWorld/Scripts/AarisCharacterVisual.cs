@@ -33,6 +33,12 @@ namespace Aaris.MapReview
         private Material runtimeSkin;
         private PlayableGraph graph;
         private AnimationMixerPlayable mixer;
+        private AnimationMixerPlayable weaponUpperMixer;
+        private AnimationLayerMixerPlayable layered;
+        private AvatarMask upperBodyMask;
+        private AnimationClipPlayable readyHoldPlayable;
+        private AarisWeaponInventory weaponInventory;
+        private float readyPoseBlend;
         private bool graphReady;
         private float runBlend;
         private float airborneBlend;
@@ -125,6 +131,7 @@ namespace Aaris.MapReview
             TryApplySkin();
             actions = GetComponent<AarisBattleActions>();
             playerMotor = GetComponent<AarisThirdPersonPlayer>();
+            weaponInventory = GetComponent<AarisWeaponInventory>();
             restingLocalPosition = visual.transform.localPosition;
             restingLocalRotation = visual.transform.localRotation;
             punchArm = animator.GetBoneTransform(HumanBodyBones.RightUpperArm);
@@ -265,7 +272,12 @@ namespace Aaris.MapReview
 
             graph = PlayableGraph.Create("AarisHumanoidLocomotion");
             graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
-            mixer = AnimationMixerPlayable.Create(graph, 11);
+            // The original 11-input full-body mixer allowed rifle shooting
+            // to override leg locomotion. Split nine lower-body-compatible
+            // gait clips from the two upper-body attack clips.
+            mixer = AnimationMixerPlayable.Create(graph, 9);
+            weaponUpperMixer = AnimationMixerPlayable.Create(graph, 3);
+            layered = AnimationLayerMixerPlayable.Create(graph, 2);
             idlePlayable = AnimationClipPlayable.Create(graph, idleClip);
             walkPlayable = AnimationClipPlayable.Create(graph, walkClip);
             runPlayable = AnimationClipPlayable.Create(graph, runClip);
@@ -277,6 +289,13 @@ namespace Aaris.MapReview
             jumpLandPlayable = AnimationClipPlayable.Create(graph, jumpLand);
             punchPlayable = AnimationClipPlayable.Create(graph, punchClip);
             shootPlayable = AnimationClipPlayable.Create(graph, shootClip);
+            // Only the locally vendored Pistol_Shoot action currently exists:
+            // sample its early aiming pose as a modest weapon-ready visual
+            // fallback. A dedicated rifle idle/reload clip is still needed
+            // for true production-quality grip and left-hand support.
+            readyHoldPlayable = AnimationClipPlayable.Create(graph, shootClip);
+            readyHoldPlayable.SetSpeed(0d);
+            readyHoldPlayable.SetTime(shootClip.length * 0.16d);
             // Keep one-shot clips short enough to react promptly to attacks
             // without blending over multiple shots in the same hold.
             punchPlayable.SetSpeed(Mathf.Clamp(punchClip.length / 0.42f, 0.7f, 3.5f));
@@ -293,20 +312,44 @@ namespace Aaris.MapReview
             walkPlayable.SetSpeed(0d);
             runPlayable.SetSpeed(0d);
             crouchWalkPlayable.SetSpeed(0d);
-            var inputs = new[]
+            var baseInputs = new[]
             {
                 idlePlayable, walkPlayable, runPlayable,
                 jumpPlayable, fallPlayable, crouchPlayable,
-                crouchWalkPlayable, jumpStartPlayable, jumpLandPlayable,
-                punchPlayable, shootPlayable
+                crouchWalkPlayable, jumpStartPlayable, jumpLandPlayable
             };
-            for (int i = 0; i < inputs.Length; i++)
+            for (int i = 0; i < baseInputs.Length; i++)
             {
-                graph.Connect(inputs[i], 0, mixer, i);
+                graph.Connect(baseInputs[i], 0, mixer, i);
                 mixer.SetInputWeight(i, i == 0 ? 1f : 0f);
             }
+            graph.Connect(readyHoldPlayable, 0, weaponUpperMixer, 0);
+            graph.Connect(punchPlayable, 0, weaponUpperMixer, 1);
+            graph.Connect(shootPlayable, 0, weaponUpperMixer, 2);
+            weaponUpperMixer.SetInputWeight(0, 1f);
+            weaponUpperMixer.SetInputWeight(1, 0f);
+            weaponUpperMixer.SetInputWeight(2, 0f);
+
+            // Explicitly mask root/legs and ALL foot IK, preserving running
+            // and jumping foot cycles beneath firing/punching upper body.
+            upperBodyMask = new AvatarMask();
+            for (int i = 0; i < (int)AvatarMaskBodyPart.LastBodyPart; i++)
+            {
+                AvatarMaskBodyPart part = (AvatarMaskBodyPart)i;
+                bool active = part == AvatarMaskBodyPart.Body ||
+                    part == AvatarMaskBodyPart.LeftArm ||
+                    part == AvatarMaskBodyPart.RightArm ||
+                    part == AvatarMaskBodyPart.LeftFingers ||
+                    part == AvatarMaskBodyPart.RightFingers;
+                upperBodyMask.SetHumanoidBodyPartActive(part, active);
+            }
+            graph.Connect(mixer, 0, layered, 0);
+            graph.Connect(weaponUpperMixer, 0, layered, 1);
+            layered.SetInputWeight(0, 1f);
+            layered.SetInputWeight(1, 0f);
+            layered.SetLayerMaskFromAvatarMask(1, upperBodyMask);
             var output = AnimationPlayableOutput.Create(graph, "AarisHumanoidOutput", animator);
-            output.SetSourcePlayable(mixer);
+            output.SetSourcePlayable(layered);
             graphReady = true;
             graph.Play();
         }
@@ -322,6 +365,8 @@ namespace Aaris.MapReview
         {
             if (visual == null || controller == null) return;
             if (actions == null) actions = GetComponent<AarisBattleActions>();
+            if (weaponInventory == null && actions != null && actions.IsArmed)
+                weaponInventory = GetComponent<AarisWeaponInventory>();
 
             float dt = Mathf.Min(Time.deltaTime, 0.05f);
             float alpha = 1f - Mathf.Exp(-dt / Mathf.Max(0.04f, blendResponseSeconds));
@@ -404,11 +449,22 @@ namespace Aaris.MapReview
                 // 0.28s window. Their weights must NOT sum above 1.
                 if (startWeight > 0f) landWeight = 0f; // New takeoff wins.
                 float primary = Mathf.Clamp01(startWeight + landWeight);
+                float baseWeight = 1f - primary;
                 if (shootWeight > 0f) punchWeight = 0f;
-                float combat = Mathf.Max(punchWeight, shootWeight) * (1f - primary);
-                punchWeight = punchWeight > 0f ? combat : 0f;
-                shootWeight = shootWeight > 0f ? combat : 0f;
-                float baseWeight = 1f - primary - combat;
+                // Upper body is an independent override layer; firing does
+                // not steal weight from any locomotion/feet clips.
+                float punchUpper = punchWeight * (1f - primary);
+                float shootUpper = shootWeight * (1f - primary);
+                float attackUpper = Mathf.Max(punchUpper, shootUpper);
+                bool carrying = actions != null && actions.IsArmed;
+                bool aim = weaponInventory != null && weaponInventory.Aiming;
+                float carryTarget = !carrying ? 0f : aim ? 0.63f :
+                    horizontal > 5.0f ? 0.15f : 0.36f;
+                if (prone) carryTarget *= 0.6f;
+                readyPoseBlend = Mathf.Lerp(readyPoseBlend, carryTarget, alpha);
+                float layerWeight = Mathf.Clamp01(Mathf.Max(readyPoseBlend, attackUpper));
+                float attackRatio = layerWeight > 0.0001f
+                    ? attackUpper / layerWeight : 0f;
                 mixer.SetInputWeight(0, baseWeight * grounded * (1f - runBlend));
                 mixer.SetInputWeight(1, baseWeight * grounded * runBlend * (1f - walkRunBlend));
                 mixer.SetInputWeight(2, baseWeight * grounded * runBlend * walkRunBlend);
@@ -418,8 +474,12 @@ namespace Aaris.MapReview
                 mixer.SetInputWeight(6, baseWeight * crouchMotion);
                 mixer.SetInputWeight(7, startWeight);
                 mixer.SetInputWeight(8, landWeight);
-                mixer.SetInputWeight(9, punchWeight);
-                mixer.SetInputWeight(10, shootWeight);
+                weaponUpperMixer.SetInputWeight(0, 1f - attackRatio);
+                weaponUpperMixer.SetInputWeight(1,
+                    layerWeight > 0.0001f ? punchUpper / layerWeight : 0f);
+                weaponUpperMixer.SetInputWeight(2,
+                    layerWeight > 0.0001f ? shootUpper / layerWeight : 0f);
+                layered.SetInputWeight(1, layerWeight);
 
                 if (playerMotor != null && takeoffAge >= 0f &&
                     playerMotor.LastJumpStartedTime != seenTakeoff)
@@ -463,6 +523,7 @@ namespace Aaris.MapReview
         private void OnDestroy()
         {
             if (graph.IsValid()) graph.Destroy();
+            if (upperBodyMask != null) Destroy(upperBodyMask);
             if (runtimeSkin != null) Destroy(runtimeSkin);
             if (placeholderRenderers != null)
                 foreach (var renderer in placeholderRenderers)
