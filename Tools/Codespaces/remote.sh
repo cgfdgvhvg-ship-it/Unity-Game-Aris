@@ -4,9 +4,11 @@ set -euo pipefail
 TASK="$1"
 PROJECT="/workspaces/Unity-Game-Aris"
 RUN="/tmp/aaris-codespaces"
-EDITOR="$HOME/.local/share/aaris-unity-editors/6000.3.26f1/Editor/Unity"\nLEGACY_EDITOR="/workspaces/.aaris-unity-editors/6000.3.26f1/Editor/Unity"
+EDITOR="$HOME/.local/share/aaris-unity-editors/6000.3.26f1/Editor/Unity"
+LEGACY_EDITOR="/workspaces/.aaris-unity-editors/6000.3.26f1/Editor/Unity"
 OLD_EDITOR="/tmp/aaris-unity-runtime/editors/6000.3.26f1/Editor/Unity"
-if ! test -x "$EDITOR" && test -x "$LEGACY_EDITOR"; then EDITOR="$LEGACY_EDITOR"; fi\nif ! test -x "$EDITOR" && test -x "$OLD_EDITOR"; then EDITOR="$OLD_EDITOR"; fi
+if ! test -x "$EDITOR" && test -x "$LEGACY_EDITOR"; then EDITOR="$LEGACY_EDITOR"; fi
+if ! test -x "$EDITOR" && test -x "$OLD_EDITOR"; then EDITOR="$OLD_EDITOR"; fi
 mkdir -p "$RUN"
 cd "$PROJECT"
 case "$TASK" in
@@ -14,6 +16,23 @@ case "$TASK" in
     echo 'AARIS_CODESPACE_STATUS'
     printf 'commit=%s\n' "$(git rev-parse --short HEAD)"
     printf 'arch=%s\n' "$(uname -m)"
+    if test -r /etc/os-release; then
+      OS_ID="$(. /etc/os-release && printf '%s' "${ID:-unknown}")"
+      OS_VERSION="$(. /etc/os-release && printf '%s' "${VERSION_ID:-unknown}")"
+      printf 'os_id=%s\n' "$OS_ID"
+      printf 'os_version=%s\n' "$OS_VERSION"
+    fi
+    GLIBC_VERSION="$(getconf GNU_LIBC_VERSION 2>/dev/null | awk '{print $NF}' || true)"
+    if [[ "$GLIBC_VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
+      printf 'glibc=%s\n' "$GLIBC_VERSION"
+    else
+      echo 'glibc=unknown'
+    fi
+    if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+      echo 'docker_ready=yes'
+    else
+      echo 'docker_ready=no'
+    fi
     printf 'cpus=%s\n' "$(nproc)"
     printf 'memory_mb=%s\n' "$(awk '/MemTotal:/ {printf "%.0f", $2/1024}' /proc/meminfo)"
     printf 'workspace_free_kb=%s\n' "$(df -Pk /workspaces | awk 'NR==2{print $4}')"
@@ -223,7 +242,8 @@ PY
     ;;
   license)
     CLI="$HOME/.local/bin/unity"
-    if ! test -x "$CLI"; then CLI="$HOME/.unity/bin/unity"; fi\n    if ! test -x "$CLI"; then CLI="/tmp/aaris-unity-runtime/cli/bin/unity"; fi
+    if ! test -x "$CLI"; then CLI="$HOME/.unity/bin/unity"; fi
+    if ! test -x "$CLI"; then CLI="/tmp/aaris-unity-runtime/cli/bin/unity"; fi
     if test -x "$CLI"; then
       if env UNITY_CLI_HOME="$HOME/.local/share/aaris-unity-cli" "$CLI" license status --format json --non-interactive >/dev/null 2>&1; then
         echo 'UNITY_PERSONAL_OR_SUBSCRIPTION_LICENSE_ACTIVE'
