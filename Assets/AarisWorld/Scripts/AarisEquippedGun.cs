@@ -20,9 +20,9 @@ namespace Aaris.MapReview
         public bool Configured => spec != null;
         public bool Automatic => spec != null && spec.automatic;
         public float SecondsBetweenShots => spec != null ? spec.ShotInterval : 1f;
-        public int Magazine => magazine;
-        public int Reserve => reserve;
-        public bool Reloading => reloading;
+        public int Magazine { get { RefreshReload(); return magazine; } }
+        public int Reserve { get { RefreshReload(); return reserve; } }
+        public bool Reloading { get { RefreshReload(); return reloading; } }
         public string DisplayName => spec != null ? spec.displayName : "Unarmed";
         public float ScopeFov => spec != null ? spec.adsFov : 60f;
         public string ModelResource => spec != null ? spec.modelResource : null;
@@ -44,9 +44,13 @@ namespace Aaris.MapReview
             reloading = false;
         }
 
-        private void Update()
+        private void Update() => RefreshReload();
+
+        // Even an unequipped weapon must complete its reload on schedule.
+        // Unity stops calling Update on inactive inventory slot GameObjects.
+        public void RefreshReload()
         {
-            if (!reloading || Time.time < reloadUntil) return;
+            if (!reloading || spec == null || Time.time < reloadUntil) return;
             int transfer = Mathf.Min(spec.magazineSize - magazine, reserve);
             magazine += transfer;
             reserve -= transfer;
@@ -55,6 +59,7 @@ namespace Aaris.MapReview
 
         public bool BeginReload()
         {
+            RefreshReload();
             if (spec == null || reloading || magazine >= spec.magazineSize || reserve == 0)
                 return false;
             reloadUntil = Time.time + spec.reloadSeconds;
@@ -95,6 +100,7 @@ namespace Aaris.MapReview
 
         public bool TryFire(Camera camera, GameObject owner)
         {
+            RefreshReload();
             if (spec == null || camera == null || owner == null || reloading ||
                 Time.time < nextFire) return false;
             if (magazine <= 0)
