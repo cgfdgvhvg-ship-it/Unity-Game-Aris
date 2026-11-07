@@ -15,7 +15,11 @@ namespace Aaris.MapReview
         private AarisBattleHUD.Action kind;
         private Image background;
         private RectTransform bounds;
-        private int activePointer = int.MinValue;
+        // Fire and Jump are hold actions: multiple fingers may overlap.
+        // The action remains held until the LAST finger releases, unlike
+        // the previous single-pointer implementation that stopped Fire early.
+        private readonly System.Collections.Generic.HashSet<int> heldPointers =
+            new System.Collections.Generic.HashSet<int>();
         private static readonly Color Normal = Color.white;
         private static readonly Color Selected = new Color(0.57f, 0.83f, 1f, 1f);
 
@@ -39,27 +43,26 @@ namespace Aaris.MapReview
 
         public void OnPointerDown(PointerEventData eventData)
         {
-            if (owner == null || activePointer != int.MinValue) return;
-            activePointer = eventData.pointerId;
-            owner.Down(kind);
+            if (owner == null || eventData == null) return;
+            bool isHoldAction = kind == AarisBattleHUD.Action.Fire ||
+                kind == AarisBattleHUD.Action.Jump;
+            if (!isHoldAction && heldPointers.Count > 0) return;
+            if (!heldPointers.Add(eventData.pointerId)) return;
+            if (heldPointers.Count == 1) owner.Down(kind);
         }
 
         public void OnPointerUp(PointerEventData eventData)
         {
-            if (owner == null || activePointer != eventData.pointerId) return;
-            activePointer = int.MinValue;
-            owner.Up(kind);
+            if (eventData == null || !heldPointers.Remove(eventData.pointerId)) return;
+            if (heldPointers.Count == 0 && owner != null) owner.Up(kind);
         }
 
-        public void OnCancel(BaseEventData eventData)
-        {
-            Release();
-        }
+        public void OnCancel(BaseEventData eventData) => Release();
 
         private void Release()
         {
-            if (activePointer == int.MinValue) return;
-            activePointer = int.MinValue;
+            if (heldPointers.Count == 0) return;
+            heldPointers.Clear();
             if (owner != null) owner.Up(kind);
         }
 
