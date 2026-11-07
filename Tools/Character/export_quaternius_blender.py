@@ -87,11 +87,16 @@ def choose_actions(actions):
         "idle": ("idle", "breathing"),
         "walk": ("walk",),
         "run": ("sprint", "jog", "run"),
-        "jump": ("jump",),
-        "fall": ("fall",),
-        "strafe_left": ("strafe left", "strafe_left", "left strafe"),
-        "strafe_right": ("strafe right", "strafe_right", "right strafe"),
-        "crouch": ("crouch idle", "crouch_idle"),
+        # The pinned library includes three distinct jump phases.
+        # The previous broad "jump" match incorrectly exported Jump_Land
+        # as the airborne clip: explicitly select the right actions.
+        "jump": ("jump_loop",),
+        "jump_start": ("jump_start",),
+        "jump_land": ("jump_land",),
+        "crouch": ("crouch_idle",),
+        "crouch_walk": ("crouch_fwd",),
+        "punch": ("punch_jab",),
+        "shoot": ("pistol_shoot",),
     }
     matches = {}
     for canonical, keywords in rules.items():
@@ -104,7 +109,8 @@ def choose_actions(actions):
                                                len(a.name)))
                 matches[canonical] = candidates[0]
                 break
-    for required in ("idle", "walk", "run", "jump"):
+    for required in ("idle", "walk", "run", "jump", "jump_start",
+                     "jump_land", "crouch", "crouch_walk", "punch", "shoot"):
         if required not in matches:
             raise RuntimeError("Missing required animation action '" + required +
                                "': " + ", ".join(sorted(a.name for a in actions)[:100]))
