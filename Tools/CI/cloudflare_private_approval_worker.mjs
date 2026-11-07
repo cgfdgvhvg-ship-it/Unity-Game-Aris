@@ -70,7 +70,7 @@ export default {
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
     if (request.method === "GET" && path === "/health") return response(200, {healthy: true, private_link_retrieval: "Cloudflare account API only"});
-    if (request.method !== "POST" || path !== "/publish") return response(404, {error:"not_found"});
+    if (request.method !== "POST" || !["/publish", "/probe"].includes(path)) return response(404, {error:"not_found"});
     // No GET API for the stored URL. Only the account's KV admin API can read it.
     const header = request.headers.get("Authorization") || "";
     if (!header.startsWith("Bearer ")) return response(401, {error: "authentication_required"});
@@ -78,6 +78,7 @@ export default {
     let claims;
     try { claims = await verifyGithubOidc(header.slice(7)); }
     catch (_) { return response(403, {error: "github_workflow_identity_rejected"}); }
+    if (path === "/probe") return response(200, {accepted:true,run_id:String(claims.run_id)});
     let body;
     try { body = await request.json(); } catch (_) { return response(400, {error:"bad_json"}); }
     if (!body || typeof body !== "object" || String(body.run_id) !== String(claims.run_id)
