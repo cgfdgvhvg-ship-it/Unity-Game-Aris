@@ -75,3 +75,38 @@ https://docs.unity.com/en-us/engine/6000.3/manual/packages-list/packages-all/pac
 
 All changes and evidence are retained in:
 https://github.com/sundamunda289-art/Unity-Game-Aris/pull/92
+
+
+## Additional release-candidate audit before user-requested merge
+
+The following source-level issues were found after the original PR #92 review:
+
+- **Broken-clip fallback/T-pose:** If the source FBX had a valid human avatar
+  but missing/misimported animation clips, the runtime would hide the old
+  primitive body *before* confirming its new Playables graph. It now keeps
+  the original working model visible on incomplete imports and never passes
+  a null Jump_Start or Jump_Land clip into the graph.
+- **Low-cover gun exploit:** The old muzzle ray started at standing chest
+  height even when prone/crouched. The muzzle now uses the stance's camera
+  eye height minus 0.15 m, with the existing cover occlusion check intact.
+- **Mobile focus-loss dead controls:** The HUD previously cleared only the
+  gameplay fire/jump bools on pause, leaving each UI button's held pointer
+  ID set. Returning to the Android app could leave controls unresponsive.
+  Both game state and *all* stored pointer IDs are now cleared on pause,
+  focus loss and HUD disable.
+- **Prone on stairs/bridges:** The horizontal body overlap could misclassify
+  supporting mesh floors as walls, preventing legitimate crawling. A downward
+  ray checks for upward-facing support below the chest; real steep walls and
+  ceilings remain blocking.
+- **Traversal constraints:** Original native `AarisPlayer.prefab` has
+  `stepOffset=0.30m`, `slopeLimit=46°`, capsule height 1.78m and radius 0.28m.
+  Stepping up obstacles within the offset is the stock Unity
+  CharacterController behavior; taller objects require a manual jump.
+  **Mantling high ledges, climbing ladders, parkour and prone IK remain
+  unimplemented** and must not be advertised as tested features.
+
+All of these are protected by the updated
+`Tools/Validation/check_battle_hardening.py` contract audit. This is source
+and simulation QA only. The user has **explicitly requested merging to main**,
+but the change remains unverified in a real licensed Unity 6000.3.26f1 Editor.
+The first Unity compile/Play-mode or APK run may reveal integration issues.
