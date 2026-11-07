@@ -40,6 +40,7 @@ namespace Aaris.MapReview
         public Quaternion rotation;
         public AarisVehicleMotor visible;
         public float nextProbe;
+        public bool previouslySpawned;
     }
 
     /// <summary>
@@ -262,28 +263,33 @@ namespace Aaris.MapReview
         {
             spot = default(Vector3);
             var p = record.point;
-            var terrain = TerrainAt(p.x, p.z);
+            // A driven vehicle can be parked miles away from its original
+            // marker. Never teleport it back when its physics mesh streams in.
+            float x = record.previouslySpawned ? record.position.x : p.x;
+            float z = record.previouslySpawned ? record.position.z : p.z;
+            var terrain = TerrainAt(x, z);
             if (terrain == null) return false;
             float ground = terrain.transform.position.y +
-                terrain.SampleHeight(new Vector3(p.x, 0f, p.z));
+                terrain.SampleHeight(new Vector3(x, 0f, z));
+            float expectedY = record.previouslySpawned ? record.position.y - .71f : p.y;
             // Ground map author stores garage Y and road Y; use sampled
             // Terrain only as a sanity check, not as a rooftop substitute.
-            if (Mathf.Abs(ground - p.y) > 2.5f) return false;
-            if (!HasSupport(new Vector3(p.x, 0f, p.z), p.y, out float y))
+            if (Mathf.Abs(ground - expectedY) > 2.5f) return false;
+            if (!HasSupport(new Vector3(x, 0f, z), expectedY, out float y))
                 return false;
-            Quaternion angle = Quaternion.Euler(0f, p.yaw, 0f);
+            Quaternion angle = record.rotation;
             var forward = angle * Vector3.forward * 1.42f;
             var right = angle * Vector3.right * .79f;
             foreach (var delta in new[] { forward + right, forward - right,
                 -forward + right, -forward - right })
             {
-                var check = new Vector3(p.x + delta.x, 0f, p.z + delta.z);
+                var check = new Vector3(x + delta.x, 0f, z + delta.z);
                 if (!HasSupport(check, y, out float localY) ||
                     Mathf.Abs(localY - y) > .37f) return false;
             }
             // Clearance is above the supporting ground so TerrainCollider
             // will not be counted as a vehicle-sized wall.
-            Vector3 center = new Vector3(p.x, y + 1.15f, p.z);
+            Vector3 center = new Vector3(x, y + 1.15f, z);
             int count = Physics.OverlapBoxNonAlloc(center,
                 new Vector3(1.14f, .64f, 2.35f), collisionHits, angle,
                 Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
@@ -297,7 +303,7 @@ namespace Aaris.MapReview
                 // full chassis volume is an unsafe parking location.
                 return false;
             }
-            spot = new Vector3(p.x, y + .71f, p.z);
+            spot = new Vector3(x, y + .71f, z);
             return true;
         }
 
@@ -374,6 +380,7 @@ namespace Aaris.MapReview
                     active++;
                     built++;
                     record.position = pos;
+                    record.previouslySpawned = true;
                 }
                 else
                 {
