@@ -49,6 +49,41 @@ def audit() -> None:
     assert "count == nearHits.Length" in state
     assert "muzzleHit" in gun
 
+    # Android may drop a pointer without PointerUp on app pause, focus loss
+    # or orientation changes. Reset the underlying identifier set, not just
+    # the public fireHeld Boolean.
+    assert "internal void CancelHold() => Release();" in button
+    assert "private void ReleaseAllPointers()" in ui
+    assert "button.CancelHold()" in ui
+    assert "if (!focused) ReleaseAllPointers();" in ui
+
+    # Missing Humanoid motion must NOT silently hide the reliable saved
+    # player body and turn it into an unanimated FBX T-pose.
+    assert "if (!graphReady)" in visual
+    assert "Destroy(visual);" in visual
+    assert "if (jumpStart == null) jumpStart = jump;" in visual
+    assert "if (jumpLand == null) jumpLand = jump;" in visual
+
+    # A crouched/prone bullet must leave the actor's actual eye-height,
+    # not a standing muzzle that could see through low cover.
+    assert "actions.CameraEyeHeight - 0.15f" in gun
+    assert "SameDamageTarget" in gun and "TryFirstOtherHit" in gun
+
+    # Lying flat on stairs and bridge meshes must not be blocked because a
+    # supporting floor shares an overlap region with the horizontal body.
+    assert "obstacle.Raycast(floorProbe" in state
+    assert "floorHit.normal.y >= Mathf.Cos(capsule.slopeLimit" in state
+
+    # The saved physical controller (not a visual pose) is responsible for
+    # climbing steps or traversing slopes. Larger ledges need manual jump;
+    # this does not claim mantle/vault behaviour is implemented.
+    prefab = (ROOT / "Assets/AarisWorld/Player/AarisPlayer.prefab").read_text("utf-8")
+    assert "m_StepOffset: 0.3" in prefab, "Native 30cm step traversal was altered"
+    assert "m_SlopeLimit: 46" in prefab, "Native 46-degree slope limit was altered"
+    assert "m_Height: 1.78" in prefab and "m_Radius: 0.28" in prefab
+    assert "SafeFooting(candidate)" in motor
+    assert "CanAdvanceProne(candidate, horizontalVelocity)" in motor
+
     # 10–120 FPS: the controller must integrate a full second at common
     # mobile rates even when Unity frames are slower than 20 FPS.
     for fps in (10, 15, 20, 30, 60, 90, 120):
