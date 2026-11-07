@@ -15,7 +15,6 @@ on:
       - 'Tools/Validation/check_battle_hardening.py'
       - 'Tools/Validation/check_weapon_loot.py'
       - 'Tools/Validation/check_single_weapon_transactions.py'
-      - 'Tools/Validation/check_single_weapon_transactions.py'
       - 'Tools/Weapons/bake_loot.py'
       - 'Assets/Resources/AarisWeapons/**'
       - 'Tools/Validation/check_mobile_review.py'
@@ -60,8 +59,7 @@ jobs:
         run: python Tools/Validation/check_weapon_loot.py
       - name: Simulate 10000 one-gun pickup, drop and exchange transactions
         run: python Tools/Validation/check_single_weapon_transactions.py
-      - name: Check 10000 single-gun pickup, swap, drop and ammo conservation cases
-        run: python Tools/Validation/check_single_weapon_transactions.py
+
       - name: Check painted road geometry across paved triangle boundaries
         run: python Tools/Validation/check_road_markings.py
       - name: Check core building prefabs, world proportions and daylight
