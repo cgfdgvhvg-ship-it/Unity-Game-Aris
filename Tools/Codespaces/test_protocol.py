@@ -38,6 +38,9 @@ assert 'SYNC_WORKTREE_VERIFIED_RAW_IDENTICAL' in remote
 assert 'scrot -o' in remote
 assert 'glibc=%s' in remote
 assert 'docker_ready=yes' in remote
+assert 'AARIS_CODESPACE_SAFE_PREFLIGHT' in remote
+assert 'ubuntu_devcontainer_config=yes' in remote
+assert "'CS PREFLIGHT')" in (r/'Tools/Codespaces/controller.sh').read_text()
 assert 'os_version=%s' in remote
 assert 'LEGACY_EDITOR=' in remote
 assert '\\nLEGACY_EDITOR=' not in remote
