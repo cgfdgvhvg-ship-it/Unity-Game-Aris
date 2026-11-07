@@ -107,3 +107,6 @@ Owner-only command `CS FRESH` creates a *second* Codespace with display name `aa
 
 ### SSH reliability after Ubuntu Codespace recreation
 The custom Ubuntu 22.04 devcontainer explicitly includes GitHub's documented `ghcr.io/devcontainers/features/sshd:1` Feature. GitHub CLI `gh codespace ssh` requires a running SSH server in custom images; installing `openssh-server` without starting it is not sufficient. This feature applies when creating a new Codespace or rebuilding a container with the updated devcontainer configuration. Do not remove or reset existing map and LFS worktrees to apply it.
+
+### Select fresh SSH-ready Ubuntu Codespace
+After the official `ghcr.io/devcontainers/features/sshd:1` configuration is merged, the repository owner can post `CS FRESH SSH` to Issue #77. It creates `aaris-ai-unity-ssh` with 4 CPUs, 16GB RAM, an explicit Ubuntu 22.04 devcontainer, and 240-minute idle timeout. The existing Alpine and earlier Ubuntu Codespaces and their `/workspaces` data are preserved. Only the earlier nonfunctional fresh machine is stopped to avoid concurrent CPU use; it is never deleted. Once created, subsequent `CS STATUS`, `CS AUTH` and `CS LFS` select the SSH-ready machine. This creates additional Codespaces storage usage until old ones are manually deleted.
