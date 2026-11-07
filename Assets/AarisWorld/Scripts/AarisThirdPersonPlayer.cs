@@ -291,6 +291,7 @@ namespace Aaris.MapReview
             bool jumpingHeld = jumpButtonHeld || Input.GetKey(KeyCode.Space);
             float gravityMultiplier = verticalVelocity > 0f && !jumpingHeld
                 ? earlyJumpReleaseGravity : 1f;
+            float previousVerticalVelocity = verticalVelocity;
             verticalVelocity = Mathf.Max(verticalVelocity - gravity * gravityMultiplier * dt, -40f);
 
             // A short support sweep reduces floating when downhill terrain
@@ -311,8 +312,12 @@ namespace Aaris.MapReview
                 }
             }
 
+            // Trapezoidal displacement integration yields the same jump
+            // apex at 10, 30 and 120 FPS under constant acceleration,
+            // unlike end-velocity Euler which lost ~1/3 jump height at 10 FPS.
+            float verticalStepSpeed = (previousVerticalVelocity + verticalVelocity) * 0.5f;
             CollisionFlags flags = controller.Move(
-                (horizontalVelocity + Vector3.up * verticalVelocity) * dt);
+                (horizontalVelocity + Vector3.up * verticalStepSpeed) * dt);
             if ((flags & CollisionFlags.Above) != 0 && verticalVelocity > 0f)
                 verticalVelocity = 0f;
             if ((flags & CollisionFlags.Below) != 0)
