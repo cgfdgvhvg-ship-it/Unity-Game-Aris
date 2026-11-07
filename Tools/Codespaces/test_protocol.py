@@ -24,3 +24,53 @@ termux=(r/'Tools/Codespaces/termux_switch.sh').read_text()
 assert 'gh secret set CODESPACE_PAT' in termux
 assert 'printf ' in termux and '"$CS_TOKEN"' in termux
 print('CODESPACE_PROTOCOL_SELFTEST_PASS')
+
+
+# Smoke-test the real controller with a mocked GitHub CLI; no external token or paid VM.
+import os
+import subprocess
+import tempfile
+with tempfile.TemporaryDirectory() as tmp:
+    working=Path(tmp)
+    bindir=working/'bin'
+    bindir.mkdir()
+    mock=bindir/'gh'
+    mock.write_text("""#!/usr/bin/env bash
+set -e
+case "$1" in
+  api)
+    if [[ "$2" == */machines ]]; then
+      if [[ "$3" == "--jq" ]]; then printf 'standardLinux32gb\\t4\\t16\\n'; else
+        printf '{"machines":[{"name":"standardLinux32gb","cpus":4,"memory_in_bytes":17179869184}]}\\n'; fi
+    else exit 9; fi ;;
+  codespace)
+    case "$2" in
+      list) echo '[]' ;;
+      create) echo 'mock-codespace' ;;
+      *) exit 9 ;;
+    esac ;;
+  *) exit 9 ;;
+esac
+""")
+    mock.chmod(0o700)
+    env={**os.environ,
+         'PATH':str(bindir)+os.pathsep+os.environ['PATH'],
+         'GITHUB_WORKSPACE':str(working),
+         'GITHUB_REPOSITORY':'sundamunda289-art/Unity-Game-Aris',
+         'GH_TOKEN':'mock-not-real',
+         'ISSUE_COMMAND':'',
+         'REQUEST_MACHINE':'',
+         'REQUEST_OPERATION':'machines'}
+    controller=str(r/'Tools/Codespaces/controller.sh')
+    run=subprocess.run(['bash',controller],env=env,capture_output=True,text=True)
+    assert run.returncode==0,run.stderr
+    result=json.loads((working/'codespace-results/result.json').read_text())
+    assert result['status']=='SUCCESS' and result['operation']=='machines'
+    text=(working/'codespace-results/terminal.txt').read_text()
+    assert 'standardLinux32gb' in text
+    env['REQUEST_OPERATION']='start'
+    run=subprocess.run(['bash',controller],env=env,capture_output=True,text=True)
+    assert run.returncode==0,run.stderr
+    result=json.loads((working/'codespace-results/result.json').read_text())
+    assert result['status']=='SUCCESS' and result['codespace']=='mock-codespace'
+print('CODESPACE_CONTROLLER_MOCK_PASS')
