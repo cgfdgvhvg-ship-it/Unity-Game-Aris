@@ -112,7 +112,9 @@ def main() -> int:
             if not (OUT / "Player.fbx").is_file() or (OUT / "Player.fbx").stat().st_size < 6000:
                 raise RuntimeError("Blender did not export a valid male FBX")
             found_clips = [x.stem for x in (OUT / "Animations").glob("*.fbx")]
-            if not {"idle", "walk", "run", "jump"} <= set(found_clips):
+            required = {"idle", "walk", "run", "jump", "jump_start", "jump_land",
+                        "crouch", "crouch_walk", "punch", "shoot"}
+            if not required <= set(found_clips):
                 raise RuntimeError("Required humanoid motion clips missing: " + repr(found_clips))
             for path, description in LICENSE_FILES.items():
                 source = args.asset_cache / path if args.asset_cache else None
