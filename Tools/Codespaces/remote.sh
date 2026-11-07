@@ -23,6 +23,24 @@ case "$TASK" in
       echo 'scene=lfs_pointer'
     else echo 'scene=hydrated_or_missing'; fi
     ;;
+  changes)
+    # Read-only filenames; never expose diff contents or files outside normal project paths.
+    python3 - <<'PY'
+import subprocess
+r=subprocess.run(['git','status','--porcelain=v1','--untracked-files=no','-z'],stdout=subprocess.PIPE,check=True)
+entries=r.stdout.decode('utf-8','replace').split(chr(0))
+files=[]
+for entry in entries:
+    if len(entry)>=4 and entry[:2].strip():
+        path=entry[3:]
+        if path and path.startswith(('Assets/','Docs/','Tools/','Packages/','ProjectSettings/','.github/')):
+            files.append(path)
+print('changed_files_count='+str(len(files)))
+for path in sorted(files)[:70]:
+    if all(c.isalnum() or c in ' /._-()' for c in path):
+        print('change='+path)
+PY
+    ;;
   sync)
     # Never discard unsaved world edits or reset source files.
     if test -n "$(git status --porcelain --untracked-files=no)"; then echo 'SYNC_BLOCKED_DIRTY'; exit 8; fi
