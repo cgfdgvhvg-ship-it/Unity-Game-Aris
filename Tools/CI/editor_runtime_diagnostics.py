@@ -105,12 +105,24 @@ def snapshot():
     stage = license_status.get("state")
     if stage not in safe_states:
         stage = "unavailable"
+    # Public issue diagnostic: expose only a code produced from a fixed list.
+    failure_code = license_status.get("failure_code")
+    safe_codes = {
+        "unity_browser_signin_timeout", "unity_browser_signin_failed",
+        "unity_personal_license_refused", "unity_cli_download_failed",
+        "unity_cli_install_failed", "unity_cli_binary_missing",
+        "unity_editor_binary_missing", "unity_scene_lfs_not_downloaded",
+        "unity_editor_exited", "unity_license_secret_invalid",
+        "unity_failure_unclassified",
+    }
+    failure_code = failure_code if failure_code in safe_codes else None
     is_editor = bool(beat_recent or camera or world)
     logs = read_log_signatures()
     return {
         "schema": 1,
         "run_id": os.getenv("GITHUB_RUN_ID", "") if os.getenv("GITHUB_RUN_ID", "").isdigit() else "",
         "stage": stage,
+        "license_failure_code": failure_code,
         "unity_container_running": docker["running"],
         "unity_container_oom_killed": docker["oom_killed"],
         "editor_process_detected": docker["editor_process_detected"],
