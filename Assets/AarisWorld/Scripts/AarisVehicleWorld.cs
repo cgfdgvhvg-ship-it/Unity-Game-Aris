@@ -66,6 +66,7 @@ namespace Aaris.MapReview
         private AarisVehicleType[] vehicleTypes;
         private GameObject[] prefabs;
         private int validModels;
+        private Material paletteMaterial;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Boot()
@@ -133,6 +134,18 @@ namespace Aaris.MapReview
                 Debug.LogError("Aaris vehicles: not all required local CC0 3D vehicles imported; fail closed.");
                 return false;
             }
+            Texture2D palette = Resources.Load<Texture2D>("AarisVehicles/Models/colormap");
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+            if (shader == null || palette == null)
+            {
+                Debug.LogError("Aaris vehicles: verified URP palette/shader missing, refusing white or pink placeholder cars.");
+                return false;
+            }
+            paletteMaterial = new Material(shader) { name = "Aaris CC0 Kenney Car Palette" };
+            paletteMaterial.SetTexture("_BaseMap", palette);
+            paletteMaterial.SetColor("_BaseColor", Color.white);
+            paletteMaterial.SetFloat("_Metallic", .08f);
+            paletteMaterial.SetFloat("_Smoothness", .35f);
 
             // Stable per-match plan. A multiplayer server can later provide
             // this seed to clients; local standalone has no server authority.
@@ -326,6 +339,16 @@ namespace Aaris.MapReview
                 collider.enabled = false;
             var renderers = mesh.GetComponentsInChildren<Renderer>(true);
             if (renderers.Length == 0) { Destroy(root); return false; }
+            // Kenney Car Kit uses one UV palette atlas. Share ONE URP Lit
+            // material across streamed instances; never instantiate new
+            // materials per car/per frame.
+            foreach (var renderer in renderers)
+            {
+                int submeshes = Mathf.Max(1, renderer.sharedMaterials.Length);
+                Material[] materials = new Material[submeshes];
+                for (int i = 0; i < submeshes; i++) materials[i] = paletteMaterial;
+                renderer.sharedMaterials = materials;
+            }
             Bounds bounds = renderers[0].bounds;
             foreach (var renderer in renderers) bounds.Encapsulate(renderer.bounds);
             if (bounds.size.x > bounds.size.z * 1.1f)
@@ -387,6 +410,11 @@ namespace Aaris.MapReview
                     record.nextProbe = Time.unscaledTime + 3.0f;
                 }
             }
+        }
+
+        private void OnDestroy()
+        {
+            if (paletteMaterial != null) Destroy(paletteMaterial);
         }
 
         public AarisVehicleMotor NearestAvailable(Vector3 origin, float maxDistance)
