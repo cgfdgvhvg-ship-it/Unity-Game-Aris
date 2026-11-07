@@ -16,7 +16,8 @@ namespace Aaris.MapReview.Editor
             string[] models =
             {
                 "sedan", "suv", "sedan-sports",
-                "hatchback-sports", "van", "truck-flat"
+                "hatchback-sports", "van", "truck-flat",
+                "wheel-default", "wheel-racing", "wheel-truck"
             };
             foreach (string name in models)
             {
@@ -60,9 +61,9 @@ namespace Aaris.MapReview.Editor
                 if (script == null || script.GetClass() == null)
                     throw new InvalidOperationException("C# script compilation missing: " + path);
             }
-            Debug.Log("AARIS_VEHICLE_UNITY_IMPORT_PASS: 6 real local car models, palette, " +
+            Debug.Log("AARIS_VEHICLE_UNITY_IMPORT_PASS: 6 real car and 3 wheel FBX models, palette, " +
                 "4 scripts, 45 author markers + 33 roadside candidates.");
-            Debug.LogWarning("VISUAL_QA_PENDING: wheel positions, animated wheels, road driving, " +
+            Debug.LogWarning("VISUAL_QA_PENDING: visual wheel axis/offsets, road driving, " +
                 "collision, camera, grip, terrain gradients and Android touch/FPS need Play mode.");
         }
     }
