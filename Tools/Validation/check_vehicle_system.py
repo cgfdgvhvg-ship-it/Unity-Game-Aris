@@ -76,6 +76,9 @@ def test():
         assert p.with_name(p.name+".meta").exists(),("stable GUID missing",n)
     palette=RES/"Models/colormap.png"
     assert palette.exists() and palette.read_bytes().startswith(bytes((137,80,78,71,13,10,26,10)))
+    # Unity .meta files are NOT ordinary imported assets: an earlier
+    # asset-vendor loop accidentally made .meta.meta and .meta.meta.meta.
+    assert not list(RES.rglob("*.meta.meta*")), "recursive .meta metadata found"
     assert (RES/"KENNEY_LICENSE.txt").exists()
     license_text=(RES/"KENNEY_LICENSE.txt").read_text(errors="ignore").lower()
     assert any(x in license_text for x in ["cc0","public domain","creativecommons.org/publicdomain"])
@@ -98,6 +101,9 @@ def test():
     assert "MaximumNearbyVehicles = 10" in world
     assert "Physics.OverlapBoxNonAlloc" in world
     assert "Physics.RaycastNonAlloc" in world
+    assert "float ground = terrain.SampleHeight(" in world
+    assert "terrain.transform.position.y +" not in world
+    assert "Terrain.SampleHeight already returns a WORLD-SPACE Y." in world
     assert "record.previouslySpawned" in world and "record.rotation" in world
     assert "record.visible.CanPark" in world and "record.visible.IsOccupied" in world
     assert "Resources.Load<GameObject>(item.modelResource)" in world
@@ -126,6 +132,13 @@ def test():
     assert "footMotor.enabled = false;" in session and "capsule.enabled = false;" in session
     assert "capsule.enabled = true;" in session and "footMotor.enabled = true;" in session
     assert "TryFindExit(out Vector3 safeExit)" in session
+    assert "Physics.RaycastNonAlloc(" in session
+    assert "hit.collider.transform.IsChildOf(nearbyCar.transform)" in session
+    assert "Mathf.Abs(hit.point.y - (option.y - .71f)) > 1.5f" in session
+    assert "if (actions != null) actions.enabled = false;" in session
+    assert "if (inventory != null) inventory.enabled = false;" in session
+    assert "if (lootWorld != null) lootWorld.enabled = false;" in session
+    assert "if (inventory != null) inventory.enabled = previousInventoryActive;" in session
     assert "Physics.OverlapCapsuleNonAlloc" in session
     assert "SetFootHudVisible(false)" in session and "SetFootHudVisible(true)" in session
     assert "battleHud.CancelVehicleInputs();" in session
