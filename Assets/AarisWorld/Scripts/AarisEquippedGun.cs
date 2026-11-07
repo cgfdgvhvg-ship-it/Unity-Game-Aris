@@ -16,45 +16,72 @@ namespace Aaris.MapReview
 
         public float SecondsBetweenShots => secondsBetweenShots;
 
+        /// <summary>
+        /// Report the nearest external hit (not only a hit on another layer).
+        /// Players and enemies can share the Player layer; only objects
+        /// parented beneath the *shooting actor* are excluded. The nonalloc
+        /// buffer fails closed when saturated, instead of picking a random
+        /// farther object in a forest or crowded battle.
+        /// </summary>
+        private bool TryFirstOtherHit(Ray ray, float range, Transform owner,
+            out RaycastHit closest, out bool saturated)
+        {
+            closest = default(RaycastHit);
+            int count = Physics.RaycastNonAlloc(ray, hits, range,
+                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            saturated = count >= hits.Length;
+            if (saturated) return false;
+            int best = -1;
+            float distance = float.PositiveInfinity;
+            for (int i = 0; i < count; i++)
+            {
+                Collider collider = hits[i].collider;
+                if (collider == null || collider.transform.IsChildOf(owner)) continue;
+                if (hits[i].distance >= distance) continue;
+                distance = hits[i].distance;
+                best = i;
+            }
+            if (best < 0) return false;
+            closest = hits[best];
+            return true;
+        }
+
+        private static bool SameDamageTarget(Collider a, Collider b)
+        {
+            if (a == null || b == null) return false;
+            if (a == b) return true;
+            if (a.attachedRigidbody != null && a.attachedRigidbody == b.attachedRigidbody)
+                return true;
+            return a.transform.IsChildOf(b.transform) ||
+                b.transform.IsChildOf(a.transform);
+        }
+
         public bool TryFire(Camera camera, GameObject owner)
         {
             if (camera == null || owner == null) return false;
-            Ray ray = camera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-            int mask = Physics.DefaultRaycastLayers & ~(1 << owner.layer);
-            int count = Physics.RaycastNonAlloc(ray, hits, maxRangeMetres, mask,
-                QueryTriggerInteraction.Ignore);
-            // A saturated unsorted query cannot reliably identify the first
-            // wall or opponent; fail closed instead of shooting through cover.
-            if (count >= hits.Length) return false;
-            int bestIndex = -1;
-            float bestDistance = float.PositiveInfinity;
-            for (int i = 0; i < count; i++)
-            {
-                if (hits[i].collider == null || hits[i].collider.transform.IsChildOf(owner.transform))
-                    continue;
-                if (hits[i].distance < bestDistance)
-                {
-                    bestDistance = hits[i].distance;
-                    bestIndex = i;
-                }
-            }
-            Vector3 intended = bestIndex >= 0
-                ? hits[bestIndex].point
-                : ray.GetPoint(maxRangeMetres);
-            // The camera is offset behind a shoulder. Prevent a target seen
-            // by the camera from being hit through a solid wall near the body.
+            Ray cameraRay = camera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+            bool hasTarget = TryFirstOtherHit(cameraRay, maxRangeMetres,
+                owner.transform, out RaycastHit target, out bool saturated);
+            if (saturated) return false;
+
+            Vector3 destination = hasTarget ? target.point : cameraRay.GetPoint(maxRangeMetres);
+            // Crosshair uses camera aim but the physical muzzle must also
+            // see the target; never hit somebody behind a nearby solid wall.
             Vector3 muzzle = owner.transform.position +
                 Vector3.up * 1.3f + owner.transform.forward * 0.24f;
-            Vector3 path = intended - muzzle;
-            float pathLength = path.magnitude;
-            if (pathLength > 0.025f &&
-                Physics.Raycast(muzzle, path / pathLength, out RaycastHit muzzleHit,
-                    pathLength, mask, QueryTriggerInteraction.Ignore))
+            Vector3 segment = destination - muzzle;
+            float length = segment.magnitude;
+            if (length > 0.025f)
             {
-                if (bestIndex < 0 || muzzleHit.collider != hits[bestIndex].collider)
-                    return true; // The wall catches this shot; no damage behind it.
+                bool hasMuzzleHit = TryFirstOtherHit(
+                    new Ray(muzzle, segment / length), length,
+                    owner.transform, out RaycastHit muzzleHit, out saturated);
+                if (saturated) return false;
+                if (hasMuzzleHit &&
+                    (!hasTarget || !SameDamageTarget(target.collider, muzzleHit.collider)))
+                    return true; // Bullet stopped by intervening cover.
             }
-            if (bestIndex >= 0) ApplyDamage(hits[bestIndex].collider, damage, owner);
+            if (hasTarget) ApplyDamage(target.collider, damage, owner);
             return true;
         }
 
