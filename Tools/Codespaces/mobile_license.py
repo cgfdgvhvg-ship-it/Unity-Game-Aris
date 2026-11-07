@@ -3,7 +3,7 @@
 import os, sys, re, time, queue, threading, subprocess, shutil
 from pathlib import Path
 from urllib.parse import urlsplit
-CLI_DIR=Path("/workspaces/.aaris-unity-cli")
+CLI_DIR=Path.home()/".local/share/aaris-unity-cli"
 PATHS=[CLI_DIR/"bin/unity",
        Path.home()/".local/bin/unity", Path.home()/".unity/bin/unity",
        Path("/tmp/aaris-unity-runtime/cli/bin/unity"),
