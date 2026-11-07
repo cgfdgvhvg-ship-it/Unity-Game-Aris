@@ -186,3 +186,34 @@ TERM ALL
 - CI regression test: `python3 Tools/CI/terminal_control.py --selftest`.
   `TERM` commands are supported only in sessions created *after* the changes
   are merged; an already running runner uses its old checked-out code.
+
+## Private direct Unity approval (no Cloudflare email OTP)
+
+When a trusted live GitHub Actions run requests Unity CLI OAuth, the background
+`Tools/CI/private_unity_approval_publish.py` sends the short-lived,
+Unity-owned `auth_url` to a **separate** Cloudflare Worker using an **OIDC
+JWT signed by GitHub**, scoped to this exact repo, workflow, branch, and actor.
+
+- Worker: `aaris-unity-approval-relay.aaris-game-control-6f9c.workers.dev`.
+- Worker source: `Tools/CI/cloudflare_private_approval_worker.mjs`.
+- Storage: private Cloudflare Workers KV namespace with 480-second expiry;
+  public Worker endpoint can **write only when a valid signed GitHub Actions
+  OIDC token is verified**. Public GET only exposes `/health`, never auth_url.
+- The connected Cloudflare app, authenticated to the user's Cloudflare account,
+  is the only available assistant path to read the private namespace via the
+  Cloudflare account API and deliver the actual `https://id.unity.com/...`
+  link directly in **this private ChatGPT conversation**. The URL does **not**
+  go into GitHub public Issues, Actions artifacts, releases, logs, or commits.
+- After retrieving the per-run URL, open the **official Unity** webpage from
+  the phone and select the necessary Sign in / Allow. No Cloudflare email OTP
+  is needed **for that direct Unity approval link**.
+- This does not remove the separate email-PIN gate from the full VNC/desktop
+  tunnel, which remains protected. It does not bypass Unity account login or
+  Unity Personal licensing requirements.
+- The bridge writes only a non-sensitive status to
+  `ci-live-control/approval-bridge-status.json`, uploaded with diagnostics.
+  Worker trust pins immutable GitHub repository/actor IDs and verifies RS256,
+  issuer, audience, branch, workflow and timestamps.
+- An assistant using the connected Cloudflare account can read KV value under
+  key `run-<GITHUB_RUN_ID>` and return the genuine link privately. Delete or
+  allow the key to expire after approval. Do not paste it into Issue #77.

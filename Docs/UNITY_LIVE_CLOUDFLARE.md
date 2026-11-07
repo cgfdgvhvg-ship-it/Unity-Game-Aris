@@ -330,3 +330,21 @@ This is a deliberate authentication boundary, not an Editor bug.
 output suppressed. The owner-only `TERM LICENSE` command reports a fixed,
 non-secret reason code when either check fails; no "successful login"
 claims are made solely because the phone browser displayed a success page.
+
+### One-click Unity approval with no Cloudflare PIN (private assistant channel)
+
+A different, dedicated Cloudflare Worker now accepts only OIDC-authenticated
+`POST /publish` from this repository's trusted live GitHub Actions job.
+It stores the session's actual Unity-owned login URL in private KV for up to
+480 seconds. **There is no public GET endpoint for the URL**. Once the
+publisher reports `approval_link_stored_privately`, an assistant connected to
+the authorized Cloudflare account can read it via the account API and show the
+direct official Unity link in a private chat. Click **Sign in / Allow** on
+Unity's own page, not on the Cloudflare PIN page.
+
+The earlier GitHub SSO instructions remain an alternative for full live desktop
+access *without email OTP*. They are **not required** just to approve Unity
+sign-in through the private OIDC bridge. The existing VNC desktop tunnel still
+requires email PIN. A direct OAuth link is only valid while its GitHub Actions
+login process is awaiting approval; never publish it publicly or reuse it after
+expiration.
