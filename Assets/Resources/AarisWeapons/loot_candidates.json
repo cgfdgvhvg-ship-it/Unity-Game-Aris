@@ -1,0 +1,4118 @@
+{
+  "schema": 1,
+  "sizeMetres": 2000,
+  "candidates": [
+    {
+      "kind": "indoor",
+      "x": 289.2,
+      "y": -11.937,
+      "z": 245,
+      "origin": "ClockTowerTown_a_frame_cabin_02",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 287.442,
+      "y": -11.937,
+      "z": 246.268,
+      "origin": "ClockTowerTown_a_frame_cabin_02",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 290.482,
+      "y": -11.937,
+      "z": 243.58,
+      "origin": "ClockTowerTown_a_frame_cabin_02",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 410.8,
+      "y": -11.937,
+      "z": 245,
+      "origin": "ClockTowerTown_bungalow_house_03",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 407.332,
+      "y": -11.937,
+      "z": 246.794,
+      "origin": "ClockTowerTown_bungalow_house_03",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 413.328,
+      "y": -11.937,
+      "z": 242.991,
+      "origin": "ClockTowerTown_bungalow_house_03",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 289.2,
+      "y": -11.937,
+      "z": 167.3,
+      "origin": "ClockTowerTown_pitched_roof_cottage_04",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 286.808,
+      "y": -11.937,
+      "z": 169.094,
+      "origin": "ClockTowerTown_pitched_roof_cottage_04",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 290.944,
+      "y": -11.937,
+      "z": 165.291,
+      "origin": "ClockTowerTown_pitched_roof_cottage_04",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 410.8,
+      "y": -11.937,
+      "z": 167.3,
+      "origin": "ClockTowerTown_detached_two_storey_house_05",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 407.828,
+      "y": -11.937,
+      "z": 169.354,
+      "origin": "ClockTowerTown_detached_two_storey_house_05",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 412.967,
+      "y": -11.937,
+      "z": 165,
+      "origin": "ClockTowerTown_detached_two_storey_house_05",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 350,
+      "y": -11.937,
+      "z": 167.3,
+      "origin": "ClockTowerTown_garage_apartment_06",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 347.417,
+      "y": -11.937,
+      "z": 168.555,
+      "origin": "ClockTowerTown_garage_apartment_06",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 351.884,
+      "y": -11.937,
+      "z": 165.894,
+      "origin": "ClockTowerTown_garage_apartment_06",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 522,
+      "y": 23.759,
+      "z": -605,
+      "origin": "HighlandObservatory_pitched_roof_cottage_02",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 519.608,
+      "y": 23.759,
+      "z": -603.206,
+      "origin": "HighlandObservatory_pitched_roof_cottage_02",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 523.744,
+      "y": 23.759,
+      "z": -607.009,
+      "origin": "HighlandObservatory_pitched_roof_cottage_02",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 618,
+      "y": 23.759,
+      "z": -605,
+      "origin": "HighlandObservatory_detached_two_storey_house_03",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 615.028,
+      "y": 23.759,
+      "z": -602.946,
+      "origin": "HighlandObservatory_detached_two_storey_house_03",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 620.167,
+      "y": 23.759,
+      "z": -607.3,
+      "origin": "HighlandObservatory_detached_two_storey_house_03",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 522,
+      "y": 23.759,
+      "z": -673.4,
+      "origin": "HighlandObservatory_garage_apartment_04",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 519.417,
+      "y": 23.759,
+      "z": -672.145,
+      "origin": "HighlandObservatory_garage_apartment_04",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 523.884,
+      "y": 23.759,
+      "z": -674.806,
+      "origin": "HighlandObservatory_garage_apartment_04",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 618,
+      "y": 23.759,
+      "z": -673.4,
+      "origin": "HighlandObservatory_two_bedroom_garage_house_05",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 614.261,
+      "y": 23.759,
+      "z": -671.459,
+      "origin": "HighlandObservatory_two_bedroom_garage_house_05",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 620.727,
+      "y": 23.759,
+      "z": -675.574,
+      "origin": "HighlandObservatory_two_bedroom_garage_house_05",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 798.4,
+      "y": -31.079,
+      "z": 375,
+      "origin": "EasternPort_garage_apartment_02",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 795.817,
+      "y": -31.079,
+      "z": 376.255,
+      "origin": "EasternPort_garage_apartment_02",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 800.284,
+      "y": -31.079,
+      "z": 373.594,
+      "origin": "EasternPort_garage_apartment_02",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 881.6,
+      "y": -31.079,
+      "z": 375,
+      "origin": "EasternPort_two_bedroom_garage_house_03",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 877.861,
+      "y": -31.079,
+      "z": 376.941,
+      "origin": "EasternPort_two_bedroom_garage_house_03",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 884.327,
+      "y": -31.079,
+      "z": 372.826,
+      "origin": "EasternPort_two_bedroom_garage_house_03",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 798.4,
+      "y": -31.079,
+      "z": 300.4,
+      "origin": "EasternPort_row_three_townhouses_04",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 793.368,
+      "y": -31.079,
+      "z": 302.104,
+      "origin": "EasternPort_row_three_townhouses_04",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 802.069,
+      "y": -31.079,
+      "z": 298.492,
+      "origin": "EasternPort_row_three_townhouses_04",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 881.6,
+      "y": -31.079,
+      "z": 300.4,
+      "origin": "EasternPort_a_frame_cabin_05",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 879.842,
+      "y": -31.079,
+      "z": 301.668,
+      "origin": "EasternPort_a_frame_cabin_05",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 882.882,
+      "y": -31.079,
+      "z": 298.98,
+      "origin": "EasternPort_a_frame_cabin_05",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 75,
+      "y": 24.955,
+      "z": -388,
+      "origin": "SouthernAirfield_warehouse_loading_dock_02",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 67.68,
+      "y": 24.955,
+      "z": -385.219,
+      "origin": "SouthernAirfield_warehouse_loading_dock_02",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 80.338,
+      "y": 24.955,
+      "z": -391.115,
+      "origin": "SouthernAirfield_warehouse_loading_dock_02",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 284,
+      "y": 24.955,
+      "z": -388,
+      "origin": "SouthernAirfield_garage_apartment_03",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 281.417,
+      "y": 24.955,
+      "z": -386.745,
+      "origin": "SouthernAirfield_garage_apartment_03",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 285.884,
+      "y": 24.955,
+      "z": -389.406,
+      "origin": "SouthernAirfield_garage_apartment_03",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 497,
+      "y": -1.072,
+      "z": -135,
+      "origin": "FreightDistrict_warehouse_loading_dock_02",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 489.68,
+      "y": -1.072,
+      "z": -132.219,
+      "origin": "FreightDistrict_warehouse_loading_dock_02",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 502.337,
+      "y": -1.072,
+      "z": -138.115,
+      "origin": "FreightDistrict_warehouse_loading_dock_02",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 603,
+      "y": -1.072,
+      "z": -135,
+      "origin": "FreightDistrict_warehouse_loading_dock_03",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 595.68,
+      "y": -1.072,
+      "z": -132.219,
+      "origin": "FreightDistrict_warehouse_loading_dock_03",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 608.337,
+      "y": -1.072,
+      "z": -138.115,
+      "origin": "FreightDistrict_warehouse_loading_dock_03",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 495,
+      "y": -1.072,
+      "z": -208,
+      "origin": "FreightDistrict_garage_apartment_04",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 492.417,
+      "y": -1.072,
+      "z": -206.745,
+      "origin": "FreightDistrict_garage_apartment_04",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 496.884,
+      "y": -1.072,
+      "z": -209.406,
+      "origin": "FreightDistrict_garage_apartment_04",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 602,
+      "y": -1.072,
+      "z": -208,
+      "origin": "FreightDistrict_two_bedroom_garage_house_05",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 598.261,
+      "y": -1.072,
+      "z": -206.059,
+      "origin": "FreightDistrict_two_bedroom_garage_house_05",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 604.727,
+      "y": -1.072,
+      "z": -210.174,
+      "origin": "FreightDistrict_two_bedroom_garage_house_05",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -171.2,
+      "y": -31.079,
+      "z": 675,
+      "origin": "CanalMarket_detached_two_storey_house_02",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -174.172,
+      "y": -31.079,
+      "z": 677.054,
+      "origin": "CanalMarket_detached_two_storey_house_02",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -169.033,
+      "y": -31.079,
+      "z": 672.7,
+      "origin": "CanalMarket_detached_two_storey_house_02",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -68.8,
+      "y": -31.079,
+      "z": 675,
+      "origin": "CanalMarket_garage_apartment_03",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -71.383,
+      "y": -31.079,
+      "z": 676.255,
+      "origin": "CanalMarket_garage_apartment_03",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -66.916,
+      "y": -31.079,
+      "z": 673.594,
+      "origin": "CanalMarket_garage_apartment_03",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -171.2,
+      "y": -31.079,
+      "z": 606.6,
+      "origin": "CanalMarket_two_bedroom_garage_house_04",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -174.939,
+      "y": -31.079,
+      "z": 608.541,
+      "origin": "CanalMarket_two_bedroom_garage_house_04",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -168.473,
+      "y": -31.079,
+      "z": 604.426,
+      "origin": "CanalMarket_two_bedroom_garage_house_04",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -68.8,
+      "y": -31.079,
+      "z": 606.6,
+      "origin": "CanalMarket_row_three_townhouses_05",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -73.832,
+      "y": -31.079,
+      "z": 608.304,
+      "origin": "CanalMarket_row_three_townhouses_05",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -65.131,
+      "y": -31.079,
+      "z": 604.692,
+      "origin": "CanalMarket_row_three_townhouses_05",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -530,
+      "y": 1.712,
+      "z": -565,
+      "origin": "OldVillage_HanokVillage_01",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -537.2,
+      "y": 1.712,
+      "z": -560.823,
+      "origin": "OldVillage_HanokVillage_01",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -524.75,
+      "y": 1.712,
+      "z": -569.678,
+      "origin": "OldVillage_HanokVillage_01",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -587.6,
+      "y": 1.712,
+      "z": -565,
+      "origin": "OldVillage_two_bedroom_garage_house_02",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -591.339,
+      "y": 1.712,
+      "z": -563.059,
+      "origin": "OldVillage_two_bedroom_garage_house_02",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -584.873,
+      "y": 1.712,
+      "z": -567.174,
+      "origin": "OldVillage_two_bedroom_garage_house_02",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -472.4,
+      "y": 1.712,
+      "z": -565,
+      "origin": "OldVillage_row_three_townhouses_03",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -477.432,
+      "y": 1.712,
+      "z": -563.296,
+      "origin": "OldVillage_row_three_townhouses_03",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -468.731,
+      "y": 1.712,
+      "z": -566.908,
+      "origin": "OldVillage_row_three_townhouses_03",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -587.6,
+      "y": 1.712,
+      "z": -633.4,
+      "origin": "OldVillage_a_frame_cabin_04",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -589.358,
+      "y": 1.712,
+      "z": -632.132,
+      "origin": "OldVillage_a_frame_cabin_04",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -586.318,
+      "y": 1.712,
+      "z": -634.82,
+      "origin": "OldVillage_a_frame_cabin_04",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -472.4,
+      "y": 1.712,
+      "z": -633.4,
+      "origin": "OldVillage_bungalow_house_05",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -475.868,
+      "y": 1.712,
+      "z": -631.606,
+      "origin": "OldVillage_bungalow_house_05",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -469.872,
+      "y": 1.712,
+      "z": -635.409,
+      "origin": "OldVillage_bungalow_house_05",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -530,
+      "y": 1.712,
+      "z": -633.4,
+      "origin": "OldVillage_garage_apartment_06",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -532.583,
+      "y": 1.712,
+      "z": -632.145,
+      "origin": "OldVillage_garage_apartment_06",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -528.116,
+      "y": 1.712,
+      "z": -634.806,
+      "origin": "OldVillage_garage_apartment_06",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -720,
+      "y": -2.659,
+      "z": 90,
+      "origin": "LakesideHamlet_pitched_roof_cottage_01",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -722.392,
+      "y": -2.659,
+      "z": 91.794,
+      "origin": "LakesideHamlet_pitched_roof_cottage_01",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -718.256,
+      "y": -2.659,
+      "z": 87.991,
+      "origin": "LakesideHamlet_pitched_roof_cottage_01",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -761.6,
+      "y": -2.659,
+      "z": 90,
+      "origin": "LakesideHamlet_a_frame_cabin_02",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -763.358,
+      "y": -2.659,
+      "z": 91.268,
+      "origin": "LakesideHamlet_a_frame_cabin_02",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -760.318,
+      "y": -2.659,
+      "z": 88.58,
+      "origin": "LakesideHamlet_a_frame_cabin_02",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -678.4,
+      "y": -2.659,
+      "z": 90,
+      "origin": "LakesideHamlet_bungalow_house_03",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -681.868,
+      "y": -2.659,
+      "z": 91.794,
+      "origin": "LakesideHamlet_bungalow_house_03",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -675.872,
+      "y": -2.659,
+      "z": 87.991,
+      "origin": "LakesideHamlet_bungalow_house_03",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -761.6,
+      "y": -2.659,
+      "z": 30.9,
+      "origin": "LakesideHamlet_pitched_roof_cottage_04",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -763.992,
+      "y": -2.659,
+      "z": 32.694,
+      "origin": "LakesideHamlet_pitched_roof_cottage_04",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -759.856,
+      "y": -2.659,
+      "z": 28.891,
+      "origin": "LakesideHamlet_pitched_roof_cottage_04",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -678.4,
+      "y": -2.659,
+      "z": 30.9,
+      "origin": "LakesideHamlet_detached_two_storey_house_05",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -681.372,
+      "y": -2.659,
+      "z": 32.954,
+      "origin": "LakesideHamlet_detached_two_storey_house_05",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -676.233,
+      "y": -2.659,
+      "z": 28.6,
+      "origin": "LakesideHamlet_detached_two_storey_house_05",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -420,
+      "y": 15.409,
+      "z": -185,
+      "origin": "ValleySettlement_row_three_townhouses_01",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -425.032,
+      "y": 15.409,
+      "z": -183.296,
+      "origin": "ValleySettlement_row_three_townhouses_01",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -416.331,
+      "y": 15.409,
+      "z": -186.908,
+      "origin": "ValleySettlement_row_three_townhouses_01",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -474.4,
+      "y": 15.409,
+      "z": -185,
+      "origin": "ValleySettlement_pitched_roof_cottage_02",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -476.792,
+      "y": 15.409,
+      "z": -183.206,
+      "origin": "ValleySettlement_pitched_roof_cottage_02",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -472.656,
+      "y": 15.409,
+      "z": -187.009,
+      "origin": "ValleySettlement_pitched_roof_cottage_02",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -365.6,
+      "y": 15.409,
+      "z": -185,
+      "origin": "ValleySettlement_detached_two_storey_house_03",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -368.572,
+      "y": 15.409,
+      "z": -182.946,
+      "origin": "ValleySettlement_detached_two_storey_house_03",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -363.433,
+      "y": 15.409,
+      "z": -187.3,
+      "origin": "ValleySettlement_detached_two_storey_house_03",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -474.4,
+      "y": 15.409,
+      "z": -256.5,
+      "origin": "ValleySettlement_garage_apartment_04",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -476.983,
+      "y": 15.409,
+      "z": -255.245,
+      "origin": "ValleySettlement_garage_apartment_04",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -472.516,
+      "y": 15.409,
+      "z": -257.906,
+      "origin": "ValleySettlement_garage_apartment_04",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -365.6,
+      "y": 15.409,
+      "z": -256.5,
+      "origin": "ValleySettlement_two_bedroom_garage_house_05",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -369.339,
+      "y": 15.409,
+      "z": -254.559,
+      "origin": "ValleySettlement_two_bedroom_garage_house_05",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -362.873,
+      "y": 15.409,
+      "z": -258.674,
+      "origin": "ValleySettlement_two_bedroom_garage_house_05",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": -420,
+      "y": 15.409,
+      "z": -256.5,
+      "origin": "ValleySettlement_garage_apartment_06",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": -422.583,
+      "y": 15.409,
+      "z": -255.245,
+      "origin": "ValleySettlement_garage_apartment_06",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": -418.116,
+      "y": 15.409,
+      "z": -257.906,
+      "origin": "ValleySettlement_garage_apartment_06",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 300,
+      "y": -30.834,
+      "z": 675,
+      "origin": "NorthernRidgeTown_detached_two_storey_house_01",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 297.028,
+      "y": -30.834,
+      "z": 677.054,
+      "origin": "NorthernRidgeTown_detached_two_storey_house_01",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 302.167,
+      "y": -30.834,
+      "z": 672.7,
+      "origin": "NorthernRidgeTown_detached_two_storey_house_01",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 242.4,
+      "y": -30.834,
+      "z": 675,
+      "origin": "NorthernRidgeTown_garage_apartment_02",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 239.817,
+      "y": -30.834,
+      "z": 676.255,
+      "origin": "NorthernRidgeTown_garage_apartment_02",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 244.284,
+      "y": -30.834,
+      "z": 673.594,
+      "origin": "NorthernRidgeTown_garage_apartment_02",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 357.6,
+      "y": -30.834,
+      "z": 675,
+      "origin": "NorthernRidgeTown_two_bedroom_garage_house_03",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 353.861,
+      "y": -30.834,
+      "z": 676.941,
+      "origin": "NorthernRidgeTown_two_bedroom_garage_house_03",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 360.327,
+      "y": -30.834,
+      "z": 672.826,
+      "origin": "NorthernRidgeTown_two_bedroom_garage_house_03",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 242.4,
+      "y": -30.834,
+      "z": 603.5,
+      "origin": "NorthernRidgeTown_row_three_townhouses_04",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 237.368,
+      "y": -30.834,
+      "z": 605.204,
+      "origin": "NorthernRidgeTown_row_three_townhouses_04",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 246.069,
+      "y": -30.834,
+      "z": 601.592,
+      "origin": "NorthernRidgeTown_row_three_townhouses_04",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 357.6,
+      "y": -30.834,
+      "z": 603.5,
+      "origin": "NorthernRidgeTown_a_frame_cabin_05",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 355.842,
+      "y": -30.834,
+      "z": 604.768,
+      "origin": "NorthernRidgeTown_a_frame_cabin_05",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 358.882,
+      "y": -30.834,
+      "z": 602.08,
+      "origin": "NorthernRidgeTown_a_frame_cabin_05",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 300,
+      "y": -30.834,
+      "z": 603.5,
+      "origin": "NorthernRidgeTown_garage_apartment_06",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 297.417,
+      "y": -30.834,
+      "z": 604.755,
+      "origin": "NorthernRidgeTown_garage_apartment_06",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 301.884,
+      "y": -30.834,
+      "z": 602.094,
+      "origin": "NorthernRidgeTown_garage_apartment_06",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 650,
+      "y": -18.212,
+      "z": 675,
+      "origin": "CoastalHamlet_bungalow_house_01",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 646.532,
+      "y": -18.212,
+      "z": 676.794,
+      "origin": "CoastalHamlet_bungalow_house_01",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 652.528,
+      "y": -18.212,
+      "z": 672.991,
+      "origin": "CoastalHamlet_bungalow_house_01",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 602,
+      "y": -18.212,
+      "z": 675,
+      "origin": "CoastalHamlet_row_three_townhouses_02",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 596.968,
+      "y": -18.212,
+      "z": 676.704,
+      "origin": "CoastalHamlet_row_three_townhouses_02",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 605.669,
+      "y": -18.212,
+      "z": 673.092,
+      "origin": "CoastalHamlet_row_three_townhouses_02",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 698,
+      "y": -18.212,
+      "z": 675,
+      "origin": "CoastalHamlet_a_frame_cabin_03",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 696.242,
+      "y": -18.212,
+      "z": 676.268,
+      "origin": "CoastalHamlet_a_frame_cabin_03",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 699.282,
+      "y": -18.212,
+      "z": 673.58,
+      "origin": "CoastalHamlet_a_frame_cabin_03",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 602,
+      "y": -18.212,
+      "z": 606.6,
+      "origin": "CoastalHamlet_bungalow_house_04",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 598.532,
+      "y": -18.212,
+      "z": 608.394,
+      "origin": "CoastalHamlet_bungalow_house_04",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 604.528,
+      "y": -18.212,
+      "z": 604.591,
+      "origin": "CoastalHamlet_bungalow_house_04",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 698,
+      "y": -18.212,
+      "z": 606.6,
+      "origin": "CoastalHamlet_pitched_roof_cottage_05",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 695.608,
+      "y": -18.212,
+      "z": 608.394,
+      "origin": "CoastalHamlet_pitched_roof_cottage_05",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 699.744,
+      "y": -18.212,
+      "z": 604.591,
+      "origin": "CoastalHamlet_pitched_roof_cottage_05",
+      "slot": 2
+    },
+    {
+      "kind": "indoor",
+      "x": 825,
+      "y": 40.044,
+      "z": -742,
+      "origin": "SoutheastLighthouse_lighthouse_01",
+      "slot": 0
+    },
+    {
+      "kind": "indoor",
+      "x": 822.916,
+      "y": 40.044,
+      "z": -740.727,
+      "origin": "SoutheastLighthouse_lighthouse_01",
+      "slot": 1
+    },
+    {
+      "kind": "indoor",
+      "x": 826.52,
+      "y": 40.044,
+      "z": -743.426,
+      "origin": "SoutheastLighthouse_lighthouse_01",
+      "slot": 2
+    },
+    {
+      "kind": "open",
+      "x": -906,
+      "y": 0,
+      "z": -867,
+      "origin": "grid",
+      "slot": 784
+    },
+    {
+      "kind": "open",
+      "x": -913,
+      "y": 0,
+      "z": -784,
+      "origin": "grid",
+      "slot": 17139
+    },
+    {
+      "kind": "open",
+      "x": -913,
+      "y": 0,
+      "z": -672,
+      "origin": "grid",
+      "slot": 33362
+    },
+    {
+      "kind": "open",
+      "x": -888,
+      "y": 0,
+      "z": -630,
+      "origin": "grid",
+      "slot": 49453
+    },
+    {
+      "kind": "open",
+      "x": -926,
+      "y": 0,
+      "z": -472,
+      "origin": "grid",
+      "slot": 140
+    },
+    {
+      "kind": "open",
+      "x": -874,
+      "y": 0,
+      "z": -418,
+      "origin": "grid",
+      "slot": 16495
+    },
+    {
+      "kind": "open",
+      "x": -885,
+      "y": 0,
+      "z": -299,
+      "origin": "grid",
+      "slot": 34766
+    },
+    {
+      "kind": "open",
+      "x": -910,
+      "y": 0,
+      "z": -169,
+      "origin": "grid",
+      "slot": 50857
+    },
+    {
+      "kind": "open",
+      "x": -875,
+      "y": 0,
+      "z": -76,
+      "origin": "grid",
+      "slot": 1544
+    },
+    {
+      "kind": "open",
+      "x": -882,
+      "y": 0,
+      "z": 7,
+      "origin": "grid",
+      "slot": 17899
+    },
+    {
+      "kind": "open",
+      "x": -882,
+      "y": 0,
+      "z": 119,
+      "origin": "grid",
+      "slot": 34122
+    },
+    {
+      "kind": "open",
+      "x": -919,
+      "y": 0,
+      "z": 219,
+      "origin": "grid",
+      "slot": 50213
+    },
+    {
+      "kind": "open",
+      "x": -881,
+      "y": 0,
+      "z": 283,
+      "origin": "grid",
+      "slot": 7044
+    },
+    {
+      "kind": "open",
+      "x": -876,
+      "y": 0,
+      "z": 397,
+      "origin": "grid",
+      "slot": 23399
+    },
+    {
+      "kind": "open",
+      "x": -924,
+      "y": 0,
+      "z": 530,
+      "origin": "grid",
+      "slot": 39622
+    },
+    {
+      "kind": "open",
+      "x": -911,
+      "y": 0,
+      "z": 613,
+      "origin": "grid",
+      "slot": 55713
+    },
+    {
+      "kind": "open",
+      "x": -923,
+      "y": 0,
+      "z": 695,
+      "origin": "grid",
+      "slot": 6400
+    },
+    {
+      "kind": "open",
+      "x": -930,
+      "y": 0,
+      "z": 778,
+      "origin": "grid",
+      "slot": 22755
+    },
+    {
+      "kind": "open",
+      "x": -897,
+      "y": 0,
+      "z": 866,
+      "origin": "grid",
+      "slot": 38978
+    },
+    {
+      "kind": "open",
+      "x": -771,
+      "y": 0,
+      "z": -932,
+      "origin": "grid",
+      "slot": 63309
+    },
+    {
+      "kind": "open",
+      "x": -765,
+      "y": 0,
+      "z": -811,
+      "origin": "grid",
+      "slot": 46766
+    },
+    {
+      "kind": "open",
+      "x": -802,
+      "y": 0,
+      "z": -690,
+      "origin": "grid",
+      "slot": 30223
+    },
+    {
+      "kind": "open",
+      "x": -785,
+      "y": 0,
+      "z": -577,
+      "origin": "grid",
+      "slot": 13680
+    },
+    {
+      "kind": "open",
+      "x": -801,
+      "y": 0,
+      "z": -511,
+      "origin": "grid",
+      "slot": 62673
+    },
+    {
+      "kind": "open",
+      "x": -795,
+      "y": 0,
+      "z": -389,
+      "origin": "grid",
+      "slot": 46130
+    },
+    {
+      "kind": "open",
+      "x": -774,
+      "y": 0,
+      "z": -266,
+      "origin": "grid",
+      "slot": 29587
+    },
+    {
+      "kind": "open",
+      "x": -768,
+      "y": 0,
+      "z": -216,
+      "origin": "grid",
+      "slot": 13044
+    },
+    {
+      "kind": "open",
+      "x": -806,
+      "y": 0,
+      "z": -133,
+      "origin": "grid",
+      "slot": 62037
+    },
+    {
+      "kind": "open",
+      "x": -829,
+      "y": 0,
+      "z": 129,
+      "origin": "grid",
+      "slot": 28951
+    },
+    {
+      "kind": "open",
+      "x": -798,
+      "y": 0,
+      "z": 206,
+      "origin": "grid",
+      "slot": 12408
+    },
+    {
+      "kind": "open",
+      "x": -789,
+      "y": 0,
+      "z": 299,
+      "origin": "grid",
+      "slot": 61401
+    },
+    {
+      "kind": "open",
+      "x": -797,
+      "y": 0,
+      "z": 386,
+      "origin": "grid",
+      "slot": 44858
+    },
+    {
+      "kind": "open",
+      "x": -798,
+      "y": 0,
+      "z": 525,
+      "origin": "grid",
+      "slot": 28315
+    },
+    {
+      "kind": "open",
+      "x": -767,
+      "y": 0,
+      "z": 602,
+      "origin": "grid",
+      "slot": 11772
+    },
+    {
+      "kind": "open",
+      "x": -771,
+      "y": 0,
+      "z": 699,
+      "origin": "grid",
+      "slot": 60765
+    },
+    {
+      "kind": "open",
+      "x": -790,
+      "y": 0,
+      "z": 793,
+      "origin": "grid",
+      "slot": 44222
+    },
+    {
+      "kind": "open",
+      "x": -781,
+      "y": 0,
+      "z": 887,
+      "origin": "grid",
+      "slot": 27679
+    },
+    {
+      "kind": "open",
+      "x": -680,
+      "y": 0,
+      "z": -931,
+      "origin": "grid",
+      "slot": 64750
+    },
+    {
+      "kind": "open",
+      "x": -693,
+      "y": 0,
+      "z": -798,
+      "origin": "grid",
+      "slot": 48397
+    },
+    {
+      "kind": "open",
+      "x": -719,
+      "y": 0,
+      "z": -699,
+      "origin": "grid",
+      "slot": 32172
+    },
+    {
+      "kind": "open",
+      "x": -705,
+      "y": 0,
+      "z": -626,
+      "origin": "grid",
+      "slot": 16083
+    },
+    {
+      "kind": "open",
+      "x": -671,
+      "y": 0,
+      "z": -518,
+      "origin": "grid",
+      "slot": 65394
+    },
+    {
+      "kind": "open",
+      "x": -726,
+      "y": 0,
+      "z": -420,
+      "origin": "grid",
+      "slot": 49041
+    },
+    {
+      "kind": "open",
+      "x": -725,
+      "y": 0,
+      "z": -288,
+      "origin": "grid",
+      "slot": 30768
+    },
+    {
+      "kind": "open",
+      "x": -691,
+      "y": 0,
+      "z": -165,
+      "origin": "grid",
+      "slot": 14679
+    },
+    {
+      "kind": "open",
+      "x": -668,
+      "y": 0,
+      "z": -121,
+      "origin": "grid",
+      "slot": 63990
+    },
+    {
+      "kind": "open",
+      "x": -727,
+      "y": 0,
+      "z": -32,
+      "origin": "grid",
+      "slot": 47637
+    },
+    {
+      "kind": "open",
+      "x": -682,
+      "y": 0,
+      "z": 176,
+      "origin": "grid",
+      "slot": 15323
+    },
+    {
+      "kind": "open",
+      "x": -715,
+      "y": 0,
+      "z": 294,
+      "origin": "grid",
+      "slot": 58490
+    },
+    {
+      "kind": "open",
+      "x": -682,
+      "y": 0,
+      "z": 399,
+      "origin": "grid",
+      "slot": 42137
+    },
+    {
+      "kind": "open",
+      "x": -684,
+      "y": 0,
+      "z": 488,
+      "origin": "grid",
+      "slot": 25912
+    },
+    {
+      "kind": "open",
+      "x": -713,
+      "y": 0,
+      "z": 631,
+      "origin": "grid",
+      "slot": 9823
+    },
+    {
+      "kind": "open",
+      "x": -666,
+      "y": 0,
+      "z": 735,
+      "origin": "grid",
+      "slot": 59134
+    },
+    {
+      "kind": "open",
+      "x": -725,
+      "y": 0,
+      "z": 824,
+      "origin": "grid",
+      "slot": 42781
+    },
+    {
+      "kind": "open",
+      "x": -693,
+      "y": 0,
+      "z": 926,
+      "origin": "grid",
+      "slot": 26556
+    },
+    {
+      "kind": "open",
+      "x": -591,
+      "y": 0,
+      "z": -888,
+      "origin": "grid",
+      "slot": 57355
+    },
+    {
+      "kind": "open",
+      "x": -604,
+      "y": 0,
+      "z": -805,
+      "origin": "grid",
+      "slot": 41448
+    },
+    {
+      "kind": "open",
+      "x": -621,
+      "y": 0,
+      "z": -705,
+      "origin": "grid",
+      "slot": 24905
+    },
+    {
+      "kind": "open",
+      "x": -602,
+      "y": 0,
+      "z": -581,
+      "origin": "grid",
+      "slot": 8758
+    },
+    {
+      "kind": "open",
+      "x": -575,
+      "y": 0,
+      "z": -514,
+      "origin": "grid",
+      "slot": 58263
+    },
+    {
+      "kind": "open",
+      "x": -620,
+      "y": 0,
+      "z": -368,
+      "origin": "grid",
+      "slot": 41844
+    },
+    {
+      "kind": "open",
+      "x": -567,
+      "y": 0,
+      "z": -307,
+      "origin": "grid",
+      "slot": 25813
+    },
+    {
+      "kind": "open",
+      "x": -567,
+      "y": 0,
+      "z": -226,
+      "origin": "grid",
+      "slot": 9650
+    },
+    {
+      "kind": "open",
+      "x": -609,
+      "y": 0,
+      "z": -82,
+      "origin": "grid",
+      "slot": 58643
+    },
+    {
+      "kind": "open",
+      "x": -603,
+      "y": 0,
+      "z": 13,
+      "origin": "grid",
+      "slot": 42736
+    },
+    {
+      "kind": "open",
+      "x": -568,
+      "y": 0,
+      "z": 101,
+      "origin": "grid",
+      "slot": 26193
+    },
+    {
+      "kind": "open",
+      "x": -577,
+      "y": 0,
+      "z": 226,
+      "origin": "grid",
+      "slot": 10046
+    },
+    {
+      "kind": "open",
+      "x": -620,
+      "y": 0,
+      "z": 331,
+      "origin": "grid",
+      "slot": 63647
+    },
+    {
+      "kind": "open",
+      "x": -615,
+      "y": 0,
+      "z": 389,
+      "origin": "grid",
+      "slot": 47228
+    },
+    {
+      "kind": "open",
+      "x": -593,
+      "y": 0,
+      "z": 479,
+      "origin": "grid",
+      "slot": 31197
+    },
+    {
+      "kind": "open",
+      "x": -607,
+      "y": 0,
+      "z": 596,
+      "origin": "grid",
+      "slot": 15034
+    },
+    {
+      "kind": "open",
+      "x": -583,
+      "y": 0,
+      "z": 692,
+      "origin": "grid",
+      "slot": 64027
+    },
+    {
+      "kind": "open",
+      "x": -596,
+      "y": 0,
+      "z": 775,
+      "origin": "grid",
+      "slot": 48120
+    },
+    {
+      "kind": "open",
+      "x": -613,
+      "y": 0,
+      "z": 875,
+      "origin": "grid",
+      "slot": 31577
+    },
+    {
+      "kind": "open",
+      "x": -489,
+      "y": 0,
+      "z": -875,
+      "origin": "grid",
+      "slot": 54692
+    },
+    {
+      "kind": "open",
+      "x": -493,
+      "y": 0,
+      "z": -801,
+      "origin": "grid",
+      "slot": 37959
+    },
+    {
+      "kind": "open",
+      "x": -499,
+      "y": 0,
+      "z": -723,
+      "origin": "grid",
+      "slot": 21734
+    },
+    {
+      "kind": "open",
+      "x": -527,
+      "y": 0,
+      "z": -607,
+      "origin": "grid",
+      "slot": 6041
+    },
+    {
+      "kind": "open",
+      "x": -530,
+      "y": 0,
+      "z": -485,
+      "origin": "grid",
+      "slot": 54840
+    },
+    {
+      "kind": "open",
+      "x": -489,
+      "y": 0,
+      "z": -406,
+      "origin": "grid",
+      "slot": 38619
+    },
+    {
+      "kind": "open",
+      "x": -498,
+      "y": 0,
+      "z": -299,
+      "origin": "grid",
+      "slot": 20858
+    },
+    {
+      "kind": "open",
+      "x": -479,
+      "y": 0,
+      "z": -203,
+      "origin": "grid",
+      "slot": 4125
+    },
+    {
+      "kind": "open",
+      "x": -481,
+      "y": 0,
+      "z": -115,
+      "origin": "grid",
+      "slot": 53436
+    },
+    {
+      "kind": "open",
+      "x": -473,
+      "y": 0,
+      "z": -11,
+      "origin": "grid",
+      "slot": 37727
+    },
+    {
+      "kind": "open",
+      "x": -498,
+      "y": 0,
+      "z": 126,
+      "origin": "grid",
+      "slot": 21502
+    },
+    {
+      "kind": "open",
+      "x": -478,
+      "y": 0,
+      "z": 229,
+      "origin": "grid",
+      "slot": 4753
+    },
+    {
+      "kind": "open",
+      "x": -471,
+      "y": 0,
+      "z": 305,
+      "origin": "grid",
+      "slot": 52528
+    },
+    {
+      "kind": "open",
+      "x": -490,
+      "y": 0,
+      "z": 376,
+      "origin": "grid",
+      "slot": 36307
+    },
+    {
+      "kind": "open",
+      "x": -520,
+      "y": 0,
+      "z": 466,
+      "origin": "grid",
+      "slot": 19570
+    },
+    {
+      "kind": "open",
+      "x": -523,
+      "y": 0,
+      "z": 578,
+      "origin": "grid",
+      "slot": 3861
+    },
+    {
+      "kind": "open",
+      "x": -493,
+      "y": 0,
+      "z": 675,
+      "origin": "grid",
+      "slot": 53172
+    },
+    {
+      "kind": "open",
+      "x": -476,
+      "y": 0,
+      "z": 766,
+      "origin": "grid",
+      "slot": 36439
+    },
+    {
+      "kind": "open",
+      "x": -520,
+      "y": 0,
+      "z": 891,
+      "origin": "grid",
+      "slot": 20214
+    },
+    {
+      "kind": "open",
+      "x": -433,
+      "y": 0,
+      "z": -880,
+      "origin": "grid",
+      "slot": 55745
+    },
+    {
+      "kind": "open",
+      "x": -420,
+      "y": 0,
+      "z": -776,
+      "origin": "grid",
+      "slot": 38946
+    },
+    {
+      "kind": "open",
+      "x": -383,
+      "y": 0,
+      "z": -684,
+      "origin": "grid",
+      "slot": 22659
+    },
+    {
+      "kind": "open",
+      "x": -415,
+      "y": 0,
+      "z": -576,
+      "origin": "grid",
+      "slot": 7164
+    },
+    {
+      "kind": "open",
+      "x": -426,
+      "y": 0,
+      "z": -532,
+      "origin": "grid",
+      "slot": 55901
+    },
+    {
+      "kind": "open",
+      "x": -398,
+      "y": 0,
+      "z": -427,
+      "origin": "grid",
+      "slot": 39614
+    },
+    {
+      "kind": "open",
+      "x": -417,
+      "y": 0,
+      "z": -332,
+      "origin": "grid",
+      "slot": 23839
+    },
+    {
+      "kind": "open",
+      "x": -421,
+      "y": 0,
+      "z": -216,
+      "origin": "grid",
+      "slot": 7288
+    },
+    {
+      "kind": "open",
+      "x": -413,
+      "y": 0,
+      "z": -90,
+      "origin": "grid",
+      "slot": 56537
+    },
+    {
+      "kind": "open",
+      "x": -435,
+      "y": 0,
+      "z": 33,
+      "origin": "grid",
+      "slot": 40762
+    },
+    {
+      "kind": "open",
+      "x": -404,
+      "y": 0,
+      "z": 110,
+      "origin": "grid",
+      "slot": 24475
+    },
+    {
+      "kind": "open",
+      "x": -383,
+      "y": 0,
+      "z": 182,
+      "origin": "grid",
+      "slot": 7924
+    },
+    {
+      "kind": "open",
+      "x": -435,
+      "y": 0,
+      "z": 301,
+      "origin": "grid",
+      "slot": 49493
+    },
+    {
+      "kind": "open",
+      "x": -401,
+      "y": 0,
+      "z": 421,
+      "origin": "grid",
+      "slot": 33206
+    },
+    {
+      "kind": "open",
+      "x": -366,
+      "y": 0,
+      "z": 509,
+      "origin": "grid",
+      "slot": 16407
+    },
+    {
+      "kind": "open",
+      "x": -405,
+      "y": 0,
+      "z": 573,
+      "origin": "grid",
+      "slot": 880
+    },
+    {
+      "kind": "open",
+      "x": -393,
+      "y": 0,
+      "z": 709,
+      "origin": "grid",
+      "slot": 50129
+    },
+    {
+      "kind": "open",
+      "x": -426,
+      "y": 0,
+      "z": 769,
+      "origin": "grid",
+      "slot": 33330
+    },
+    {
+      "kind": "open",
+      "x": -376,
+      "y": 0,
+      "z": 929,
+      "origin": "grid",
+      "slot": 17043
+    },
+    {
+      "kind": "open",
+      "x": -270,
+      "y": 0,
+      "z": -911,
+      "origin": "grid",
+      "slot": 52578
+    },
+    {
+      "kind": "open",
+      "x": -324,
+      "y": 0,
+      "z": -775,
+      "origin": "grid",
+      "slot": 35969
+    },
+    {
+      "kind": "open",
+      "x": -318,
+      "y": 0,
+      "z": -666,
+      "origin": "grid",
+      "slot": 19488
+    },
+    {
+      "kind": "open",
+      "x": -323,
+      "y": 0,
+      "z": -594,
+      "origin": "grid",
+      "slot": 3935
+    },
+    {
+      "kind": "open",
+      "x": -290,
+      "y": 0,
+      "z": -525,
+      "origin": "grid",
+      "slot": 52990
+    },
+    {
+      "kind": "open",
+      "x": -273,
+      "y": 0,
+      "z": -388,
+      "origin": "grid",
+      "slot": 36381
+    },
+    {
+      "kind": "open",
+      "x": -310,
+      "y": 0,
+      "z": -281,
+      "origin": "grid",
+      "slot": 18876
+    },
+    {
+      "kind": "open",
+      "x": -307,
+      "y": 0,
+      "z": -180,
+      "origin": "grid",
+      "slot": 2267
+    },
+    {
+      "kind": "open",
+      "x": -301,
+      "y": 0,
+      "z": -71,
+      "origin": "grid",
+      "slot": 51322
+    },
+    {
+      "kind": "open",
+      "x": -311,
+      "y": 0,
+      "z": 33,
+      "origin": "grid",
+      "slot": 35737
+    },
+    {
+      "kind": "open",
+      "x": -311,
+      "y": 0,
+      "z": 127,
+      "origin": "grid",
+      "slot": 19256
+    },
+    {
+      "kind": "open",
+      "x": -288,
+      "y": 0,
+      "z": 207,
+      "origin": "grid",
+      "slot": 2647
+    },
+    {
+      "kind": "open",
+      "x": -334,
+      "y": 0,
+      "z": 327,
+      "origin": "grid",
+      "slot": 54774
+    },
+    {
+      "kind": "open",
+      "x": -303,
+      "y": 0,
+      "z": 428,
+      "origin": "grid",
+      "slot": 38165
+    },
+    {
+      "kind": "open",
+      "x": -317,
+      "y": 0,
+      "z": 486,
+      "origin": "grid",
+      "slot": 21684
+    },
+    {
+      "kind": "open",
+      "x": -316,
+      "y": 0,
+      "z": 582,
+      "origin": "grid",
+      "slot": 6099
+    },
+    {
+      "kind": "open",
+      "x": -271,
+      "y": 0,
+      "z": 682,
+      "origin": "grid",
+      "slot": 55154
+    },
+    {
+      "kind": "open",
+      "x": -279,
+      "y": 0,
+      "z": 791,
+      "origin": "grid",
+      "slot": 38545
+    },
+    {
+      "kind": "open",
+      "x": -298,
+      "y": 0,
+      "z": 873,
+      "origin": "grid",
+      "slot": 22064
+    },
+    {
+      "kind": "open",
+      "x": -176,
+      "y": 0,
+      "z": -901,
+      "origin": "grid",
+      "slot": 45727
+    },
+    {
+      "kind": "open",
+      "x": -181,
+      "y": 0,
+      "z": -797,
+      "origin": "grid",
+      "slot": 62332
+    },
+    {
+      "kind": "open",
+      "x": -183,
+      "y": 0,
+      "z": -696,
+      "origin": "grid",
+      "slot": 13277
+    },
+    {
+      "kind": "open",
+      "x": -230,
+      "y": 0,
+      "z": -566,
+      "origin": "grid",
+      "slot": 28834
+    },
+    {
+      "kind": "open",
+      "x": -173,
+      "y": 0,
+      "z": -494,
+      "origin": "grid",
+      "slot": 45315
+    },
+    {
+      "kind": "open",
+      "x": -208,
+      "y": 0,
+      "z": -395,
+      "origin": "grid",
+      "slot": 61920
+    },
+    {
+      "kind": "open",
+      "x": -235,
+      "y": 0,
+      "z": -320,
+      "origin": "grid",
+      "slot": 13889
+    },
+    {
+      "kind": "open",
+      "x": -189,
+      "y": 0,
+      "z": -215,
+      "origin": "grid",
+      "slot": 30502
+    },
+    {
+      "kind": "open",
+      "x": -212,
+      "y": 0,
+      "z": -131,
+      "origin": "grid",
+      "slot": 46983
+    },
+    {
+      "kind": "open",
+      "x": -170,
+      "y": 0,
+      "z": -16,
+      "origin": "grid",
+      "slot": 62564
+    },
+    {
+      "kind": "open",
+      "x": -199,
+      "y": 0,
+      "z": 124,
+      "origin": "grid",
+      "slot": 13509
+    },
+    {
+      "kind": "open",
+      "x": -190,
+      "y": 0,
+      "z": 172,
+      "origin": "grid",
+      "slot": 30122
+    },
+    {
+      "kind": "open",
+      "x": -167,
+      "y": 0,
+      "z": 301,
+      "origin": "grid",
+      "slot": 43531
+    },
+    {
+      "kind": "open",
+      "x": -180,
+      "y": 0,
+      "z": 384,
+      "origin": "grid",
+      "slot": 60136
+    },
+    {
+      "kind": "open",
+      "x": -214,
+      "y": 0,
+      "z": 477,
+      "origin": "grid",
+      "slot": 11081
+    },
+    {
+      "kind": "open",
+      "x": -166,
+      "y": 0,
+      "z": 587,
+      "origin": "grid",
+      "slot": 26670
+    },
+    {
+      "kind": "open",
+      "x": -231,
+      "y": 0,
+      "z": 708,
+      "origin": "grid",
+      "slot": 43151
+    },
+    {
+      "kind": "open",
+      "x": -211,
+      "y": 0,
+      "z": 768,
+      "origin": "grid",
+      "slot": 59756
+    },
+    {
+      "kind": "open",
+      "x": -221,
+      "y": 0,
+      "z": 920,
+      "origin": "grid",
+      "slot": 10701
+    },
+    {
+      "kind": "open",
+      "x": -68,
+      "y": 0,
+      "z": -872,
+      "origin": "grid",
+      "slot": 42552
+    },
+    {
+      "kind": "open",
+      "x": -96,
+      "y": 0,
+      "z": -788,
+      "origin": "grid",
+      "slot": 59355
+    },
+    {
+      "kind": "open",
+      "x": -107,
+      "y": 0,
+      "z": -686,
+      "origin": "grid",
+      "slot": 10106
+    },
+    {
+      "kind": "open",
+      "x": -78,
+      "y": 0,
+      "z": -576,
+      "origin": "grid",
+      "slot": 25605
+    },
+    {
+      "kind": "open",
+      "x": -110,
+      "y": 0,
+      "z": -492,
+      "origin": "grid",
+      "slot": 42404
+    },
+    {
+      "kind": "open",
+      "x": -123,
+      "y": 0,
+      "z": -405,
+      "origin": "grid",
+      "slot": 58695
+    },
+    {
+      "kind": "open",
+      "x": -94,
+      "y": 0,
+      "z": -275,
+      "origin": "grid",
+      "slot": 8934
+    },
+    {
+      "kind": "open",
+      "x": -131,
+      "y": 0,
+      "z": -228,
+      "origin": "grid",
+      "slot": 25473
+    },
+    {
+      "kind": "open",
+      "x": -95,
+      "y": 0,
+      "z": -115,
+      "origin": "grid",
+      "slot": 41760
+    },
+    {
+      "kind": "open",
+      "x": -82,
+      "y": 0,
+      "z": -35,
+      "origin": "grid",
+      "slot": 57539
+    },
+    {
+      "kind": "open",
+      "x": -93,
+      "y": 0,
+      "z": 67,
+      "origin": "grid",
+      "slot": 8290
+    },
+    {
+      "kind": "open",
+      "x": -97,
+      "y": 0,
+      "z": 192,
+      "origin": "grid",
+      "slot": 24845
+    },
+    {
+      "kind": "open",
+      "x": -90,
+      "y": 0,
+      "z": 267,
+      "origin": "grid",
+      "slot": 48812
+    },
+    {
+      "kind": "open",
+      "x": -95,
+      "y": 0,
+      "z": 374,
+      "origin": "grid",
+      "slot": 65103
+    },
+    {
+      "kind": "open",
+      "x": -123,
+      "y": 0,
+      "z": 468,
+      "origin": "grid",
+      "slot": 16366
+    },
+    {
+      "kind": "open",
+      "x": -119,
+      "y": 0,
+      "z": 582,
+      "origin": "grid",
+      "slot": 31881
+    },
+    {
+      "kind": "open",
+      "x": -107,
+      "y": 0,
+      "z": 706,
+      "origin": "grid",
+      "slot": 48168
+    },
+    {
+      "kind": "open",
+      "x": -135,
+      "y": 0,
+      "z": 790,
+      "origin": "grid",
+      "slot": 64971
+    },
+    {
+      "kind": "open",
+      "x": -75,
+      "y": 0,
+      "z": 892,
+      "origin": "grid",
+      "slot": 15722
+    },
+    {
+      "kind": "open",
+      "x": -11,
+      "y": 0,
+      "z": -910,
+      "origin": "grid",
+      "slot": 43605
+    },
+    {
+      "kind": "open",
+      "x": 8,
+      "y": 0,
+      "z": -792,
+      "origin": "grid",
+      "slot": 60342
+    },
+    {
+      "kind": "open",
+      "x": -17,
+      "y": 0,
+      "z": -712,
+      "origin": "grid",
+      "slot": 11031
+    },
+    {
+      "kind": "open",
+      "x": -7,
+      "y": 0,
+      "z": -612,
+      "origin": "grid",
+      "slot": 26728
+    },
+    {
+      "kind": "open",
+      "x": 0,
+      "y": 0,
+      "z": -524,
+      "origin": "grid",
+      "slot": 43465
+    },
+    {
+      "kind": "open",
+      "x": -25,
+      "y": 0,
+      "z": -373,
+      "origin": "grid",
+      "slot": 59690
+    },
+    {
+      "kind": "open",
+      "x": -34,
+      "y": 0,
+      "z": -325,
+      "origin": "grid",
+      "slot": 11915
+    },
+    {
+      "kind": "open",
+      "x": -6,
+      "y": 0,
+      "z": -220,
+      "origin": "grid",
+      "slot": 28652
+    },
+    {
+      "kind": "open",
+      "x": -26,
+      "y": 0,
+      "z": -92,
+      "origin": "grid",
+      "slot": 44877
+    },
+    {
+      "kind": "open",
+      "x": -3,
+      "y": 0,
+      "z": -35,
+      "origin": "grid",
+      "slot": 60590
+    },
+    {
+      "kind": "open",
+      "x": -28,
+      "y": 0,
+      "z": 116,
+      "origin": "grid",
+      "slot": 11279
+    },
+    {
+      "kind": "open",
+      "x": 13,
+      "y": 0,
+      "z": 187,
+      "origin": "grid",
+      "slot": 28000
+    },
+    {
+      "kind": "open",
+      "x": 33,
+      "y": 0,
+      "z": 272,
+      "origin": "grid",
+      "slot": 45761
+    },
+    {
+      "kind": "open",
+      "x": 24,
+      "y": 0,
+      "z": 392,
+      "origin": "grid",
+      "slot": 61986
+    },
+    {
+      "kind": "open",
+      "x": 20,
+      "y": 0,
+      "z": 488,
+      "origin": "grid",
+      "slot": 13187
+    },
+    {
+      "kind": "open",
+      "x": -20,
+      "y": 0,
+      "z": 565,
+      "origin": "grid",
+      "slot": 28900
+    },
+    {
+      "kind": "open",
+      "x": -3,
+      "y": 0,
+      "z": 679,
+      "origin": "grid",
+      "slot": 45125
+    },
+    {
+      "kind": "open",
+      "x": -34,
+      "y": 0,
+      "z": 814,
+      "origin": "grid",
+      "slot": 61862
+    },
+    {
+      "kind": "open",
+      "x": -21,
+      "y": 0,
+      "z": 918,
+      "origin": "grid",
+      "slot": 12551
+    },
+    {
+      "kind": "open",
+      "x": 102,
+      "y": 0,
+      "z": -925,
+      "origin": "grid",
+      "slot": 40950
+    },
+    {
+      "kind": "open",
+      "x": 92,
+      "y": 0,
+      "z": -820,
+      "origin": "grid",
+      "slot": 56853
+    },
+    {
+      "kind": "open",
+      "x": 102,
+      "y": 0,
+      "z": -702,
+      "origin": "grid",
+      "slot": 7860
+    },
+    {
+      "kind": "open",
+      "x": 103,
+      "y": 0,
+      "z": -586,
+      "origin": "grid",
+      "slot": 24011
+    },
+    {
+      "kind": "open",
+      "x": 104,
+      "y": 0,
+      "z": -525,
+      "origin": "grid",
+      "slot": 40042
+    },
+    {
+      "kind": "open",
+      "x": 109,
+      "y": 0,
+      "z": -419,
+      "origin": "grid",
+      "slot": 56457
+    },
+    {
+      "kind": "open",
+      "x": 104,
+      "y": 0,
+      "z": -302,
+      "origin": "grid",
+      "slot": 6952
+    },
+    {
+      "kind": "open",
+      "x": 69,
+      "y": 0,
+      "z": -174,
+      "origin": "grid",
+      "slot": 23119
+    },
+    {
+      "kind": "open",
+      "x": 84,
+      "y": 0,
+      "z": -79,
+      "origin": "grid",
+      "slot": 39662
+    },
+    {
+      "kind": "open",
+      "x": 99,
+      "y": 0,
+      "z": -18,
+      "origin": "grid",
+      "slot": 55565
+    },
+    {
+      "kind": "open",
+      "x": 84,
+      "y": 0,
+      "z": 73,
+      "origin": "grid",
+      "slot": 6572
+    },
+    {
+      "kind": "open",
+      "x": 134,
+      "y": 0,
+      "z": 205,
+      "origin": "grid",
+      "slot": 22723
+    },
+    {
+      "kind": "open",
+      "x": 132,
+      "y": 0,
+      "z": 294,
+      "origin": "grid",
+      "slot": 34658
+    },
+    {
+      "kind": "open",
+      "x": 67,
+      "y": 0,
+      "z": 367,
+      "origin": "grid",
+      "slot": 51073
+    },
+    {
+      "kind": "open",
+      "x": 123,
+      "y": 0,
+      "z": 530,
+      "origin": "grid",
+      "slot": 1568
+    },
+    {
+      "kind": "open",
+      "x": 118,
+      "y": 0,
+      "z": 591,
+      "origin": "grid",
+      "slot": 17735
+    },
+    {
+      "kind": "open",
+      "x": 109,
+      "y": 0,
+      "z": 697,
+      "origin": "grid",
+      "slot": 34278
+    },
+    {
+      "kind": "open",
+      "x": 124,
+      "y": 0,
+      "z": 829,
+      "origin": "grid",
+      "slot": 50181
+    },
+    {
+      "kind": "open",
+      "x": 109,
+      "y": 0,
+      "z": 920,
+      "origin": "grid",
+      "slot": 1188
+    },
+    {
+      "kind": "open",
+      "x": 191,
+      "y": 0,
+      "z": -882,
+      "origin": "grid",
+      "slot": 33555
+    },
+    {
+      "kind": "open",
+      "x": 193,
+      "y": 0,
+      "z": -797,
+      "origin": "grid",
+      "slot": 49904
+    },
+    {
+      "kind": "open",
+      "x": 188,
+      "y": 0,
+      "z": -667,
+      "origin": "grid",
+      "slot": 593
+    },
+    {
+      "kind": "open",
+      "x": 193,
+      "y": 0,
+      "z": -609,
+      "origin": "grid",
+      "slot": 16686
+    },
+    {
+      "kind": "open",
+      "x": 221,
+      "y": 0,
+      "z": -504,
+      "origin": "grid",
+      "slot": 32911
+    },
+    {
+      "kind": "open",
+      "x": 235,
+      "y": 0,
+      "z": -388,
+      "origin": "grid",
+      "slot": 49260
+    },
+    {
+      "kind": "open",
+      "x": 206,
+      "y": 0,
+      "z": -319,
+      "origin": "grid",
+      "slot": 1997
+    },
+    {
+      "kind": "open",
+      "x": 198,
+      "y": 0,
+      "z": -187,
+      "origin": "grid",
+      "slot": 18090
+    },
+    {
+      "kind": "open",
+      "x": 206,
+      "y": 0,
+      "z": -131,
+      "origin": "grid",
+      "slot": 34315
+    },
+    {
+      "kind": "open",
+      "x": 170,
+      "y": 0,
+      "z": 1,
+      "origin": "grid",
+      "slot": 50664
+    },
+    {
+      "kind": "open",
+      "x": 190,
+      "y": 0,
+      "z": 87,
+      "origin": "grid",
+      "slot": 1353
+    },
+    {
+      "kind": "open",
+      "x": 169,
+      "y": 0,
+      "z": 222,
+      "origin": "grid",
+      "slot": 17446
+    },
+    {
+      "kind": "open",
+      "x": 227,
+      "y": 0,
+      "z": 331,
+      "origin": "grid",
+      "slot": 39815
+    },
+    {
+      "kind": "open",
+      "x": 179,
+      "y": 0,
+      "z": 434,
+      "origin": "grid",
+      "slot": 56164
+    },
+    {
+      "kind": "open",
+      "x": 181,
+      "y": 0,
+      "z": 474,
+      "origin": "grid",
+      "slot": 6853
+    },
+    {
+      "kind": "open",
+      "x": 186,
+      "y": 0,
+      "z": 603,
+      "origin": "grid",
+      "slot": 22946
+    },
+    {
+      "kind": "open",
+      "x": 205,
+      "y": 0,
+      "z": 722,
+      "origin": "grid",
+      "slot": 39171
+    },
+    {
+      "kind": "open",
+      "x": 182,
+      "y": 0,
+      "z": 780,
+      "origin": "grid",
+      "slot": 55520
+    },
+    {
+      "kind": "open",
+      "x": 235,
+      "y": 0,
+      "z": 913,
+      "origin": "grid",
+      "slot": 6209
+    },
+    {
+      "kind": "open",
+      "x": 288,
+      "y": 0,
+      "z": -890,
+      "origin": "grid",
+      "slot": 30540
+    },
+    {
+      "kind": "open",
+      "x": 317,
+      "y": 0,
+      "z": -823,
+      "origin": "grid",
+      "slot": 13999
+    },
+    {
+      "kind": "open",
+      "x": 306,
+      "y": 0,
+      "z": -703,
+      "origin": "grid",
+      "slot": 62990
+    },
+    {
+      "kind": "open",
+      "x": 335,
+      "y": 0,
+      "z": -565,
+      "origin": "grid",
+      "slot": 46449
+    },
+    {
+      "kind": "open",
+      "x": 268,
+      "y": 0,
+      "z": -515,
+      "origin": "grid",
+      "slot": 29904
+    },
+    {
+      "kind": "open",
+      "x": 326,
+      "y": 0,
+      "z": -410,
+      "origin": "grid",
+      "slot": 13363
+    },
+    {
+      "kind": "open",
+      "x": 331,
+      "y": 0,
+      "z": -322,
+      "origin": "grid",
+      "slot": 62354
+    },
+    {
+      "kind": "open",
+      "x": 318,
+      "y": 0,
+      "z": -218,
+      "origin": "grid",
+      "slot": 45813
+    },
+    {
+      "kind": "open",
+      "x": 320,
+      "y": 0,
+      "z": -101,
+      "origin": "grid",
+      "slot": 29268
+    },
+    {
+      "kind": "open",
+      "x": 328,
+      "y": 0,
+      "z": 20,
+      "origin": "grid",
+      "slot": 12727
+    },
+    {
+      "kind": "open",
+      "x": 317,
+      "y": 0,
+      "z": 69,
+      "origin": "grid",
+      "slot": 61718
+    },
+    {
+      "kind": "open",
+      "x": 275,
+      "y": 0,
+      "z": 207,
+      "origin": "grid",
+      "slot": 45177
+    },
+    {
+      "kind": "open",
+      "x": 329,
+      "y": 0,
+      "z": 311,
+      "origin": "grid",
+      "slot": 28632
+    },
+    {
+      "kind": "open",
+      "x": 311,
+      "y": 0,
+      "z": 368,
+      "origin": "grid",
+      "slot": 12091
+    },
+    {
+      "kind": "open",
+      "x": 322,
+      "y": 0,
+      "z": 471,
+      "origin": "grid",
+      "slot": 61082
+    },
+    {
+      "kind": "open",
+      "x": 309,
+      "y": 0,
+      "z": 575,
+      "origin": "grid",
+      "slot": 44541
+    },
+    {
+      "kind": "open",
+      "x": 334,
+      "y": 0,
+      "z": 714,
+      "origin": "grid",
+      "slot": 27996
+    },
+    {
+      "kind": "open",
+      "x": 271,
+      "y": 0,
+      "z": 835,
+      "origin": "grid",
+      "slot": 11455
+    },
+    {
+      "kind": "open",
+      "x": 331,
+      "y": 0,
+      "z": 884,
+      "origin": "grid",
+      "slot": 60446
+    },
+    {
+      "kind": "open",
+      "x": 369,
+      "y": 0,
+      "z": -904,
+      "origin": "grid",
+      "slot": 31977
+    },
+    {
+      "kind": "open",
+      "x": 415,
+      "y": 0,
+      "z": -806,
+      "origin": "grid",
+      "slot": 15626
+    },
+    {
+      "kind": "open",
+      "x": 366,
+      "y": 0,
+      "z": -734,
+      "origin": "grid",
+      "slot": 64939
+    },
+    {
+      "kind": "open",
+      "x": 392,
+      "y": 0,
+      "z": -565,
+      "origin": "grid",
+      "slot": 48852
+    },
+    {
+      "kind": "open",
+      "x": 405,
+      "y": 0,
+      "z": -479,
+      "origin": "grid",
+      "slot": 32629
+    },
+    {
+      "kind": "open",
+      "x": 422,
+      "y": 0,
+      "z": -419,
+      "origin": "grid",
+      "slot": 16278
+    },
+    {
+      "kind": "open",
+      "x": 368,
+      "y": 0,
+      "z": -323,
+      "origin": "grid",
+      "slot": 63543
+    },
+    {
+      "kind": "open",
+      "x": 406,
+      "y": 0,
+      "z": -226,
+      "origin": "grid",
+      "slot": 47440
+    },
+    {
+      "kind": "open",
+      "x": 367,
+      "y": 0,
+      "z": -129,
+      "origin": "grid",
+      "slot": 31217
+    },
+    {
+      "kind": "open",
+      "x": 432,
+      "y": 0,
+      "z": -19,
+      "origin": "grid",
+      "slot": 14866
+    },
+    {
+      "kind": "open",
+      "x": 435,
+      "y": 0,
+      "z": 112,
+      "origin": "grid",
+      "slot": 64179
+    },
+    {
+      "kind": "open",
+      "x": 371,
+      "y": 0,
+      "z": 198,
+      "origin": "grid",
+      "slot": 48092
+    },
+    {
+      "kind": "open",
+      "x": 407,
+      "y": 0,
+      "z": 306,
+      "origin": "grid",
+      "slot": 25725
+    },
+    {
+      "kind": "open",
+      "x": 427,
+      "y": 0,
+      "z": 409,
+      "origin": "grid",
+      "slot": 9374
+    },
+    {
+      "kind": "open",
+      "x": 425,
+      "y": 0,
+      "z": 493,
+      "origin": "grid",
+      "slot": 58687
+    },
+    {
+      "kind": "open",
+      "x": 406,
+      "y": 0,
+      "z": 625,
+      "origin": "grid",
+      "slot": 42584
+    },
+    {
+      "kind": "open",
+      "x": 386,
+      "y": 0,
+      "z": 734,
+      "origin": "grid",
+      "slot": 26361
+    },
+    {
+      "kind": "open",
+      "x": 432,
+      "y": 0,
+      "z": 832,
+      "origin": "grid",
+      "slot": 10010
+    },
+    {
+      "kind": "open",
+      "x": 416,
+      "y": 0,
+      "z": 880,
+      "origin": "grid",
+      "slot": 59323
+    },
+    {
+      "kind": "open",
+      "x": 512,
+      "y": 0,
+      "z": -878,
+      "origin": "grid",
+      "slot": 24586
+    },
+    {
+      "kind": "open",
+      "x": 478,
+      "y": 0,
+      "z": -817,
+      "origin": "grid",
+      "slot": 8681
+    },
+    {
+      "kind": "open",
+      "x": 510,
+      "y": 0,
+      "z": -696,
+      "origin": "grid",
+      "slot": 57672
+    },
+    {
+      "kind": "open",
+      "x": 474,
+      "y": 0,
+      "z": -608,
+      "origin": "grid",
+      "slot": 41527
+    },
+    {
+      "kind": "open",
+      "x": 494,
+      "y": 0,
+      "z": -518,
+      "origin": "grid",
+      "slot": 25494
+    },
+    {
+      "kind": "open",
+      "x": 499,
+      "y": 0,
+      "z": -394,
+      "origin": "grid",
+      "slot": 9077
+    },
+    {
+      "kind": "open",
+      "x": 517,
+      "y": 0,
+      "z": -309,
+      "origin": "grid",
+      "slot": 58580
+    },
+    {
+      "kind": "open",
+      "x": 496,
+      "y": 0,
+      "z": -179,
+      "origin": "grid",
+      "slot": 42419
+    },
+    {
+      "kind": "open",
+      "x": 496,
+      "y": 0,
+      "z": -67,
+      "origin": "grid",
+      "slot": 25874
+    },
+    {
+      "kind": "open",
+      "x": 515,
+      "y": 0,
+      "z": 20,
+      "origin": "grid",
+      "slot": 9969
+    },
+    {
+      "kind": "open",
+      "x": 528,
+      "y": 0,
+      "z": 129,
+      "origin": "grid",
+      "slot": 58960
+    },
+    {
+      "kind": "open",
+      "x": 498,
+      "y": 0,
+      "z": 232,
+      "origin": "grid",
+      "slot": 42815
+    },
+    {
+      "kind": "open",
+      "x": 498,
+      "y": 0,
+      "z": 272,
+      "origin": "grid",
+      "slot": 30878
+    },
+    {
+      "kind": "open",
+      "x": 514,
+      "y": 0,
+      "z": 388,
+      "origin": "grid",
+      "slot": 14461
+    },
+    {
+      "kind": "open",
+      "x": 504,
+      "y": 0,
+      "z": 474,
+      "origin": "grid",
+      "slot": 63964
+    },
+    {
+      "kind": "open",
+      "x": 469,
+      "y": 0,
+      "z": 569,
+      "origin": "grid",
+      "slot": 47803
+    },
+    {
+      "kind": "open",
+      "x": 478,
+      "y": 0,
+      "z": 668,
+      "origin": "grid",
+      "slot": 31258
+    },
+    {
+      "kind": "open",
+      "x": 465,
+      "y": 0,
+      "z": 817,
+      "origin": "grid",
+      "slot": 15353
+    },
+    {
+      "kind": "open",
+      "x": 497,
+      "y": 0,
+      "z": 867,
+      "origin": "grid",
+      "slot": 64344
+    },
+    {
+      "kind": "open",
+      "x": 597,
+      "y": 0,
+      "z": -882,
+      "origin": "grid",
+      "slot": 21927
+    },
+    {
+      "kind": "open",
+      "x": 605,
+      "y": 0,
+      "z": -834,
+      "origin": "grid",
+      "slot": 5188
+    },
+    {
+      "kind": "open",
+      "x": 567,
+      "y": 0,
+      "z": -699,
+      "origin": "grid",
+      "slot": 54501
+    },
+    {
+      "kind": "open",
+      "x": 588,
+      "y": 0,
+      "z": -483,
+      "origin": "grid",
+      "slot": 22075
+    },
+    {
+      "kind": "open",
+      "x": 599,
+      "y": 0,
+      "z": -393,
+      "origin": "grid",
+      "slot": 5848
+    },
+    {
+      "kind": "open",
+      "x": 587,
+      "y": 0,
+      "z": -334,
+      "origin": "grid",
+      "slot": 53625
+    },
+    {
+      "kind": "open",
+      "x": 584,
+      "y": 0,
+      "z": -227,
+      "origin": "grid",
+      "slot": 36894
+    },
+    {
+      "kind": "open",
+      "x": 623,
+      "y": 0,
+      "z": -77,
+      "origin": "grid",
+      "slot": 20671
+    },
+    {
+      "kind": "open",
+      "x": 596,
+      "y": 0,
+      "z": -10,
+      "origin": "grid",
+      "slot": 4956
+    },
+    {
+      "kind": "open",
+      "x": 623,
+      "y": 0,
+      "z": 110,
+      "origin": "grid",
+      "slot": 54269
+    },
+    {
+      "kind": "open",
+      "x": 617,
+      "y": 0,
+      "z": 214,
+      "origin": "grid",
+      "slot": 37522
+    },
+    {
+      "kind": "open",
+      "x": 599,
+      "y": 0,
+      "z": 329,
+      "origin": "grid",
+      "slot": 19763
+    },
+    {
+      "kind": "open",
+      "x": 569,
+      "y": 0,
+      "z": 423,
+      "origin": "grid",
+      "slot": 3536
+    },
+    {
+      "kind": "open",
+      "x": 623,
+      "y": 0,
+      "z": 505,
+      "origin": "grid",
+      "slot": 52337
+    },
+    {
+      "kind": "open",
+      "x": 623,
+      "y": 0,
+      "z": 584,
+      "origin": "grid",
+      "slot": 36630
+    },
+    {
+      "kind": "open",
+      "x": 619,
+      "y": 0,
+      "z": 733,
+      "origin": "grid",
+      "slot": 20407
+    },
+    {
+      "kind": "open",
+      "x": 581,
+      "y": 0,
+      "z": 808,
+      "origin": "grid",
+      "slot": 3668
+    },
+    {
+      "kind": "open",
+      "x": 589,
+      "y": 0,
+      "z": 916,
+      "origin": "grid",
+      "slot": 52981
+    },
+    {
+      "kind": "open",
+      "x": 671,
+      "y": 0,
+      "z": -903,
+      "origin": "grid",
+      "slot": 22976
+    },
+    {
+      "kind": "open",
+      "x": 684,
+      "y": 0,
+      "z": -804,
+      "origin": "grid",
+      "slot": 6179
+    },
+    {
+      "kind": "open",
+      "x": 670,
+      "y": 0,
+      "z": -728,
+      "origin": "grid",
+      "slot": 55426
+    },
+    {
+      "kind": "open",
+      "x": 720,
+      "y": 0,
+      "z": -633,
+      "origin": "grid",
+      "slot": 39933
+    },
+    {
+      "kind": "open",
+      "x": 723,
+      "y": 0,
+      "z": -478,
+      "origin": "grid",
+      "slot": 23132
+    },
+    {
+      "kind": "open",
+      "x": 680,
+      "y": 0,
+      "z": -378,
+      "origin": "grid",
+      "slot": 6847
+    },
+    {
+      "kind": "open",
+      "x": 668,
+      "y": 0,
+      "z": -296,
+      "origin": "grid",
+      "slot": 56606
+    },
+    {
+      "kind": "open",
+      "x": 735,
+      "y": 0,
+      "z": -185,
+      "origin": "grid",
+      "slot": 40057
+    },
+    {
+      "kind": "open",
+      "x": 735,
+      "y": 0,
+      "z": -74,
+      "origin": "grid",
+      "slot": 23768
+    },
+    {
+      "kind": "open",
+      "x": 721,
+      "y": 0,
+      "z": -7,
+      "origin": "grid",
+      "slot": 7995
+    },
+    {
+      "kind": "open",
+      "x": 680,
+      "y": 0,
+      "z": 108,
+      "origin": "grid",
+      "slot": 57242
+    },
+    {
+      "kind": "open",
+      "x": 722,
+      "y": 0,
+      "z": 192,
+      "origin": "grid",
+      "slot": 40693
+    },
+    {
+      "kind": "open",
+      "x": 734,
+      "y": 0,
+      "z": 334,
+      "origin": "grid",
+      "slot": 16724
+    },
+    {
+      "kind": "open",
+      "x": 729,
+      "y": 0,
+      "z": 387,
+      "origin": "grid",
+      "slot": 439
+    },
+    {
+      "kind": "open",
+      "x": 682,
+      "y": 0,
+      "z": 488,
+      "origin": "grid",
+      "slot": 49174
+    },
+    {
+      "kind": "open",
+      "x": 735,
+      "y": 0,
+      "z": 635,
+      "origin": "grid",
+      "slot": 33649
+    },
+    {
+      "kind": "open",
+      "x": 727,
+      "y": 0,
+      "z": 726,
+      "origin": "grid",
+      "slot": 17360
+    },
+    {
+      "kind": "open",
+      "x": 715,
+      "y": 0,
+      "z": 798,
+      "origin": "grid",
+      "slot": 563
+    },
+    {
+      "kind": "open",
+      "x": 693,
+      "y": 0,
+      "z": 925,
+      "origin": "grid",
+      "slot": 49810
+    },
+    {
+      "kind": "open",
+      "x": 797,
+      "y": 0,
+      "z": -919,
+      "origin": "grid",
+      "slot": 19837
+    },
+    {
+      "kind": "open",
+      "x": 766,
+      "y": 0,
+      "z": -766,
+      "origin": "grid",
+      "slot": 3230
+    },
+    {
+      "kind": "open",
+      "x": 802,
+      "y": 0,
+      "z": -729,
+      "origin": "grid",
+      "slot": 52287
+    },
+    {
+      "kind": "open",
+      "x": 816,
+      "y": 0,
+      "z": -632,
+      "origin": "grid",
+      "slot": 36672
+    },
+    {
+      "kind": "open",
+      "x": 802,
+      "y": 0,
+      "z": -508,
+      "origin": "grid",
+      "slot": 20193
+    },
+    {
+      "kind": "open",
+      "x": 800,
+      "y": 0,
+      "z": -388,
+      "origin": "grid",
+      "slot": 3586
+    },
+    {
+      "kind": "open",
+      "x": 822,
+      "y": 0,
+      "z": -316,
+      "origin": "grid",
+      "slot": 51619
+    },
+    {
+      "kind": "open",
+      "x": 806,
+      "y": 0,
+      "z": -232,
+      "origin": "grid",
+      "slot": 35012
+    },
+    {
+      "kind": "open",
+      "x": 785,
+      "y": 0,
+      "z": -89,
+      "origin": "grid",
+      "slot": 18533
+    },
+    {
+      "kind": "open",
+      "x": 815,
+      "y": 0,
+      "z": -32,
+      "origin": "grid",
+      "slot": 2950
+    },
+    {
+      "kind": "open",
+      "x": 799,
+      "y": 0,
+      "z": 88,
+      "origin": "grid",
+      "slot": 52007
+    },
+    {
+      "kind": "open",
+      "x": 820,
+      "y": 0,
+      "z": 229,
+      "origin": "grid",
+      "slot": 35400
+    },
+    {
+      "kind": "open",
+      "x": 823,
+      "y": 0,
+      "z": 289,
+      "origin": "grid",
+      "slot": 21993
+    },
+    {
+      "kind": "open",
+      "x": 773,
+      "y": 0,
+      "z": 431,
+      "origin": "grid",
+      "slot": 5386
+    },
+    {
+      "kind": "open",
+      "x": 775,
+      "y": 0,
+      "z": 524,
+      "origin": "grid",
+      "slot": 54443
+    },
+    {
+      "kind": "open",
+      "x": 803,
+      "y": 0,
+      "z": 576,
+      "origin": "grid",
+      "slot": 38860
+    },
+    {
+      "kind": "open",
+      "x": 810,
+      "y": 0,
+      "z": 718,
+      "origin": "grid",
+      "slot": 22381
+    },
+    {
+      "kind": "open",
+      "x": 829,
+      "y": 0,
+      "z": 783,
+      "origin": "grid",
+      "slot": 5774
+    },
+    {
+      "kind": "open",
+      "x": 794,
+      "y": 0,
+      "z": 891,
+      "origin": "grid",
+      "slot": 54831
+    },
+    {
+      "kind": "open",
+      "x": 884,
+      "y": 0,
+      "z": -892,
+      "origin": "grid",
+      "slot": 12958
+    },
+    {
+      "kind": "open",
+      "x": 907,
+      "y": 0,
+      "z": -794,
+      "origin": "grid",
+      "slot": 29565
+    },
+    {
+      "kind": "open",
+      "x": 905,
+      "y": 0,
+      "z": -688,
+      "origin": "grid",
+      "slot": 46044
+    },
+    {
+      "kind": "open",
+      "x": 920,
+      "y": 0,
+      "z": -621,
+      "origin": "grid",
+      "slot": 61603
+    },
+    {
+      "kind": "open",
+      "x": 921,
+      "y": 0,
+      "z": -471,
+      "origin": "grid",
+      "slot": 12546
+    },
+    {
+      "kind": "open",
+      "x": 914,
+      "y": 0,
+      "z": -378,
+      "origin": "grid",
+      "slot": 29153
+    },
+    {
+      "kind": "open",
+      "x": 926,
+      "y": 0,
+      "z": -307,
+      "origin": "grid",
+      "slot": 46656
+    },
+    {
+      "kind": "open",
+      "x": 877,
+      "y": 0,
+      "z": -196,
+      "origin": "grid",
+      "slot": 63271
+    },
+    {
+      "kind": "open",
+      "x": 899,
+      "y": 0,
+      "z": -101,
+      "origin": "grid",
+      "slot": 14214
+    },
+    {
+      "kind": "open",
+      "x": 879,
+      "y": 0,
+      "z": -4,
+      "origin": "grid",
+      "slot": 29797
+    },
+    {
+      "kind": "open",
+      "x": 877,
+      "y": 0,
+      "z": 102,
+      "origin": "grid",
+      "slot": 46276
+    },
+    {
+      "kind": "open",
+      "x": 887,
+      "y": 0,
+      "z": 183,
+      "origin": "grid",
+      "slot": 62891
+    },
+    {
+      "kind": "open",
+      "x": 931,
+      "y": 0,
+      "z": 334,
+      "origin": "grid",
+      "slot": 10762
+    },
+    {
+      "kind": "open",
+      "x": 884,
+      "y": 0,
+      "z": 398,
+      "origin": "grid",
+      "slot": 27369
+    },
+    {
+      "kind": "open",
+      "x": 886,
+      "y": 0,
+      "z": 515,
+      "origin": "grid",
+      "slot": 43848
+    },
+    {
+      "kind": "open",
+      "x": 916,
+      "y": 0,
+      "z": 575,
+      "origin": "grid",
+      "slot": 59439
+    },
+    {
+      "kind": "open",
+      "x": 878,
+      "y": 0,
+      "z": 733,
+      "origin": "grid",
+      "slot": 10382
+    },
+    {
+      "kind": "open",
+      "x": 901,
+      "y": 0,
+      "z": 831,
+      "origin": "grid",
+      "slot": 26989
+    },
+    {
+      "kind": "open",
+      "x": 866,
+      "y": 0,
+      "z": 890,
+      "origin": "grid",
+      "slot": 43468
+    }
+  ]
+}
