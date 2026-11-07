@@ -9,6 +9,14 @@ namespace Aaris.MapReview
         [SerializeField] private Camera followCamera;
         [SerializeField] private Transform leftArm, rightArm, leftLeg, rightLeg;
         [SerializeField] private float walkSpeed = 4.2f, runSpeed = 6.2f;
+        [Header("Battle Royale locomotion — metres per second")]
+        [SerializeField, Min(0f)] private float unarmedSprintSpeed = 6.5f;
+        [SerializeField, Min(0f)] private float armedSprintSpeed = 5.7f;
+        [SerializeField, Min(0f)] private float crouchMoveSpeed = 2.4f;
+        [SerializeField, Min(0f)] private float proneMoveSpeed = 1.1f;
+        [SerializeField, Min(0f)] private float combatMoveSpeed = 2.0f;
+        [SerializeField, Min(0.01f)] private float horizontalAcceleration = 13f;
+        [SerializeField, Min(0.01f)] private float horizontalBraking = 19f;
         [SerializeField] private float jumpHeight = 1.0f, gravity = 24f;
         [SerializeField] private float followDistance = 4.2f, pivotHeight = 1.45f;
         [SerializeField] private float lookSensitivity = 0.12f;
@@ -33,6 +41,27 @@ namespace Aaris.MapReview
         private Vector2 stickCenter;
         private GUIStyle buttonStyle, labelStyle;
         private Texture2D disc;
+        private AarisBattleActions battle;
+        private Vector3 horizontalVelocity;
+        private float normalCameraFov;
+        public Camera AimCamera => followCamera;
+        public bool IsAutoSprinting => running;
+
+        public void CancelAutoSprint() => running = false;
+
+        public void ToggleAutoSprint()
+        {
+            if (battle == null) battle = GetComponent<AarisBattleActions>();
+            if (!running && battle != null && !battle.TryStand()) return;
+            running = !running;
+        }
+
+        public void RequestJump()
+        {
+            if (battle == null) battle = GetComponent<AarisBattleActions>();
+            if (battle != null && !battle.TryStand()) return;
+            jumpUntil = Time.unscaledTime + 0.17f;
+        }
 
         private void Awake()
         {
@@ -40,6 +69,7 @@ namespace Aaris.MapReview
             terrains = Terrain.activeTerrains;
             if (followCamera == null) followCamera = Camera.main;
             if (followCamera == null) { enabled = false; Debug.LogError("Saved player camera is missing."); return; }
+            normalCameraFov = followCamera.fieldOfView;
             previousSimulateMouse = Input.simulateMouseWithTouches;
             Input.simulateMouseWithTouches = false;
             inputConfigured = true;
@@ -85,12 +115,13 @@ namespace Aaris.MapReview
             fpsButton = new Rect(right - 212f, top, 100f, 36f);
         }
         private Vector2 ToGUI(Vector2 p) => new Vector2(p.x / uiScale, (Screen.height - p.y) / uiScale);
-        private bool OverButton(Vector2 p) => jumpButton.Contains(p) || runButton.Contains(p) || homeButton.Contains(p)
-            || reportButton.Contains(p) || fpsButton.Contains(p);
+        private bool OverButton(Vector2 p) =>
+            (!AarisBattleHUD.IsVisible && (jumpButton.Contains(p) || runButton.Contains(p))) ||
+            homeButton.Contains(p) || reportButton.Contains(p) || fpsButton.Contains(p);
         private void PressButton(Vector2 p)
         {
-            if (jumpButton.Contains(p)) jumpUntil = Time.unscaledTime + 0.15f;
-            else if (runButton.Contains(p)) running = !running;
+            if (!AarisBattleHUD.IsVisible && jumpButton.Contains(p)) RequestJump();
+            else if (!AarisBattleHUD.IsVisible && runButton.Contains(p)) ToggleAutoSprint();
             else if (homeButton.Contains(p)) ResetPlayer();
             else if (reportButton.Contains(p))
             {
@@ -119,6 +150,7 @@ namespace Aaris.MapReview
                 }
                 if (t.phase == TouchPhase.Began)
                 {
+                    if (AarisBattleHUD.CapturesScreenPosition(t.position)) continue;
                     if (OverButton(p)) { PressButton(p); continue; }
                     if (moveFinger == -1 && (p - stickCenter).sqrMagnitude < 110f * 110f) moveFinger = t.fingerId;
                     else if (lookFinger == -1 && p.x > Screen.width / uiScale * 0.4f) lookFinger = t.fingerId;
@@ -145,12 +177,18 @@ namespace Aaris.MapReview
                 if (Input.GetMouseButton(1)) Look(mouse - lastMouse);
                 lastMouse = mouse;
             }
-            if (Input.GetKeyDown(KeyCode.Space)) jumpUntil = Time.unscaledTime + 0.15f;
+            if (Input.GetKeyDown(KeyCode.Space)) RequestJump();
+            if (Input.GetKeyDown(KeyCode.C)) { if (battle != null) battle.ToggleCrouch(); CancelAutoSprint(); }
+            if (Input.GetKeyDown(KeyCode.Z)) { if (battle != null) battle.ToggleProne(); CancelAutoSprint(); }
+            if (Input.GetKeyDown(KeyCode.E)) ToggleAutoSprint();
+            if (battle != null && Input.GetKeyDown(KeyCode.LeftControl)) battle.SetFireHeld(true);
+            if (battle != null && Input.GetKeyUp(KeyCode.LeftControl)) battle.SetFireHeld(false);
             if (Input.GetKeyDown(KeyCode.F)) ResetPlayer();
         }
 
         private void Update()
         {
+            if (battle == null) battle = GetComponent<AarisBattleActions>();
             ReadInput();
             float dt = Mathf.Min(Time.deltaTime, 0.05f);
             if (dt <= 0f) return;
@@ -161,21 +199,60 @@ namespace Aaris.MapReview
                 verticalVelocity = Mathf.Sqrt(2f * gravity * jumpHeight);
                 jumpUntil = lastGrounded = -10f;
             }
-            Vector3 wish = Quaternion.Euler(0f, yaw, 0f) * new Vector3(moveInput.x, 0f, moveInput.y);
+
+            // Sole controller motor: no extra movement component or double
+            // gravity. Touch, keyboard and auto-sprint use one intent pipeline.
+            if (running && moveInput.y < -0.25f) running = false;
+            if (battle != null && battle.FireHeld) running = false;
+            bool sprinting = running || Input.GetKey(KeyCode.LeftShift);
+            if (sprinting && battle != null && !battle.TryStand())
+                sprinting = false;
+            Vector2 intent = moveInput;
+            if (running && intent.sqrMagnitude < 0.04f) intent = Vector2.up;
+
+            Vector3 wish = Quaternion.Euler(0f, yaw, 0f) *
+                new Vector3(intent.x, 0f, intent.y);
             wish = Vector3.ClampMagnitude(wish, 1f);
-            float speed = running || Input.GetKey(KeyCode.LeftShift) ? runSpeed : walkSpeed;
-            Vector3 candidate = transform.position + wish * (speed * dt);
-            // Review mode stops at the shoreline; swimming is a separate gameplay system.
-            if (Mathf.Abs(candidate.x) > 975f || Mathf.Abs(candidate.z) > 975f || !SafeFooting(candidate))
-                wish = Vector3.zero;
-            if (wish.sqrMagnitude > 0.001f)
-                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(wish), 1f - Mathf.Exp(-14f * dt));
+
+            float speed = sprinting
+                ? (battle != null && battle.IsArmed ? armedSprintSpeed : unarmedSprintSpeed)
+                : walkSpeed;
+            if (battle != null && !sprinting)
+            {
+                if (battle.Stance == AarisBattleActions.PlayerStance.Crouching) speed = crouchMoveSpeed;
+                else if (battle.Stance == AarisBattleActions.PlayerStance.Prone) speed = proneMoveSpeed;
+                else if (battle.FireHeld) speed = combatMoveSpeed;
+            }
+
+            Vector3 desiredVelocity = wish * speed;
+            float response = desiredVelocity.sqrMagnitude < 0.001f
+                ? horizontalBraking : horizontalAcceleration;
+            horizontalVelocity = Vector3.MoveTowards(horizontalVelocity,
+                desiredVelocity, response * dt);
+            Vector3 candidate = transform.position + horizontalVelocity * dt;
+            // Original 2km map bounds and shoreline/bridge checks survive.
+            if (Mathf.Abs(candidate.x) > 975f || Mathf.Abs(candidate.z) > 975f ||
+                !SafeFooting(candidate))
+                horizontalVelocity = Vector3.zero;
+
+            if (horizontalVelocity.sqrMagnitude > 0.0025f)
+                transform.rotation = Quaternion.Slerp(transform.rotation,
+                    Quaternion.LookRotation(horizontalVelocity),
+                    1f - Mathf.Exp(-14f * dt));
+
             verticalVelocity = Mathf.Max(verticalVelocity - gravity * dt, -40f);
-            CollisionFlags flags = controller.Move((wish * speed + Vector3.up * verticalVelocity) * dt);
-            if ((flags & CollisionFlags.Above) != 0 && verticalVelocity > 0f) verticalVelocity = 0f;
+            CollisionFlags flags = controller.Move(
+                (horizontalVelocity + Vector3.up * verticalVelocity) * dt);
+            if ((flags & CollisionFlags.Above) != 0 && verticalVelocity > 0f)
+                verticalVelocity = 0f;
             Vector3 velocity = controller.velocity;
             travelSpeed = new Vector2(velocity.x, velocity.z).magnitude;
             AnimateWalk(dt);
+
+            float targetFov = normalCameraFov + (sprinting && travelSpeed > 4f ? 6f : 0f);
+            if (followCamera != null)
+                followCamera.fieldOfView = Mathf.Lerp(followCamera.fieldOfView,
+                    targetFov, 1f - Mathf.Exp(-5f * dt));
         }
 
         private void AnimateWalk(float dt)
@@ -185,7 +262,16 @@ namespace Aaris.MapReview
             if (!controller.isGrounded) amplitude *= 0.2f;
             float angle = Mathf.Sin(gait) * amplitude;
             if (leftArm != null) leftArm.localRotation = leftArmRest * Quaternion.Euler(-angle, 0f, 0f);
-            if (rightArm != null) rightArm.localRotation = rightArmRest * Quaternion.Euler(angle, 0f, 0f);
+            if (rightArm != null)
+            {
+                float punch = 0f;
+                if (battle != null)
+                {
+                    float t = (Time.time - battle.LastPunchTime) / 0.36f;
+                    if (t >= 0f && t <= 1f) punch = Mathf.Sin(t * Mathf.PI) * 78f;
+                }
+                rightArm.localRotation = rightArmRest * Quaternion.Euler(angle - punch, 0f, 0f);
+            }
             if (leftLeg != null) leftLeg.localRotation = leftLegRest * Quaternion.Euler(angle, 0f, 0f);
             if (rightLeg != null) rightLeg.localRotation = rightLegRest * Quaternion.Euler(-angle, 0f, 0f);
         }
@@ -226,7 +312,8 @@ namespace Aaris.MapReview
         private void PlaceCamera(bool instant)
         {
             if (followCamera == null) return;
-            Vector3 pivot = transform.position + Vector3.up * pivotHeight;
+            float eyeHeight = battle != null ? battle.CameraEyeHeight : pivotHeight;
+            Vector3 pivot = transform.position + Vector3.up * eyeHeight;
             Quaternion orbit = Quaternion.Euler(pitch, yaw, 0f);
             Vector3 wanted = pivot - orbit * Vector3.forward * followDistance + orbit * Vector3.right * 0.30f;
             wanted = ObstructionSafe(pivot, wanted);
@@ -242,6 +329,9 @@ namespace Aaris.MapReview
             if (nearbyColliders != null) nearbyColliders.RefreshNow();
             controller.enabled = true;
             verticalVelocity = -2f; yaw = spawnRotation.eulerAngles.y; pitch = 12f;
+            horizontalVelocity = Vector3.zero;
+            running = false;
+            if (battle != null) { battle.SetFireHeld(false); battle.TryStand(); }
             lastGrounded = -10f; gait = travelSpeed = 0f;
             cameraVelocity = Vector3.zero;
             ClearInput(); PlaceCamera(true);
@@ -268,8 +358,11 @@ namespace Aaris.MapReview
             Vector2 knob = stickCenter + new Vector2(moveInput.x, -moveInput.y) * 44f;
             GUI.DrawTexture(new Rect(knob.x - 28f, knob.y - 28f, 56f, 56f), disc);
             GUI.color = Color.white;
-            GUI.Box(jumpButton, "JUMP", buttonStyle);
-            GUI.Box(runButton, running ? "RUN: ON" : "WALK", buttonStyle);
+            if (!AarisBattleHUD.IsVisible)
+            {
+                GUI.Box(jumpButton, "JUMP", buttonStyle);
+                GUI.Box(runButton, running ? "RUN: ON" : "WALK", buttonStyle);
+            }
             GUI.Box(homeButton, "HOME", buttonStyle);
             GUI.Box(reportButton, Time.unscaledTime < reportCopiedUntil ? "COPIED" : "REPORT", buttonStyle);
             GUI.Box(fpsButton, Application.targetFrameRate == 60 ? "60 FPS" : "30 FPS", buttonStyle);
