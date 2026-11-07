@@ -88,7 +88,12 @@ def check() -> None:
     assert "Animator.applyRootMotion = false" not in state
     assert "animator.applyRootMotion = false" in visual
     assert 'FindClip("crouch", "crouch")' in visual and "LastPunchTime" in visual
-    assert "AnimationMixerPlayable.Create(graph, 11)" in visual
+    # Nine normalized locomotion clips remain on the full body; the
+    # pistol-shot reference, punch and ready hold are upper-body masked.
+    assert "AnimationMixerPlayable.Create(graph, 9)" in visual
+    assert "weaponUpperMixer = AnimationMixerPlayable.Create(graph, 3)" in visual
+    assert "AnimationLayerMixerPlayable.Create(graph, 2)" in visual
+    assert "SetLayerMaskFromAvatarMask(1, upperBodyMask)" in visual
     assert "LastJumpStartedTime" in motor and "LastLandingTime" in motor
     assert "jumpStartPlayable" in visual and "jumpLandPlayable" in visual
     assert 'FindClip("crouch_walk", "crouch")' in visual
