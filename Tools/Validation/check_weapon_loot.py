@@ -54,7 +54,10 @@ def run():
     spec = importlib.util.spec_from_file_location("aaris_bake_loot", module_path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    assert mod.build(source) == loot, "Authored candidates drifted from actual map layout"
+    rebuilt = mod.build(source)
+    if rebuilt != loot:
+        diffs = [(i, a, b) for i, (a, b) in enumerate(zip(rebuilt["candidates"], loot["candidates"])) if a != b]
+        raise AssertionError(f"Authored candidate drift, counts={len(rebuilt['candidates'])}/{len(loot['candidates'])}, examples={diffs[:6]}")
 
     catalog_cs = (SCRIPTS / "AarisWeaponCatalog.cs").read_text()
     gun_cs = (SCRIPTS / "AarisEquippedGun.cs").read_text()
