@@ -155,7 +155,7 @@ namespace Aaris.MapReview
             switch (action)
             {
                 case Action.Fire: actions.SetFireHeld(true); break;
-                case Action.Jump: player.RequestJump(); break;
+                case Action.Jump: player.SetJumpHeld(true); break;
                 case Action.Crouch: actions.ToggleCrouch(); player.CancelAutoSprint(); break;
                 case Action.Prone: actions.ToggleProne(); player.CancelAutoSprint(); break;
                 case Action.Sprint: player.ToggleAutoSprint(); break;
@@ -165,6 +165,7 @@ namespace Aaris.MapReview
         internal void Up(Action action)
         {
             if (action == Action.Fire && actions != null) actions.SetFireHeld(false);
+            if (action == Action.Jump && player != null) player.SetJumpHeld(false);
         }
 
         /// <summary>Use on touch BEGAN to keep HUD fingers out of the camera joystick.</summary>
@@ -178,12 +179,15 @@ namespace Aaris.MapReview
 
         private void OnApplicationPause(bool paused)
         {
-            if (paused && actions != null) actions.SetFireHeld(false);
+            if (!paused) return;
+            if (actions != null) actions.SetFireHeld(false);
+            if (player != null) player.SetJumpHeld(false);
         }
 
         private void OnDisable()
         {
             if (actions != null) actions.SetFireHeld(false);
+            if (player != null) player.SetJumpHeld(false);
             if (instance == this) instance = null;
         }
     }
