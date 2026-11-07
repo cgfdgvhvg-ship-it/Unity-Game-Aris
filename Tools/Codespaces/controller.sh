@@ -35,6 +35,7 @@ if test -n "$ISSUE"; then
     'CS EDITOR') OP=editor ;;
     'CS LICENSE') OP=license ;;
     'CS AUTH') OP=auth ;;
+    'CS PROBE') OP=probe ;;
     'CS SHOT') OP=shot ;;
     'CS TEST') OP=test ;;
     'CS STOP') OP=stop ;;
@@ -42,11 +43,17 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|start|status|sync|lfs|lfs_report|changes|install|editor|license|auth|shot|test|stop) ;;
+  machines|info|start|status|sync|lfs|lfs_report|changes|install|editor|license|auth|probe|shot|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test -z "$GH_TOKEN"; then DETAIL="CODESPACE_PAT_missing"; exit 3; fi
 if test -n "$MACHINE" && [[ ! "$MACHINE" =~ ^[A-Za-z0-9-]+$ ]]; then DETAIL="bad_machine"; exit 4; fi
+if test "$OP" = probe; then
+  if python3 "$GITHUB_WORKSPACE/Tools/Codespaces/relay_probe.py" >"$OUT/terminal.txt" 2>/dev/null; then
+    STATE="SUCCESS"; DETAIL="oidc_relay_preflight_ok"; exit 0
+  fi
+  DETAIL="oidc_relay_preflight_failed"; exit 19
+fi
 if test "$OP" = machines; then
   if gh api "/repos/$REPO/codespaces/machines" --jq '.machines[] | [.name, (.cpus|tostring), ((.memory_in_bytes/1073741824|floor)|tostring)] | @tsv' > "$OUT/terminal.txt" 2>/dev/null; then
     STATE="SUCCESS"; DETAIL="machine_types_CPU_RAM_GiB"; exit 0
