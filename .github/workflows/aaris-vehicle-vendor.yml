@@ -1,0 +1,101 @@
+name: Vendor pinned CC0 Kenney vehicles into this repository
+on:
+  push:
+    branches: [feat/aaris-vehicle-driving-20261107]
+    paths:
+      - '.github/workflows/aaris-vehicle-vendor.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+          persist-credentials: true
+      - name: Verify official archive and install selected FBX assets permanently
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, io, pathlib, urllib.request, zipfile
+          urls=[
+              'https://kenney.nl/media/pages/assets/car-kit/1a312ec241-1775131960/kenney_car-kit.zip',
+              'https://opengameart.org/sites/default/files/kenney_car-kit_3.1.zip',
+          ]
+          expected='fac7dacac5c7874348cf19729af3ef205f3d366493edaf0a827d93f4fdf3d0c4'
+          archive=b''
+          for url in urls:
+              try:
+                  req=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0 (compatible; AarisAssetVendor/1.0)'})
+                  with urllib.request.urlopen(req,timeout=90) as response:
+                      data=response.read(5500000)
+                  measured=hashlib.sha256(data).hexdigest()
+                  print('SOURCE',url,'bytes=',len(data),'sha256=',measured,flush=True)
+                  if len(data)==4814237 and measured==expected:
+                      archive=data
+                      break
+              except Exception as exc:
+                  print('SOURCE FAILED',url,type(exc).__name__,str(exc)[:100],flush=True)
+          if not archive:
+              raise SystemExit('No official/author-hosted Kenney car-kit ZIP matched pinned source bytes and SHA256')
+          wanted=['sedan','suv','sedan-sports','hatchback-sports','van','truck-flat',
+                  'wheel-default','wheel-racing','wheel-truck']
+          root=pathlib.Path('Assets/Resources/AarisVehicles/Models')
+          root.mkdir(parents=True,exist_ok=True)
+          with zipfile.ZipFile(io.BytesIO(archive)) as z:
+              if z.testzip() is not None: raise SystemExit('Bad ZIP CRC')
+              catalog={pathlib.PurePosixPath(x.filename).name.lower():x for x in z.infolist() if not x.is_dir()}
+              print('KENNEY_AVAILABLE_WHEEL_FBXS',sorted(k for k in catalog if 'wheel' in k and k.endswith('.fbx')),flush=True)
+              for name in wanted:
+                  key=name+'.fbx'
+                  if key not in catalog: raise SystemExit('FBX missing '+key+'; found '+str(sorted(k for k in catalog if k.endswith('.fbx'))))
+                  member=catalog[key]
+                  if member.file_size>1500000: raise SystemExit('Unreasonable model size '+key)
+                  data=z.read(member)
+                  if not (data.startswith(b'Kaydara FBX Binary') or data[:64].lower().find(b'fbx')>=0):
+                      raise SystemExit('Invalid FBX signature '+key)
+                  (root/key).write_bytes(data)
+                  print('VENDORED',key,len(data),hashlib.sha256(data).hexdigest())
+              tex='colormap.png'
+              if tex not in catalog: raise SystemExit('Color texture missing from CC0 ZIP')
+              texture=z.read(catalog[tex])
+              if texture[:8] != bytes((137, 80, 78, 71, 13, 10, 26, 10)): raise SystemExit('Invalid Kenney PNG')
+              (root/tex).write_bytes(texture)
+              print('VENDORED',tex,len(texture),hashlib.sha256(texture).hexdigest())
+              if 'license.txt' not in catalog: raise SystemExit('No source license')
+              license_data=z.read(catalog['license.txt'])
+              if not any(p in license_data.lower() for p in [b'cc0',b'public domain',b'creativecommons.org/publicdomain']):
+                  raise SystemExit('Source license does not confirm CC0')
+              pathlib.Path('Assets/Resources/AarisVehicles/KENNEY_LICENSE.txt').write_bytes(license_data)
+          # Keep Unity asset GUIDs deterministic, with no new credentials.
+          for asset in [*root.glob('*.fbx'),*root.glob('*.png'),pathlib.Path('Assets/Resources/AarisVehicles/KENNEY_LICENSE.txt')]:
+              guid=hashlib.sha256(('aaris-vehicles:'+asset.as_posix()).encode()).hexdigest()[:32]
+              meta=asset.with_name(asset.name+'.meta')
+              if asset.suffix=='.fbx':
+                  body='ModelImporter:\n  serializedVersion: 22200\n  globalScale: 1\n  useFileScale: 1\n  importAnimation: 0\n  importMaterials: 1\n'
+              elif asset.suffix=='.png':
+                  body='TextureImporter:\n  mipmaps:\n    enableMipMap: 1\n  textureType: 0\n'
+              else:
+                  body='DefaultImporter:\n  externalObjects: {}\n'
+              meta.write_text(f'fileFormatVersion: 2\nguid: {guid}\n'+body,encoding='utf-8')
+          print('PASS: 6 car FBXs + 3 separate wheels, color atlas, verified source license; no game-time URLs')
+          PY
+          git add Assets/Resources/AarisVehicles
+          if git diff --cached --quiet; then
+            echo 'All verified source assets already committed'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Vendor 6 car FBXs and 3 wheel FBXs from exact SHA256-vetted Kenney CC0 archive and palette locally'
+          git fetch origin feat/aaris-vehicle-driving-20261107
+          git -c filter.lfs.process= -c filter.lfs.smudge= -c filter.lfs.required=false \
+            rebase origin/feat/aaris-vehicle-driving-20261107
+          git push origin HEAD:refs/heads/feat/aaris-vehicle-driving-20261107

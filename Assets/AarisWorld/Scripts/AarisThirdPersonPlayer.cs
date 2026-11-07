@@ -239,7 +239,8 @@ namespace Aaris.MapReview
             if (Input.GetKeyDown(KeyCode.T)) ToggleAutoSprint();
             if (battle != null && Input.GetKeyDown(KeyCode.LeftControl)) battle.SetFireHeld(true);
             if (battle != null && Input.GetKeyUp(KeyCode.LeftControl)) battle.SetFireHeld(false);
-            if (Input.GetKeyDown(KeyCode.F)) ResetPlayer();
+            // F belongs exclusively to vehicle DRIVE (never reset player).
+            if (Input.GetKeyDown(KeyCode.H)) ResetPlayer();
         }
 
         private void Update()
@@ -474,6 +475,17 @@ namespace Aaris.MapReview
             followCamera.transform.SetPositionAndRotation(next, Quaternion.LookRotation(pivot + orbit * Vector3.forward * 0.5f - next));
         }
         private void LateUpdate() { PlaceCamera(false); }
+
+        /// <summary>Release the vehicle chase camera back to the walking motor.</summary>
+        public void ResetCameraAfterVehicle()
+        {
+            // Clear any stale left/right finger IDs captured before entering
+            // the car; a held arrow must not turn into an on-foot joystick.
+            ClearInput();
+            cameraVelocity = Vector3.zero;
+            lastMouse = Input.mousePosition;
+            PlaceCamera(true);
+        }
         private void ResetPlayer()
         {
             controller.enabled = false;

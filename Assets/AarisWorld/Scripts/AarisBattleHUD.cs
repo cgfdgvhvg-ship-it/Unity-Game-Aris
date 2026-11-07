@@ -177,6 +177,9 @@ namespace Aaris.MapReview
             return false;
         }
 
+        /// <summary>Clear any held Fire/Jump fingers before entering a car.</summary>
+        public void CancelVehicleInputs() => ReleaseAllPointers();
+
         private void ReleaseAllPointers()
         {
             // On Android a fingerprint can disappear during app switching
