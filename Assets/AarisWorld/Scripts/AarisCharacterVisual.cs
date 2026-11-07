@@ -37,8 +37,12 @@ namespace Aaris.MapReview
         private float runBlend;
         private float airborneBlend;
         private float walkRunBlend;
-        private AnimationClipPlayable idlePlayable, walkPlayable, runPlayable, jumpPlayable, fallPlayable, crouchPlayable;
-        private AnimationClip crouchClip;
+        private AnimationClipPlayable idlePlayable, walkPlayable, runPlayable, jumpPlayable,
+            fallPlayable, crouchPlayable, crouchWalkPlayable, jumpStartPlayable,
+            jumpLandPlayable, punchPlayable, shootPlayable;
+        private AnimationClip crouchClip, crouchWalkClip, punchClip, shootClip;
+        private int lastVisualAttackSequence;
+        private float seenTakeoff = -10f, seenTouchdown = -10f;
         private AarisBattleActions actions;
         private AarisThirdPersonPlayer playerMotor;
         private Transform punchArm;
@@ -229,9 +233,18 @@ namespace Aaris.MapReview
             idleClip = FindClip("idle", "idle");
             walkClip = FindClip("walk", "walk") ?? FindClip("run", "run");
             runClip = FindClip("run", "run");
+            // Each FBX has one reviewed humanoid motion: never use the
+            // Jump_Land clip for takeoff or airborne looping.
             AnimationClip jump = FindClip("jump", "jump");
+            AnimationClip jumpStart = FindClip("jump_start", "jump") ?? jump;
+            AnimationClip jumpLand = FindClip("jump_land", "jump") ?? jump;
             AnimationClip fall = FindClip("fall", "fall");
             crouchClip = FindClip("crouch", "crouch") ?? idleClip;
+            crouchWalkClip = FindClip("crouch_walk", "crouch") ?? crouchClip;
+            punchClip = FindClip("punch", "punch");
+            shootClip = FindClip("shoot", "shoot");
+            if (punchClip == null) punchClip = idleClip;
+            if (shootClip == null) shootClip = idleClip;
             if (idleClip == null || walkClip == null || runClip == null)
                 return;
             if (jump == null) jump = idleClip;
@@ -239,20 +252,33 @@ namespace Aaris.MapReview
 
             graph = PlayableGraph.Create("AarisHumanoidLocomotion");
             graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
-            mixer = AnimationMixerPlayable.Create(graph, 6);
+            mixer = AnimationMixerPlayable.Create(graph, 11);
             idlePlayable = AnimationClipPlayable.Create(graph, idleClip);
             walkPlayable = AnimationClipPlayable.Create(graph, walkClip);
             runPlayable = AnimationClipPlayable.Create(graph, runClip);
             jumpPlayable = AnimationClipPlayable.Create(graph, jump);
             fallPlayable = AnimationClipPlayable.Create(graph, fall);
             crouchPlayable = AnimationClipPlayable.Create(graph, crouchClip);
+            crouchWalkPlayable = AnimationClipPlayable.Create(graph, crouchWalkClip);
+            jumpStartPlayable = AnimationClipPlayable.Create(graph, jumpStart);
+            jumpLandPlayable = AnimationClipPlayable.Create(graph, jumpLand);
+            punchPlayable = AnimationClipPlayable.Create(graph, punchClip);
+            shootPlayable = AnimationClipPlayable.Create(graph, shootClip);
+            // Keep one-shot clips short enough to react promptly to attacks
+            // without blending over multiple shots in the same hold.
+            punchPlayable.SetSpeed(Mathf.Clamp(punchClip.length / 0.42f, 0.7f, 3.5f));
+            shootPlayable.SetSpeed(Mathf.Clamp(shootClip.length / 0.2f, 0.7f, 4.0f));
+            jumpLandPlayable.SetSpeed(Mathf.Clamp(jumpLand.length / 0.3f, 0.7f, 3.0f));
             idlePlayable.SetApplyFootIK(true);
             walkPlayable.SetApplyFootIK(true);
             runPlayable.SetApplyFootIK(true);
+            crouchWalkPlayable.SetApplyFootIK(true);
             var inputs = new[]
             {
                 idlePlayable, walkPlayable, runPlayable,
-                jumpPlayable, fallPlayable, crouchPlayable
+                jumpPlayable, fallPlayable, crouchPlayable,
+                crouchWalkPlayable, jumpStartPlayable, jumpLandPlayable,
+                punchPlayable, shootPlayable
             };
             for (int i = 0; i < inputs.Length; i++)
             {
@@ -321,28 +347,82 @@ namespace Aaris.MapReview
                 walkRunBlend = Mathf.Lerp(walkRunBlend, sprintTarget, alpha);
                 airborneBlend = Mathf.Lerp(airborneBlend, airTarget, alpha);
 
-                // Six-way normalized motion weights. Locomotion phase is
-                // distance-based to reduce walking/sprinting foot sliding.
+                // Exclusive stance base, phase-specific airborne/landing
+                // transitions, and reactive one-shot combat weights. Every
+                // mixer input participates in a weight sum of approximately 1.
                 float pose = Mathf.Clamp01(crouchBlend + proneBlend);
+                float crouchMotion = Mathf.Clamp01(horizontal / 1.2f) *
+                    crouchBlend * (1f - proneBlend);
+                float crouchRest = pose - crouchMotion;
                 float grounded = (1f - airborneBlend) * (1f - pose);
                 float jumping = velocity.y >= -0.6f ? 1f : 0f;
-                mixer.SetInputWeight(0, grounded * (1f - runBlend));
-                mixer.SetInputWeight(1, grounded * runBlend * (1f - walkRunBlend));
-                mixer.SetInputWeight(2, grounded * runBlend * walkRunBlend);
-                mixer.SetInputWeight(3, airborneBlend * jumping * (1f - pose));
-                mixer.SetInputWeight(4, airborneBlend * (1f - jumping) * (1f - pose));
-                mixer.SetInputWeight(5, pose);
+
+                float takeoffAge = playerMotor != null
+                    ? Time.unscaledTime - playerMotor.LastJumpStartedTime : 10f;
+                float touchdownAge = playerMotor != null
+                    ? Time.unscaledTime - playerMotor.LastLandingTime : 10f;
+                float startWeight = airborneBlend > 0.02f && takeoffAge >= 0f &&
+                    takeoffAge < 0.23f
+                    ? Mathf.Clamp01((0.23f - takeoffAge) / 0.14f) : 0f;
+                float landWeight = controller.isGrounded && touchdownAge >= 0f &&
+                    touchdownAge < 0.28f
+                    ? Mathf.Clamp01((0.28f - touchdownAge) / 0.18f) : 0f;
+                float lastPunchAge = actions != null ? Time.time - actions.LastPunchTime : 10f;
+                float lastShootAge = actions != null ? Time.time - actions.LastShootTime : 10f;
+                float punchWeight = lastPunchAge >= 0f && lastPunchAge < 0.43f
+                    ? Mathf.Clamp01((0.43f - lastPunchAge) / 0.12f) : 0f;
+                float shootWeight = lastShootAge >= 0f && lastShootAge < 0.2f
+                    ? Mathf.Clamp01((0.2f - lastShootAge) / 0.07f) : 0f;
+
+                // Jumps/landings win over combat, which wins over locomotion.
+                float primary = Mathf.Max(startWeight, landWeight);
+                punchWeight *= 1f - primary;
+                shootWeight *= 1f - primary;
+                if (shootWeight > 0f) punchWeight = 0f;
+                float baseWeight = 1f - Mathf.Clamp01(primary + punchWeight + shootWeight);
+                mixer.SetInputWeight(0, baseWeight * grounded * (1f - runBlend));
+                mixer.SetInputWeight(1, baseWeight * grounded * runBlend * (1f - walkRunBlend));
+                mixer.SetInputWeight(2, baseWeight * grounded * runBlend * walkRunBlend);
+                mixer.SetInputWeight(3, baseWeight * airborneBlend * jumping * (1f - pose));
+                mixer.SetInputWeight(4, baseWeight * airborneBlend * (1f - jumping) * (1f - pose));
+                mixer.SetInputWeight(5, baseWeight * crouchRest);
+                mixer.SetInputWeight(6, baseWeight * crouchMotion);
+                mixer.SetInputWeight(7, startWeight);
+                mixer.SetInputWeight(8, landWeight);
+                mixer.SetInputWeight(9, punchWeight);
+                mixer.SetInputWeight(10, shootWeight);
+
+                if (playerMotor != null && takeoffAge >= 0f &&
+                    playerMotor.LastJumpStartedTime != seenTakeoff)
+                {
+                    seenTakeoff = playerMotor.LastJumpStartedTime;
+                    jumpStartPlayable.SetTime(0d);
+                }
+                if (playerMotor != null && touchdownAge >= 0f &&
+                    playerMotor.LastLandingTime != seenTouchdown)
+                {
+                    seenTouchdown = playerMotor.LastLandingTime;
+                    jumpLandPlayable.SetTime(0d);
+                }
+                if (actions != null && actions.AttackSequence != lastVisualAttackSequence)
+                {
+                    lastVisualAttackSequence = actions.AttackSequence;
+                    punchPlayable.SetTime(0d);
+                    shootPlayable.SetTime(0d);
+                }
 
                 locomotionPhase += horizontal * dt / 1.75f;
                 if (locomotionPhase > 1000f) locomotionPhase -= 1000f;
                 LoopPlayable(idlePlayable, idleClip, Time.timeAsDouble / Math.Max(0.02, idleClip.length));
                 LoopPlayable(walkPlayable, walkClip, locomotionPhase);
                 LoopPlayable(runPlayable, runClip, locomotionPhase);
+                LoopPlayable(crouchWalkPlayable, crouchWalkClip, locomotionPhase);
+
             }
 
             // In-place upper-arm punch pulse. Only the animation skeleton is
             // affected; hit registration lives in AarisBattleActions.
-            if (punchArm != null && actions != null)
+            if (punchArm != null && actions != null && punchClip == idleClip)
             {
                 float t = (Time.time - actions.LastPunchTime) / 0.36f;
                 if (t >= 0f && t <= 1f)
