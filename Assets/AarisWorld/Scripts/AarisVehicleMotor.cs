@@ -21,6 +21,7 @@ namespace Aaris.MapReview
         private const float ServiceBrakeTorque = 3200f;
         private const float ParkingBrakeTorque = 3600f;
         private const float AntiRollStrength = 4800f;
+        private float nextTelemetryAt;
         public string VehicleId { get; private set; }
         public bool IsOccupied => driver != null;
         public bool CanPark => !IsOccupied && body != null &&
@@ -247,6 +248,26 @@ namespace Aaris.MapReview
             if (speedAbs > 6f)
                 body.AddForce(-transform.up * Mathf.Min(18000f, 20f * speedAbs * speedAbs),
                     ForceMode.Force);
+
+            // Diagnostic telemetry is development-build only and bounded to
+            // one line every three seconds while occupied. This lets actual
+            // Unity/Android logs prove whether wheels contact terrain, how
+            // fast the car drives, and whether steering/brakes work.
+            if (Debug.isDebugBuild && driver != null && Time.time >= nextTelemetryAt)
+            {
+                nextTelemetryAt = Time.time + 3f;
+                int grounded = 0;
+                for (int i = 0; i < wheels.Length; i++)
+                    if (wheels[i] != null && wheels[i].isGrounded) grounded++;
+                Debug.Log("AARIS_DRIVE_TELEMETRY id=" + VehicleId +
+                    " speed_mps=" + speed.ToString("F2") +
+                    " total_mps=" + TotalSpeedMetresPerSecond.ToString("F2") +
+                    " wheels_grounded=" + grounded +
+                    " steer_deg=" + smoothSteer.ToString("F1") +
+                    " throttle=" + throttle.ToString("F2") +
+                    " brake_Nm=" + brake.ToString("F0") +
+                    " roll_deg=" + Vector3.Angle(transform.up, Vector3.up).ToString("F1"));
+            }
         }
 
         private void ApplyAntiRoll(int leftIndex, int rightIndex)
