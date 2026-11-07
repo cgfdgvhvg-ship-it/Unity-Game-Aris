@@ -132,9 +132,15 @@ case "$OP" in
   test) REMOTE_TIMEOUT=500 ;;
   editor) REMOTE_TIMEOUT=350 ;;
 esac
+SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/remote.sh"
+REMOTE_SHELL="bash -s -- $OP"
+if test "$OP" = install; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/install_unity.sh"
+  REMOTE_SHELL="bash -s"
+fi
 for attempt in 1 2; do
-  if timeout "$REMOTE_TIMEOUT" gh codespace ssh -c "$CS" -- "bash -s -- $OP" \
-      < "$GITHUB_WORKSPACE/Tools/Codespaces/remote.sh" \
+  if timeout "$REMOTE_TIMEOUT" gh codespace ssh -c "$CS" -- "$REMOTE_SHELL" \
+      < "$SCRIPT_FILE" \
       > "$OUT/terminal.txt" 2>"$PRIVATE_ERRORS"; then
     rm -f "$PRIVATE_ERRORS"
     if test "$OP" = shot; then
