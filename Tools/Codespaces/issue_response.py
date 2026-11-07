@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+"""Owner issue output: bounded, allowlisted protocol lines, never arbitrary raw logs."""
+import json
+from pathlib import Path
+import re
+import sys
+folder=Path(sys.argv[1])
+try: data=json.loads((folder/'result.json').read_text())
+except (OSError,ValueError): data={}
+operations=set('machines start status sync install editor license shot test stop'.split())
+statuses={'SUCCESS','FAILED','NO_CODESPACE','UNKNOWN'}
+op=data.get('operation','unknown')
+state=data.get('status','FAILED')
+if op not in operations: op='unknown'
+if state not in statuses: state='FAILED'
+detail=data.get('detail','unavailable')
+if not re.fullmatch(r'[a-zA-Z0-9_]{1,80}',detail): detail='unavailable'
+print('**AARIS CODESPACE CONTROL**')
+print('Operation: `%s` | Status: `%s` | Detail: `%s`' % (op,state,detail))
+try: lines=(folder/'terminal.txt').read_text().splitlines()
+except OSError: lines=[]
+# The remote program is checked into Git. Only bounded, non-sensitive summary tokens are public.
+safe=[]
+for line in lines:
+    if re.fullmatch(r'[A-Z][A-Z0-9_]{2,90}',line):
+        safe.append(line)
+    elif re.fullmatch(r'(commit|arch|cpus|memory_mb|workspace_free_kb|tmp_free_kb|editor_installed|editor_running|display|scene|machine|codespace)=[A-Za-z0-9_.-]{1,80}',line):
+        safe.append(line)
+    elif op == 'machines' and re.fullmatch(r'[A-Za-z0-9-]{3,55}\t\d{1,2}\t\d{1,3}',line):
+        safe.append(line)
+    if len(safe)>=22: break
+if safe:
+    print('\\n```text')
+    print('\\n'.join(safe)[:1500])
+    print('```')
+print('Unity Editor process and nonblank screenshot are not proof of a valid Unity Personal entitlement.')
