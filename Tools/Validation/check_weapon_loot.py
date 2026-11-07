@@ -101,8 +101,9 @@ def run():
     assert "MaximumDroppedLoot = 320" in world
     assert "record.visible = null;" in world and "record.state" in world
     # Deliberate exchange, never auto-pick a recently dropped gun.
-    assert "(!inventory.HasGun && bestPickup.CandidateIndex >= 0)" in world
+    assert "(!inventory.HasGun && allowInitialAutoPickup &&" in world
     assert "requestPickupUntil = Time.unscaledTime + 0.7f;" in world
+    assert "allowInitialAutoPickup = false;" in world
     assert "IsBlockedDrop(pickup)" in world
     assert 'Add("PICK"' in hud and 'Add("DROP"' in hud
     assert 'Add("SWAP"' not in hud
