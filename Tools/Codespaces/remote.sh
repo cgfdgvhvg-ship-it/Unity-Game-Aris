@@ -57,10 +57,45 @@ for path in sorted(files)[:70]:
 PY
     ;;
   sync)
-    # Never discard unsaved world edits or reset source files.
-    if test -n "$(git status --porcelain --untracked-files=no)"; then echo 'SYNC_BLOCKED_DIRTY'; exit 8; fi
+    # Never discard unsaved work. The legacy repo contains exactly 11 checked-in
+    # full blobs mistakenly matched by a later git-lfs clean filter. Allow these
+    # only after proving raw byte-for-byte equality with the current Git index.
+    test "$(git branch --show-current)" = main || { echo 'SYNC_REQUIRES_MAIN_BRANCH'; exit 8; }
+    python3 - <<'PY'
+import subprocess,sys
+allowed={
+'Assets/AarisWorld/Props/ClimbableTower/Geometry.asset',
+'Assets/AarisWorld/Props/ClimbableTower/Geometry_LOD1.asset',
+'Assets/AarisWorld/Props/ClimbableTower/Geometry_LOD2.asset',
+'Assets/AarisWorld/Props/RockCover/Geometry.asset',
+'Assets/AarisWorld/Props/RockCover/Geometry_LOD1.asset',
+'Assets/AarisWorld/Props/RockCover/Geometry_LOD2.asset',
+'Assets/AarisWorld/Props/Shared/rock_09_ARM.png',
+'Assets/AarisWorld/Props/Shared/rusty_metal_02_ARM.png',
+'Assets/AarisWorld/Props/StaticWreck/Geometry.asset',
+'Assets/AarisWorld/Props/StaticWreck/Geometry_LOD1.asset',
+'Assets/AarisWorld/Props/StaticWreck/Geometry_LOD2.asset'}
+data=subprocess.check_output(['git','status','--porcelain=v1','--untracked-files=no','-z'])
+entries=[e for e in data.split(b'\0') if e]
+for e in entries:
+    status=e[:2].decode('ascii','replace')
+    path=e[3:].decode('utf-8','replace')
+    if status not in {' M','M '} or path not in allowed:
+        print('SYNC_BLOCKED_REAL_OR_UNEXPECTED_CHANGE')
+        sys.exit(8)
+    index=subprocess.check_output(['git','ls-files','-s','--',path],text=True).split('\t')[0].split()[1]
+    raw=subprocess.check_output(['git','hash-object','--no-filters','--',path],text=True).strip()
+    if raw!=index:
+        print('SYNC_BLOCKED_CHANGED_BYTES')
+        sys.exit(8)
+print('SYNC_WORKTREE_VERIFIED_RAW_IDENTICAL='+str(len(entries)))
+PY
     git fetch --quiet origin main
-    git merge --ff-only --quiet origin/main || { echo 'SYNC_NON_FAST_FORWARD'; exit 9; }
+    # Suppress only the already-proven LFS clean-filter false positives.
+    git -c filter.lfs.process= -c filter.lfs.clean=cat \
+        -c filter.lfs.required=false merge --ff-only --quiet origin/main || {
+      echo 'SYNC_NON_FAST_FORWARD_OR_FILTER_CONFLICT'; exit 9;
+    }
     git lfs pull >/dev/null 2>&1 || { echo 'SYNC_LFS_FAILED'; exit 10; }
     echo 'SYNC_LFS_READY'
     ;;
