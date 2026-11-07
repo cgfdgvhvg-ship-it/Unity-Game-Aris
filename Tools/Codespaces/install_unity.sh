@@ -17,6 +17,6 @@ if ! command -v unityhub >/dev/null 2>&1; then
 fi
 echo 'UNITY_HUB_INSTALLED'
 unityhub --headless install-path -s "$INSTALL_ROOT" >/tmp/aaris-codespaces/hub-path.log 2>&1 || { echo 'UNITY_INSTALL_PATH_FAILED'; exit 4; }
-unityhub --headless install --version "$VERSION" >/tmp/aaris-codespaces/hub-install.log 2>&1 || { echo 'UNITY_INSTALL_FAILED'; exit 5; }
+unityhub --headless install --version "$VERSION" --changeset de8167e7440c >/tmp/aaris-codespaces/hub-install.log 2>&1 || { echo 'UNITY_INSTALL_FAILED'; exit 5; }
 test -x "$INSTALL_ROOT/$VERSION/Editor/Unity" || { echo 'UNITY_BINARY_MISSING'; exit 6; }
 echo 'UNITY_EDITOR_INSTALLED'
