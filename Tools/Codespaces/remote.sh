@@ -99,6 +99,56 @@ PY
     git lfs pull >/dev/null 2>&1 || { echo 'SYNC_LFS_FAILED'; exit 10; }
     echo 'SYNC_LFS_READY'
     ;;
+  lfs_report)
+    # Report pointer hydration and diagnostics without printing any raw network logs.
+    python3 - <<'PY'
+import pathlib,subprocess,re
+root=pathlib.Path('.')
+res=subprocess.run(['git','lfs','ls-files','--name-only'],capture_output=True,text=True,timeout=25)
+if res.returncode:
+    print('LFS_ENUMERATION_FAILED')
+    raise SystemExit(2)
+files=[x for x in res.stdout.splitlines() if x]
+pointers=[]
+for item in files:
+    p=root/item
+    if p.is_file():
+        try:
+            if p.open('rb').read(110).startswith(b'version https://git-lfs.github.com/spec/v1'):
+                pointers.append(item)
+        except OSError:
+            pass
+log=pathlib.Path('/tmp/aaris-codespaces/lfs-pull.log')
+s=log.read_text(errors='replace')[-300000:] if log.is_file() else ''
+def kind(s):
+    if re.search(r'\[404\]|Object does not exist on the server|batch response: Repository or object not found',s,re.I):
+        return 'REMOTE_404'
+    if re.search(r'\[403\]|not authorized|permission denied|unauthorized',s,re.I):
+        return 'REMOTE_403'
+    if re.search(r'bandwidth|quota|billing|exceeded',s,re.I):
+        return 'QUOTA'
+    if re.search(r'no such file or directory|not found',s,re.I):
+        return 'LOCAL_PATH_OR_REMOTE_NOT_FOUND'
+    if re.search(r'certificate|dns|connection|timeout|TLS',s,re.I):
+        return 'NETWORK'
+    return 'UNKNOWN'
+print('lfs_tracked_count='+str(len(files)))
+print('lfs_unhydrated_pointer_count='+str(len(pointers)))
+print('lfs_error_kind='+kind(s))
+print('lfs_log_recorded='+('yes' if s else 'no'))
+critical='Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity'
+p=root/critical
+if not p.is_file(): scene='missing'
+elif critical in pointers: scene='pointer'
+else: scene='file_not_pointer'
+print('scene='+scene)
+# LFS errors may identify object OIDs, which are public content hashes, not credentials.
+sha=list(dict.fromkeys(re.findall(r'\b[a-f0-9]{64}\b',s,re.I)))
+print('lfs_error_hash_count='+str(len(sha)))
+for i,oid in enumerate(sha[:3],1):
+    print('lfs_object_hash_'+str(i)+'='+oid.lower())
+PY
+    ;;
   lfs)
     mkdir -p /tmp/aaris-unity-runtime/lfs
     if ! git lfs version >/dev/null 2>&1; then

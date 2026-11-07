@@ -18,10 +18,14 @@ assert 'SYNC_WORKTREE_VERIFIED_RAW_IDENTICAL' in remote
 assert 'scrot -o' in remote
 assert 'changed_files_count=' in remote
 assert 'LFS_FAIL_CATEGORY_' in remote
+assert 'lfs_unhydrated_pointer_count=' in remote
+assert 'lfs_error_kind=' in remote
+assert 'UNITY_CLI_HOME' in (r/'Tools/Codespaces/install_unity.sh').read_text()
+assert 'unityhub --headless' not in (r/'Tools/Codespaces/install_unity.sh').read_text()
 assert 'lfs.storage' in remote
 assert '/tmp/aaris-unity-runtime/editors' in remote
 assert 'project-cache' in remote
-assert '/tmp/aaris-unity-runtime/editors' in (r/'Tools/Codespaces/install_unity.sh').read_text()
+assert 'EDITOR_ROOT="$RUNTIME/editors"' in (r/'Tools/Codespaces/install_unity.sh').read_text()
 assert 'machine-id' not in remote
 assert 'Unity_auth_vault' not in remote
 controller=(r/'Tools/Codespaces/controller.sh').read_text()

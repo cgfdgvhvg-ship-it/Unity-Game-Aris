@@ -27,6 +27,7 @@ CS START
 CS STATUS
 CS SYNC
 CS LFS
+CS LFS REPORT
 CS CHANGES
 CS INSTALL
 CS EDITOR
@@ -61,3 +62,7 @@ The workflow responds under the issuing comment with a bounded, credential-safe 
 The workflow processes issue commands **only** from the exact owner account on Issue #77. The remote bridge accepts an allowlist of task identifiers, not arbitrary shell or `eval`. Static tests execute on pushes/PRs without Codespace credentials. Live machine creation, Unity installation and licensing cannot be claimed tested until a real authenticated Codespace session runs.
 
 Relevant official guidance: [GitHub CLI](https://cli.github.com/manual/gh_codespace), [Codespaces lifecycle](https://docs.github.com/en/codespaces/about-codespaces/understanding-the-codespace-lifecycle), [Unity Hub Linux](https://docs.unity.com/en-us/hub/install-hub-linux), [Unity Personal licenses](https://docs.unity.com/en-us/hub/manage-license).
+
+
+### 2026-11-07 CLI + LFS diagnostics
+`CS INSTALL` uses the current, official Unity CLI instead of deprecated Unity Hub headless CLI. The installer and Editor live in the larger temporary filesystem; installer logs remain private in the Codespace. `CS LFS REPORT` enumerates hydrated/pointer counts and classifies the last LFS failure without exposing credentials. A missing remote LFS object must be recovered from authentic matching bytes, never fabricated or replaced by a placeholder. Check Unity license and native scene separately after installation.
