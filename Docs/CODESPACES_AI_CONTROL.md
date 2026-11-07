@@ -107,3 +107,6 @@ Owner-only command `CS FRESH` creates a *second* Codespace with display name `aa
 
 ### SSH reliability after Ubuntu Codespace recreation
 The custom Ubuntu 22.04 devcontainer explicitly includes GitHub's documented `ghcr.io/devcontainers/features/sshd:1` Feature. GitHub CLI `gh codespace ssh` requires a running SSH server in custom images; installing `openssh-server` without starting it is not sufficient. This feature applies when creating a new Codespace or rebuilding a container with the updated devcontainer configuration. Do not remove or reset existing map and LFS worktrees to apply it.
+
+### Ubuntu SSHD-enabled Codespace
+Owner-only command `CS FRESH SSHD` creates an idempotent separate 4-core/16GB Codespace with `aaris-ai-ubuntu-sshd` display name using Ubuntu 22.04 and the official SSHD feature. Existing Codespaces, uncommitted work and Git LFS files are NOT deleted. Once created, `CS INFO`, `CS STATUS`, `CS AUTH`, `CS INSTALL`, and `CS LFS` target the SSHD-enabled Codespace preferentially. Codespaces incur account compute/storage quota; stop unused Codespaces when not required.
