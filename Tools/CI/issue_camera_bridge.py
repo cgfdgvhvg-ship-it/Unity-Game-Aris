@@ -108,9 +108,12 @@ def diagnostic_snapshot():
     except (OSError, ValueError, TypeError):
         raw_state = None
     license_state = raw_state if raw_state in safe_states else "unavailable"
-    docker = subprocess.run(
-        ["docker", "inspect", "--format", "{{.State.Running}}", "aaris-unity-live"],
-        capture_output=True, text=True, timeout=8, check=False)
+    try:
+        docker = subprocess.run(
+            ["docker", "inspect", "--format", "{{.State.Running}}", "aaris-unity-live"],
+            capture_output=True, text=True, timeout=8, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        docker = None
     try:
         last_world = json.loads((STATE / "ai-result.json").read_text())
     except (OSError, ValueError, TypeError):
@@ -129,8 +132,8 @@ def diagnostic_snapshot():
         "stage": license_state,
         "license_secret_configured": bool(os.getenv("UNITY_LICENSE", "")),
         "cloudflare_tunnel_started": Path("/tmp/aaris-tunnel-url").is_file(),
-        "unity_container_running": docker.returncode == 0 and
-                                   docker.stdout.strip() == "true",
+        "unity_container_running": bool(docker is not None and
+                                   docker.returncode == 0 and docker.stdout.strip() == "true"),
         "unity_editor_confirmed": bool(last_world.get("ok") is True or
             "Camera moved and real Unity PNG saved" in camera_health().get("state", "")),
         "last_world_op": str(last_world.get("op", ""))[:40] if
@@ -301,7 +304,7 @@ def process(comment):
         return "activation-launch-failed"
     body = comment.get("body", "").strip()
     if body == "MAP_STATUS":
-        issue_comment("AARIS_MAP_STATUS #" + str(comment_id) + "\\n" +
+        issue_comment("AARIS_MAP_STATUS #" + str(comment_id) + "\n" +
                       json.dumps(diagnostic_snapshot(), indent=2))
         return "world-status-reported"
     if body == "MAP_SAVE":
@@ -360,7 +363,7 @@ def main():
         STATE.mkdir(parents=True, exist_ok=True)
         report = diagnostic_snapshot()
         target = STATE / "ai-diagnostics-safe.json"
-        target.write_text(json.dumps(report, indent=2) + "\\n")
+        target.write_text(json.dumps(report, indent=2) + "\n")
         print("Sanitized Unity AI diagnostics written; Editor confirmed:",
               report["unity_editor_confirmed"])
         return
