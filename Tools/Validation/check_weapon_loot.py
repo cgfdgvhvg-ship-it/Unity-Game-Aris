@@ -80,9 +80,13 @@ def run():
     assert "ActivationMetres = 42f" in world and "ReleaseMetres = 69f" in world
     assert "TryResolve" in world and "Physics.CheckCapsule" in world
     assert "if (roof.collider is TerrainCollider)" in world
-    assert "float chance = indoor ? 0.72f : 0.32f;" in world
+    assert "float chance = indoor ? 0.72f :" in world
+    assert 'c.kind == "tree" ? 0.75f : 0.32f;' in world
     assert "FindObjectsByType<Collider>" not in world
-    assert "TreeInstance[]" not in world
+    assert "TreeInstance[] trees = data.treeInstances;" in world
+    assert "while (accepted < 12 && attempts++ < 72)" in world
+    assert "float distance = 2f + AarisWeaponRandom.Next01(ref rng) * 7f;" in world
+    assert "AppendNativeTreeCover(allCandidates);" in world
     assert "UnityWebRequest" not in "\n".join([catalog_cs,gun_cs,inventory,world,hud])
     print("PASS: 5 locally committed, SHA-verified CC0 weapon FBXs, 2-slot magazine/recoil/scope, "
           "authored 2km loot candidates, streaming and combat source contracts")
