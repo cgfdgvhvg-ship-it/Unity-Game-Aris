@@ -413,13 +413,16 @@ jobs:
               summary.write(f"- License stage: {report['stage']}\n")
               summary.write(f"- Container running: {report['unity_container_running']}\n")
               summary.write(f"- Real Editor response verified: {report['unity_editor_confirmed']}\n")
+              summary.write(f"- Native map scene open: {report['native_scene_open']}\n")
+              summary.write(f"- Verified real PNG capture: {report['real_camera_photo_confirmed']}\n")
               summary.write(f"- Free cloud disk (GiB): {report['free_disk_gb']}\n")
               summary.write("- See aaris-ai-diagnostics artifact for the sanitized details.\n")
           if not report["unity_editor_confirmed"]:
-              print("::warning::Unity Editor response not verified. A live Linux desktop is NOT evidence of an active Unity license or scene capture.")
-          if report["stage"] == "unity_activation_requires_attention" and not report["unity_editor_confirmed"]:
-              print("::error::Unity activation requires attention; the cloud desktop alone cannot edit or photograph the native scene.")
+              print("::error::No verified Unity Editor heartbeat or completed command. A live Linux desktop is NOT evidence of an active Unity license, imported scene, or a camera capture.")
+              print("::error::Check the protected /api/license status and ai-diagnostics-safe.json. This session cannot be called a successful Unity Editor run.")
               raise SystemExit(1)
+          if not report["real_camera_photo_confirmed"]:
+              print("::warning::Unity Editor was responsive, but a genuine PNG camera capture has not been confirmed this session.")
           PY
       - name: Upload AI bridge diagnostics
         if: always()
@@ -430,6 +433,7 @@ jobs:
             ci-logs/issue-camera-relay.log
             ci-logs/project-auto-checkpoint.log
             ci-live-control/ai-diagnostics-safe.json
+            ci-live-control/editor-heartbeat.json
             ci-live-control/status.json
             ci-live-control/ai-result.json
           retention-days: 7
