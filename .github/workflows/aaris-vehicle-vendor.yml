@@ -75,7 +75,7 @@ jobs:
                   raise SystemExit('Source license does not confirm CC0')
               pathlib.Path('Assets/Resources/AarisVehicles/KENNEY_LICENSE.txt').write_bytes(license_data)
           # Keep Unity asset GUIDs deterministic, with no new credentials.
-          for asset in list(root.glob('*'))+[pathlib.Path('Assets/Resources/AarisVehicles/KENNEY_LICENSE.txt')]:
+          for asset in [*root.glob('*.fbx'),*root.glob('*.png'),pathlib.Path('Assets/Resources/AarisVehicles/KENNEY_LICENSE.txt')]:
               guid=hashlib.sha256(('aaris-vehicles:'+asset.as_posix()).encode()).hexdigest()[:32]
               meta=asset.with_name(asset.name+'.meta')
               if asset.suffix=='.fbx':
