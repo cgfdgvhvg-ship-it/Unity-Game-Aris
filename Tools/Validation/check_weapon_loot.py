@@ -87,7 +87,10 @@ def run():
     assert "NextShotAt" in gun_cs and "SpreadSeed" in gun_cs
     # The imported FBX child applies no duplicate hand-grip rotation.
     assert "mesh.localRotation = Quaternion.identity;" in inventory
-    assert "weaponRoot.localRotation = Quaternion.Euler(equipped.Spec.handRotation);" in inventory
+    assert "Quaternion grip = Quaternion.Euler(equipped.Spec.handRotation);" in inventory
+    assert "hand.TransformPoint(equipped.Spec.handOffset)" in inventory
+    assert "hand.rotation * grip" in inventory
+    assert "weaponRoot.SetParent(transform, false);" in inventory
     # Pickup swaps must reserve the old gun BEFORE committing, then retire
     # the collected world pickup without duping its ammo/weapon state.
     assert "private AarisDroppedWeapon CreateDropped" in world
