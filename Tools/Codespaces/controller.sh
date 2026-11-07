@@ -26,6 +26,7 @@ if test -n "$ISSUE"; then
     'CS MACHINES') OP=machines ;;
     'CS START') OP=start ;;
     'CS FRESH') OP=fresh ;;
+    'CS FRESH SSH') OP=fresh_ssh ;;
     'CS REBUILD') OP=rebuild ;;
     'CS STATUS') OP=status ;;
     'CS LOGS') OP=logs ;;
@@ -46,7 +47,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|start|fresh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|editor|license|auth|probe|shot|test|stop) ;;
+  machines|info|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|editor|license|auth|probe|shot|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test -z "$GH_TOKEN"; then DETAIL="CODESPACE_PAT_missing"; exit 3; fi
@@ -91,7 +92,36 @@ if test "$OP" = fresh; then
   echo "AARIS_FRESH_UBUNTU_DEVCONTAINER_REQUESTED" >> "$OUT/terminal.txt"
   STATE="SUCCESS"; DETAIL="fresh_codespace_created_preserves_old"; exit 0
 fi
-CS="$(jq -r '[.[] | select(.displayName=="aaris-ai-unity")][0].name // .[0].name // ""' <<< "$LIST")"
+# Fresh SSH-equipped Ubuntu machine; leave every older workspace untouched.
+if test "$OP" = fresh_ssh; then
+  EXISTING="$(jq -r '[.[] | select(.displayName=="aaris-ai-unity-ssh")][0].name // ""' <<< "$LIST")"
+  if test -n "$EXISTING"; then
+    printf "codespace=%s\n" "$EXISTING" > "$OUT/terminal.txt"
+    STATE="SUCCESS"; DETAIL="existing_ssh_codespace_selected"; exit 0
+  fi
+  if ! jq -e '.image == "mcr.microsoft.com/devcontainers/base:ubuntu-22.04" and .features["ghcr.io/devcontainers/features/sshd:1"] != null' "$GITHUB_WORKSPACE/.devcontainer/devcontainer.json" >/dev/null; then
+    DETAIL="ssh_feature_missing_from_ubuntu_config"; exit 30
+  fi
+  if ! gh api "/repos/$REPO/codespaces/machines" --jq '.machines[].name' 2>/dev/null | grep -qxF "standardLinux32gb"; then
+    DETAIL="ssh_codespace_4core_16gb_unavailable"; exit 31
+  fi
+  if ! NEW="$(timeout 1200 gh codespace create -R "$REPO" -b main -m standardLinux32gb --devcontainer-path .devcontainer/devcontainer.json --idle-timeout 240m --display-name aaris-ai-unity-ssh --default-permissions 2>/dev/null)"; then
+    DETAIL="ssh_codespace_create_failed_quota_or_permissions"; exit 32
+  fi
+  NEW="$(printf "%s\n" "$NEW" | tail -n 1 | tr -d "[:space:]")"
+  if [[ ! "$NEW" =~ ^[A-Za-z0-9-]+$ ]]; then
+    DETAIL="ssh_codespace_response_unverified"; exit 33
+  fi
+  printf "codespace=%s\nmachine=standardLinux32gb\n" "$NEW" > "$OUT/terminal.txt"
+  echo "AARIS_UBUNTU_SSH_FEATURE_REQUESTED" >> "$OUT/terminal.txt"
+  # Stop only the previous fresh, known-broken instance after new creation.
+  OLD="$(jq -r '[.[] | select(.displayName=="aaris-ai-unity")][0].name // ""' <<< "$LIST")"
+  if test -n "$OLD" && test "$OLD" != "$NEW"; then
+    gh codespace stop -c "$OLD" >/dev/null 2>/dev/null || true
+  fi
+  STATE="SUCCESS"; DETAIL="ssh_codespace_created_preserving_previous_workspaces"; exit 0
+fi
+CS="$(jq -r '[.[] | select(.displayName=="aaris-ai-unity-ssh")][0].name // [.[] | select(.displayName=="aaris-ai-unity")][0].name // .[0].name // ""' <<< "$LIST")"
 if test -z "$CS" && test "$OP" = start; then
   if test -z "$MACHINE"; then
     TYPES="$(gh api "/repos/$REPO/codespaces/machines" 2>/dev/null)" || { DETAIL="machine_API_unavailable"; exit 5; }
