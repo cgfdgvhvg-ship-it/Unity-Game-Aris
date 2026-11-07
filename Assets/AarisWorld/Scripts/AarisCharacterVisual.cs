@@ -122,14 +122,6 @@ namespace Aaris.MapReview
                 return;
             }
 
-            // Only hide the OLD primitive mesh renderers. Do not touch collisions,
-            // virtual camera, Transform hierarchy, UI or existing controller.
-            placeholderRenderers = GetComponentsInChildren<MeshRenderer>(true);
-            for (int i = 0; i < placeholderRenderers.Length; i++)
-                if (placeholderRenderers[i] != null &&
-                    !placeholderRenderers[i].transform.IsChildOf(visual.transform))
-                    placeholderRenderers[i].enabled = false;
-
             TryApplySkin();
             actions = GetComponent<AarisBattleActions>();
             playerMotor = GetComponent<AarisThirdPersonPlayer>();
@@ -139,9 +131,28 @@ namespace Aaris.MapReview
             animator.applyRootMotion = false;
             animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             SetupAnimations();
-            Debug.Log(graphReady
-                ? "Aaris: rigged player + humanoid idle/run/jump animation mixer ready."
-                : "Aaris: rigged player ready; compatible animation clips not yet imported.");
+
+            // Fail-safe player presentation: a model with missing/corrupt
+            // imported animation clips must NOT hide the saved primitive
+            // character and leave an unanimated T-pose on Android.
+            if (!graphReady)
+            {
+                Debug.LogError("Aaris: imported animation clips invalid. Keeping legacy player visible.");
+                Destroy(visual);
+                visual = null;
+                enabled = false;
+                return;
+            }
+
+            // Hide legacy primitive renderers only after the full Humanoid
+            // Playables graph is proven valid. Collision, camera and saved
+            // hierarchy are left untouched.
+            placeholderRenderers = GetComponentsInChildren<MeshRenderer>(true);
+            for (int i = 0; i < placeholderRenderers.Length; i++)
+                if (placeholderRenderers[i] != null &&
+                    !placeholderRenderers[i].transform.IsChildOf(visual.transform))
+                    placeholderRenderers[i].enabled = false;
+            Debug.Log("Aaris: locally rigged Humanoid + 11-way animation mixer ready.");
         }
 
         private bool FitVisualToController()
@@ -248,6 +259,8 @@ namespace Aaris.MapReview
             if (idleClip == null || walkClip == null || runClip == null)
                 return;
             if (jump == null) jump = idleClip;
+            if (jumpStart == null) jumpStart = jump;
+            if (jumpLand == null) jumpLand = jump;
             if (fall == null) fall = jump;
 
             graph = PlayableGraph.Create("AarisHumanoidLocomotion");
