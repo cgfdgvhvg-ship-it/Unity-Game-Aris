@@ -17,6 +17,7 @@ namespace Aaris.MapReview
         private const string PrimaryModel = "AarisCharacters/Primary/Player";
         private const string FallbackModel = "AarisCharacters/Kenney/characterMedium";
         private const string KenneyClips = "AarisCharacters/Kenney/";
+        private const string PrimaryClips = "AarisCharacters/Primary/Animations/";
         private const float TargetHeightMetres = 1.78f;
 
         [SerializeField, Range(-180f, 180f)] private float modelYawOffset;
@@ -33,6 +34,11 @@ namespace Aaris.MapReview
         private bool graphReady;
         private float runBlend;
         private float airborneBlend;
+        private float walkRunBlend;
+        private AnimationClipPlayable idlePlayable, walkPlayable, runPlayable, jumpPlayable, fallPlayable;
+        private AnimationClip idleClip, walkClip, runClip;
+        private float locomotionPhase;
+        private bool primaryLoaded;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AttachToExistingPlayer()
@@ -52,6 +58,7 @@ namespace Aaris.MapReview
         private void Start()
         {
             var source = Resources.Load<GameObject>(PrimaryModel);
+            primaryLoaded = source != null;
             if (source == null)
                 source = Resources.Load<GameObject>(FallbackModel);
             if (source == null)
@@ -186,16 +193,18 @@ namespace Aaris.MapReview
                 SetLayerRecursively(t.GetChild(i), layer);
         }
 
-        private static AnimationClip FindClip(string file, string keyword)
+        private AnimationClip FindClip(string name, string preferred)
         {
-            var clips = Resources.LoadAll<AnimationClip>(KenneyClips + file);
+            // Unity imports each local FBX as an AnimationClip subasset.
+            string location = primaryLoaded ? PrimaryClips + name : KenneyClips + name;
+            var clips = Resources.LoadAll<AnimationClip>(location);
             AnimationClip fallback = null;
             foreach (var clip in clips)
             {
                 if (clip == null || clip.legacy || clip.length < 0.02f) continue;
                 string label = clip.name.ToLowerInvariant();
-                if (label.Contains("targeting") || label.Contains("pose")) continue;
-                if (label.Contains(keyword)) return clip;
+                if (label.Contains("preview") || label.Contains("pose")) continue;
+                if (label.Contains(preferred)) return clip;
                 if (fallback == null) fallback = clip;
             }
             return fallback;
@@ -203,30 +212,48 @@ namespace Aaris.MapReview
 
         private void SetupAnimations()
         {
-            var idle = FindClip("idle", "idle");
-            var run = FindClip("run", "run");
-            var jump = FindClip("jump", "jump");
-            if (idle == null || run == null) return;
-            if (jump == null) jump = idle;
+            idleClip = FindClip("idle", "idle");
+            walkClip = FindClip("walk", "walk") ?? FindClip("run", "run");
+            runClip = FindClip("run", "run");
+            AnimationClip jump = FindClip("jump", "jump");
+            AnimationClip fall = FindClip("fall", "fall");
+            if (idleClip == null || walkClip == null || runClip == null)
+                return;
+            if (jump == null) jump = idleClip;
+            if (fall == null) fall = jump;
 
-            graph = PlayableGraph.Create("AarisCharacterLocomotion");
+            graph = PlayableGraph.Create("AarisHumanoidLocomotion");
             graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
-            mixer = AnimationMixerPlayable.Create(graph, 3);
-            var idlePlayable = AnimationClipPlayable.Create(graph, idle);
-            var runPlayable = AnimationClipPlayable.Create(graph, run);
-            var jumpPlayable = AnimationClipPlayable.Create(graph, jump);
+            mixer = AnimationMixerPlayable.Create(graph, 5);
+            idlePlayable = AnimationClipPlayable.Create(graph, idleClip);
+            walkPlayable = AnimationClipPlayable.Create(graph, walkClip);
+            runPlayable = AnimationClipPlayable.Create(graph, runClip);
+            jumpPlayable = AnimationClipPlayable.Create(graph, jump);
+            fallPlayable = AnimationClipPlayable.Create(graph, fall);
             idlePlayable.SetApplyFootIK(true);
+            walkPlayable.SetApplyFootIK(true);
             runPlayable.SetApplyFootIK(true);
-            graph.Connect(idlePlayable, 0, mixer, 0);
-            graph.Connect(runPlayable, 0, mixer, 1);
-            graph.Connect(jumpPlayable, 0, mixer, 2);
-            mixer.SetInputWeight(0, 1f);
-            mixer.SetInputWeight(1, 0f);
-            mixer.SetInputWeight(2, 0f);
-            var output = AnimationPlayableOutput.Create(graph, "AarisCharacterOutput", animator);
+            var inputs = new[]
+            {
+                idlePlayable, walkPlayable, runPlayable,
+                jumpPlayable, fallPlayable
+            };
+            for (int i = 0; i < inputs.Length; i++)
+            {
+                graph.Connect(inputs[i], 0, mixer, i);
+                mixer.SetInputWeight(i, i == 0 ? 1f : 0f);
+            }
+            var output = AnimationPlayableOutput.Create(graph, "AarisHumanoidOutput", animator);
             output.SetSourcePlayable(mixer);
             graphReady = true;
             graph.Play();
+        }
+
+        private static void LoopPlayable(AnimationClipPlayable playable, AnimationClip clip, double cycle)
+        {
+            if (clip == null || clip.length < 0.02f) return;
+            double seconds = cycle * clip.length;
+            playable.SetTime(seconds - Math.Floor(seconds / clip.length) * clip.length);
         }
 
         private void LateUpdate()
@@ -234,14 +261,32 @@ namespace Aaris.MapReview
             if (!graphReady || controller == null) return;
             Vector3 velocity = controller.velocity;
             float horizontal = new Vector2(velocity.x, velocity.z).magnitude;
-            float speedRatio = Mathf.Clamp01(horizontal / Mathf.Max(0.1f, fullRunSpeed));
-            float alpha = 1f - Mathf.Exp(-Time.deltaTime / Mathf.Max(0.04f, blendResponseSeconds));
-            runBlend = Mathf.Lerp(runBlend, speedRatio, alpha);
-            airborneBlend = Mathf.Lerp(airborneBlend, controller.isGrounded ? 0f : 1f, alpha);
-            float groundWeight = 1f - airborneBlend;
-            mixer.SetInputWeight(0, groundWeight * (1f - runBlend));
-            mixer.SetInputWeight(1, groundWeight * runBlend);
-            mixer.SetInputWeight(2, airborneBlend);
+            float alpha = 1f - Mathf.Exp(-Time.deltaTime /
+                Mathf.Max(0.04f, blendResponseSeconds));
+
+            float movementTarget = Mathf.Clamp01(horizontal / 1.2f);
+            float sprintTarget = Mathf.InverseLerp(3.4f, Mathf.Max(3.5f, fullRunSpeed), horizontal);
+            float airTarget = controller.isGrounded ? 0f : 1f;
+            runBlend = Mathf.Lerp(runBlend, movementTarget, alpha);
+            walkRunBlend = Mathf.Lerp(walkRunBlend, sprintTarget, alpha);
+            airborneBlend = Mathf.Lerp(airborneBlend, airTarget, alpha);
+
+            // Normalize all five weights. A shared phase keeps foot contacts
+            // coherent between walk and sprint; movement itself remains fully
+            // authoritative in the terrain-aware CharacterController.
+            float grounded = 1f - airborneBlend;
+            float jumping = velocity.y >= -0.6f ? 1f : 0f;
+            mixer.SetInputWeight(0, grounded * (1f - runBlend));
+            mixer.SetInputWeight(1, grounded * runBlend * (1f - walkRunBlend));
+            mixer.SetInputWeight(2, grounded * runBlend * walkRunBlend);
+            mixer.SetInputWeight(3, airborneBlend * jumping);
+            mixer.SetInputWeight(4, airborneBlend * (1f - jumping));
+
+            locomotionPhase += (horizontal * Time.deltaTime) / 1.75f;
+            if (locomotionPhase > 1000f) locomotionPhase -= 1000f;
+            LoopPlayable(idlePlayable, idleClip, Time.timeAsDouble / Math.Max(0.02, idleClip.length));
+            LoopPlayable(walkPlayable, walkClip, locomotionPhase);
+            LoopPlayable(runPlayable, runClip, locomotionPhase);
         }
 
         private void OnDestroy()
