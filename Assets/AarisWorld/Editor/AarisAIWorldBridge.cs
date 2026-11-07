@@ -23,6 +23,14 @@ namespace Aaris.MapReview.Editor
             public int index, samples;
         }
         [Serializable] private class Point { public float x, y, z; public Point(Vector3 p) { x=p.x; y=p.y; z=p.z; } }
+        // A heartbeat is only written by successfully compiled, running Unity
+        // Editor code (unlike a Linux desktop or an unlicensed Docker process).
+        [Serializable] private class Heartbeat
+        {
+            public long unixSeconds;
+            public string unityVersion, scene, graphicsDevice;
+            public bool nativeSceneOpen;
+        }
         [Serializable] private class Size { public Vector3 center, extents, size; }
         // Every renderer/submesh is independently measurable. Paths identify leaves,
         // trunks, walls and roof children rather than confusing their parent bounds.
@@ -52,6 +60,7 @@ namespace Aaris.MapReview.Editor
         }
         private static readonly string State = Path.Combine(Directory.GetCurrentDirectory(), "ci-live-control");
         private static double nextPoll;
+        private static double nextHeartbeat;
         static AarisAIWorldBridge() { EditorApplication.update += Poll; }
 
         private static void Poll()
@@ -59,6 +68,7 @@ namespace Aaris.MapReview.Editor
             if (EditorApplication.timeSinceStartup < nextPoll) return;
             nextPoll = EditorApplication.timeSinceStartup + 0.7;
             if (EditorApplication.isCompiling || EditorApplication.isUpdating || EditorApplication.isPlaying) return;
+            PublishHeartbeat();
             string input = Path.Combine(State, "ai-command.json");
             if (!File.Exists(input)) return;
             Intent request = null;
@@ -98,6 +108,29 @@ namespace Aaris.MapReview.Editor
                 }
                 catch (Exception error) { Debug.LogError("[Aaris AI world status] " + error); }
             }
+        }
+
+        private static void PublishHeartbeat()
+        {
+            if (EditorApplication.timeSinceStartup < nextHeartbeat) return;
+            nextHeartbeat = EditorApplication.timeSinceStartup + 10;
+            try
+            {
+                Directory.CreateDirectory(State);
+                var beat = new Heartbeat {
+                    unixSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    unityVersion = Application.unityVersion,
+                    scene = SceneManager.GetActiveScene().path,
+                    graphicsDevice = SystemInfo.graphicsDeviceType.ToString(),
+                    nativeSceneOpen = SceneManager.GetActiveScene().path == AarisExplorerBuild.ScenePath
+                };
+                var tmp = Path.Combine(State, "editor-heartbeat.tmp");
+                File.WriteAllText(tmp, JsonUtility.ToJson(beat));
+                var path = Path.Combine(State, "editor-heartbeat.json");
+                if (File.Exists(path)) File.Delete(path);
+                File.Move(tmp, path);
+            }
+            catch (Exception e) { Debug.LogWarning("[Aaris AI heartbeat] " + e.GetType().Name); }
         }
 
         private static bool Finite(float n) { return !float.IsNaN(n) && !float.IsInfinity(n); }
