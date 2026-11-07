@@ -24,7 +24,7 @@ on:
         type: choice
         required: true
         default: machines
-        options: [machines, info, start, status, sync, changes, install, editor, license, shot, test, stop]
+        options: [machines, info, start, status, sync, lfs, changes, install, editor, license, shot, test, stop]
       machine:
         description: 'Optional exact machine name, from machines result'
         type: string
