@@ -91,7 +91,11 @@ namespace Aaris.MapReview
             weaponRoot = root.transform;
             if (combat != null) combat.Equip(next);
             AttachModelToHand();
-            if (old != null) Destroy(old.gameObject);
+            if (old != null)
+            {
+                old.gameObject.SetActive(false); // No duplicate weapon render this frame.
+                Destroy(old.gameObject);
+            }
             Debug.Log("Aaris: carrying one gun: " + next.DisplayName +
                 (dropped != null ? " (previous weapon dropped)" : ""));
             return true;
@@ -115,7 +119,11 @@ namespace Aaris.MapReview
             Transform old = weaponRoot;
             equipped = null;
             weaponRoot = null;
-            if (old != null) Destroy(old.gameObject);
+            if (old != null)
+            {
+                old.gameObject.SetActive(false); // No duplicate weapon render this frame.
+                Destroy(old.gameObject);
+            }
             return true;
         }
 
