@@ -40,8 +40,9 @@ def jump(fps: int, release_after_seconds: float | None) -> tuple[float, float]:
         t = i * dt
         airborne_gravity = gravity * (extra if v > 0 and release_after_seconds is not None
                                      and t >= release_after_seconds else 1.0)
+        previous_v = v
         v = max(v - airborne_gravity * dt, -40.0)
-        y += v * dt
+        y += (previous_v + v) * 0.5 * dt
         apex = max(apex, y)
         if y <= 0 and t > 0.08:
             return apex, t + dt
@@ -60,7 +61,7 @@ def assert_regression() -> None:
 
     # Simulated target approach is consistent across mobile refresh rates,
     # including frame-rate-independent velocity convergence.
-    for fps in (30, 60, 120):
+    for fps in (10, 15, 20, 30, 60, 120):
         dt = 1.0 / fps
         s = 0.0
         for _ in range(math.ceil(0.55 * fps)):
@@ -72,7 +73,7 @@ def assert_regression() -> None:
 
         full_apex, full_time = jump(fps, None)
         short_apex, short_time = jump(fps, 0.10)
-        assert 0.79 <= full_apex <= 1.05, (fps, "full jump height", full_apex)
+        assert 0.97 <= full_apex <= 1.02, (fps, "frame-independent full jump height", full_apex)
         assert 0.25 <= short_apex < full_apex - 0.13, (fps, "short jump", short_apex)
         assert 0.36 <= short_time < full_time <= 0.75, (fps, "jump timings", short_time, full_time)
 
@@ -82,6 +83,8 @@ def assert_regression() -> None:
     assert "jumpButtonHeld || Input.GetKey(KeyCode.Space)" in MOTOR
     assert "earlyJumpReleaseGravity" in MOTOR
     assert "Time.deltaTime" in MOTOR and "airborneSteering" in MOTOR
+    assert "previousVerticalVelocity" in MOTOR and "verticalStepSpeed" in MOTOR
+    assert "(previousVerticalVelocity + verticalVelocity) * 0.5f" in MOTOR
     assert "Physics.SphereCast(" in MOTOR
     assert "CollisionFlags.Below" in MOTOR
     assert "Mathf.SmoothDamp(smoothedEyeHeight" in MOTOR
