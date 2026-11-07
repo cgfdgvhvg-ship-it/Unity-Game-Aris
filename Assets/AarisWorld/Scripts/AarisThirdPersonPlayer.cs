@@ -198,7 +198,8 @@ namespace Aaris.MapReview
                 }
                 if (t.phase == TouchPhase.Began)
                 {
-                    if (AarisBattleHUD.CapturesScreenPosition(t.position)) continue;
+                    if (AarisBattleHUD.CapturesScreenPosition(t.position) ||
+                        AarisWeaponHUD.CapturesScreenPosition(t.position)) continue;
                     if (OverButton(p)) { PressButton(p); continue; }
                     if (moveFinger == -1 && (p - stickCenter).sqrMagnitude < 110f * 110f) moveFinger = t.fingerId;
                     else if (lookFinger == -1 && p.x > Screen.width / uiScale * 0.4f) lookFinger = t.fingerId;
