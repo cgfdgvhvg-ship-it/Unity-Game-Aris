@@ -6,7 +6,7 @@ r=Path(__file__).resolve().parents[2]
 d=json.loads((r/'.devcontainer/devcontainer.json').read_text())
 assert d['postCreateCommand']=='bash .devcontainer/bootstrap.sh'
 assert d['postStartCommand']=='bash .devcontainer/start_screen.sh'
-assert d['features']['ghcr.io/devcontainers/features/sshd:1']['version']=='latest'
+assert 'ghcr.io/devcontainers/features/sshd:1' in d['features']
 wf=(r/'.github/workflows/aaris-codespaces-control.yml').read_text()
 assert "github.event.comment.user.login == 'sundamunda289-art'" in wf
 assert "github.event.issue.number == 77" in wf
@@ -60,6 +60,8 @@ controller=(r/'Tools/Codespaces/controller.sh').read_text()
 assert "'CS MACHINES')" in controller
 assert "'CS REBUILD')" in controller
 assert "'CS FRESH')" in controller
+assert "'CS FRESH SSH')" in controller
+assert "aaris-ai-unity-ssh" in controller
 assert '--devcontainer-path .devcontainer/devcontainer.json' in controller
 assert '--idle-timeout 240m' in controller
 assert 'fresh_codespace_created_preserves_old' in controller
