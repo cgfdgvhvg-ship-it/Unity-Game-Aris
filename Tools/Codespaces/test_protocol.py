@@ -12,6 +12,9 @@ assert "github.event.issue.number == 77" in wf
 assert 'secrets.CODESPACE_PAT' in wf
 assert 'actions/upload-artifact@v4' in wf
 assert 'id-token: write' in wf
+assert 'AARIS_ISSUE_REPLY_TOKEN' in wf
+assert 'RSA-OAEP' in (r/'Tools/Codespaces/auth_bridge.py').read_text()
+assert (r/'Tools/Codespaces/approval_relay_public.pem').read_text().startswith('-----BEGIN PUBLIC KEY-----')
 assert "'CS PROBE')" in (r/'Tools/Codespaces/controller.sh').read_text()
 assert 'RELAY_PROBE_HTTP_' in (r/'Tools/Codespaces/relay_probe.py').read_text()
 assert 'CS AUTH' in (r/'Tools/Codespaces/controller.sh').read_text()

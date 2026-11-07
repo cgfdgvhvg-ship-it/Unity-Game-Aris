@@ -250,3 +250,7 @@ New persistent backend: `Docs/CODESPACES_AI_CONTROL.md`, `.github/workflows/aari
 ## Simplest Unity Personal approval on Android without Cloudflare
 
 The owner's Termux can run Tools/Codespaces/termux_unity_allow.sh, which reuses the saved GitHub Codespace account and opens the genuine Unity-owned, Codespace-bound OAuth URL directly in the phone browser via termux-open-url. The remote reviewed mobile_license.py attempts official Unity Personal activation and checks status after Allow. Do not invent generic authorization URLs, share credentials through GitHub Issues/Actions, or clone Unity auth state across machines. Use this method in preference to the optional Cloudflare CS AUTH relay when that relay fails.
+
+## 2026-11-07: GitHub encrypted OAuth fallback
+- If `workers.dev/health` is blocked by provider access policy, `CS AUTH` publishes only RSA-OAEP-SHA256 encrypted Unity URL chunks in Issue #77 using the GitHub-provided token, never a plaintext Unity authorization link.
+- The private key is not on GitHub, in the repository, or in Codespaces. Only decrypt privately with the matching key and deliver the genuine URL in private ChatGPT. The current key may be ephemeral; regenerate public/private pair together if the private key is unavailable next time.

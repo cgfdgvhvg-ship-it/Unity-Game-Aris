@@ -55,6 +55,7 @@ jobs:
           python3 -m py_compile Tools/Codespaces/mobile_license.py Tools/Codespaces/auth_bridge.py Tools/Codespaces/relay_probe.py
           python3 Tools/Codespaces/mobile_license.py --selftest
           python3 Tools/Codespaces/auth_bridge.py --selftest
+          openssl pkey -pubin -in Tools/Codespaces/approval_relay_public.pem -noout
           node --check Tools/CI/cloudflare_private_approval_worker.mjs
           python3 Tools/Codespaces/test_protocol.py
           echo "CODESPACE_STATIC_PASS"
@@ -74,6 +75,7 @@ jobs:
       - name: Execute reviewed Codespace task
         env:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+          AARIS_ISSUE_REPLY_TOKEN: ${{ github.token }}
           ISSUE_COMMAND: ${{ github.event_name == 'issue_comment' && github.event.comment.body || '' }}
           REQUEST_OPERATION: ${{ inputs.operation }}
           REQUEST_MACHINE: ${{ inputs.machine }}
