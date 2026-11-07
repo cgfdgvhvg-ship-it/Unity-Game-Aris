@@ -288,8 +288,10 @@ namespace Aaris.MapReview
             float z = record.previouslySpawned ? record.position.z : p.z;
             var terrain = TerrainAt(x, z);
             if (terrain == null) return false;
-            float ground = terrain.transform.position.y +
-                terrain.SampleHeight(new Vector3(x, 0f, z));
+            // Terrain.SampleHeight already returns a WORLD-SPACE Y.
+            // Adding terrain.transform.position.y again breaks placement
+            // on our four elevated/negative-height native Terrain tiles.
+            float ground = terrain.SampleHeight(new Vector3(x, 0f, z));
             float expectedY = record.previouslySpawned ? record.position.y - .71f : p.y;
             // Ground map author stores garage Y and road Y; use sampled
             // Terrain only as a sanity check, not as a rooftop substitute.
