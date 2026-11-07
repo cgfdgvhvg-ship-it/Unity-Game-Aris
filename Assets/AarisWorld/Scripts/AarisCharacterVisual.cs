@@ -35,7 +35,13 @@ namespace Aaris.MapReview
         private float runBlend;
         private float airborneBlend;
         private float walkRunBlend;
-        private AnimationClipPlayable idlePlayable, walkPlayable, runPlayable, jumpPlayable, fallPlayable;
+        private AnimationClipPlayable idlePlayable, walkPlayable, runPlayable, jumpPlayable, fallPlayable, crouchPlayable;
+        private AnimationClip crouchClip;
+        private AarisBattleActions actions;
+        private Transform punchArm;
+        private Vector3 restingLocalPosition;
+        private Quaternion restingLocalRotation;
+        private float crouchBlend, proneBlend;
         private AnimationClip idleClip, walkClip, runClip;
         private float locomotionPhase;
         private bool primaryLoaded;
@@ -118,6 +124,10 @@ namespace Aaris.MapReview
                     placeholderRenderers[i].enabled = false;
 
             TryApplySkin();
+            actions = GetComponent<AarisBattleActions>();
+            restingLocalPosition = visual.transform.localPosition;
+            restingLocalRotation = visual.transform.localRotation;
+            punchArm = animator.GetBoneTransform(HumanBodyBones.RightUpperArm);
             animator.applyRootMotion = false;
             animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             SetupAnimations();
@@ -217,6 +227,7 @@ namespace Aaris.MapReview
             runClip = FindClip("run", "run");
             AnimationClip jump = FindClip("jump", "jump");
             AnimationClip fall = FindClip("fall", "fall");
+            crouchClip = FindClip("crouch", "crouch") ?? idleClip;
             if (idleClip == null || walkClip == null || runClip == null)
                 return;
             if (jump == null) jump = idleClip;
@@ -224,19 +235,20 @@ namespace Aaris.MapReview
 
             graph = PlayableGraph.Create("AarisHumanoidLocomotion");
             graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
-            mixer = AnimationMixerPlayable.Create(graph, 5);
+            mixer = AnimationMixerPlayable.Create(graph, 6);
             idlePlayable = AnimationClipPlayable.Create(graph, idleClip);
             walkPlayable = AnimationClipPlayable.Create(graph, walkClip);
             runPlayable = AnimationClipPlayable.Create(graph, runClip);
             jumpPlayable = AnimationClipPlayable.Create(graph, jump);
             fallPlayable = AnimationClipPlayable.Create(graph, fall);
+            crouchPlayable = AnimationClipPlayable.Create(graph, crouchClip);
             idlePlayable.SetApplyFootIK(true);
             walkPlayable.SetApplyFootIK(true);
             runPlayable.SetApplyFootIK(true);
             var inputs = new[]
             {
                 idlePlayable, walkPlayable, runPlayable,
-                jumpPlayable, fallPlayable
+                jumpPlayable, fallPlayable, crouchPlayable
             };
             for (int i = 0; i < inputs.Length; i++)
             {
@@ -258,35 +270,67 @@ namespace Aaris.MapReview
 
         private void LateUpdate()
         {
-            if (!graphReady || controller == null) return;
-            Vector3 velocity = controller.velocity;
-            float horizontal = new Vector2(velocity.x, velocity.z).magnitude;
-            float alpha = 1f - Mathf.Exp(-Time.deltaTime /
-                Mathf.Max(0.04f, blendResponseSeconds));
+            if (visual == null || controller == null) return;
+            if (actions == null) actions = GetComponent<AarisBattleActions>();
 
-            float movementTarget = Mathf.Clamp01(horizontal / 1.2f);
-            float sprintTarget = Mathf.InverseLerp(3.4f, Mathf.Max(3.5f, fullRunSpeed), horizontal);
-            float airTarget = controller.isGrounded ? 0f : 1f;
-            runBlend = Mathf.Lerp(runBlend, movementTarget, alpha);
-            walkRunBlend = Mathf.Lerp(walkRunBlend, sprintTarget, alpha);
-            airborneBlend = Mathf.Lerp(airborneBlend, airTarget, alpha);
+            float dt = Mathf.Min(Time.deltaTime, 0.05f);
+            float alpha = 1f - Mathf.Exp(-dt / Mathf.Max(0.04f, blendResponseSeconds));
+            bool crouching = actions != null &&
+                actions.Stance == AarisBattleActions.PlayerStance.Crouching;
+            bool prone = actions != null &&
+                actions.Stance == AarisBattleActions.PlayerStance.Prone;
+            crouchBlend = Mathf.Lerp(crouchBlend, crouching ? 1f : 0f, alpha);
+            proneBlend = Mathf.Lerp(proneBlend, prone ? 1f : 0f, alpha);
 
-            // Normalize all five weights. A shared phase keeps foot contacts
-            // coherent between walk and sprint; movement itself remains fully
-            // authoritative in the terrain-aware CharacterController.
-            float grounded = 1f - airborneBlend;
-            float jumping = velocity.y >= -0.6f ? 1f : 0f;
-            mixer.SetInputWeight(0, grounded * (1f - runBlend));
-            mixer.SetInputWeight(1, grounded * runBlend * (1f - walkRunBlend));
-            mixer.SetInputWeight(2, grounded * runBlend * walkRunBlend);
-            mixer.SetInputWeight(3, airborneBlend * jumping);
-            mixer.SetInputWeight(4, airborneBlend * (1f - jumping));
+            // The source CC0 pack contains a crouch clip, not a full prone
+            // crawl clip. Tilt/ground-align the mesh as a visual fallback;
+            // the actual prone collision capsule is authoritative.
+            Quaternion proneRotation = restingLocalRotation * Quaternion.Euler(80f, 0f, 0f);
+            visual.transform.localRotation = Quaternion.Slerp(
+                restingLocalRotation, proneRotation, proneBlend);
+            visual.transform.localPosition = restingLocalPosition +
+                new Vector3(0f, proneBlend * 0.36f, proneBlend * 0.14f);
 
-            locomotionPhase += (horizontal * Time.deltaTime) / 1.75f;
-            if (locomotionPhase > 1000f) locomotionPhase -= 1000f;
-            LoopPlayable(idlePlayable, idleClip, Time.timeAsDouble / Math.Max(0.02, idleClip.length));
-            LoopPlayable(walkPlayable, walkClip, locomotionPhase);
-            LoopPlayable(runPlayable, runClip, locomotionPhase);
+            if (graphReady)
+            {
+                Vector3 velocity = controller.velocity;
+                float horizontal = new Vector2(velocity.x, velocity.z).magnitude;
+                float movementTarget = Mathf.Clamp01(horizontal / 1.2f);
+                float sprintTarget = Mathf.InverseLerp(3.4f,
+                    Mathf.Max(3.5f, fullRunSpeed), horizontal);
+                float airTarget = controller.isGrounded ? 0f : 1f;
+                runBlend = Mathf.Lerp(runBlend, movementTarget, alpha);
+                walkRunBlend = Mathf.Lerp(walkRunBlend, sprintTarget, alpha);
+                airborneBlend = Mathf.Lerp(airborneBlend, airTarget, alpha);
+
+                // Six-way normalized motion weights. Locomotion phase is
+                // distance-based to reduce walking/sprinting foot sliding.
+                float pose = Mathf.Clamp01(crouchBlend + proneBlend);
+                float grounded = (1f - airborneBlend) * (1f - pose);
+                float jumping = velocity.y >= -0.6f ? 1f : 0f;
+                mixer.SetInputWeight(0, grounded * (1f - runBlend));
+                mixer.SetInputWeight(1, grounded * runBlend * (1f - walkRunBlend));
+                mixer.SetInputWeight(2, grounded * runBlend * walkRunBlend);
+                mixer.SetInputWeight(3, airborneBlend * jumping * (1f - pose));
+                mixer.SetInputWeight(4, airborneBlend * (1f - jumping) * (1f - pose));
+                mixer.SetInputWeight(5, pose);
+
+                locomotionPhase += horizontal * dt / 1.75f;
+                if (locomotionPhase > 1000f) locomotionPhase -= 1000f;
+                LoopPlayable(idlePlayable, idleClip, Time.timeAsDouble / Math.Max(0.02, idleClip.length));
+                LoopPlayable(walkPlayable, walkClip, locomotionPhase);
+                LoopPlayable(runPlayable, runClip, locomotionPhase);
+            }
+
+            // In-place upper-arm punch pulse. Only the animation skeleton is
+            // affected; hit registration lives in AarisBattleActions.
+            if (punchArm != null && actions != null)
+            {
+                float t = (Time.time - actions.LastPunchTime) / 0.36f;
+                if (t >= 0f && t <= 1f)
+                    punchArm.localRotation *= Quaternion.Euler(
+                        -72f * Mathf.Sin(t * Mathf.PI), 0f, 0f);
+            }
         }
 
         private void OnDestroy()
