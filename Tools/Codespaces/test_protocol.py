@@ -57,6 +57,9 @@ assert 'machine-id' not in remote
 assert 'Unity_auth_vault' not in remote
 controller=(r/'Tools/Codespaces/controller.sh').read_text()
 assert "'CS MACHINES')" in controller
+assert "'CS REBUILD')" in controller
+assert 'gh codespace rebuild -c "$CS"' in controller
+assert 'rebuild_preflight.sh' in controller
 assert 'bash -s -- $OP' in controller
 assert "'CS INFO')" in controller
 assert 'gh codespace view -c' in controller
