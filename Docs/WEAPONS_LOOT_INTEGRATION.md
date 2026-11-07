@@ -23,15 +23,27 @@ rather than creating a new combat script for each gun.
 | Bolt Sniper | 48 | Single-press | 5 | 112 | 14° |
 | Pump Shotgun | 85 | Single-press; 8 pellets | 6 | 11 per pellet | 48° |
 
-There are two carried gun slots. The existing Fire button keeps punching
-until a gun is collected, then the single `AarisEquippedGun` class
-handles a properly timed shot, magazine consumption, reloading, spread,
-muzzle-to-target line of sight and limited camera recoil.
+**Inventory rule (updated): exactly ONE gun carried at a time.** With
+empty hands the Fire button punches. Initial automatic pickup is allowed
+for an unarmed player near a validated authored ground weapon. The player
+must press **PICK** while already armed to replace their current gun;
+the former gun appears at the collected weapon's proven floor position,
+with original magazine, reserve ammo, active reload timer and firing state
+still attached. No hidden second slot/backpack gun is created.
 
-The five movement/combat buttons remain unchanged. Three compact
-**weapon utility** controls appear only after pickup:
-`ADS`, `SWAP` and `RELOAD`; they share the existing EventSystem.
-For keyboard review: Q=swap, R=reload, right-mouse=ADS.
+The player may press **DROP** at any time. This first validates a reachable
+flat ground spot (not underwater, not in a wall or off a cliff), reserves
+the dropped pickup, then removes the held gun; on failure the gun remains
+safely equipped. After intentional DROP, automatic re-equipping stays
+disabled until the player explicitly presses PICK again. Each dropped
+item persists as a match record when distant meshes are streamed out;
+revisiting the area reconstructs its model without rerolling ammo.
+
+The five movement/combat buttons remain unchanged. Compact utility
+controls now use `ADS`, `PICK`, `DROP` and `RELOAD`; PICK is shown only
+near reachable loot while the other three require a held gun. The
+buttons share the existing EventSystem and cannot also trigger camera
+look. Desktop review: E=pick, G=drop, R=reload, right-mouse=ADS.
 The player's third-person motor remains sole camera/FOV and collision owner.
 
 ## Three-tier match loot
@@ -55,12 +67,24 @@ The player's third-person motor remains sole camera/FOV and collision owner.
    remain mandatory; no guaranteed gun in every cell.
 
 Match loot uses a local xorshift seed and cached candidate list, so
-returning to an area does not reroll its drops. A collected pickup
-stays collected. Rendered pickup objects only stream within **42m**
+returning to an area does not reroll its drops. A collected authored
+pickup remains consumed. Player-dropped guns are separate, persistent
+negative-ID match records. Rendered pickup objects stream within **42m**
 of the player, with **40 active maximum**, **6 newly created maximum
 per refresh**, and disappear visually past 69m (but retain their
-per-match plan). Surrounding native world colliders are already enabled
-out to 55m by the existing `AarisNearbyColliders` system.
+per-match state). A brief pickup grace period prevents instantly
+recollecting a dropped gun. Surrounding native world colliders are already
+enabled out to 55m by the existing `AarisNearbyColliders` system.
+
+**Placement QA detail:** Baked building X/Z positions are only candidates.
+At runtime, `TryResolve` chooses a floor hit near the authored elevation
+from a bounded downward raycast. This prevents a low house roof from
+stealing the floor ray. Indoor candidates also require a real overhead
+collider, slope clearance and unblocked floor. Open-ground candidates
+require the TerrainCollider. Rejected probes back off for 3 seconds.
+Development builds log each `AARIS_LOOT_PLACED`, `AARIS_LOOT_DROPPED`
+and `AARIS_LOOT_COLLECTED` event with map coordinates. Actual placements
+still require Unity Play-mode verification.
 
 **No full 2km physics scan, no per-frame tree-instance copies, no terrain
 or building edits, no fake gun cubes, no network asset dependency.**
@@ -86,11 +110,13 @@ or building edits, no fake gun cubes, no network asset dependency.**
 ```sh
 python Tools/Weapons/bake_loot.py
 python Tools/Validation/check_weapon_loot.py
+python Tools/Validation/check_single_weapon_transactions.py
 ```
 
 The 514 baked indoor/grid candidates are reproducible from the
 existing `Docs/MAP_LAYOUT.json`; the optional bounded tree sampling
 runs at the start of the match, not at build time.
 
-This feature is reviewed in PR #94 and does not alter native scene,
-terrain, houses or Git LFS map assets.
+Original five-gun feature merged as PR #94; the one-gun pickup/drop upgrade
+is reviewed in PR #95. Neither modifies the native scene, Terrain, houses
+or original Git LFS map assets.

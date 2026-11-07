@@ -3,6 +3,35 @@ using UnityEngine;
 namespace Aaris.MapReview
 {
     /// <summary>
+    /// Weapon state follows the actual physical gun between hand and floor.
+    /// Ammo and reload deadlines must survive drop/pickup and never duplicate.
+    /// </summary>
+    public sealed class AarisWeaponState
+    {
+        public readonly AarisWeaponSpec Spec;
+        public readonly int Magazine, Reserve;
+        public readonly float ReloadUntil, NextShotAt;
+        public readonly bool Reloading;
+        public readonly uint SpreadSeed;
+
+        public AarisWeaponState(AarisWeaponSpec spec, uint seed)
+            : this(spec, spec != null ? spec.magazineSize : 0,
+                spec != null ? spec.reserveAmmo : 0, 0f, 0f, false, seed) { }
+
+        public AarisWeaponState(AarisWeaponSpec spec, int magazine, int reserve,
+            float reloadUntil, float nextShotAt, bool reloading, uint seed)
+        {
+            Spec = spec;
+            Magazine = magazine;
+            Reserve = reserve;
+            ReloadUntil = reloadUntil;
+            NextShotAt = nextShotAt;
+            Reloading = reloading;
+            SpreadSeed = seed;
+        }
+    }
+
+    /// <summary>
     /// One implementation for all locally configured weapon types.
     /// Emits camera-aligned hit scans, checks line of sight from the stance
     /// muzzle and applies damage only via the game-side IAarisDamageable hook.
@@ -28,20 +57,33 @@ namespace Aaris.MapReview
         public string ModelResource => spec != null ? spec.modelResource : null;
         public AarisWeaponSpec Spec => spec;
 
-        public void Configure(AarisWeaponSpec weapon, uint matchSeed)
+        public void Configure(AarisWeaponSpec weapon, uint matchSeed) =>
+            Configure(new AarisWeaponState(weapon, matchSeed ^ 0x7F4A7C15u));
+
+        public void Configure(AarisWeaponState state)
         {
-            if (weapon == null || !weapon.Valid)
+            if (state == null || state.Spec == null || !state.Spec.Valid)
             {
-                Debug.LogError("Aaris: invalid weapon configured.");
+                Debug.LogError("Aaris: invalid weapon state configured.");
                 enabled = false;
                 return;
             }
-            spec = weapon;
-            magazine = spec.magazineSize;
-            reserve = spec.reserveAmmo;
-            spreadSeed = matchSeed ^ 0x7F4A7C15u;
-            nextFire = 0f;
-            reloading = false;
+            spec = state.Spec;
+            magazine = Mathf.Clamp(state.Magazine, 0, spec.magazineSize);
+            reserve = Mathf.Max(0, state.Reserve);
+            spreadSeed = state.SpreadSeed;
+            nextFire = state.NextShotAt;
+            reloadUntil = state.ReloadUntil;
+            reloading = state.Reloading;
+            RefreshReload();
+        }
+
+        public AarisWeaponState CaptureState()
+        {
+            RefreshReload();
+            if (spec == null) return null;
+            return new AarisWeaponState(spec, magazine, reserve,
+                reloadUntil, nextFire, reloading, spreadSeed);
         }
 
         private void Update() => RefreshReload();

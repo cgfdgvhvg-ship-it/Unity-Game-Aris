@@ -73,16 +73,40 @@ def run():
     assert "magazine--;" in gun_cs and "nextFire = Time.time + spec.ShotInterval;" in gun_cs
     assert "BeginReload()" in gun_cs and "reloading" in gun_cs
     assert "semiShotQueued" in action and "equippedGun.Automatic" in action
-    assert "new AarisEquippedGun[2]" in inventory
-    # Swapping should not freeze a hidden gun's reload state.
-    assert "public void RefreshReload()" in gun_cs
-    assert "RefreshReload();" in inventory and "slots[i].RefreshReload();" in inventory
+    # Exactly ONE weapon in hand, no hidden second slot or backpack gun.
+    assert "private AarisEquippedGun equipped;" in inventory
+    assert "new AarisEquippedGun[2]" not in inventory
+    assert "slots[" not in inventory and "CycleWeapon()" not in inventory
+    assert "public bool HasGun => equipped != null && equipped.Configured;" in inventory
+    assert "TryPickup(AarisWeaponState incoming, out AarisWeaponState dropped)" in inventory
+    assert "TryRemove(out AarisWeaponState removed)" in inventory
+    assert "combat.Equip(null)" in inventory, "Unarmed Fire must return to Punch."
+    assert "CaptureState()" in gun_cs and "Configure(AarisWeaponState state)" in gun_cs
+    assert "AarisWeaponState" in gun_cs
     assert "RefreshReload();" in gun_cs and "Time.time < reloadUntil" in gun_cs
-    # The FBX rotation applies at the parent socket exactly once.
-    assert "view.localRotation = Quaternion.identity;" in inventory
-    assert "view.localRotation = Quaternion.Euler(spec.handRotation)" not in inventory
-    assert "weaponModels[index].localRotation = Quaternion.Euler(Current.Spec.handRotation);" in inventory
-    # No accidental pickup while standing in a neighboring room.
+    assert "NextShotAt" in gun_cs and "SpreadSeed" in gun_cs
+    # The imported FBX child applies no duplicate hand-grip rotation.
+    assert "mesh.localRotation = Quaternion.identity;" in inventory
+    assert "weaponRoot.localRotation = Quaternion.Euler(equipped.Spec.handRotation);" in inventory
+    # Pickup swaps must reserve the old gun BEFORE committing, then retire
+    # the collected world pickup without duping its ammo/weapon state.
+    assert "private AarisDroppedWeapon CreateDropped" in world
+    assert "private bool TryTake(AarisWeaponPickup pickup)" in world
+    assert "CreateDropped(outgoing, pickup.transform.position, 1.25f)" in world
+    assert "UndoDrop(replacement)" in world
+    assert "inventory.TryPickup(pickup.State, out AarisWeaponState exchanged)" in world
+    assert "consumed[id] = true;" in world and "DeleteDrop(id);" in world
+    assert "TryDropEquipped()" in world and "TryFindDropSpot" in world
+    assert "TryRemove(out AarisWeaponState removed)" in world
+    assert "MaximumDroppedLoot = 320" in world
+    assert "rec.visible = null;" in world and "record.state" in world
+    # Deliberate exchange, never auto-pick a recently dropped gun.
+    assert "(!inventory.HasGun && allowInitialAutoPickup &&" in world
+    assert "requestPickupUntil = Time.unscaledTime + 0.7f;" in world
+    assert "allowInitialAutoPickup = false;" in world
+    assert "IsBlockedDrop(pickup)" in world
+    assert 'Add("PICK"' in hud and 'Add("DROP"' in hud
+    assert 'Add("SWAP"' not in hud
     assert "private bool CanReachPickup(AarisWeaponPickup pickup)" in world
     assert "Physics.RaycastNonAlloc(new Ray(eye, toTarget / distance)" in world
     assert "CanReachPickup(pickup)" in world
@@ -101,7 +125,7 @@ def run():
     assert "float distance = 2f + AarisWeaponRandom.Next01(ref rng) * 7f;" in world
     assert "AppendNativeTreeCover(allCandidates);" in world
     assert "UnityWebRequest" not in "\n".join([catalog_cs,gun_cs,inventory,world,hud])
-    print("PASS: 5 locally committed, SHA-verified CC0 weapon FBXs, 2-slot magazine/recoil/scope, "
+    print("PASS: 5 locally committed, SHA-verified CC0 weapon FBXs, single-weapon swap/drop, magazine/recoil/scope, "
           "authored 2km loot candidates, streaming and combat source contracts")
     print("Unity Editor import, playable gun handling and visible materials NOT YET TESTED")
 
