@@ -3,26 +3,27 @@ using UnityEngine;
 namespace Aaris.MapReview
 {
     /// <summary>
-    /// Two weapon slots + empty-hand fallback. Equipped weapons are self-
-    /// contained instances; switching does not reset remaining ammunition.
-    /// This is a local prototype, not a network replicated inventory.
+    /// Exactly ONE carried weapon. Taking a second gun leaves the first at
+    /// the pickup location as persistent world loot with its real ammo state.
+    /// Dropping voluntarily restores the original unarmed punch.
+    /// No second gun is stored on the back or hidden in a second slot.
     /// </summary>
     [DisallowMultipleComponent, RequireComponent(typeof(AarisBattleActions))]
     public sealed class AarisWeaponInventory : MonoBehaviour
     {
-        private readonly AarisEquippedGun[] slots = new AarisEquippedGun[2];
-        private readonly Transform[] weaponModels = new Transform[2];
+        private AarisEquippedGun equipped;
+        private Transform weaponRoot;
         private AarisBattleActions combat;
         private AarisThirdPersonPlayer motor;
-        private int selected = -1;
-        private bool aiming;
+        private AarisWeaponLootWorld lootWorld;
         private Transform hand;
         private float nextRigSearch;
+        private bool aiming;
 
-        public AarisEquippedGun Current =>
-            selected >= 0 && selected < slots.Length ? slots[selected] : null;
+        public AarisEquippedGun Current => equipped;
         public bool Aiming => aiming;
-        public int SelectedSlot => selected;
+        public bool HasGun => equipped != null && equipped.Configured;
+        public bool PickupAvailable => lootWorld != null && lootWorld.HasPickupInRange;
 
         private void Awake()
         {
@@ -30,127 +31,142 @@ namespace Aaris.MapReview
             motor = GetComponent<AarisThirdPersonPlayer>();
         }
 
-        public bool HasCapacity => slots[0] == null || slots[1] == null;
+        public void BindLootWorld(AarisWeaponLootWorld world) => lootWorld = world;
+        public void RequestPickup() { if (lootWorld != null) lootWorld.RequestPickup(); }
+        public bool DropCurrent() => lootWorld != null && lootWorld.TryDropEquipped();
 
-        public bool TryPickup(AarisWeaponSpec spec, uint seed)
+        /// <summary>
+        /// An atomic exchange. Preload the incoming FBX before detaching the
+        /// existing gun. The previous gun is returned as a complete state
+        /// snapshot so the world can leave it on the ground.
+        /// </summary>
+        public bool TryPickup(AarisWeaponState incoming, out AarisWeaponState dropped)
         {
-            if (spec == null || !spec.Valid || !HasCapacity) return false;
-            int at = slots[0] == null ? 0 : 1;
-            GameObject prefab = Resources.Load<GameObject>(spec.modelResource);
-            if (prefab == null) return false; // never show a fake gun cube
-            var root = new GameObject("Aaris Weapon Slot " + (at + 1) + " " + spec.id);
+            dropped = null;
+            if (incoming == null || incoming.Spec == null || !incoming.Spec.Valid)
+                return false;
+            GameObject prefab = Resources.Load<GameObject>(incoming.Spec.modelResource);
+            if (prefab == null) return false;
+
+            var root = new GameObject("Aaris Equipped " + incoming.Spec.id);
             root.transform.SetParent(transform, false);
-            var equipped = root.AddComponent<AarisEquippedGun>();
-            equipped.Configure(spec, seed);
             var visible = Instantiate(prefab, root.transform);
-            visible.name = spec.displayName + " Model";
-            // All gun geometry is purely cosmetic: no extra collisions or
-            // physics motors grafted onto the humanoid.
-            foreach (var c in visible.GetComponentsInChildren<Collider>(true)) c.enabled = false;
-            var view = visible.transform;
-            var renderer = view.GetComponentInChildren<Renderer>();
-            if (renderer != null && renderer.bounds.size.sqrMagnitude > 0.0001f)
+            if (visible.GetComponentInChildren<Renderer>(true) == null)
             {
-                var bounds = renderer.bounds.size;
-                float longest = Mathf.Max(bounds.x, bounds.y, bounds.z);
-                view.localScale = Vector3.one * Mathf.Clamp(0.86f / longest, 0.001f, 10f);
+                Destroy(root);
+                Debug.LogError("Aaris: gun has no visible mesh: " + incoming.Spec.id);
+                return false;
             }
-            // Only the parent weapon socket owns hand alignment. Applying
-            // the same Euler angles to the imported FBX AND the socket
-            // rotated some weapons twice (e.g. 90° + 90° = backwards).
-            view.localPosition = Vector3.zero;
-            view.localRotation = Quaternion.identity;
-            view.localScale *= spec.handScale;
-            slots[at] = equipped;
-            weaponModels[at] = root.transform;
-            root.SetActive(false);
-            if (selected < 0) EquipSlot(at);
-            Debug.Log("Aaris loot: acquired " + spec.displayName);
+            foreach (var collider in visible.GetComponentsInChildren<Collider>(true))
+                collider.enabled = false;
+            var mesh = visible.transform;
+            var renderer = visible.GetComponentInChildren<Renderer>(true);
+            float longest = Mathf.Max(renderer.bounds.size.x,
+                renderer.bounds.size.y, renderer.bounds.size.z);
+            if (longest < 0.001f)
+            {
+                Destroy(root);
+                return false;
+            }
+            mesh.localScale *= Mathf.Clamp(0.86f / longest, 0.001f, 10f) *
+                incoming.Spec.handScale;
+            mesh.localPosition = Vector3.zero;
+            mesh.localRotation = Quaternion.identity;
+
+            var next = root.AddComponent<AarisEquippedGun>();
+            next.Configure(incoming);
+            if (!next.Configured)
+            {
+                Destroy(root);
+                return false;
+            }
+
+            // Commit the replacement only after the new gun is valid.
+            dropped = equipped != null ? equipped.CaptureState() : null;
+            Transform old = weaponRoot;
+            if (combat != null) combat.SetFireHeld(false);
+            aiming = false;
+            if (motor != null) motor.SetWeaponAimFov(-1f);
+            equipped = next;
+            weaponRoot = root.transform;
+            if (combat != null) combat.Equip(next);
+            AttachModelToHand();
+            if (old != null) Destroy(old.gameObject);
+            Debug.Log("Aaris: carrying one gun: " + next.DisplayName +
+                (dropped != null ? " (previous weapon dropped)" : ""));
             return true;
         }
 
-        public void EquipSlot(int slot)
+        /// <summary>
+        /// Called only after the world validates a physical floor and
+        /// reserves a drop pickup. Cannot lose a gun on invalid terrain.
+        /// </summary>
+        public bool TryRemove(out AarisWeaponState removed)
         {
-            if (slot < 0 || slot >= slots.Length || slots[slot] == null) return;
-            if (combat != null) combat.SetFireHeld(false);
-            selected = slot;
-            ToggleAim(false);
-            for (int i = 0; i < slots.Length; i++)
-                if (slots[i] != null) slots[i].gameObject.SetActive(i == slot);
-            combat.Equip(slots[selected]);
-            slots[selected].RefreshReload();
-            AttachModelToHand(slot);
+            removed = equipped != null ? equipped.CaptureState() : null;
+            if (removed == null) return false;
+            if (combat != null)
+            {
+                combat.SetFireHeld(false);
+                combat.Equip(null); // Fire returns to melee Punch.
+            }
+            aiming = false;
+            if (motor != null) motor.SetWeaponAimFov(-1f);
+            Transform old = weaponRoot;
+            equipped = null;
+            weaponRoot = null;
+            if (old != null) Destroy(old.gameObject);
+            return true;
         }
 
-        public void CycleWeapon()
-        {
-            if (selected < 0) return;
-            int other = 1 - selected;
-            if (slots[other] != null) EquipSlot(other);
-        }
-
-        public bool Reload() => Current != null && Current.BeginReload();
+        public bool Reload() => equipped != null && equipped.BeginReload();
 
         public void ToggleAim()
         {
-            if (Current == null) { ToggleAim(false); return; }
-            ToggleAim(!aiming);
-        }
-
-        private void ToggleAim(bool value)
-        {
-            aiming = value && Current != null;
+            aiming = !aiming && HasGun;
             if (motor != null)
-                motor.SetWeaponAimFov(aiming ? Current.ScopeFov : -1f);
+                motor.SetWeaponAimFov(aiming ? equipped.ScopeFov : -1f);
         }
 
-        private void AttachModelToHand(int index)
+        private void AttachModelToHand()
         {
-            if (weaponModels[index] == null) return;
+            if (weaponRoot == null || equipped == null) return;
             if (hand == null && Time.unscaledTime >= nextRigSearch)
             {
-                // Humanoid visual may not be imported yet; avoid allocating
-                // an Animator array in LateUpdate every mobile frame.
                 nextRigSearch = Time.unscaledTime + 1f;
-                var animators = GetComponentsInChildren<Animator>(true);
-                foreach (var animator in animators)
-                    if (animator != null && animator.avatar != null && animator.avatar.isHuman)
-                    {
-                        hand = animator.GetBoneTransform(HumanBodyBones.RightHand);
-                        if (hand != null) break;
-                    }
+                foreach (var animator in GetComponentsInChildren<Animator>(true))
+                {
+                    if (animator == null || animator.avatar == null ||
+                        !animator.avatar.isHuman) continue;
+                    hand = animator.GetBoneTransform(HumanBodyBones.RightHand);
+                    if (hand != null) break;
+                }
             }
             Transform socket = hand != null ? hand : transform;
-            weaponModels[index].SetParent(socket, false);
-            if (hand == null)
-                weaponModels[index].localPosition = new Vector3(.29f, 1.1f, .3f);
-            else
-                weaponModels[index].localPosition = Current.Spec.handOffset;
-            weaponModels[index].localRotation = Quaternion.Euler(Current.Spec.handRotation);
+            if (weaponRoot.parent != socket)
+                weaponRoot.SetParent(socket, false);
+            weaponRoot.localPosition = hand != null
+                ? equipped.Spec.handOffset : new Vector3(0.29f, 1.1f, 0.3f);
+            weaponRoot.localRotation = Quaternion.Euler(equipped.Spec.handRotation);
         }
 
         private void LateUpdate()
         {
-            // The Humanoid is created at scene start, potentially after
-            // the first loot pickup. Bind the actual right hand once ready.
-            if (Current != null && hand == null) AttachModelToHand(selected);
+            if (equipped != null && hand == null) AttachModelToHand();
         }
 
         private void Update()
         {
-            // Complete background reloads without enabling invisible gun
-            // renderers or allocating a second firing motor.
-            for (int i = 0; i < slots.Length; i++)
-                if (slots[i] != null) slots[i].RefreshReload();
-
-            if (Input.GetKeyDown(KeyCode.Q)) CycleWeapon();
+            if (Input.GetKeyDown(KeyCode.E)) RequestPickup();
+            if (Input.GetKeyDown(KeyCode.G)) DropCurrent();
             if (Input.GetKeyDown(KeyCode.R)) Reload();
             if (Input.GetMouseButtonDown(1)) ToggleAim();
         }
 
         private void OnDisable()
         {
-            ToggleAim(false);
+            aiming = false;
+            if (motor != null) motor.SetWeaponAimFov(-1f);
             if (combat != null) combat.SetFireHeld(false);
         }
     }
