@@ -6,7 +6,10 @@ const JWKS_URL = "https://token.actions.githubusercontent.com/.well-known/jwks";
 const REPOSITORY = "sundamunda289-art/Unity-Game-Aris";
 const REPOSITORY_ID = "1443109769";
 const ACTOR_ID = "353065137";
-const WORKFLOW = REPOSITORY + "/.github/workflows/aaris-live-unity.yml@refs/heads/main";
+const APPROVED_WORKFLOWS = new Set([
+  REPOSITORY + "/.github/workflows/aaris-live-unity.yml@refs/heads/main",
+  REPOSITORY + "/.github/workflows/aaris-codespaces-control.yml@refs/heads/main",
+]);
 const TTL_SECONDS = 480;
 
 function decodeBase64Url(value) {
@@ -44,7 +47,7 @@ async function verifyGithubOidc(token) {
       || claims.repository !== REPOSITORY
       || String(claims.actor_id) !== ACTOR_ID
       || claims.ref !== "refs/heads/main"
-      || claims.workflow_ref !== WORKFLOW
+      || !APPROVED_WORKFLOWS.has(claims.workflow_ref)
       || !["issue_comment", "workflow_dispatch"].includes(claims.event_name)
       || !/^[0-9]{6,18}$/.test(String(claims.run_id || ""))) {
     throw Error("unauthorized GitHub workflow");

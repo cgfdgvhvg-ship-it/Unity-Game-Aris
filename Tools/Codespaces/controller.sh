@@ -34,6 +34,7 @@ if test -n "$ISSUE"; then
     'CS INSTALL') OP=install ;;
     'CS EDITOR') OP=editor ;;
     'CS LICENSE') OP=license ;;
+    'CS AUTH') OP=auth ;;
     'CS SHOT') OP=shot ;;
     'CS TEST') OP=test ;;
     'CS STOP') OP=stop ;;
@@ -41,7 +42,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|start|status|sync|lfs|lfs_report|changes|install|editor|license|shot|test|stop) ;;
+  machines|info|start|status|sync|lfs|lfs_report|changes|install|editor|license|auth|shot|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test -z "$GH_TOKEN"; then DETAIL="CODESPACE_PAT_missing"; exit 3; fi
@@ -133,6 +134,15 @@ case "$OP" in
   test) REMOTE_TIMEOUT=500 ;;
   editor) REMOTE_TIMEOUT=350 ;;
 esac
+if test "$OP" = auth; then
+  # Intercept the remote Unity OAuth URL, keep it OFF all public logs/artifacts.
+  if timeout 555 python3 "$GITHUB_WORKSPACE/Tools/Codespaces/auth_bridge.py" "$CS" > "$OUT/terminal.txt" 2>"$PRIVATE_ERRORS"; then
+    STATE="SUCCESS"; DETAIL="unity_license_checked"; exit 0
+  fi
+  safe_error_summary
+  DETAIL="unity_auth_incomplete_see_private_link"
+  exit 17
+fi
 SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/remote.sh"
 REMOTE_SHELL="bash -s -- $OP"
 if test "$OP" = install; then

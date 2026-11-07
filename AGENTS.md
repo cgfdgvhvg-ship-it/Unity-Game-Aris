@@ -238,3 +238,10 @@ New persistent backend: `Docs/CODESPACES_AI_CONTROL.md`, `.github/workflows/aari
 - One-time Editor install to persistent \`/workspaces/.aaris-unity-editors/6000.3.26f1\` using Unity CLI's supported portable \`--download-directory\` option; the Editor is reused on same Codespace stop/start.
 - On restart, \`CS START\` then \`CS EDITOR\`, followed by \`CS STATUS\` and \`CS SHOT\`. No reinstalls when persistent Editor is available. Unity Library/Temp cache remains on /tmp to avoid running out of persistent disk; import may take longer after ephemeral storage reset.
 - New account/new Codespace has its own storage and may require the initial Editor download and official Unity Personal login. Never move authentication cookies, license state, or machine IDs between Codespaces.
+
+## Unity Personal phone approval on existing Codespace
+
+- `CS AUTH` from owner Issue #77 runs Unity CLI browser sign-in on the actual Codespace; an Actions bridge intercepts the Unity-owned authorization URL and publishes it only to the protected Cloudflare OIDC relay.
+- Retrieve with connected Cloudflare KV `aaris-unity-approval-private`, key `run-<Github Actions run id>`. Give the URL ONLY privately in ChatGPT, never in a GitHub public Issue, log, artifact or commit.
+- User opens official Unity page on phone, signs into Unity (Google/Gmail if configured), taps Allow. Then the automation checks Unity login and attempts Personal entitlement activation, verifying final license status on the Codespace itself. Hub activation fallback may be required.
+- User interaction is required when OAuth asks; no reuse of hardware IDs or login cookies across accounts.

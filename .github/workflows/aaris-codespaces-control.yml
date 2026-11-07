@@ -24,7 +24,7 @@ on:
         type: choice
         required: true
         default: machines
-        options: [machines, info, start, status, sync, lfs, lfs_report, changes, install, editor, license, shot, test, stop]
+        options: [machines, info, start, status, sync, lfs, lfs_report, changes, install, editor, license, auth, shot, test, stop]
       machine:
         description: 'Optional exact machine name, from machines result'
         type: string
@@ -33,6 +33,7 @@ on:
 permissions:
   contents: read
   issues: write
+  id-token: write
 concurrency:
   group: aaris-codespace-control
   cancel-in-progress: false
@@ -51,6 +52,10 @@ jobs:
           set -euo pipefail
           bash -n .devcontainer/bootstrap.sh .devcontainer/start_screen.sh Tools/Codespaces/*.sh
           python3 -m json.tool .devcontainer/devcontainer.json >/dev/null
+          python3 -m py_compile Tools/Codespaces/mobile_license.py Tools/Codespaces/auth_bridge.py
+          python3 Tools/Codespaces/mobile_license.py --selftest
+          python3 Tools/Codespaces/auth_bridge.py --selftest
+          node --check Tools/CI/cloudflare_private_approval_worker.mjs
           python3 Tools/Codespaces/test_protocol.py
           echo "CODESPACE_STATIC_PASS"
   control:
