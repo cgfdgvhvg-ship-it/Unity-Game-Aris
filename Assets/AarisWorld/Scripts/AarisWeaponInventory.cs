@@ -8,6 +8,9 @@ namespace Aaris.MapReview
     /// Dropping voluntarily restores the original unarmed punch.
     /// No second gun is stored on the back or hidden in a second slot.
     /// </summary>
+    // Run after AarisCharacterVisual (order +200): its Playables update
+    // the hand bones before this class places the gun at that pose.
+    [DefaultExecutionOrder(310)]
     [DisallowMultipleComponent, RequireComponent(typeof(AarisBattleActions))]
     public sealed class AarisWeaponInventory : MonoBehaviour
     {
@@ -132,6 +135,7 @@ namespace Aaris.MapReview
         public void ToggleAim()
         {
             aiming = !aiming && HasGun;
+            if (aiming && motor != null) motor.CancelAutoSprint();
             if (motor != null)
                 motor.SetWeaponAimFov(aiming ? equipped.ScopeFov : -1f);
         }
@@ -150,17 +154,28 @@ namespace Aaris.MapReview
                     if (hand != null) break;
                 }
             }
-            Transform socket = hand != null ? hand : transform;
-            if (weaponRoot.parent != socket)
-                weaponRoot.SetParent(socket, false);
-            weaponRoot.localPosition = hand != null
-                ? equipped.Spec.handOffset : new Vector3(0.29f, 1.1f, 0.3f);
-            weaponRoot.localRotation = Quaternion.Euler(equipped.Spec.handRotation);
+            // Keep the equipped weapon as a CHILD OF PLAYER, not the
+            // imported FBX bone. Imported humanoid rigs can have 0.01x or
+            // 100x transforms. Parenting the gun under that bone scaled it
+            // unpredictably, often making it tiny or enormous.
+            if (weaponRoot.parent != transform)
+                weaponRoot.SetParent(transform, false);
+            Quaternion grip = Quaternion.Euler(equipped.Spec.handRotation);
+            if (hand != null)
+                weaponRoot.SetPositionAndRotation(
+                    hand.TransformPoint(equipped.Spec.handOffset),
+                    hand.rotation * grip);
+            else
+                weaponRoot.SetPositionAndRotation(
+                    transform.TransformPoint(new Vector3(0.29f, 1.1f, 0.3f)),
+                    transform.rotation * grip);
         }
 
         private void LateUpdate()
         {
-            if (equipped != null && hand == null) AttachModelToHand();
+            // Follow the LAST evaluated humanoid pose every rendered frame,
+            // not only the frame in which a weapon is first equipped.
+            if (equipped != null) AttachModelToHand();
         }
 
         private void Update()
@@ -168,7 +183,9 @@ namespace Aaris.MapReview
             if (Input.GetKeyDown(KeyCode.E)) RequestPickup();
             if (Input.GetKeyDown(KeyCode.G)) DropCurrent();
             if (Input.GetKeyDown(KeyCode.R)) Reload();
-            if (Input.GetMouseButtonDown(1)) ToggleAim();
+            // Mouse-right is already used by the camera-look motor.
+            // ADS on desktop uses V; mobile has the explicit ADS button.
+            if (Input.GetKeyDown(KeyCode.V)) ToggleAim();
         }
 
         private void OnDisable()
