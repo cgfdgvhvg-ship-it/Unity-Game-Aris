@@ -52,10 +52,12 @@ namespace Aaris.MapReview
         private readonly List<AarisDroppedWeapon> dropped = new List<AarisDroppedWeapon>(16);
         private readonly RaycastHit[] pickupObstructions = new RaycastHit[24];
         private readonly RaycastHit[] dropFloorHits = new RaycastHit[32];
+        private readonly RaycastHit[] candidateFloorHits = new RaycastHit[32];
         private readonly Collider[] dropBlockers = new Collider[32];
         private AarisLootCandidate[] candidates;
         private AarisWeaponSpec[] choices;
         private bool[] consumed;
+        private float[] nextCandidateProbeAt;
         private AarisWeaponInventory inventory;
         private Transform player;
         private float nextRefresh, requestPickupUntil;
@@ -123,6 +125,7 @@ namespace Aaris.MapReview
             AppendNativeTreeCover(allCandidates);
             candidates = allCandidates.ToArray();
             consumed = new bool[candidates.Length];
+            nextCandidateProbeAt = new float[candidates.Length];
             choices = new AarisWeaponSpec[candidates.Length];
             int selected = 0;
             for (int i = 0; i < candidates.Length; i++)
@@ -221,11 +224,30 @@ namespace Aaris.MapReview
                 terrain.transform.position.y + terrain.SampleHeight(new Vector3(c.x, 0f, c.z));
             if (expectedGround <= SeaLevel + 0.7f) return false;
             Vector3 start = new Vector3(c.x, expectedGround + 1.9f, c.z);
-            if (!Physics.Raycast(start, Vector3.down, out RaycastHit floor, 3.3f,
-                Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
-                return false;
-            if (floor.normal.y < (indoor ? 0.966f : 0.970f)) return false;
-            if (Mathf.Abs(floor.point.y - expectedGround) > 0.85f) return false;
+            // A single down-ray can stop on the roof of a low house before
+            // reaching its floor. Inspect ALL bounded hits and select the
+            // supporting surface nearest the authored ground elevation.
+            int hits = Physics.RaycastNonAlloc(new Ray(start, Vector3.down),
+                candidateFloorHits, 3.3f, Physics.DefaultRaycastLayers,
+                QueryTriggerInteraction.Ignore);
+            if (hits >= candidateFloorHits.Length) return false;
+            RaycastHit floor = default(RaycastHit);
+            bool foundFloor = false;
+            float closestHeight = .85f;
+            for (int i = 0; i < hits; i++)
+            {
+                RaycastHit candidate = candidateFloorHits[i];
+                if (candidate.collider == null ||
+                    candidate.normal.y < (indoor ? .966f : .970f) ||
+                    (!indoor && !(candidate.collider is TerrainCollider)))
+                    continue;
+                float difference = Mathf.Abs(candidate.point.y - expectedGround);
+                if (difference >= closestHeight) continue;
+                floor = candidate;
+                closestHeight = difference;
+                foundFloor = true;
+            }
+            if (!foundFloor) return false;
 
             if (indoor)
             {
@@ -529,7 +551,15 @@ namespace Aaris.MapReview
                 float dx = c.x - playerPosition.x, dz = c.z - playerPosition.z;
                 if (dx * dx + dz * dz >= loadSquared) continue;
                 if (built >= 6) break;
-                if (!TryResolve(c, out Vector3 spot)) continue;
+                // Colliders/terrain may stream in shortly after the player;
+                // avoid running the same failed indoor/roof physics query
+                // 3 times per second when a building has no accessible floor.
+                if (Time.unscaledTime < nextCandidateProbeAt[i]) continue;
+                if (!TryResolve(c, out Vector3 spot))
+                {
+                    nextCandidateProbeAt[i] = Time.unscaledTime + 3f;
+                    continue;
+                }
                 var root = new GameObject("Loot " + choices[i].displayName + " #" + i);
                 root.transform.SetParent(transform, false);
                 root.transform.position = spot;
