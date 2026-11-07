@@ -26,6 +26,7 @@ CS INFO
 CS START
 CS STATUS
 CS SYNC
+CS CHANGES
 CS INSTALL
 CS EDITOR
 CS LICENSE
@@ -37,7 +38,7 @@ CS STOP
 - `CS MACHINES` reads available machine IDs, CPU cores and RAM. `CS INFO` reports the existing Codespace's actual machine name, state and configured idle timeout without using SSH. Choose machine first.
 - `CS START` creates/starts the selected account's Codespace. If no machine was selected in the workflow form, it picks an available machine with at least 4 CPUs and 16 GiB RAM. A specific machine can be specified in Actions > Run workflow.
 - `CS STATUS` reports CPU, memory, free storage, Editor process and screen status from the Codespace terminal.
-- `CS SYNC` updates to main and downloads Git LFS assets; refuses dirty worktrees and non-fast-forward overwrites.
+- `CS SYNC` updates to main and downloads Git LFS assets; refuses dirty worktrees and non-fast-forward overwrites. `CS CHANGES` lists tracked modified project filenames read-only when sync is blocked, without reading their contents.
 - `CS INSTALL` installs official Unity Hub and Unity Editor 6000.3.26f1 only once per Codespace. It can use significant disk/bandwidth.
 - `CS EDITOR` starts Xvfb :99 and attempts to launch the Editor. It does not prove Unity license activation.
 - `CS LICENSE` reports preliminary installation state; official Unity Hub entitlement must be checked in the destination Codespace.
