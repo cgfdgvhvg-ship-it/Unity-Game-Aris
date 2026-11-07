@@ -15,6 +15,8 @@ namespace Aaris.MapReview
         [SerializeField, Min(0f)] private float crouchMoveSpeed = 2.4f;
         [SerializeField, Min(0f)] private float proneMoveSpeed = 1.1f;
         [SerializeField, Min(0f)] private float combatMoveSpeed = 2.0f;
+        [SerializeField, Min(0f)] private float adsMoveSpeed = 2.65f;
+        [SerializeField, Min(1f)] private float weaponTurnResponse = 17f;
         [SerializeField, Min(0.01f)] private float horizontalAcceleration = 13f;
         [SerializeField, Min(0.01f)] private float horizontalBraking = 19f;
         [Header("Jump, slope and third-person camera feel")]
@@ -49,6 +51,7 @@ namespace Aaris.MapReview
         private GUIStyle buttonStyle, labelStyle;
         private Texture2D disc;
         private AarisBattleActions battle;
+        private AarisWeaponInventory weaponInventory;
         private Vector3 horizontalVelocity;
         private float normalCameraFov;
         private float weaponAimFov = -1f;
@@ -81,6 +84,8 @@ namespace Aaris.MapReview
         public void ToggleAutoSprint()
         {
             if (battle == null) battle = GetComponent<AarisBattleActions>();
+            if (weaponInventory == null) weaponInventory = GetComponent<AarisWeaponInventory>();
+            if (!running && weaponInventory != null && weaponInventory.Aiming) return;
             if (!running && battle != null && !battle.TryStand()) return;
             running = !running;
         }
@@ -229,7 +234,9 @@ namespace Aaris.MapReview
             if (Input.GetKeyDown(KeyCode.Space)) RequestJump();
             if (Input.GetKeyDown(KeyCode.C)) { if (battle != null) battle.ToggleCrouch(); CancelAutoSprint(); }
             if (Input.GetKeyDown(KeyCode.Z)) { if (battle != null) battle.ToggleProne(); CancelAutoSprint(); }
-            if (Input.GetKeyDown(KeyCode.E)) ToggleAutoSprint();
+            // E belongs to weapon pickup. Auto-sprint uses T, avoiding a
+            // simultaneous sprint toggle when exchanging guns.
+            if (Input.GetKeyDown(KeyCode.T)) ToggleAutoSprint();
             if (battle != null && Input.GetKeyDown(KeyCode.LeftControl)) battle.SetFireHeld(true);
             if (battle != null && Input.GetKeyUp(KeyCode.LeftControl)) battle.SetFireHeld(false);
             if (Input.GetKeyDown(KeyCode.F)) ResetPlayer();
@@ -238,6 +245,7 @@ namespace Aaris.MapReview
         private void Update()
         {
             if (battle == null) battle = GetComponent<AarisBattleActions>();
+            if (weaponInventory == null) weaponInventory = GetComponent<AarisWeaponInventory>();
             ReadInput();
             // Do not silently discard elapsed time on 10–20 FPS phones.
             // A 50ms cap previously made a character at 10 FPS move at
@@ -273,8 +281,10 @@ namespace Aaris.MapReview
             // gravity. Touch, keyboard and auto-sprint use one intent pipeline.
             if (running && moveInput.y < -0.25f) running = false;
             if (battle != null && battle.FireHeld) running = false;
+            bool isAiming = weaponInventory != null && weaponInventory.Aiming;
+            if (isAiming) running = false;
             bool sprinting = (running || Input.GetKey(KeyCode.LeftShift)) &&
-                (battle == null || !battle.FireHeld);
+                !isAiming && (battle == null || !battle.FireHeld);
             if (sprinting && battle != null && !battle.TryStand())
                 sprinting = false;
             Vector2 intent = moveInput;
@@ -293,6 +303,9 @@ namespace Aaris.MapReview
                 else if (battle.Stance == AarisBattleActions.PlayerStance.Prone) speed = proneMoveSpeed;
                 else if (battle.FireHeld) speed = combatMoveSpeed;
             }
+            // ADS is deliberate combat movement, not a sprint. Crouch and
+            // prone stay slower; no hidden second transform/movement motor.
+            if (isAiming) speed = Mathf.Min(speed, adsMoveSpeed);
 
             Vector3 desiredVelocity = wish * speed;
             float response = desiredVelocity.sqrMagnitude < 0.001f
@@ -307,7 +320,18 @@ namespace Aaris.MapReview
                 (battle != null && !battle.CanAdvanceProne(candidate, horizontalVelocity)))
                 horizontalVelocity = Vector3.zero;
 
-            if (horizontalVelocity.sqrMagnitude > 0.0025f)
+            // Camera-relative strafe during ADS and firing. Without this,
+            // a standing player could shoot sideways while the gun and torso
+            // still faced their LAST walking direction.
+            bool combatFacing = battle != null && battle.IsArmed &&
+                (isAiming || battle.FireHeld);
+            if (combatFacing)
+            {
+                transform.rotation = Quaternion.Slerp(transform.rotation,
+                    Quaternion.Euler(0f, yaw, 0f),
+                    1f - Mathf.Exp(-weaponTurnResponse * dt));
+            }
+            else if (horizontalVelocity.sqrMagnitude > 0.0025f)
                 transform.rotation = Quaternion.Slerp(transform.rotation,
                     Quaternion.LookRotation(horizontalVelocity),
                     1f - Mathf.Exp(-14f * dt));
