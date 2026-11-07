@@ -41,7 +41,9 @@ namespace Aaris.MapReview.Editor
                 bool loop = assetPath.EndsWith("idle.fbx", StringComparison.OrdinalIgnoreCase)
                     || assetPath.EndsWith("walk.fbx", StringComparison.OrdinalIgnoreCase)
                     || assetPath.EndsWith("run.fbx", StringComparison.OrdinalIgnoreCase)
-                    || assetPath.EndsWith("crouch.fbx", StringComparison.OrdinalIgnoreCase);
+                    || assetPath.EndsWith("crouch.fbx", StringComparison.OrdinalIgnoreCase)
+                    || assetPath.EndsWith("crouch_walk.fbx", StringComparison.OrdinalIgnoreCase)
+                    || assetPath.EndsWith("jump.fbx", StringComparison.OrdinalIgnoreCase);
                 foreach (var clip in clips)
                 {
                     clip.loopTime = loop;
@@ -65,7 +67,12 @@ namespace Aaris.MapReview.Editor
         [MenuItem("Aaris/Validate Vendored Male Character")]
         public static void Validate()
         {
-            string[] files = {"idle.fbx", "walk.fbx", "run.fbx", "jump.fbx"};
+            string[] files =
+            {
+                "idle.fbx", "walk.fbx", "run.fbx", "jump.fbx",
+                "jump_start.fbx", "jump_land.fbx", "crouch.fbx",
+                "crouch_walk.fbx", "punch.fbx", "shoot.fbx"
+            };
             if (!File.Exists(Player))
                 throw new InvalidOperationException("Player.fbx is not committed locally. Run the CC0 vendor pipeline.");
             var model = AssetDatabase.LoadAssetAtPath<GameObject>(Player);
@@ -87,7 +94,8 @@ namespace Aaris.MapReview.Editor
             }
             if (AssetDatabase.LoadAssetAtPath<MonoScript>("Assets/AarisWorld/Scripts/AarisCharacterVisual.cs") == null)
                 throw new InvalidOperationException("AarisCharacterVisual.cs is missing.");
-            Debug.Log("Aaris local character verification: model=1, humanoid avatar=valid, clips>=4, runtime uses no download URLs.");
+            Debug.Log("Aaris character verified: model=1, Humanoid Avatar=valid, 10 animation FBXs " +
+                      "(start/loop/land, crouch-walk, punch/shoot). Runtime requires no external URLs.");
         }
     }
 }
