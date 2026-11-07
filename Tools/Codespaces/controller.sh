@@ -94,7 +94,7 @@ fi
 # For older Codespaces, place this already-reviewed script into /tmp first.
 # Avoid assuming the existing checkout already contains today's new controller files.
 PRIVATE_ERRORS="$RUNNER_TEMP/aaris-codespace-ssh-errors.log"
-trap 'rm -f "$PRIVATE_ERRORS"' EXIT
+trap 'finish; rm -f "$PRIVATE_ERRORS"' EXIT
 REMOTE_PATH="/tmp/aaris-control-remote.sh"
 if ! timeout 75 gh codespace cp -c "$CS" \
     "$GITHUB_WORKSPACE/Tools/Codespaces/remote.sh" "remote:$REMOTE_PATH" \
