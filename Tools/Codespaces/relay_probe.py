@@ -62,6 +62,12 @@ def main():
                     print("RELAY_REJECT_STAGE_"+category)
                 elif obj.get("error")=="github_workflow_identity_rejected":
                     print("RELAY_REJECT_OLD_WORKER_VERSION")
+                elif obj.get("error")=="identity_rejected":
+                    print("RELAY_REJECT_NO_CATEGORY")
+                elif isinstance(obj.get("errors"),list):
+                    print("RELAY_RESPONSE_CLOUDFLARE_API_ENVELOPE")
+                elif obj.get("error") in {"forbidden","access_denied","authentication_required","unauthorized"}:
+                    print("RELAY_RESPONSE_ACCESS_LAYER")
                 else: print("RELAY_JSON_WITHOUT_DIAGNOSTIC")
         except (ValueError,OSError):
             if "html" in content_type: print("RELAY_HTML_EDGE_BLOCK")
