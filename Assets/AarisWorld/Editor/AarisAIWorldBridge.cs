@@ -24,7 +24,7 @@ namespace Aaris.MapReview.Editor
         }
         [Serializable] private class Point { public float x, y, z; public Point(Vector3 p) { x=p.x; y=p.y; z=p.z; } }
         [Serializable] private class Size { public Vector3 center, extents, size; }
-        [Serializable] private class Item { public string path; public Vector3 position; public float distance; }
+        [Serializable] private class Item { public string path, prototype; public Vector3 position; public float distance; public int index; public float widthScale, heightScale; }
         [Serializable] private class Result
         {
             public bool ok;
@@ -92,7 +92,7 @@ namespace Aaris.MapReview.Editor
         private static void Validate(Intent r)
         {
             string[] valid = { "find", "nearby", "inspect", "blueprint", "photo",
-                "move", "rotate", "scale", "tree_inspect", "tree_blueprint", "tree_move", "tree_scale" };
+                "move", "rotate", "scale", "tree_nearby", "tree_inspect", "tree_blueprint", "tree_move", "tree_scale" };
             if (r.nonce <= 0 || !valid.Contains(r.op)) throw new ArgumentException("Unknown op or nonce");
             if (!Finite(r.x) || !Finite(r.y) || !Finite(r.z) ||
                 !Finite(r.width) || !Finite(r.height) || !Finite(r.radius))
@@ -237,6 +237,27 @@ namespace Aaris.MapReview.Editor
             if (t == null || t.terrainData == null) throw new ArgumentException("Named object is not a native Terrain");
             var data = t.terrainData;
             var all = data.treeInstances;
+            if (r.op == "tree_nearby")
+            {
+                Vector3 anchor = new Vector3(r.x, r.y, r.z);
+                var instances = all.Select((instance, i) =>
+                {
+                    Vector3 position = t.transform.position + Vector3.Scale(instance.position, data.size);
+                    string prototype = instance.prototypeIndex >= 0 &&
+                        instance.prototypeIndex < data.treePrototypes.Length &&
+                        data.treePrototypes[instance.prototypeIndex].prefab != null
+                            ? data.treePrototypes[instance.prototypeIndex].prefab.name : "MISSING";
+                    return new Item {
+                        path = PathOf(t.transform) + "/TreeInstance[" + i + "]",
+                        index = i, position = position, prototype = prototype,
+                        distance = Vector3.Distance(anchor, position),
+                        widthScale = instance.widthScale, heightScale = instance.heightScale
+                    };
+                }).Where(item => item.distance <= r.radius).OrderBy(item => item.distance).ToArray();
+                reply.matches = instances.Length;
+                reply.objects = instances.Take(100).ToArray();
+                return;
+            }
             if (r.index >= all.Length) throw new ArgumentException("Tree index out of range: " + all.Length);
             var tree = all[r.index];
             reply.path = PathOf(t.transform) + "/TreeInstance[" + r.index + "]";
