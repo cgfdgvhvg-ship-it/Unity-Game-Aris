@@ -40,6 +40,7 @@ namespace Aaris.MapReview
         private AnimationClipPlayable idlePlayable, walkPlayable, runPlayable, jumpPlayable, fallPlayable, crouchPlayable;
         private AnimationClip crouchClip;
         private AarisBattleActions actions;
+        private AarisThirdPersonPlayer playerMotor;
         private Transform punchArm;
         private Vector3 restingLocalPosition;
         private Quaternion restingLocalRotation;
@@ -127,6 +128,7 @@ namespace Aaris.MapReview
 
             TryApplySkin();
             actions = GetComponent<AarisBattleActions>();
+            playerMotor = GetComponent<AarisThirdPersonPlayer>();
             restingLocalPosition = visual.transform.localPosition;
             restingLocalRotation = visual.transform.localRotation;
             punchArm = animator.GetBoneTransform(HumanBodyBones.RightUpperArm);
@@ -298,8 +300,8 @@ namespace Aaris.MapReview
             Quaternion proneRotation = restingLocalRotation * Quaternion.Euler(80f, 0f, 0f);
             visual.transform.localRotation = Quaternion.Slerp(upright, proneRotation, proneBlend);
 
-            float landingAge = GetComponent<AarisThirdPersonPlayer>() != null
-                ? Time.unscaledTime - GetComponent<AarisThirdPersonPlayer>().LastLandingTime
+            float landingAge = playerMotor != null
+                ? Time.unscaledTime - playerMotor.LastLandingTime
                 : 10f;
             float landingDip = landingAge >= 0f && landingAge <= 0.2f
                 ? Mathf.Sin(Mathf.PI * landingAge / 0.2f) * landingCompressionMetres
