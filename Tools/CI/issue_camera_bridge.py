@@ -18,6 +18,7 @@ import time
 
 from live_camera_server import validate, STATE
 from ai_world_commands import parse as parse_world, selftest as world_selftest, EDIT_OPS
+from editor_runtime_diagnostics import snapshot as editor_runtime_snapshot
 
 ISSUE = int(os.getenv("AARIS_CAMERA_ISSUE", "77"))
 REPO = os.getenv("GITHUB_REPOSITORY", "sundamunda289-art/Unity-Game-Aris")
@@ -114,7 +115,7 @@ def diagnostic_snapshot():
         "starting_unity_oauth", "waiting_for_mobile_unity_signin",
         "activating_unity_personal", "unity_personal_activation_succeeded",
         "license_secret_installed", "unity_activation_requires_attention",
-        "editor_starting", "editor_ready"
+        "editor_starting", "editor_exited", "editor_launch_failed", "editor_ready"
     }
     private = STATE / "license-status.json"
     try:
@@ -152,6 +153,7 @@ def diagnostic_snapshot():
                          capture_output=True, text=True, timeout=8, check=False)
     return {
         "schema": 1,
+        "runtime": editor_runtime_snapshot(),
         "run_id": os.environ.get("GITHUB_RUN_ID", "") if
                   os.environ.get("GITHUB_RUN_ID", "").isdigit() else "",
         "source_commit": git.stdout.strip() if git.returncode == 0 else "",
@@ -454,7 +456,7 @@ def main():
         "waiting_for_mobile_unity_signin", "activating_unity_personal",
         "unity_personal_activation_succeeded", "license_secret_installed",
         "unity_activation_requires_attention", "editor_starting",
-        "fetching_unity_editor"
+        "editor_exited", "editor_launch_failed", "fetching_unity_editor"
     }
     until = time.monotonic() + max(15, min(args.seconds, 18000))
     while time.monotonic() < until:
