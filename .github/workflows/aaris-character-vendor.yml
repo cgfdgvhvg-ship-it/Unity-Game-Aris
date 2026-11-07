@@ -82,6 +82,11 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'Vendor CC0 male rig and animation FBXs locally in Git LFS'
           git lfs ls-files | grep 'AarisCharacters/Primary'
+          # Another reviewer may have committed C# or documentation while
+          # Blender converted the binary assets. Rebase rather than dropping
+          # their changes or force-pushing the protected review branch.
+          git fetch origin feat/rigged-character-locomotion-20261107
+          git rebase origin/feat/rigged-character-locomotion-20261107
           git push origin 'HEAD:refs/heads/feat/rigged-character-locomotion-20261107'
       - name: Report vendored payload
         if: always()
