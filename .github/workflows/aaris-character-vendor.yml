@@ -1,0 +1,82 @@
+name: Aaris Vendor Offline Male Character (CC0)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/rigged-character-locomotion-20261107
+    paths:
+      - .github/workflows/aaris-character-vendor.yml
+      - Tools/Character/vendor_quaternius.py
+      - Tools/Character/export_quaternius_blender.py
+      - Tools/Character/write_unity_meta.py
+
+permissions:
+  contents: write
+
+concurrency:
+  group: aaris-offline-character-vendor
+  cancel-in-progress: false
+
+jobs:
+  vendor:
+    if: github.repository == 'sundamunda289-art/Unity-Game-Aris' && github.ref == 'refs/heads/feat/rigged-character-locomotion-20261107'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          persist-credentials: true
+          fetch-depth: 1
+      - name: Check source-vendoring scripts (no Unity license required)
+        run: |
+          set -euo pipefail
+          python3 -m py_compile Tools/Character/vendor_quaternius.py Tools/Character/export_quaternius_blender.py Tools/Character/write_unity_meta.py
+          python3 Tools/Character/vendor_quaternius.py --selftest
+          python3 Tools/Character/write_unity_meta.py --selftest
+      - name: Install one-time asset conversion tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq blender git-lfs
+          blender --version | head -n 2
+          git lfs version
+      - name: Download, SHA-256 verify and convert CC0 source locally
+        run: |
+          set -euo pipefail
+          python3 Tools/Character/vendor_quaternius.py
+          python3 Tools/Character/write_unity_meta.py
+          test -s Assets/Resources/AarisCharacters/Primary/Player.fbx
+          for clip in idle walk run jump; do
+            test -s "Assets/Resources/AarisCharacters/Primary/Animations/${clip}.fbx"
+          done
+      - name: Commit actual offline FBX textures animation source licenses and Unity GUIDs
+        run: |
+          set -euo pipefail
+          git lfs install --local
+          git lfs track 'Assets/Resources/AarisCharacters/Primary/*.fbx'
+          git lfs track 'Assets/Resources/AarisCharacters/Primary/Animations/*.fbx'
+          git lfs track 'Assets/Resources/AarisCharacters/Primary/Textures/*.png'
+          git add .gitattributes Assets/Resources/
+          if git diff --cached --quiet; then
+            echo 'All character asset bytes already tracked; nothing to commit.'
+            exit 0
+          fi
+          if ! git diff --cached --name-only | grep -q 'Assets/Resources/AarisCharacters/Primary/Player.fbx'; then
+            echo '::error::No local male FBX in staged assets.'
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Vendor CC0 male rig and animation FBXs locally in Git LFS'
+          git lfs ls-files | grep 'AarisCharacters/Primary'
+          git push origin 'HEAD:refs/heads/feat/rigged-character-locomotion-20261107'
+      - name: Report vendored payload
+        if: always()
+        run: |
+          echo '### Aaris CC0 offline character' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Original author: Quaternius; license: CC0-1.0.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Source bytes are SHA-256 pinned and only downloaded during one-time vendoring.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'The Unity runtime never loads characters over HTTP.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'The real Unity Editor / Android build still needs a licensed runner for visual QA.' >> "$GITHUB_STEP_SUMMARY"
