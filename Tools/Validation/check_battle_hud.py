@@ -73,6 +73,7 @@ def check() -> None:
     for speed in ["6.5f", "5.7f", "4.2f", "2.4f", "1.1f", "2.0f"]:
         assert speed in motor, f"2km battle movement speed missing: {speed}"
     assert "horizontalBraking" in motor and "normalCameraFov" in motor
+    assert "Debug.isDebugBuild" in motor, "Release APK must hide saved debugging buttons"
 
     # Collider width stays compatible with the saved radius of 0.28m.
     assert "Standing, Crouching, Prone" in state
