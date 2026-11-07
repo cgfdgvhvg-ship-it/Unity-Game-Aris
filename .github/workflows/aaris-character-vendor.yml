@@ -39,7 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq blender git-lfs
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq blender git-lfs python3-numpy
           blender --version | head -n 2
           git lfs version
       - name: Download, SHA-256 verify and convert CC0 source locally
