@@ -306,6 +306,23 @@ import re
 logs=[Path("/tmp/aaris-codespaces/Editor.log"),
       Path("/tmp/aaris-codespaces/editor-launch-stderr.log")]
 available=[p for p in logs if p.is_file() and p.stat().st_size>0]
+# Only a bounded integer is public; never show raw crash paths/logs.
+exit_witness=Path("/tmp/aaris-codespaces/editor-exit-code.txt")
+if exit_witness.is_file():
+    try:
+        code=int(exit_witness.read_text().strip())
+        if 0 <= code <= 255:
+            print("AARIS_EDITOR_EXIT_CODE_"+str(code))
+            if code==127:
+                print("AARIS_EDITOR_DIAG_EXEC_OR_LIBRARY_FAILURE")
+            elif code==137:
+                print("AARIS_EDITOR_DIAG_SIGKILL_OR_OOM")
+            elif code==139:
+                print("AARIS_EDITOR_DIAG_SEGFAULT")
+            elif code != 0:
+                print("AARIS_EDITOR_DIAG_NONZERO_EXIT")
+    except (OSError,ValueError):
+        print("AARIS_EDITOR_DIAG_EXIT_STATUS_UNREADABLE")
 if not available:
     print("AARIS_EDITOR_DIAG_LOG_MISSING")
     raise SystemExit(0)
@@ -359,7 +376,14 @@ PY
       mkdir -p "$RUN/UnityTemp"
       # Keep raw loader errors PRIVATE on this Codespace; only editor_diag
       # may export a fixed classification to the owner Issue.
-      nohup setsid env DISPLAY=:99 TMPDIR="$RUN/UnityTemp" LIBGL_ALWAYS_SOFTWARE=1 "$EDITOR" -projectPath "$PROJECT" -logFile "$RUN/Editor.log" </dev/null >"$RUN/editor-launch-stdout.log" 2>"$RUN/editor-launch-stderr.log" &
+      rm -f "$RUN/editor-exit-code.txt"
+      # A private exit-status witness survives a fast native crash. No raw
+      # arguments, OAuth values, terminal output or proprietary logs leave
+      # this Codespace. The wrapper is detached from the SSH session.
+      nohup setsid env DISPLAY=:99 TMPDIR="$RUN/UnityTemp" LIBGL_ALWAYS_SOFTWARE=1 \
+        bash -c '"$1" -projectPath "$2" -logFile "$3"; rc=$?; printf "%s\\n" "$rc" > "$4"; exit "$rc"' \
+        bash "$EDITOR" "$PROJECT" "$RUN/Editor.log" "$RUN/editor-exit-code.txt" \
+        </dev/null >"$RUN/editor-launch-stdout.log" 2>"$RUN/editor-launch-stderr.log" &
       sleep 8
     fi
     if ! pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then
