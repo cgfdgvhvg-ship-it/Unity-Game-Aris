@@ -40,6 +40,15 @@ assert 'GIT_LFS_SKIP_SMUDGE=1 git -C "$SOURCE"' in shell
 assert 'worktree add --detach "$PROJECT" "$REV"' in shell
 assert 'ISOLATED_ROOT=' in shell and 'git lfs pull' in shell
 assert 'AARIS_PROBE_ISOLATED_GIT_WORKTREE_READY' in shell
+# Native Unity SIGSEGV must be distinguishable from compiler, license and LFS failure.
+assert 'AARIS_PROBE_NATIVE_SIGSEGV' in shell
+assert 'AARIS_PROBE_NATIVE_SIGABRT' in shell
+assert 'AARIS_PROBE_NATIVE_KILLED_OR_OOM' in shell
+assert 'AARIS_PROBE_LOG_ASSET_IMPORT_FAILURE' in shell
+assert 'AARIS_PROBE_LOG_SHADER_FAILURE' in shell
+assert 'AARIS_PROBE_LOG_MEMORY_FAILURE' in shell
+assert 'AARIS_PROBE_LOG_NATIVE_CRASH' in shell
+assert 'AARIS_PROBE_EDITOR_EXIT_NONZERO' in shell
 assert 'git reset' not in shell and 'git clean' not in shell
 assert 'rm -rf' not in shell and 'git stash' not in shell
 assert 'data.get("status")!="passed"' in shell
