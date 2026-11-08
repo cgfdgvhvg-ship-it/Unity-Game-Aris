@@ -38,7 +38,7 @@ assert 'pkill' not in shell and 'kill -9' not in shell and 'eval ' not in shell
 assert 'git branch --show-current' in shell and 'main' in shell
 assert 'data.get("status")!="passed"' in shell
 assert 'data.get("frames",0)<60' in shell
-assert 'image.read_bytes()[:8]' in shell
+assert 'candidate.read_bytes()[:8]' in shell
 for op in ('scene_render', 'scene_play'):
     assert "'CS SCENE " + op.split('_')[1].upper() + "') OP=" + op in controller
     assert op in workflow and op in issue
