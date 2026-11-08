@@ -173,6 +173,8 @@ namespace Aaris.MapReview
             AarisGlooWallVisuals.Tint(ghostRenderers, tint);
         }
 
+        private void OnApplicationPause(bool paused) { if (paused) CancelAim(); }
+        private void OnApplicationFocus(bool focused) { if (!focused) CancelAim(); }
         private void OnDisable() => CancelAim();
         private void OnDestroy() { if (ghost != null) Destroy(ghost); }
     }
