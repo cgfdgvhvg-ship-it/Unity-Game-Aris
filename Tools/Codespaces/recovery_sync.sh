@@ -16,16 +16,39 @@ esac
 # Never discard anything under Assets, scenes, prefabs, Git LFS or ProjectSettings.
 if ! git diff --quiet -- .devcontainer || ! git diff --cached --quiet -- .devcontainer; then
   BEFORE="$(git rev-parse -q --verify refs/stash 2>/dev/null || true)"
-  if ! git stash push -u -m 'Aaris new Codespace devcontainer recovery 20261109' -- .devcontainer >/dev/null 2>/dev/null; then
-    echo 'AARIS_RECOVERY_CONFIG_BACKUP_FAILED'
-    exit 25
+  if git -c user.name='Aaris Codespace Recovery' -c user.email='codespace-recovery@users.noreply.github.com' stash push -u -m 'Aaris new Codespace devcontainer recovery 20261109' -- .devcontainer >/dev/null 2>/dev/null; then
+    AFTER="$(git rev-parse -q --verify refs/stash 2>/dev/null || true)"
+    if test -z "$AFTER" || test "$AFTER" = "$BEFORE"; then
+      echo 'AARIS_RECOVERY_CONFIG_STASH_NOT_VERIFIED'
+      exit 26
+    fi
+    echo 'AARIS_RECOVERY_CONFIG_STASH_SAVED'
+  else
+    # Git stash can fail in Alpine recovery (identity, index, hook or filter).
+    # Archive only config files to a private persistent path OUTSIDE the repo,
+    # verify its checksum, then restore only those tracked config paths to HEAD.
+    umask 077
+    mkdir -p /workspaces/.aaris-recovery
+    chmod 700 /workspaces/.aaris-recovery
+    BACKUP="$(mktemp -d /workspaces/.aaris-recovery/devcontainer.XXXXXXXX)" || exit 30
+    if ! tar -czf "$BACKUP/devcontainer.tar.gz" -C "$PROJECT" .devcontainer; then
+      echo 'AARIS_RECOVERY_PRIVATE_ARCHIVE_FAILED'
+      exit 31
+    fi
+    if ! tar -tzf "$BACKUP/devcontainer.tar.gz" >/dev/null 2>&1; then
+      echo 'AARIS_RECOVERY_PRIVATE_ARCHIVE_INVALID'
+      exit 32
+    fi
+    (cd "$BACKUP" && sha256sum devcontainer.tar.gz > checksum.sha256 && sha256sum -c checksum.sha256 >/dev/null) || {
+      echo 'AARIS_RECOVERY_PRIVATE_CHECKSUM_FAILED'
+      exit 33
+    }
+    if ! git restore --source=HEAD --staged --worktree -- .devcontainer >/dev/null 2>/dev/null; then
+      echo 'AARIS_RECOVERY_SCOPED_RESTORE_FAILED'
+      exit 34
+    fi
+    echo 'AARIS_RECOVERY_PRIVATE_CONFIG_BACKUP_SAVED'
   fi
-  AFTER="$(git rev-parse -q --verify refs/stash 2>/dev/null || true)"
-  if test -z "$AFTER" || test "$AFTER" = "$BEFORE"; then
-    echo 'AARIS_RECOVERY_CONFIG_STASH_NOT_VERIFIED'
-    exit 26
-  fi
-  echo 'AARIS_RECOVERY_CONFIG_STASH_SAVED'
 fi
 # No LFS hydration or project reset during recovery. Git refuses fast-forward
 # if the updated branch would overwrite a local tracked modification.
