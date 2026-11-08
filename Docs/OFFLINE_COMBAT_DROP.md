@@ -25,7 +25,7 @@ The scripts also contain local visual fallbacks. Unity Resources.Load reads thes
 ## Controls
 
 Mobile: EJECT, OPEN, flight joystick + right drag, then WALL hold/release and FRAG tap after landing.
-PC: Space/F eject, Space open canopy, WASD + right mouse steer/look, V hold/release wall, G throw frag.
+PC: Space/F eject, Space open canopy, WASD + right mouse steer/look, **B** hold/release Gloo Wall, **Q** throw frag, **V** toggle weapon aim (ADS), **G** drop the equipped gun.
 
 Initial values: 5 walls at 600 HP/50 seconds each, 3 grenades, approximately 85m ground-relative automatic canopy deployment. These are project tuning defaults, not authenticated Garena values.
 

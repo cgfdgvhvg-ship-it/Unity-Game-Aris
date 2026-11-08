@@ -103,6 +103,40 @@ class OfflineCombatAssetChecks(unittest.TestCase):
             self.assertNotIn("https://", source)
             self.assertNotIn("http://", source)
 
+    def test_pc_combat_keys_do_not_trigger_two_actions(self):
+        # Regression: V used to aim AND deploy cover; G dropped the gun
+        # while throwing a grenade. Mobile touch actions remain unchanged.
+        wall = (SCRIPTS / "AarisOfflineGlooWall.cs").read_text("utf-8")
+        tactical = (SCRIPTS / "AarisOfflineTacticalHUD.cs").read_text("utf-8")
+        weapons = (SCRIPTS / "AarisWeaponInventory.cs").read_text("utf-8")
+        bindings = {
+            "cover": re.search(r"Input\.GetKeyDown\(KeyCode\.(\w+)\)\) BeginAim", wall),
+            "frag": re.search(r"Input\.GetKeyDown\(KeyCode\.(\w+)\)\) ThrowFrag", tactical),
+            "aim": re.search(r"Input\.GetKeyDown\(KeyCode\.(\w+)\)\) ToggleAim", weapons),
+            "drop": re.search(r"Input\.GetKeyDown\(KeyCode\.(\w+)\)\) DropCurrent", weapons),
+        }
+        for action, match in bindings.items():
+            self.assertIsNotNone(match, f"Missing desktop input for {action}")
+        keys = {name: match.group(1) for name, match in bindings.items()}
+        self.assertEqual(keys, {"cover": "B", "frag": "Q", "aim": "V", "drop": "G"})
+        self.assertEqual(len(set(keys.values())), len(keys))
+        self.assertIn("Input.GetKeyUp(KeyCode.B)", wall)
+
+    def test_wall_touch_hold_recovers_after_vehicle_and_focus_change(self):
+        tactical = (SCRIPTS / "AarisOfflineTacticalHUD.cs").read_text("utf-8")
+        cover = (SCRIPTS / "AarisOfflineGlooWall.cs").read_text("utf-8")
+        self.assertIn("if (wallTouch != null) wallTouch.CancelHold();", tactical)
+        self.assertIn("holding = int.MinValue;", tactical)
+        self.assertIn("if (paused) CancelHold();", tactical)
+        self.assertIn("if (!focused) CancelHold();", tactical)
+        self.assertIn("if (paused) CancelAim();", cover)
+
+    def test_cover_damage_ignores_nan_and_infinity(self):
+        wall = (SCRIPTS / "AarisOfflineGlooWall.cs").read_text("utf-8")
+        self.assertIn("float.IsNaN(amount)", wall)
+        self.assertIn("float.IsInfinity(amount)", wall)
+
+
     def test_new_unity_guids_are_distinct(self):
         files = [
             *ASSETS.joinpath("AarisDrop").glob("*.meta"),
