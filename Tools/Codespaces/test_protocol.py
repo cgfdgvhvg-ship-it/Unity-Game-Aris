@@ -60,6 +60,13 @@ assert 'lfs.storage' in remote
 assert 'aaris-unity-editors' in remote
 assert 'project-cache' in remote
 assert 'UNITY_CLI_DISCOVERED' in remote
+assert 'bash Tools/Codespaces/unity_gui_deps.sh' in (r/'.devcontainer/bootstrap.sh').read_text()
+deps=(r/'Tools/Codespaces/unity_gui_deps.sh').read_text()
+assert 'UNITY_GUI_DEPS_READY' in deps and 'libglu1-mesa' in deps
+assert "CS DEPS" in (r/'Tools/Codespaces/controller.sh').read_text()
+assert 'deps) REMOTE_TIMEOUT=' in (r/'Tools/Codespaces/controller.sh').read_text()
+assert 'unity_gui_deps.sh' in (r/'Tools/Codespaces/controller.sh').read_text()
+assert 'install, deps, cli_diag' in wf
 assert "'CS EDITOR DIAG')" in (r/'Tools/Codespaces/controller.sh').read_text()
 assert 'AARIS_EDITOR_DIAG_LOG_MISSING' in remote
 assert 'editor-launch-stderr.log' in remote
