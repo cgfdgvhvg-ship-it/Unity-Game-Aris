@@ -200,7 +200,7 @@ assert 'UNITY_CLI_INSTALL_LOG_CODE_' in remote
 report=(r/'Tools/Codespaces/issue_response.py').read_text()
 assert "op == 'cli_diag'" in report
 assert 'UNITY_CLI_INSTALL_LOG_REJECTED_' in report
-assert 'cli_diag editor editor_diag license' in report
+assert 'cli_diag editor editor_diag editor_isolate license' in report
 assert 'machine-id' not in remote
 assert 'Unity_auth_vault' not in remote
 controller=(r/'Tools/Codespaces/controller.sh').read_text()
