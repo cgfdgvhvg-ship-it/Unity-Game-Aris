@@ -51,6 +51,11 @@ assert 'CS EDITOR ISOLATE' in controller
 assert 'editor_isolate) REMOTE_TIMEOUT=650' in controller
 assert 'editor_isolation_probe.sh' in controller
 assert 'editor_isolate' in wf and 'editor_isolate' in response
+audit=(r/'Tools/Codespaces/tmp_audit.sh').read_text()
+assert 'TMP_AUDIT_COMPLETE' in audit and 'TMP_SCAN_READ_ONLY' in audit
+assert 'TMP_PRIVATE_LOG_' in audit and 'TMP_ORIGINAL_LFS_POINTERS_' in audit
+assert 'CS TMP AUDIT' in controller and 'tmp_audit) REMOTE_TIMEOUT=240' in controller
+assert 'tmp_audit.sh' in controller and 'tmp_audit' in wf and 'tmp_audit' in response
 assert 'editor-exit-code.txt' in remote_source
 assert 'AARIS_EDITOR_EXIT_CODE_' in remote_source
 assert 'AARIS_EDITOR_DIAG_SIGKILL_OR_OOM' in remote_source
@@ -200,7 +205,7 @@ assert 'UNITY_CLI_INSTALL_LOG_CODE_' in remote
 report=(r/'Tools/Codespaces/issue_response.py').read_text()
 assert "op == 'cli_diag'" in report
 assert 'UNITY_CLI_INSTALL_LOG_REJECTED_' in report
-assert 'cli_diag editor editor_diag editor_isolate license' in report
+assert 'cli_diag editor editor_diag editor_isolate tmp_audit license' in report
 assert 'machine-id' not in remote
 assert 'Unity_auth_vault' not in remote
 controller=(r/'Tools/Codespaces/controller.sh').read_text()
