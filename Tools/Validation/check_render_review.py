@@ -1,5 +1,5 @@
 """Fail on invisible player layers, stale shader checks or material import drift."""
-import hashlib,json,sys
+import hashlib,json,sys,math
 from pathlib import Path
 ROOT=Path.cwd();sys.path.insert(0,str(ROOT/'Tools/MapBuild'))
 from ground_review import documents
@@ -11,8 +11,16 @@ def check():
     assert audit['cull_mismatches']==audit['normal_scale_mismatches']==audit['occlusion_strength_mismatches']==0
     for row in audit['materials']:
         d=material_record(documents(ROOT/row['path']));f=floats(d)
-        assert f['_Cull']==row['expected_cull'] and f['_BumpScale']==row['source_normal_scale']
-        assert f['_OcclusionStrength']==row['source_occlusion_strength'] and d['m_DoubleSidedGI']==int(row['source_double_sided'])
+        # The glTF source stores IEEE-754 float32 values (e.g. 0.60000002384)
+        # while Unity 6000 YAML can save the equivalent 0.6 decimal spelling.
+        # Keep discrete culling/GI exact; permit only sub-micro-unit float
+        # serialization drift, never a visually meaningful material change.
+        assert f['_Cull']==row['expected_cull'], row['path']
+        assert math.isclose(f['_BumpScale'],row['source_normal_scale'],
+                            rel_tol=0.0,abs_tol=5e-7), row['path']
+        assert math.isclose(f['_OcclusionStrength'],row['source_occlusion_strength'],
+                            rel_tol=0.0,abs_tol=5e-7), row['path']
+        assert d['m_DoubleSidedGI']==int(row['source_double_sided']), row['path']
     for relative,expected in report['native_pipeline_files'].items():
         raw=(ROOT/relative).read_bytes()
         if raw.startswith(b'version https://git-lfs'):assert ('oid sha256:'+expected['sha256']).encode()in raw
