@@ -45,5 +45,17 @@ for op in ('scene_render', 'scene_play'):
 assert 'Tools/Codespaces/test_scene_probe.py' in workflow
 assert 'Only verified Unity camera PNGs' in issue
 assert 'CS SCENE RENDER' in agent and 'CS SCENE PLAY' in agent
+assert 'CS PHOTO -420 -210' in agent
+assert 'AarisCodespaceSceneProbe.CaptureAt' in (ROOT / 'Tools/Codespaces/scene_probe.sh').read_text()
+assert 'PhotoOption("X"' in editor and 'PhotoOption("Z"' in editor
+assert 'photo-detail.png' in editor and 'photo-context.png' in editor
+assert 'Elevation(terrains,' in editor and 'bounds.center' in editor
+assert 'SCENE_IS_LFS_POINTER' in editor and 'NATIVE_COORDINATE_CAMERA_AND_CONTEXT_RENDERED' in editor
+assert "'CS PHOTO '*) OP=photo" in controller
+assert 'PHOTO_VALUES=' in controller and 'photo_request.py' in controller
+assert 'photo-detail.png' in controller and 'photo-context.png' in controller
+assert 'photo' in workflow and 'photo_request.py --selftest' in workflow
+assert 'photo' in issue and 'photo_target_x' in issue
+assert (ROOT / 'Tools/Codespaces/photo_request.py').exists()
 assert 'noVNC' in agent
 print('AARIS_NATIVE_SCENE_PROBE_STATIC_PASS')
