@@ -138,8 +138,10 @@ namespace Aaris.MapReview
             Vector3 delta = destination - origin;
             if (delta.sqrMagnitude < 0.0001f) return true;
             float length = delta.magnitude;
+            // Damage candidates may be filtered by damageMask, but solid world cover
+            // must still occlude the blast even when it is not damageable.
             int hits = Physics.RaycastNonAlloc(new Ray(origin, delta / length), rays,
-                length, damageMask, QueryTriggerInteraction.Ignore);
+                length, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
             if (hits >= rays.Length) return false;
             for (int i = 0; i < hits; i++)
             {

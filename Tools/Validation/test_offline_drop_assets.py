@@ -136,6 +136,20 @@ class OfflineCombatAssetChecks(unittest.TestCase):
         self.assertIn("float.IsNaN(amount)", wall)
         self.assertIn("float.IsInfinity(amount)", wall)
 
+    def test_offline_healing_rejects_non_finite_amounts(self):
+        health = (SCRIPTS / "AarisOfflineHealth.cs").read_text("utf-8")
+        restore = health.split("public void RestoreHealth(float amount)", 1)[1]
+        restore = restore.split("}", 1)[0]
+        self.assertIn("float.IsNaN(amount)", restore)
+        self.assertIn("float.IsInfinity(amount)", restore)
+
+    def test_frag_blast_obstacles_not_filtered_as_damage_targets(self):
+        frag = (SCRIPTS / "AarisOfflineFragGrenade.cs").read_text("utf-8")
+        # Candidate filtering is intentional; collision occlusion needs world geometry.
+        self.assertIn("overlaps, damageMask, QueryTriggerInteraction.Ignore", frag)
+        self.assertIn("length, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore", frag)
+        self.assertNotIn("length, damageMask, QueryTriggerInteraction.Ignore", frag)
+
 
     def test_new_unity_guids_are_distinct(self):
         files = [
