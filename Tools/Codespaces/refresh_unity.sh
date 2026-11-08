@@ -28,6 +28,26 @@ if xdotool search --onlyvisible --name '^Enter Safe Mode\?$' >/dev/null 2>&1; th
   exit 25
 fi
 mkdir -p /tmp/aaris-codespaces
+# The Unity Safe Mode Console retains stale errors from earlier sessions.
+# Force a genuine C# reimport of the specific source affected by the
+# reviewed VehiclesModule package fix; touch only changes the mtime.
+PROJECT=/workspaces/Unity-Game-Aris
+MOTOR="$PROJECT/Assets/AarisWorld/Scripts/AarisVehicleMotor.cs"
+MANIFEST="$PROJECT/Packages/manifest.json"
+if ! test -f "$MOTOR" || ! test -f "$MANIFEST"; then
+  echo 'UNITY_REFRESH_VEHICLE_SOURCE_OR_MANIFEST_MISSING'
+  exit 26
+fi
+python3 - "$MANIFEST" <<'PY'
+import json,sys
+with open(sys.argv[1],encoding='utf-8') as f:
+    d=json.load(f).get('dependencies',{})
+if d.get('com.unity.modules.vehicles')!='1.0.0':
+    print('UNITY_REFRESH_VEHICLES_MODULE_NOT_CONFIGURED')
+    raise SystemExit(27)
+PY
+touch -c "$MOTOR" "$MANIFEST"
+echo 'UNITY_VEHICLE_RECOMPILE_MTIME_REQUESTED'
 date +%s >/tmp/aaris-codespaces/last-assets-refresh-epoch
 xdotool windowactivate --sync "$wid"
 xdotool key --clearmodifiers --window "$wid" ctrl+r
