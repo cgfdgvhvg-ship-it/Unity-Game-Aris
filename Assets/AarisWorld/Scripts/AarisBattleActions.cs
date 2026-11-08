@@ -223,8 +223,6 @@ namespace Aaris.MapReview
                 var collider = nearHits[i];
                 if (collider == null || collider.transform.IsChildOf(transform)) continue;
                 Vector3 nearest = collider.ClosestPoint(origin);
-                // Keep the per-candidate offset scoped separately from the
-                // final victim raycast; C# forbids reusing 'delta' later here.
                 Vector3 candidateOffset = nearest - origin;
                 if (candidateOffset.sqrMagnitude > punchReach * punchReach ||
                     Vector3.Dot(transform.forward, candidateOffset) < 0.1f) continue;
