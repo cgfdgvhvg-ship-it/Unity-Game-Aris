@@ -60,6 +60,13 @@ class ExpansionIntegrity(unittest.TestCase):
                          "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity")
         self.assertEqual(p["siteCount"], len(p["sites"]))
         self.assertEqual(len(p["sites"]), 21)
+        interactive = [s for s in p["sites"] if s.get("interactive", False)]
+        self.assertEqual([s["name"] for s in interactive], [
+            "ARX_18_OldVillage_cottage",
+            "ARX_19_NorthernRidgeTown_bungalow",
+            "ARX_20_ValleySettlement_cottage",
+            "ARX_21_CoastalHamlet_detached",
+        ])
         self.assertEqual(sum(s["prefabKey"] == "watchtower" for s in p["sites"]), 5)
         self.assertEqual(sum(s["prefabKey"] != "watchtower" for s in p["sites"]), 16)
         self.assertGreaterEqual(len(set(s["district"] for s in p["sites"])), 10)
@@ -168,6 +175,59 @@ class ExpansionIntegrity(unittest.TestCase):
                 self.assertFalse(abs(x-site["x"]) < margin_x+buffer and
                                  abs(z-site["z"]) < margin_z+buffer,
                                  (site["name"], tree["id"]))
+
+    def test_real_interactive_house_openings_and_offline_damage(self):
+        scripts = ROOT / "Assets" / "AarisWorld" / "Scripts"
+        modular = (scripts / "AarisModularHouse.cs").read_text(encoding="utf-8")
+        panel = (scripts / "AarisBreakablePanel.cs").read_text(encoding="utf-8")
+        weapon = (scripts / "AarisEquippedGun.cs").read_text(encoding="utf-8")
+        expansion = SCRIPT.read_text(encoding="utf-8")
+        for name in ["AarisModularHouse.cs", "AarisBreakablePanel.cs"]:
+            self.assertTrue((scripts / (name + ".meta")).is_file())
+        self.assertIn("public bool interactive;", expansion)
+        self.assertIn("site.interactive", expansion)
+        self.assertIn("AarisModularHouse.Create(", expansion)
+        self.assertIn("GameObject.CreatePrimitive(PrimitiveType.Cube)", modular)
+        self.assertIn("WallSection(root,left,right,DoorHeight,height,z)", modular)
+        self.assertIn("WallSection(root,left,right,0f,Sill,z)", modular)
+        self.assertIn("WallSection(root,left,right,Sill+WindowHeight,height,z)", modular)
+        self.assertIn("hinge.AddComponent<AarisBreakablePanel>()", modular)
+        self.assertIn("mount.AddComponent<AarisBreakablePanel>()", modular)
+        self.assertIn("new GameObject(\"AutomaticBreakableDoorHinge\")", modular)
+        self.assertIn("class AarisBreakablePanel : MonoBehaviour, IAarisDamageable", panel)
+        self.assertIn("Mathf.MoveTowards", panel)
+        self.assertIn("ClosingBlocked()", panel)
+        self.assertIn("Physics.OverlapBoxNonAlloc", panel)
+        self.assertIn("public void ApplyDamage(float amount, GameObject attacker)", panel)
+        self.assertIn("solid.enabled = false;", panel)
+        self.assertIn("leaf.gameObject.SetActive(false);", panel)
+        self.assertIn("if (component is IAarisDamageable damageable)", weapon)
+        self.assertIn("damageable.ApplyDamage(amount, attacker);", weapon)
+        self.assertNotIn("Unity.Netcode", modular + panel)
+        self.assertNotIn("NetworkBehaviour", modular + panel)
+        # The original fused MeshCollider is never removed or turned off.
+        self.assertNotIn("MeshCollider", modular)
+        self.assertNotIn("MeshCollider", panel)
+
+    def test_modular_frontage_has_physically_empty_door_and_glass_holes(self):
+        # Mirror the exact three nonoverlapping wall intervals from Front():
+        # door is empty below its lintel; windows are empty above their sill.
+        for width in (9.968, 12.383, 14.448):
+            centres = [-width * .31, 0.0, width * .31]
+            panes = []
+            cursor = -width / 2
+            for i, x in enumerate(centres):
+                opening = 1.52 if i == 1 else 1.38
+                left, right = x - opening / 2, x + opening / 2
+                self.assertGreater(left, cursor, "overlapping window/door openings")
+                panes.append((left, right))
+                cursor = right
+            self.assertLess(cursor, width / 2)
+            self.assertGreater(panes[1][0], panes[0][1])
+            self.assertGreater(panes[2][0], panes[1][1])
+            # Entire 1.42-m passable door leaf space clears a 0.35-m player radius.
+            self.assertGreater(1.52 - .10, 2 * .35)
+            self.assertGreater(2.34, 1.78)
 
     def test_no_unsafe_changes_to_native_map_or_network(self):
         script = SCRIPT.read_text(encoding="utf-8")
