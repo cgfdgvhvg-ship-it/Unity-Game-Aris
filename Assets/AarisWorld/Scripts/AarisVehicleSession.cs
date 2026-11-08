@@ -83,6 +83,10 @@ namespace Aaris.MapReview
 
         public void SetSteering(float move, float steer)
         {
+            // Public touch API may be called by UI or automation; never keep
+            // non-finite values in a held virtual throttle/steering state.
+            if (float.IsNaN(move) || float.IsInfinity(move)) move = 0f;
+            if (float.IsNaN(steer) || float.IsInfinity(steer)) steer = 0f;
             touchMove = Mathf.Clamp(move, -1f, 1f);
             touchSteer = Mathf.Clamp(steer, -1f, 1f);
             if (car != null) car.SetInput(touchMove, touchSteer);
