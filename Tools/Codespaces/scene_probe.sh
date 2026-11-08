@@ -50,34 +50,22 @@ cd "$PROJECT"
 # Only emit bounded error classes + counts on the public owner issue.
 mkdir -p "$RUN"
 if ! git lfs pull > "$RUN/private-lfs-pull.log" 2>&1; then
-  echo AARIS_PROBE_ISOLATED_LFS_PULL_FAILED
-  python3 - "$RUN/private-lfs-pull.log" <<'PYSANITIZE'
-import pathlib,re,subprocess,sys
-s=pathlib.Path(sys.argv[1]).read_text(errors="replace")[-300000:]
-classes=(
-  ("QUOTA",r"quota|bandwidth|billing|data transfer limit|over its data"),
-  ("REMOTE_404",r"404|does not exist on the server|object not found"),
-  ("REMOTE_403",r"403|permission denied|unauthorized|not authorized|authentication required"),
-  ("DISK_FULL",r"no space left|insufficient space|disk full"),
-  ("NETWORK",r"TLS|certificate|connection|timeout|network|DNS|proxy"),
-  ("LFS_VERSION",r"git-lfs: command not found|git-lfs is not installed|not a git command"),
-  ("SMUDGE_OR_FILTER",r"smudge|filter-process|filter lfs failed"),
-)
-status=next((name for name,pattern in classes if re.search(pattern,s,re.I)), "UNKNOWN")
-print("isolated_lfs_failure_kind="+status)
-r=subprocess.run(["git","lfs","ls-files","--name-only"],capture_output=True,text=True,timeout=30)
-files=r.stdout.splitlines() if r.returncode==0 else []
-print("isolated_lfs_tracked_count="+str(len(files)))
-pending=0
-for f in files:
- try:
-  with open(f,"rb") as h:
-   if h.read(110).startswith(b"version https://git-lfs.github.com/spec/v1"):pending+=1
- except OSError:pending+=1
-print("isolated_lfs_pointer_or_missing_count="+str(pending))
-print("isolated_lfs_new_tree_mesh_count="+str(sum(f.startswith("Assets/AarisWorld/Generated/TreeMass/") and f.endswith(".asset") for f in files)))
-PYSANITIZE
-  exit 15
+  # GitHub has the new LFS pointers, but this Codespace already contains
+  # the verified original meshes created by the previous native Unity bake.
+  # Recover ONLY if every generated asset's SHA256 and size match HEAD.
+  # This avoids any new network transfer and leaves the GUI source untouched.
+  if test -s "$PROJECT/Tools/Codespaces/restore_local_tree_lfs.py"; then
+    if python3 "$PROJECT/Tools/Codespaces/restore_local_tree_lfs.py" "$PROJECT"; then
+      echo AARIS_PROBE_NATIVE_TREE_LFS_RECOVERED_FROM_LOCAL_CODESPACE_BAKE
+    else
+      echo AARIS_PROBE_ISOLATED_LFS_PULL_FAILED
+      exit 15
+    fi
+  else
+    echo AARIS_PROBE_ISOLATED_LFS_PULL_FAILED
+    exit 15
+  fi
+
 fi
 SCENE="Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity"
 test -s "$SCENE" || { echo AARIS_PROBE_SCENE_MISSING; exit 16; }

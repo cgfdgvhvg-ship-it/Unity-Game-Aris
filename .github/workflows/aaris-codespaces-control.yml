@@ -64,6 +64,7 @@ jobs:
           python3 Tools/Codespaces/codespace_logs.py --selftest
           python3 Tools/Codespaces/billing_quota.py --selftest
           python3 -m py_compile Tools/Codespaces/publish_tree_mass_from_actions.py
+          python3 -m py_compile Tools/Codespaces/restore_local_tree_lfs.py
           python3 Tools/Codespaces/test_protocol.py
           python3 Tools/Codespaces/test_scene_probe.py
           python3 Tools/Validation/check_saved_ambient.py
