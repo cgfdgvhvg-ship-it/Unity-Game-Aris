@@ -241,7 +241,8 @@
       "height": 7.517,
       "style": "local_original_LOD_prefab",
       "name": "ARX_18_OldVillage_cottage",
-      "designRole": "low-rise cover and habitation"
+      "designRole": "low-rise cover and habitation",
+      "interactive": true
     },
     {
       "district": "NorthernRidgeTown",
@@ -255,7 +256,8 @@
       "height": 6.673,
       "style": "local_original_LOD_prefab",
       "name": "ARX_19_NorthernRidgeTown_bungalow",
-      "designRole": "residential profile variation"
+      "designRole": "residential profile variation",
+      "interactive": true
     },
     {
       "district": "ValleySettlement",
@@ -269,7 +271,8 @@
       "height": 7.517,
       "style": "local_original_LOD_prefab",
       "name": "ARX_20_ValleySettlement_cottage",
-      "designRole": "route-side cover"
+      "designRole": "route-side cover",
+      "interactive": true
     },
     {
       "district": "CoastalHamlet",
@@ -283,7 +286,8 @@
       "height": 10.244,
       "style": "local_original_LOD_prefab",
       "name": "ARX_21_CoastalHamlet_detached",
-      "designRole": "two-storey silhouette variation"
+      "designRole": "two-storey silhouette variation",
+      "interactive": true
     }
   ]
 }
