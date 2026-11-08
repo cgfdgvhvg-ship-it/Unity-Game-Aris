@@ -21,6 +21,14 @@ manifest=json.loads((r/'Packages/manifest.json').read_text())['dependencies']
 assert manifest.get('com.unity.modules.vehicles')=='1.0.0'
 vehicle=(r/'Assets/AarisWorld/Scripts/AarisVehicleMotor.cs').read_text()
 assert 'WheelCollider' in vehicle and 'WheelFrictionCurve' in vehicle
+combat=(r/'Assets/AarisWorld/Scripts/AarisBattleActions.cs').read_text()
+# C# CS0136: the inner per-hit loop cannot declare 'delta' when Punch()
+# later declares 'delta' for the final obstruction raycast.
+assert combat.count('Vector3 candidateOffset = nearest - origin;') == 1
+assert 'Vector3 delta = nearest - origin;' not in combat
+assert 'Vector3 delta = point - origin;' in combat
+assert 'distance = candidateOffset.sqrMagnitude;' in combat
+assert 'Physics.Raycast(origin, delta.normalized' in combat
 assert manifest.get('com.unity.modules.physics')=='1.0.0'
 wf=(r/'.github/workflows/aaris-codespaces-control.yml').read_text()
 assert "github.event.comment.user.login == 'sundamunda289-art'" in wf
