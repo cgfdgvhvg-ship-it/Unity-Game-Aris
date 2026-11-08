@@ -3,7 +3,7 @@
 # force-kill, credentials, scene saves, Git resets or public raw logs.
 set -Eeuo pipefail
 MODE="$1"
-case "$MODE" in render|play|photo|foliage) ;; *) echo AARIS_PROBE_INVALID_MODE; exit 2 ;; esac
+case "$MODE" in render|play|photo|foliage|survey) ;; *) echo AARIS_PROBE_INVALID_MODE; exit 2 ;; esac
 SOURCE="/workspaces/Unity-Game-Aris"
 RUN="/tmp/aaris-codespaces/scene-probe"
 ISOLATED_ROOT="/tmp/aaris-native-photo-worktrees"
@@ -73,6 +73,7 @@ case "$MODE" in
   render) rm -f "$RUN/map-overview.png" "$RUN/render-report.json" ;;
   play) rm -f "$RUN/play-frame.png" "$RUN/play-report.json" ;;
   photo) rm -f "$RUN/photo-detail.png" "$RUN/photo-context.png" "$RUN/photo-report.json" ;;
+  survey) rm -f "$RUN"/survey-*.png "$RUN/survey-report.json" ;;
   foliage) rm -f "$RUN/foliage-original.png" "$RUN/foliage-far-lod.png" \
     "$RUN/foliage-ambient-test.png" "$RUN/foliage-ambient-only.png" \
     "$RUN/foliage-shadows-only.png" "$RUN/foliage-report.json" ;;
@@ -93,6 +94,10 @@ elif test "$MODE" = foliage; then
   METHOD="Aaris.MapReview.Editor.AarisCodespaceSceneProbe.DiagnoseFoliage"
   REPORT="$RUN/foliage-report.json"
   IMAGE="$RUN/foliage-original.png"
+elif test "$MODE" = survey; then
+  METHOD="Aaris.MapReview.Editor.AarisCodespaceSceneProbe.CaptureSurvey"
+  REPORT="$RUN/survey-report.json"
+  IMAGE="$RUN/survey-sheet-1.png"
 elif test "$MODE" = photo; then
   METHOD="Aaris.MapReview.Editor.AarisCodespaceSceneProbe.CaptureAt"
   REPORT="$RUN/photo-report.json"
@@ -123,7 +128,7 @@ if test "$MODE" = photo; then
     "-aarisPitch=$5" "-aarisDistance=$6" \
     -logFile "$RUN/unity-probe-editor.log" >"$RUN/private-stdout.log" 2>"$RUN/private-stderr.log"
   RC=$?
-elif test "$MODE" = render || test "$MODE" = foliage; then
+elif test "$MODE" = render || test "$MODE" = foliage || test "$MODE" = survey; then
   timeout --signal=TERM 1500 env DISPLAY=:99 TMPDIR="$RUN/UnityTemp" \
     LIBGL_ALWAYS_SOFTWARE=1 "$EDITOR" -batchmode -quit -force-glcore \
     -projectPath "$PROJECT" -executeMethod "$METHOD" \
@@ -186,6 +191,27 @@ PYREPORT
   fi
   exit 20
 fi
+if test "$MODE" = survey; then
+  # Make four contact sheets, six distinct real Unity frames per PNG.
+  # Keep the 24 full-resolution camera frames in this private Codespace;
+  # transfer only the four compact sheets and their sanitized report.
+  command -v montage >/dev/null 2>&1 || { echo AARIS_SURVEY_MONTAGE_MISSING; exit 28; }
+  for group in 1 2 3 4; do
+    first=$(( (group-1)*3 + 1 ))
+    sources=()
+    for offset in 0 1 2; do
+      n="$(printf '%02d' "$(( first + offset ))")"
+      sources+=("$RUN/survey-$n-detail.png" "$RUN/survey-$n-context.png")
+    done
+    for source in "${sources[@]}"; do
+      test -s "$source" || { echo AARIS_SURVEY_SOURCE_FRAME_MISSING; exit 28; }
+    done
+    montage "${sources[@]}" -tile 3x2 -geometry 640x360+6+6 \
+      -background '#15202d' "$RUN/survey-sheet-$group.png" >/dev/null 2>&1 || {
+        echo AARIS_SURVEY_CONTACT_SHEET_FAILED; exit 28;
+      }
+  done
+fi
 python3 - "$REPORT" "$IMAGE" "$MODE" <<'PY'
 import json, pathlib, sys
 report, image, mode = (pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]), sys.argv[3])
@@ -203,6 +229,8 @@ if data.get("mode")!=mode or data.get("status")!="passed" or data.get("terrainTi
 images = [image]
 if mode=="photo":
     images.append(image.parent/"photo-context.png")
+elif mode=="survey":
+    images.extend([image.parent/("survey-sheet-%s.png"%n) for n in (2,3,4)])
 elif mode=="foliage":
     images.extend([image.parent/"foliage-far-lod.png",
                    image.parent/"foliage-ambient-only.png",
@@ -227,6 +255,16 @@ if mode=="foliage":
         sys.exit(27)
     print("tree_prototypes="+str(data.get("treePrototypes",0)))
     print("foliage_materials="+str(data.get("customFoliageMaterials",0)))
+    print("image_bytes="+str(sum(p.stat().st_size for p in images)))
+elif mode=="survey":
+    places=data.get("locations",[])
+    if data.get("locationCount")!=12 or data.get("frameCount")!=24 or len(places)!=12:
+        print("AARIS_SURVEY_INCOMPLETE"); sys.exit(27)
+    if any(min(site.get("detailVariation",0),site.get("contextVariation",0))<6 for site in places):
+        print("AARIS_SURVEY_FLAT_SOURCE_FRAME_REJECTED"); sys.exit(27)
+    print("native_survey_locations=12")
+    print("native_survey_frames=24")
+    print("contact_sheets=4")
     print("image_bytes="+str(sum(p.stat().st_size for p in images)))
 elif mode=="photo":
     if min(data.get("detailVariation",0),data.get("contextVariation",0)) < 6:
