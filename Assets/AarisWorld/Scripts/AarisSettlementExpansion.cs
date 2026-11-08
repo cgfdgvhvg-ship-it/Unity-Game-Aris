@@ -149,7 +149,7 @@ namespace Aaris.MapReview
                 // Only marked, tested new sites use true modular wall holes.
                 GameObject instance = site.interactive
                     ? AarisModularHouse.Create(position, rotation, site.width,
-                        site.depth, site.height, transform, interactionTarget)
+                        site.depth, site.height, transform, interactionTarget, prefab)
                     : Instantiate(prefab, position, rotation, transform);
                 if (instance == null)
                 {
