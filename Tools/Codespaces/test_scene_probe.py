@@ -2,6 +2,7 @@
 """License-free security/contract regressions for native Codespace scene probing."""
 from pathlib import Path
 import re
+import subprocess
 ROOT = Path(__file__).resolve().parents[2]
 editor = (ROOT / "Assets/AarisWorld/Editor/AarisCodespaceSceneProbe.cs").read_text()
 shell = (ROOT / "Tools/Codespaces/scene_probe.sh").read_text()
@@ -25,6 +26,13 @@ assert 'runtimeErrors == 0' in editor
 assert 'EditorApplication.Exit(exit)' in editor
 assert 'EditorSceneManager.SaveScene' not in editor and 'AssetDatabase.SaveAssets' not in editor
 assert shell.startswith('#!/usr/bin/env bash')
+# Shell syntax is a release gate: catch truncated diagnostic pipes before
+# a failed native Editor run can consume cloud compute and return no PNG.
+check = subprocess.run(["bash", "-n", str(ROOT / "Tools/Codespaces/scene_probe.sh")],
+                       capture_output=True, text=True, timeout=10)
+assert check.returncode == 0, "scene_probe.sh bash syntax invalid"
+assert shell.count('python3 - "$REPORT" "$IMAGE" "$MODE" <<\'PY\'') == 1
+assert "grep -E '^AARIS_PLAY_EXCEPTION_(FIRST_FRAME_FAMILY_[A-Z_]+|SUBSYSTEM_[A-Z_]+|STACK_FRAMES=[0-9]+)$' || true" in shell
 assert 'MODE="$1"' in shell
 assert 'render|play' in shell
 assert 'SCENE="Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity"' in shell
