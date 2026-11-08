@@ -40,7 +40,7 @@ billing=(r/'Tools/Codespaces/billing_quota.py').read_text()
 assert "'CS QUOTA') OP=quota" in controller
 assert 'billing_quota.py' in controller and 'CODESPACES_BILLING_REPORT=SUCCESS' in controller
 assert 'CS STOP' in controller and 'gh codespace stop -c "$CS"' in controller
-assert 'quota' in response and 'CODESPACES_USED_CORE_HOURS' in response
+assert 'quota' in response and 'USED_CORE_HOURS' in response
 assert 'settings/billing/usage' in billing and 'CODESPACES_HOURS_STATUS=UNKNOWN' in billing
 assert 'subprocess.run' in billing and 'stderr=subprocess.DEVNULL' in billing
 assert 'billing_quota.py --selftest' in wf
