@@ -204,6 +204,61 @@ PY
       exit 20
     fi
     ;;
+  cli_diag)
+    # Read-only bounded diagnostics. The Unity CLI's raw output, OAuth state,
+    # paths and arbitrary log lines are never returned to the public issue.
+    python3 - <<'PY'
+import os, pathlib, re, subprocess
+home=pathlib.Path.home()
+candidates=[home/".local/bin/unity",home/".local/share/aaris-unity-cli/bin/unity",
+            home/".unity/bin/unity",pathlib.Path("/home/vscode/.local/bin/unity")]
+cli=next((str(p) for p in candidates if p.is_file() and os.access(p,os.X_OK)),None)
+print("UNITY_CLI_PRESENT="+("yes" if cli else "no"))
+if cli:
+    try:
+        r=subprocess.run([cli,"install","--help"],capture_output=True,
+                         text=True,errors="replace",timeout=25,check=False)
+        h=(r.stdout+"\n"+r.stderr)[:100000]
+        print("UNITY_CLI_INSTALL_HELP_EXIT_"+str(r.returncode if 0<=r.returncode<256 else 255))
+        flags={"CHANGESET":"--changeset","DOWNLOAD_DIRECTORY":"--download-directory",
+               "RESUME":"--resume","NON_INTERACTIVE":"--non-interactive",
+               "YES":"--yes","ACCEPT_EULA":"--accept-eula","FORMAT":"--format"}
+        for name,flag in flags.items():
+            print("UNITY_CLI_INSTALL_FLAGS_"+name+"="+("yes" if flag in h else "no"))
+    except (OSError,subprocess.TimeoutExpired):
+        print("UNITY_CLI_INSTALL_HELP_UNAVAILABLE")
+log=pathlib.Path("/tmp/aaris-codespaces/cli-editor-install.log")
+if not log.is_file():
+    print("UNITY_CLI_INSTALL_LOG_MISSING")
+else:
+    s=log.read_text(errors="replace")[-100000:]
+    codes=set(re.findall(r'"code"\s*:\s*"([A-Z_]{3,50})"',s))
+    allowed={"INVALID_COMMAND_ARGS","INVALID_ARGUMENTS","RELEASE_NOT_FOUND",
+             "COMMAND_FAILED","PATH_NOT_A_DIRECTORY","AUTH_REQUIRED",
+             "EULA_REQUIRED","INSTALL_FAILED","ELEVATION_FAILED"}
+    print("UNITY_CLI_INSTALL_LOG_RECORDED=yes")
+    for c in sorted(codes & allowed):
+        print("UNITY_CLI_INSTALL_LOG_CODE_"+c)
+    print("UNITY_CLI_INSTALL_LOG_CODE_OTHER="+("yes" if bool(codes-allowed) else "no"))
+    for name,pattern in {
+        "CONFLICTING_ARGUMENTS":r"mutually exclusive|conflict(?:s|ing)? with",
+        "MISSING_REQUIRED_ARGUMENT":r"missing (?:required )?argument",
+        "UNKNOWN_ARGUMENT":r"unknown (?:option|flag|argument)|unexpected argument|unrecognized option",
+        "VERSION_FORMAT":r"invalid version|invalid version format",
+        "CHANGESET":r"invalid changeset|changeset.*(invalid|unexpected)",
+        "AUTHORIZATION":r"not signed in|authentication required|authorization",
+    }.items():
+        print("UNITY_CLI_INSTALL_LOG_DIAGNOSTIC_"+name+"="+("yes" if re.search(pattern,s,re.I) else "no"))
+    for name,flag in {"CHANGESET":"--changeset","DOWNLOAD_DIRECTORY":"--download-directory",
+                      "RESUME":"--resume","NON_INTERACTIVE":"--non-interactive",
+                      "YES":"--yes","ACCEPT_EULA":"--accept-eula",
+                      "FORMAT":"--format"}.items():
+        # Only flag names from a constant allowlist can enter the response.
+        bad=(r"(?:unknown|unrecognized|unexpected|invalid|unsupported)"
+             r".{0,90}"+re.escape(flag))
+        print("UNITY_CLI_INSTALL_LOG_REJECTED_"+name+"="+("yes" if re.search(bad,s,re.I|re.S) else "no"))
+PY
+    ;;
   install)
     bash "$PROJECT/Tools/Codespaces/install_unity.sh"
     ;;
