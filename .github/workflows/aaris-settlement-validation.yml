@@ -6,6 +6,7 @@ on:
       - 'Assets/AarisWorld/Scripts/AarisExpansionCatalog.cs'
       - 'Assets/Resources/AarisExpansion/**'
       - 'Tools/Validation/test_settlement_expansion.py'
+      - 'Docs/FOREST_PLANTING_PLAN.json'
       - '.github/workflows/aaris-settlement-validation.yml'
   push:
     paths:
@@ -13,6 +14,7 @@ on:
       - 'Assets/AarisWorld/Scripts/AarisExpansionCatalog.cs'
       - 'Assets/Resources/AarisExpansion/**'
       - 'Tools/Validation/test_settlement_expansion.py'
+      - 'Docs/FOREST_PLANTING_PLAN.json'
   workflow_dispatch:
 jobs:
   static-map-integrity:
