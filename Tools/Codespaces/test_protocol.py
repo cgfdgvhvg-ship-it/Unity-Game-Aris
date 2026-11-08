@@ -41,6 +41,16 @@ assert 'target_codespace' in response
 remote_source=(r/'Tools/Codespaces/remote.sh').read_text()
 assert 'EDITOR_EXITED_DURING_STARTUP' in remote_source
 assert "sleep 12" in remote_source
+isolate=(r/'Tools/Codespaces/editor_isolation_probe.sh').read_text()
+assert 'EDITOR_ISOLATE_TEMP_ONLY' in isolate
+assert 'mktemp -d "$BASE/editor-isolation.' in isolate
+assert 'rm -rf -- "$WORK"' in isolate
+assert '-batchmode -nographics -quit -projectPath "$PROJECT"' in isolate
+assert 'EDITOR_ISOLATE_SOFTWARE_GL_CRASH_CANDIDATE' in isolate
+assert 'CS EDITOR ISOLATE' in controller
+assert 'editor_isolate) REMOTE_TIMEOUT=650' in controller
+assert 'editor_isolation_probe.sh' in controller
+assert 'editor_isolate' in wf and 'editor_isolate' in response
 assert 'editor-exit-code.txt' in remote_source
 assert 'AARIS_EDITOR_EXIT_CODE_' in remote_source
 assert 'AARIS_EDITOR_DIAG_SIGKILL_OR_OOM' in remote_source
