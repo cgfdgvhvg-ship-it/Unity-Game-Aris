@@ -38,6 +38,7 @@ if test -n "$ISSUE"; then
     'CS LFS REPORT') OP=lfs_report ;;
     'CS CHANGES') OP=changes ;;
     'CS SAVE CHANGES') OP=preserve_assets ;;
+    'CS RETRY SAVE') OP=retry_assets ;;
     'CS INSTALL') OP=install ;;
     'CS DEPS') OP=deps ;;
     'CS CLI DIAG') OP=cli_diag ;;
@@ -68,7 +69,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|preserve_assets|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|play_diag|foliage_diag|test|stop) ;;
+  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|play_diag|foliage_diag|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -264,6 +265,7 @@ case "$OP" in
   deps) REMOTE_TIMEOUT=900 ;;
   sync|lfs) REMOTE_TIMEOUT=1200 ;;
   preserve_assets) REMOTE_TIMEOUT=1500 ;;
+  retry_assets) REMOTE_TIMEOUT=900 ;;
   test) REMOTE_TIMEOUT=500 ;;
   editor) REMOTE_TIMEOUT=350 ;;
   scene_render|scene_play|photo|foliage_diag) REMOTE_TIMEOUT=1800 ;;
@@ -284,6 +286,10 @@ SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/remote.sh"
 REMOTE_SHELL="bash -s -- $OP"
 if test "$OP" = preserve_assets; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/preserve_working_assets.sh"
+  REMOTE_SHELL="bash -s"
+fi
+if test "$OP" = retry_assets; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/retry_one_lfs_checkpoint.sh"
   REMOTE_SHELL="bash -s"
 fi
 if test "$OP" = drop_video; then
@@ -356,7 +362,31 @@ for attempt in 1 2; do
       < "$SCRIPT_FILE" \
       > "$OUT/terminal.txt" 2>"$PRIVATE_ERRORS"; then
     rm -f "$PRIVATE_ERRORS"
-    if test "$OP" = preserve_assets; then
+    if test "$OP" = retry_assets; then
+      if ! timeout 120 gh codespace ssh -c "$CS" --            'base64 /tmp/aaris-codespaces/working-changes-checkpoint/manifest.json'            > "$OUT/changes-manifest.json.b64" 2>"$PRIVATE_ERRORS"; then
+        DETAIL="checkpoint_manifest_transfer_failed"; safe_error_summary; exit 49
+      fi
+      if ! base64 --decode "$OUT/changes-manifest.json.b64" > "$OUT/changes-manifest.json"; then
+        DETAIL="checkpoint_manifest_decode_failed"; exit 50
+      fi
+      rm -f "$OUT/changes-manifest.json.b64"
+      if ! python3 - "$OUT/changes-manifest.json" <<'PYMANIFEST'
+import json,sys,re
+try:
+    d=json.load(open(sys.argv[1])); files=d.get('files',[])
+    valid=d.get('kind')=='aaris_codespace_working_assets_checkpoint'
+    valid=valid and isinstance(files,list) and len(files)==210 and d.get('changedCount')==210
+    valid=valid and d.get('lfsChangedCount')==1
+    valid=valid and d.get('branch')=='backup/codespace-local-changes-20261108'
+    valid=valid and all(re.fullmatch('[a-f0-9]{64}',f['sha256']) for f in files)
+except (ValueError,OSError,KeyError,TypeError):valid=False
+sys.exit(0 if valid else 1)
+PYMANIFEST
+      then
+        DETAIL="checkpoint_manifest_invalid"; exit 51
+      fi
+      DETAIL="specific_210_tracked_changes_uploaded_to_review_branch"
+    elif test "$OP" = preserve_assets; then
       if ! timeout 120 gh codespace ssh -c "$CS" -- \
            'base64 /tmp/aaris-codespaces/working-changes-checkpoint/manifest.json' \
            > "$OUT/changes-manifest.json.b64" 2>"$PRIVATE_ERRORS"; then
