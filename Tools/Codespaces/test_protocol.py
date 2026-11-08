@@ -41,6 +41,11 @@ assert 'target_codespace' in response
 remote_source=(r/'Tools/Codespaces/remote.sh').read_text()
 assert 'EDITOR_EXITED_DURING_STARTUP' in remote_source
 assert "sleep 12" in remote_source
+assert 'editor-exit-code.txt' in remote_source
+assert 'AARIS_EDITOR_EXIT_CODE_' in remote_source
+assert 'AARIS_EDITOR_DIAG_SIGKILL_OR_OOM' in remote_source
+assert 'AARIS_EDITOR_DIAG_EXEC_OR_LIBRARY_FAILURE' in remote_source
+assert 'rc=0; "$1" -projectPath' in remote_source
 billing=(r/'Tools/Codespaces/billing_quota.py').read_text()
 assert "'CS QUOTA') OP=quota" in controller
 assert 'billing_quota.py' in controller and 'CODESPACES_BILLING_REPORT=SUCCESS' in controller
