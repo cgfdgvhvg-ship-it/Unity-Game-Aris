@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c8a65ad938a84b7b9a9a462bd0eacada, type: 3}
+  m_Script: {fileID: 11500000, guid: be61c347c5ad47ab9e1512e30c32a1a2, type: 3}
   m_Name: AarisExpansionCatalog
   m_EditorClassIdentifier:
   cottage: {fileID: 10000, guid: c2c38922ba0b5bfb82968745998d1959, type: 3}
