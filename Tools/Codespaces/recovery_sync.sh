@@ -12,9 +12,21 @@ case "$ORIGIN" in
   *github.com/sundamunda289-art/Unity-Game-Aris|*github.com/sundamunda289-art/Unity-Game-Aris.git|*github.com:sundamunda289-art/Unity-Game-Aris|*github.com:sundamunda289-art/Unity-Game-Aris.git) ;;
   *) echo 'AARIS_RECOVERY_UNEXPECTED_ORIGIN'; exit 24 ;;
 esac
-# Never touch an owner-modified devcontainer file.
-git diff --quiet -- .devcontainer || { echo 'AARIS_RECOVERY_CONFIG_DIRTY'; exit 25; }
-git diff --cached --quiet -- .devcontainer || { echo 'AARIS_RECOVERY_CONFIG_STAGED'; exit 26; }
+# Preserve ONLY devcontainer-local changes in a named, recoverable Git stash.
+# Never discard anything under Assets, scenes, prefabs, Git LFS or ProjectSettings.
+if ! git diff --quiet -- .devcontainer || ! git diff --cached --quiet -- .devcontainer; then
+  BEFORE="$(git rev-parse -q --verify refs/stash 2>/dev/null || true)"
+  if ! git stash push -u -m 'Aaris new Codespace devcontainer recovery 20261109' -- .devcontainer >/dev/null 2>/dev/null; then
+    echo 'AARIS_RECOVERY_CONFIG_BACKUP_FAILED'
+    exit 25
+  fi
+  AFTER="$(git rev-parse -q --verify refs/stash 2>/dev/null || true)"
+  if test -z "$AFTER" || test "$AFTER" = "$BEFORE"; then
+    echo 'AARIS_RECOVERY_CONFIG_STASH_NOT_VERIFIED'
+    exit 26
+  fi
+  echo 'AARIS_RECOVERY_CONFIG_STASH_SAVED'
+fi
 # No LFS hydration or project reset during recovery. Git refuses fast-forward
 # if the updated branch would overwrite a local tracked modification.
 if ! GIT_TERMINAL_PROMPT=0 git fetch --no-tags origin main >/dev/null 2>/dev/null; then
