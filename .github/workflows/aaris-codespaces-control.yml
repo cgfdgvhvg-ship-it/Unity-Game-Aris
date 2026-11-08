@@ -70,6 +70,9 @@ jobs:
           bash -n Tools/Codespaces/play_probe_diagnostic.sh
           echo "CODESPACE_STATIC_PASS"
   control:
+    permissions:
+      contents: write
+      issues: write
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' &&
