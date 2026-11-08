@@ -211,6 +211,7 @@ namespace Aaris.MapReview.Editor
         [Serializable]
         private sealed class PhotoReport
         {
+            public string mode;
             public string status;
             public string reason;
             public string scene;
@@ -232,7 +233,7 @@ namespace Aaris.MapReview.Editor
         {
             Directory.CreateDirectory(Output);
             PhotoReport result = new PhotoReport {
-                status = "failed", scene = Scene,
+                mode = "photo", status = "failed", scene = Scene,
                 unityVersion = Application.unityVersion,
                 graphicsDevice = SystemInfo.graphicsDeviceType.ToString()
             };
