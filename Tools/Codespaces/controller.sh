@@ -59,6 +59,7 @@ if test -n "$ISSUE"; then
     'CS TREE AUDIT') OP=tree_audit ;;
     'CS TREE PREVIEW') OP=tree_preview ;;
     'CS TREE PUBLISH') OP=tree_publish ;;
+    'CS TREE REPORT') OP=tree_report ;;
     'CS PHOTO '*) OP=photo ;;
     'CS ACCEPT TERMS') OP=accept_terms ;;
     'CS SAFE MODE') OP=safe_mode ;;
@@ -73,7 +74,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|test|stop) ;;
+  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -355,6 +356,10 @@ if test "$OP" = editor_process || test "$OP" = editor_recover; then
 fi
 if test "$OP" = install; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/install_unity.sh"
+  REMOTE_SHELL="bash -s"
+fi
+if test "$OP" = tree_report; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/tree_mass_report.sh"
   REMOTE_SHELL="bash -s"
 fi
 if test "$OP" = tree_publish; then
