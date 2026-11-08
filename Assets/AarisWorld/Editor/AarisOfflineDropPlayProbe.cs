@@ -23,6 +23,8 @@ namespace Aaris.MapReview.Editor
         private const string State = "aaris.offline.drop.probe.state";
         private const string Began = "aaris.offline.drop.probe.began";
         private const string LastFrame = "aaris.offline.drop.probe.lastframe";
+        private const string EjectedAt = "aaris.offline.drop.probe.ejectedat";
+        private const string DeployIssued = "aaris.offline.drop.probe.deployissued";
         private const string FrameCount = "aaris.offline.drop.probe.frames";
         private const string ErrorCount = "aaris.offline.drop.probe.errors";
         private const string ErrorCode = "aaris.offline.drop.probe.errorcode";
@@ -77,6 +79,8 @@ namespace Aaris.MapReview.Editor
             SessionState.SetString(ErrorSource, "");
             SessionState.SetFloat(Began, 0f);
             SessionState.SetFloat(LastFrame, 0f);
+            SessionState.SetFloat(EjectedAt, 0f);
+            SessionState.SetBool(DeployIssued, false);
             foreach (string phase in Enum.GetNames(typeof(AarisOfflineDrop.DropPhase)))
                 SessionState.SetBool(SeenPrefix + phase, false);
 
@@ -217,11 +221,8 @@ namespace Aaris.MapReview.Editor
             bool newlySeen = !Seen(name);
             if (newlySeen) SessionState.SetBool(SeenPrefix + name, true);
 
-            // Act like the user's EJECT tap: this calls the public game method.
-            if (drop.Phase == AarisOfflineDrop.DropPhase.InPlane &&
-                now - SessionState.GetFloat(Began, 0f) > 2.1)
-                drop.OnAction();
-
+            // First capture the ACTUAL phase, then simulate player button taps.
+            // Otherwise the "InPlane" screenshot could be mislabelled freefall.
             if (now - SessionState.GetFloat(LastFrame, 0f) >= 0.125 ||
                 newlySeen)
             {
@@ -242,6 +243,27 @@ namespace Aaris.MapReview.Editor
                     Finish(false, SafeReason(ex));
                     return;
                 }
+            }
+
+            // The real game requires TWO separate taps: EJECT while in the
+            // plane and OPEN after a short period of freefall. The previous
+            // probe only simulated EJECT and could not test manual deployment.
+            if (drop.Phase == AarisOfflineDrop.DropPhase.InPlane &&
+                now - SessionState.GetFloat(Began, 0f) > 2.1f)
+            {
+                drop.OnAction();
+                if (drop.Phase == AarisOfflineDrop.DropPhase.Freefall)
+                    SessionState.SetFloat(EjectedAt, (float)now);
+            }
+            if (drop.Phase == AarisOfflineDrop.DropPhase.Freefall &&
+                SessionState.GetFloat(EjectedAt, 0f) <= 0f)
+                SessionState.SetFloat(EjectedAt, (float)now);
+            if (drop.Phase == AarisOfflineDrop.DropPhase.Freefall &&
+                !SessionState.GetBool(DeployIssued, false) &&
+                now - SessionState.GetFloat(EjectedAt, (float)now) > 1.1f)
+            {
+                SessionState.SetBool(DeployIssued, true);
+                drop.OnAction(); // Tests the same OPEN action used by mobile HUD.
             }
 
             // Retain the REAL video even if a single existing, nonfatal game
