@@ -414,7 +414,7 @@ try:
  ok=m.get("status")=="passed" and m.get("species")==6 and m.get("meshAssets")==18
  ok=ok and f.get("status")=="passed" and f.get("terrainTiles")==4
  for name in ("foliage-original.png","foliage-far-lod.png","foliage-ambient-only.png","foliage-shadows-only.png","foliage-ambient-test.png"):
-  v=p/name;ok=ok and v.stat().st_size>8192 and v.read_bytes()[:8]==b"\\x89PNG\\r\\n\\x1a\\n"
+  v=p/name;ok=ok and v.stat().st_size>8192 and v.read_bytes()[:8]==b"\x89PNG\r\n\x1a\n"
 except (OSError,ValueError,TypeError,KeyError):ok=False
 sys.exit(0 if ok else 1)
 PYMASS
