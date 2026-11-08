@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c8a65ad938a84b7b9a9a462bd0eacada, type: 3}
+  m_Name: AarisExpansionCatalog
+  m_EditorClassIdentifier:
+  cottage: {fileID: 10000, guid: c2c38922ba0b5bfb82968745998d1959, type: 3}
+  bungalow: {fileID: 10000, guid: 95adab75211757f1905ab13c50b263c6, type: 3}
+  detached: {fileID: 10000, guid: c120df7ac4b15dbab6e890bd54e21641, type: 3}
+  watchtower: {fileID: 10000, guid: 999daad9214a56a8bbde73b8aab5f8d2, type: 3}
