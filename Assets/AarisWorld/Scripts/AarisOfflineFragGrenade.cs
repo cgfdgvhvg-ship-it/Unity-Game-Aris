@@ -42,8 +42,8 @@ namespace Aaris.MapReview
             visual.GetComponent<Renderer>().sharedMaterial = grenadeMaterial;
             var rigidbody = grenade.AddComponent<Rigidbody>();
             rigidbody.mass = 0.38f;
-            rigidbody.drag = 0.1f;
-            rigidbody.angularDrag = 0.55f;
+            rigidbody.linearDamping = 0.1f;
+            rigidbody.angularDamping = 0.55f;
             rigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
             var script = grenade.AddComponent<AarisOfflineFragGrenade>();
