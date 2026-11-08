@@ -66,10 +66,14 @@ class ExpansionIntegrity(unittest.TestCase):
         self.assertEqual(len(set(s["name"] for s in p["sites"])), len(p["sites"]))
 
     def test_original_local_prefabs_resolve_by_guid(self):
-        script_meta = SCRIPT.with_suffix(".cs.meta").read_text(encoding="utf-8")
+        script_meta = (ROOT / "Assets" / "AarisWorld" / "Scripts" /
+                       "AarisExpansionCatalog.cs.meta").read_text(encoding="utf-8")
         script_guid = re.search(r"^guid:\s*([0-9a-f]{32})$", script_meta, re.M).group(1)
         self.assertIn(script_guid, self.catalog)
         self.assertIn("AarisExpansionCatalog", self.catalog)
+        catalog_source = (ROOT / "Assets" / "AarisWorld" / "Scripts" /
+                          "AarisExpansionCatalog.cs").read_text(encoding="utf-8")
+        self.assertIn("sealed class AarisExpansionCatalog : ScriptableObject", catalog_source)
         self.assertIn("mainObjectFileID: 11400000", CATALOG.with_suffix(".asset.meta").read_text())
         for key, model in MODELS.items():
             path = ROOT / "Assets" / "AarisWorld" / "Models" / model / f"{model}.prefab"
