@@ -36,6 +36,11 @@ assert "github.event.issue.number == 77" in wf
 assert 'secrets.CODESPACE_PAT' in wf
 controller=(r/'Tools/Codespaces/controller.sh').read_text()
 response=(r/'Tools/Codespaces/issue_response.py').read_text()
+assert "'TARGET_UNAVAILABLE'" in response
+assert 'target_codespace' in response
+remote_source=(r/'Tools/Codespaces/remote.sh').read_text()
+assert 'EDITOR_EXITED_DURING_STARTUP' in remote_source
+assert "sleep 12" in remote_source
 billing=(r/'Tools/Codespaces/billing_quota.py').read_text()
 assert "'CS QUOTA') OP=quota" in controller
 assert 'billing_quota.py' in controller and 'CODESPACES_BILLING_REPORT=SUCCESS' in controller
