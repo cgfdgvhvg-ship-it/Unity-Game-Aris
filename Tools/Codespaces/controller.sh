@@ -169,15 +169,29 @@ if test "$OP" = fresh_ssh; then
   fi
   STATE="SUCCESS"; DETAIL="ssh_codespace_created_preserving_previous_workspaces"; exit 0
 fi
-# Ordinary owner commands are pinned to the EXISTING 4 CPU/16 GiB machine.
-# Display names are not unique and the first list entry may belong to another
-# Codespace. Never auto-create, switch or reset a workspace from CS START.
-# Explicit CS FRESH / CS FRESH SSH remain separate intentional operations.
+# Account-aware selection for existing Codespaces. The CODESPACE_PAT GitHub CLI
+# can only list the selected account's Codespaces, not the master account's.
+# Never pick the first result when multiple match; never create on CS START.
+# Exact workflow input (if supplied) wins; otherwise preserve the original
+# owner's pinned machine, or accept ONE uniquely labeled SSH Codespace.
 TARGET_CODESPACE="aaris-ai-unity-ssh-vp5g97jv4r4gfpjgq"
-CS="$(jq -r --arg target "$TARGET_CODESPACE" '[.[] | select(.name == $target)][0].name // ""' <<< "$LIST")"
+if test -n "$MACHINE"; then
+  TARGET_CODESPACE="$MACHINE"
+  CS="$(jq -r --arg target "$TARGET_CODESPACE" '[.[] | select(.name == $target)][0].name // ""' <<< "$LIST")"
+elif jq -e --arg target "$TARGET_CODESPACE" 'any(.[]; .name == $target)' <<< "$LIST" >/dev/null; then
+  CS="$TARGET_CODESPACE"
+else
+  COUNT="$(jq '[.[] | select(.displayName == "aaris-ai-unity-ssh")] | length' <<< "$LIST")"
+  if test "$COUNT" -eq 1; then
+    CS="$(jq -r '.[] | select(.displayName == "aaris-ai-unity-ssh") | .name' <<< "$LIST")"
+    TARGET_CODESPACE="$CS"
+  else
+    CS=""
+  fi
+fi
 if test -z "$CS"; then
-  printf 'target_codespace=%s\nreason=exact_existing_codespace_not_visible\n' "$TARGET_CODESPACE" > "$OUT/terminal.txt"
-  STATE="TARGET_UNAVAILABLE"; DETAIL="never_create_or_select_another_codespace_implicitly"; exit 0
+  echo 'reason=selected_account_codespace_missing_or_ambiguous' > "$OUT/terminal.txt"
+  STATE="TARGET_UNAVAILABLE"; DETAIL="existing_target_not_unambiguously_selected"; exit 0
 fi
 [[ "$CS" =~ ^[A-Za-z0-9-]+$ ]] || { DETAIL="bad_codespace_name"; exit 9; }
 # Read Codespace machine and state without SSH. Safe when the old container is unavailable.

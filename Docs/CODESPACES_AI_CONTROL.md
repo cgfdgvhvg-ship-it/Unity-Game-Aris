@@ -38,7 +38,7 @@ CS STOP
 ```
 
 - `CS MACHINES` reads available machine IDs, CPU cores and RAM. `CS INFO` reports the existing Codespace's actual machine name, state and configured idle timeout without using SSH. Choose machine first.
-- `CS START` creates/starts the selected account's Codespace. If no machine was selected in the workflow form, it picks an available machine with at least 4 CPUs and 16 GiB RAM. A specific machine can be specified in Actions > Run workflow.
+- `CS START` starts an **existing** Codespace only; it never creates one. With the currently selected `CODESPACE_PAT` account, it prefers the original pinned Codespace only if visible, otherwise requires exactly one `aaris-ai-unity-ssh` Codespace in that account. If more than one SSH Codespace matches, choose its **exact Codespace name** in the Actions workflow `machine` input. `CS FRESH SSH` explicitly creates a separate new 4-core/16-GiB Codespace. Do not use the old account's instance after switching to `tomaaaris1234-pixel`.
 - `CS STATUS` reports CPU, memory, free storage, Editor process and screen status from the Codespace terminal.
 - `CS SYNC` updates to main and downloads Git LFS assets; refuses dirty worktrees and non-fast-forward overwrites. `CS LFS` attempts to hydrate large assets using the large /tmp disk and reports safe error categories. `CS CHANGES` lists tracked modified project filenames read-only when sync is blocked, without reading their contents.
 - `CS INSTALL` installs official Unity Hub and Unity Editor 6000.3.26f1 only once per Codespace. It can use significant disk/bandwidth.
