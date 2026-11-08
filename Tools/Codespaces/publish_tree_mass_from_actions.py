@@ -98,7 +98,11 @@ def main(archive: Path, report: Path):
                            check=True,capture_output=True).stdout
     for entry in initial.decode("utf-8","surrogateescape").split("\0"):
         if not entry:continue
-        if len(entry)<4 or entry[:2]=="??":
+        if len(entry)<4:
+            fail("TREE_PUBLISH_RUNNER_STATUS_INVALID")
+        if entry[:2]=="??":
+            if entry[3:]=="codespace-results/":
+                continue  # bounded Actions upload outputs, never staged
             fail("TREE_PUBLISH_RUNNER_UNTRACKED_FILE")
         attr=run("git","check-attr","filter","--",entry[3:])
         if not attr.endswith(": filter: lfs"):
