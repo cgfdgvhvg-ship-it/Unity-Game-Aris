@@ -16,7 +16,8 @@ unset GH_TOKEN GITHUB_TOKEN
 LIST="$(gh codespace list -R "$REPO" --json name,displayName,state --limit 30)" || {
   echo 'Cannot list Codespaces'; exit 4;
 }
-CS="$(printf '%s' "$LIST" | jq -r '([.[]|select(.displayName=="aaris-ai-unity")][0].name) // .[0].name // empty')"
+# Prefer the official SSH-enabled Ubuntu Codespace; the legacy machine may reject SSH.
+CS="$(printf '%s' "$LIST" | jq -r '([.[]|select(.displayName=="aaris-ai-unity-ssh")][0].name) // ([.[]|select(.displayName=="aaris-ai-unity")][0].name) // .[0].name // empty')"
 [[ "$CS" =~ ^[A-Za-z0-9-]+$ ]] || { echo 'Codespace not found; use CS START first'; exit 5; }
 printf 'Using Codespace: %s\n' "$CS"
 WORK="$(mktemp -d "$HOME/.aaris-unity-allow.XXXXXXXX")"
