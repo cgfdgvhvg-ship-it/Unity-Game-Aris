@@ -68,7 +68,7 @@ if test "$OP" = photo; then
   PHOTO_VALUES="$(python3 "$GITHUB_WORKSPACE/Tools/Codespaces/photo_request.py" "$ISSUE" 2>/dev/null)" || {
     DETAIL="invalid_bounded_photo_request"; exit 34
   }
-  [[ "$PHOTO_VALUES" =~ ^[-0-9. ]{12,96}$ ]] || {
+  [[ "$PHOTO_VALUES" =~ ^[-0-9.[:space:]]{12,96}$ ]] || {
     DETAIL="photo_arguments_not_numeric"; exit 35
   }
 fi
