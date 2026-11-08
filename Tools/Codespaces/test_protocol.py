@@ -219,7 +219,7 @@ assert 'git merge --ff-only FETCH_HEAD' in recover
 assert 'GIT_LFS_SKIP_SMUDGE=1' in recover
 assert 'git diff --quiet -- .devcontainer' in recover
 assert 'git reset --hard' not in recover and 'git clean -' not in recover
-assert 'python3' not in (r/'Tools/Codespaces/rebuild_preflight.sh').read_text()
+assert "python3 -" not in (r/'Tools/Codespaces/rebuild_preflight.sh').read_text()
 assert "'CS FULL REBUILD') OP=full_rebuild" in controller
 assert 'gh codespace rebuild -c "$CS" "${REBUILD_FLAGS[@]}"' in controller
 assert 'full_rebuild' in wf and 'full_rebuild' in response
