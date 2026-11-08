@@ -119,6 +119,53 @@ def audit_pointers(project: Path) -> dict[str, tuple[str, int]]:
     return expected
 
 
+PACKAGE = Path("/tmp/aaris-codespaces/scene-probe/verified-tree-mass-package.tar.gz")
+PACKAGE_SHA256 = "234024b842e8cc5e1253607ce41b5a6aebec6a7abd3c9fd81837bc960a24197d"
+
+
+def import_authenticated_tree_bake(expected, objects: Path) -> int:
+    """Only 18 historical Unity mesh OIDs; never import materials or .meta."""
+    if not PACKAGE.is_file():
+        return 0
+    if PACKAGE.stat().st_size != 4757727 or digest(PACKAGE) != PACKAGE_SHA256:
+        raise RecoveryError("ORIGINAL_TREE_ARCHIVE_SHA256_MISMATCH")
+    # This reviewed archive verifier additionally checks 45 tar members,
+    # provenance, per-file manifest and every HEAD LFS pointer.
+    from recover_verified_tree_lfs import PATHS, load_verified_meshes
+    if len(PATHS) != 18 or any(path not in expected for path in PATHS):
+        raise RecoveryError("CURRENT_SNAPSHOT_TREE_PATH_MISMATCH")
+    try:
+        meshes = load_verified_meshes(PACKAGE)
+    except Exception:
+        raise RecoveryError("ARCHIVED_TREE_MESH_VERIFICATION_FAILED") from None
+    if set(meshes) != {expected[path][0] for path in PATHS}:
+        raise RecoveryError("TREE_ARCHIVE_OIDS_NOT_IN_HEAD")
+    for oid, raw in meshes.items():
+        target = object_path(objects, oid)
+        if candidate_matches(target, oid, len(raw)):
+            continue
+        if target.exists():
+            raise RecoveryError("TREE_OBJECT_CACHE_CORRUPT")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temp = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                    dir=target.parent, prefix=".original-tree-",
+                    delete=False) as writer:
+                temp = Path(writer.name)
+                writer.write(raw)
+                writer.flush()
+                os.fsync(writer.fileno())
+            if not candidate_matches(temp, oid, len(raw)):
+                raise RecoveryError("TREE_OBJECT_IMPORT_HASH_MISMATCH")
+            os.replace(temp, target)
+        finally:
+            if temp is not None:
+                temp.unlink(missing_ok=True)
+    print("AARIS_CODESPACE_ORIGINAL_TREE_ARCHIVE_HASH_VERIFIED=18", flush=True)
+    return len(meshes)
+
+
 def restore(project: Path) -> None:
     project = project.resolve(strict=True)
     source = SOURCE.resolve(strict=True)
@@ -149,6 +196,11 @@ def restore(project: Path) -> None:
             copy_verified(verified, target, oid, size)
         local += 1
     print("AARIS_PRESERVED_OR_CACHED_LFS_HASH_VERIFIED=" + str(local), flush=True)
+    if missing:
+        import_authenticated_tree_bake(expected, objects)
+        missing = [path for path in missing
+                   if not candidate_matches(object_path(objects, expected[path][0]),
+                                            expected[path][0], expected[path][1])]
     print("AARIS_REMOTE_LFS_OIDS_NEEDED=" + str(len(missing)), flush=True)
     if missing:
         # Fetch ONLY missing paths; avoid an unnecessary 1.5 GiB cold LFS pull.
