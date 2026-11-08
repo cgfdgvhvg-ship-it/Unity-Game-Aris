@@ -91,8 +91,18 @@ def main(archive: Path, report: Path):
         fail("TREE_PUBLISH_UNVERIFIED_MAIN")
     if run("git","ls-remote","--heads","origin",BRANCH):
         fail("TREE_PUBLISH_REVIEW_BRANCH_ALREADY_EXISTS")
-    if run("git","status","--porcelain"):
-        fail("TREE_PUBLISH_RUNNER_WORKTREE_DIRTY")
+    # GitHub checkout can expose a few historic LFS-tracked non-pointer
+    # files as modified. Never reset them; the staged-files allowlist is the
+    # final guard against leaking unrelated changes into the review commit.
+    initial=subprocess.run(["git","status","--porcelain=v1","-z"],
+                           check=True,capture_output=True).stdout
+    for entry in initial.decode("utf-8","surrogateescape").split("\\0"):
+        if not entry:continue
+        if len(entry)<4 or entry[:2]=="??":
+            fail("TREE_PUBLISH_RUNNER_UNTRACKED_FILE")
+        attr=run("git","check-attr","filter","--",entry[3:])
+        if not attr.endswith(": filter: lfs"):
+            fail("TREE_PUBLISH_RUNNER_NONLFS_MODIFIED")
     run("git","checkout","-b",BRANCH,"origin/main")
     run("git","lfs","install","--local")
     for path in MESHES:
