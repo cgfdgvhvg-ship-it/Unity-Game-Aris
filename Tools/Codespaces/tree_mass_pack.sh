@@ -80,7 +80,7 @@ for path in s.decode("utf-8","surrogateescape").split("\0"):
         continue
     # Unity reserializes unrelated model materials on importing the scene.
     # This does NOT authorize any other file type or path.
-    if re.fullmatch(r"Assets/AarisWorld/Models/[^/]+/Material_[0-9]{2}\\.mat",path):
+    if re.fullmatch(r"Assets/AarisWorld/Models/[^/]+/Material_[0-9]{2}\.mat",path):
         ignored_imported+=1
         continue
     unexpected.append(path)
