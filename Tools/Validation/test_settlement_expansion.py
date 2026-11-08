@@ -138,6 +138,21 @@ class ExpansionIntegrity(unittest.TestCase):
                 self.assertGreater(clearance, 5.0,
                                    (site["name"], bay["name"], round(clearance, 2)))
 
+    def test_no_forest_tree_overlap_at_authored_sites(self):
+        forest = json.loads((ROOT / "Docs" / "FOREST_PLANTING_PLAN.json")
+                            .read_text(encoding="utf-8"))
+        self.assertEqual(forest["schema_version"], 1)
+        for site in self.plan["sites"]:
+            margin_x = site["width"] * 0.5 + 2.0
+            margin_z = site["depth"] * 0.5 + 2.0
+            # Original forest uses native TerrainData tree instances (not GameObjects).
+            for tree in forest["placements"]:
+                x, z = tree["position_xz_m"]
+                buffer = min(3.8, max(0.5, tree["width_scale"] * 1.5))
+                self.assertFalse(abs(x-site["x"]) < margin_x+buffer and
+                                 abs(z-site["z"]) < margin_z+buffer,
+                                 (site["name"], tree["id"]))
+
     def test_no_unsafe_changes_to_native_map_or_network(self):
         script = SCRIPT.read_text(encoding="utf-8")
         for required in ["Terrain.activeTerrains", "SampleHeight", "GetSteepness",
