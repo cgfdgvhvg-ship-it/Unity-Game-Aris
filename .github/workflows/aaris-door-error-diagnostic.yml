@@ -1,0 +1,26 @@
+name: Aaris inspect native door runtime error
+on:
+  pull_request:
+    paths:
+      - 'Tools/Codespaces/interactive_error_diagnostic.py'
+      - '.github/workflows/aaris-door-error-diagnostic.yml'
+jobs:
+  classify-native-error:
+    if: github.event.pull_request.number == 218
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect existing private Unity log safely
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          set -euo pipefail
+          python3 -m py_compile Tools/Codespaces/interactive_error_diagnostic.py
+          gh codespace ssh -c aaris-ai-unity-ssh-vp5g97jv4r4gfpjgq -- \
+            'python3 -' < Tools/Codespaces/interactive_error_diagnostic.py \
+            > bounded-native-error-summary.txt
+          grep -q '^AARIS_NATIVE_' bounded-native-error-summary.txt
+          cat bounded-native-error-summary.txt
