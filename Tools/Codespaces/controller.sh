@@ -340,6 +340,8 @@ for attempt in 1 2; do
         IMAGE=foliage-original.png
         CONTEXT=foliage-far-lod.png
         THIRD=foliage-ambient-test.png
+        FOURTH=foliage-ambient-only.png
+        FIFTH=foliage-shadows-only.png
         REPORT=foliage-report.json
       elif test "$OP" = photo; then
         IMAGE=photo-detail.png
@@ -351,7 +353,7 @@ for attempt in 1 2; do
       fi
       FILES=("$IMAGE" "$REPORT")
       if test "$OP" = photo || test "$OP" = foliage_diag; then FILES+=("$CONTEXT"); fi
-      if test "$OP" = foliage_diag; then FILES+=("$THIRD"); fi
+      if test "$OP" = foliage_diag; then FILES+=("$THIRD" "$FOURTH" "$FIFTH"); fi
       for BASENAME in "${FILES[@]}"; do
         if ! timeout 180 gh codespace ssh -c "$CS" -- "base64 /tmp/aaris-codespaces/scene-probe/$BASENAME" \
              > "$OUT/$BASENAME.b64" 2>"$PRIVATE_ERRORS"; then
@@ -366,7 +368,9 @@ for attempt in 1 2; do
          ! python3 -m json.tool "$OUT/$REPORT" >/dev/null ||
          { { test "$OP" = photo || test "$OP" = foliage_diag; } &&
            ! file "$OUT/$CONTEXT" | grep -q 'PNG image data'; } ||
-         { test "$OP" = foliage_diag && ! file "$OUT/$THIRD" | grep -q 'PNG image data'; }; then
+         { test "$OP" = foliage_diag && ! file "$OUT/$THIRD" | grep -q 'PNG image data'; } ||
+         { test "$OP" = foliage_diag && ! file "$OUT/$FOURTH" | grep -q 'PNG image data'; } ||
+         { test "$OP" = foliage_diag && ! file "$OUT/$FIFTH" | grep -q 'PNG image data'; }; then
         DETAIL="native_probe_artifact_integrity_failed"; exit 33
       fi
       DETAIL="native_probe_real_unity_verified"
