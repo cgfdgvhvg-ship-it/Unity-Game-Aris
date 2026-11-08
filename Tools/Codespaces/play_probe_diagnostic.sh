@@ -145,6 +145,9 @@ if report.is_file():
         if d.get("mode")=="offline_drop_video":
             print("AARIS_DROP_DIAG_REPORT_FOUND")
             print("play_status="+("passed" if d.get("status")=="passed" else "failed"))
+            safe_error=str(d.get("errorCode",""))
+            if safe_error in {"NULL_REFERENCE","MISSING_REFERENCE","RUNTIME_EXCEPTION","UNITY_LOG_ERROR","UNASSIGNED_REFERENCE","INVALID_OPERATION"}:
+                print("AARIS_DROP_RUNTIME_"+safe_error)
             if isinstance(d.get("frames"),int) and 0<=d["frames"]<=30000:
                 print("frames="+str(d["frames"]))
             if isinstance(d.get("errors"),int) and 0<=d["errors"]<=10000:
@@ -189,6 +192,46 @@ if log.is_file():
     codes=sorted(set(re.findall(r"error (CS\d{4})",content,re.I)))
     for code in codes[:8]:
         print("AARIS_DROP_COMPILER_"+code.upper())
+
+    # Emit only whitelisted class identifiers near the first runtime error.
+    # Never print raw error messages, Unity private logs, paths or stack content.
+    lines=content.splitlines()
+    candidates=[]
+    whitelist={
+       "AarisOfflineDrop":"AERIAL_CONTROLLER",
+       "AarisOfflineDropVisuals":"CANOPY_VISUALS",
+       "AarisOfflineDropPlayProbe":"DROP_PROBE",
+       "AarisOfflineTacticalHUD":"TACTICAL_UI",
+       "AarisThirdPersonPlayer":"PLAYER_MOTOR",
+       "AarisCharacterVisual":"CHARACTER_VISUALS",
+       "AarisBattleActions":"BATTLE_ACTIONS",
+       "AarisWeaponLootWorld":"LOOT_SYSTEM",
+       "AarisVehicleWorld":"VEHICLE_SYSTEM",
+       "AarisWeaponInventory":"WEAPON_INVENTORY",
+       "UnityEngine.UI":"UNITY_UI",
+       "UnityEngine.EventSystems":"UNITY_EVENTS"
+    }
+    for i,line in enumerate(lines):
+        if re.search(r"Exception(?::|\b)|\berror CS\d{4}|Aaris.*ERROR|Aaris.*FAILED",line,re.I):
+            candidates.append(i)
+    if candidates:
+        i=candidates[-1]
+        stack_context="\n".join(lines[i:min(len(lines),i+23)])
+        for name,label in whitelist.items():
+            if re.search(r"\b"+re.escape(name)+r"\b",stack_context):
+                print("AARIS_DROP_ERROR_SOURCE_"+label)
+    # Recognize fixed, known runtime complaints without copying their text.
+    signature={
+       "MISSING_LOCAL_ASSET":r"Resources.Load.*null|Missing Prefab|model.*not found",
+       "ASSET_SHADER_ERROR":r"Shader.*unsupported|Shader.*not found|pink material",
+       "PLAYER_CAMERA_ERROR":r"Saved player camera is missing",
+       "LOOT_DATA_ERROR":r"no embedded offline authored loot locations|invalid loot JSON",
+       "VEHICLE_DATA_ERROR":r"authored offline candidates/catalog are missing|malformed offline data",
+       "GAME_ASSET_EXCEPTION":r"ArgumentException|InvalidOperationException",
+       "UNIT_TEST_EXCEPTION":r"AarisOfflineDropPlayProbe.*Exception",
+    }
+    for category,pattern in signature.items():
+        if re.search(pattern,content,re.I):print("AARIS_DROP_KNOWN_"+category)
 else: print("AARIS_DROP_DIAG_UNITY_LOG_MISSING")
 PYDROP
 fi
