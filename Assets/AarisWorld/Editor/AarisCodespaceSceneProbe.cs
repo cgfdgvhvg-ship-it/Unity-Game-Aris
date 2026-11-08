@@ -191,7 +191,11 @@ namespace Aaris.MapReview.Editor
                 }
                 float deviation = (float)Math.Sqrt(Math.Max(0, sq / count - (sum / count) * (sum / count)));
                 if (deviation < 6f) throw new InvalidOperationException("FRAME_NEARLY_UNIFORM");
-                if (magenta * 4 > count * 3) throw new InvalidOperationException("FRAME_MAGENTA_SHADER_FAILURE");
+                // A single magenta tree can cover far less than 75% of a landscape.
+                // Reject a small but repeatable hotspot (~0.1% of sampled pixels),
+                // without allocating a full-resolution segmentation mask on the CPU.
+                if (magenta >= Math.Max(4, count / 1000))
+                    throw new InvalidOperationException("FRAME_MAGENTA_SHADER_FAILURE");
                 byte[] png = image.EncodeToPNG();
                 if (png.Length < 8192) throw new InvalidOperationException("FRAME_SUSPICIOUSLY_SMALL");
                 File.WriteAllBytes(file, png);
