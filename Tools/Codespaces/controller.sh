@@ -47,13 +47,14 @@ if test -n "$ISSUE"; then
     'CS ACCEPT TERMS') OP=accept_terms ;;
     'CS SAFE MODE') OP=safe_mode ;;
     'CS COMPILE REPORT') OP=compile_report ;;
+    'CS REFRESH') OP=refresh ;;
     'CS TEST') OP=test ;;
     'CS STOP') OP=stop ;;
     *) DETAIL="unsupported_issue_command"; exit 2 ;;
   esac
 fi
 case "$OP" in
-  machines|info|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|test|stop) ;;
+  machines|info|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test -z "$GH_TOKEN"; then DETAIL="CODESPACE_PAT_missing"; exit 3; fi
@@ -257,6 +258,10 @@ if test "$OP" = safe_mode; then
 fi
 if test "$OP" = compile_report; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/compiler_report.sh"
+  REMOTE_SHELL="bash -s"
+fi
+if test "$OP" = refresh; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/refresh_unity.sh"
   REMOTE_SHELL="bash -s"
 fi
 if test "$OP" = install; then
