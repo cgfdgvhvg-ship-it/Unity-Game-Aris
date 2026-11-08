@@ -53,11 +53,31 @@ allowed=set(sys.argv[1:])
 s=subprocess.run(["git","diff","--name-only","-z"],capture_output=True,check=True).stdout
 unexpected=[]
 ignored_imported=0
+# Verified by the two latest native Unity import diagnostics. These only
+# occur in the isolated working tree; the upload manifest excludes them all.
+# Avoid a broad *.mat or ProjectSettings bypass.
+unchanged_originals={
+    "Assets/AarisWorld/Props/Shared/rock_09.mat",
+    "Assets/AarisWorld/Props/Shared/rusty_metal_02.mat",
+    "Assets/AarisWorld/Surfaces/Asphalt.mat",
+    "Assets/AarisWorld/Surfaces/Concrete.mat",
+    "Assets/AarisWorld/Surfaces/RoadMark.mat",
+    "Assets/AarisWorld/Surfaces/Sand.mat",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Materials/Conifer_Bark.mat",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Materials/Conifer_Cap.mat",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Materials/Cypress_Bark.mat",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Materials/Cypress_Forest_Desktop_Billboard.mat",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_B/Materials/Pine_B.mat",
+    "ProjectSettings/QualitySettings.asset",
+}
 for path in s.decode("utf-8","surrogateescape").split("\0"):
     if not path or path in allowed:continue
     a=subprocess.run(["git","check-attr","filter","--",path],capture_output=True,text=True,check=True).stdout
     if a.strip().endswith(": filter: lfs"):
         continue  # source LFS hydration; no raw asset is packed
+    if path in unchanged_originals:
+        ignored_imported+=1
+        continue  # inspected importer edits; never staged or transferred
     # The real Unity import changes generated material values for unrelated
     # model prefabs. Those remain untouched in the isolated worktree and are
     # NEVER among the package's 44 explicitly allowlisted paths.
