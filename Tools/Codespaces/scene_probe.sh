@@ -163,6 +163,27 @@ fi
 set -e
 if test "$RC" -ne 0; then
   echo AARIS_PROBE_EDITOR_EXIT_NONZERO
+  # Preserve crash evidence in private /tmp logs; issue comments receive only
+  # bounded native-exit categories and generic symptom families.
+  case "$RC" in
+    134) echo AARIS_PROBE_NATIVE_SIGABRT ;;
+    137) echo AARIS_PROBE_NATIVE_KILLED_OR_OOM ;;
+    139) echo AARIS_PROBE_NATIVE_SIGSEGV ;;
+    124|143) echo AARIS_PROBE_NATIVE_TIMEOUT ;;
+    *) echo AARIS_PROBE_NATIVE_OTHER_NONZERO ;;
+  esac
+  if grep -Eqi 'segmentation fault|sigsegv|signal 11|native crash' "$RUN/unity-probe-editor.log" "$RUN/private-stderr.log" 2>/dev/null; then
+    echo AARIS_PROBE_LOG_NATIVE_CRASH
+  fi
+  if grep -Eqi 'failed to import|asset database.*(error|fail)|import worker.*(crash|fail)' "$RUN/unity-probe-editor.log" "$RUN/private-stderr.log" 2>/dev/null; then
+    echo AARIS_PROBE_LOG_ASSET_IMPORT_FAILURE
+  fi
+  if grep -Eqi 'shader.*(unsupported|failed)|failed to compile shader' "$RUN/unity-probe-editor.log" "$RUN/private-stderr.log" 2>/dev/null; then
+    echo AARIS_PROBE_LOG_SHADER_FAILURE
+  fi
+  if grep -Eqi 'out of memory|std::bad_alloc|failed to allocate' "$RUN/unity-probe-editor.log" "$RUN/private-stderr.log" 2>/dev/null; then
+    echo AARIS_PROBE_LOG_MEMORY_FAILURE
+  fi
   if test "$MODE" = play && test -f "$RUN/play-report.json"; then
     python3 - "$RUN/play-report.json" <<'PYREPORT'
 import json,sys
