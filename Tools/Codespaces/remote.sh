@@ -268,11 +268,13 @@ PY
     python3 - <<'PY'
 from pathlib import Path
 import re
-log=Path("/tmp/aaris-codespaces/Editor.log")
-if not log.is_file():
+logs=[Path("/tmp/aaris-codespaces/Editor.log"),
+      Path("/tmp/aaris-codespaces/editor-launch-stderr.log")]
+available=[p for p in logs if p.is_file() and p.stat().st_size>0]
+if not available:
     print("AARIS_EDITOR_DIAG_LOG_MISSING")
     raise SystemExit(0)
-s=log.read_text(errors="replace")[-200000:]
+s="\n".join(p.read_text(errors="replace")[-100000:] for p in available)
 print("AARIS_EDITOR_DIAG_LOG_FOUND")
 classes={
     "LICENSING":r"no valid.*licen[sc]e|licen[sc]e.*(failed|expired|invalid|not found|required|not active)|failed to activate",
@@ -320,7 +322,9 @@ PY
     bash "$PROJECT/.devcontainer/start_screen.sh" >/dev/null
     if ! pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then
       mkdir -p "$RUN/UnityTemp"
-      nohup setsid env DISPLAY=:99 TMPDIR="$RUN/UnityTemp" LIBGL_ALWAYS_SOFTWARE=1 "$EDITOR" -projectPath "$PROJECT" -logFile "$RUN/Editor.log" </dev/null >/dev/null 2>&1 &
+      # Keep raw loader errors PRIVATE on this Codespace; only editor_diag
+      # may export a fixed classification to the owner Issue.
+      nohup setsid env DISPLAY=:99 TMPDIR="$RUN/UnityTemp" LIBGL_ALWAYS_SOFTWARE=1 "$EDITOR" -projectPath "$PROJECT" -logFile "$RUN/Editor.log" </dev/null >"$RUN/editor-launch-stdout.log" 2>"$RUN/editor-launch-stderr.log" &
       sleep 8
     fi
     if pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then
