@@ -4,8 +4,9 @@
 set -Eeuo pipefail
 MODE="$1"
 case "$MODE" in render|play|photo) ;; *) echo AARIS_PROBE_INVALID_MODE; exit 2 ;; esac
-PROJECT="/workspaces/Unity-Game-Aris"
+SOURCE="/workspaces/Unity-Game-Aris"
 RUN="/tmp/aaris-codespaces/scene-probe"
+ISOLATED_ROOT="/tmp/aaris-native-photo-worktrees"
 EDITOR="$HOME/.local/share/aaris-unity-editors/6000.3.26f1/Editor/Unity"
 if ! test -x "$EDITOR"; then
   for fallback in "/workspaces/.aaris-unity-editors/6000.3.26f1/Editor/Unity" "/tmp/aaris-unity-runtime/editors/6000.3.26f1/Editor/Unity"; do
@@ -13,18 +14,54 @@ if ! test -x "$EDITOR"; then
   done
 fi
 test -x "$EDITOR" || { echo AARIS_PROBE_EDITOR_MISSING; exit 11; }
+# The long-running GUI Codespace can have hundreds of genuine Unity-generated
+# local material / project changes. Never discard or stash those edits just to
+# take a photograph. Fetch the immutable main snapshot into its own worktree.
+test -d "$SOURCE/.git" || test -f "$SOURCE/.git" || {
+  echo AARIS_PROBE_SOURCE_REPOSITORY_MISSING
+  exit 12
+}
+if ! git -C "$SOURCE" fetch --quiet origin main; then
+  echo AARIS_PROBE_FETCH_MAIN_FAILED
+  exit 12
+fi
+REV="$(git -C "$SOURCE" rev-parse --verify 'origin/main^{commit}')" || {
+  echo AARIS_PROBE_MAIN_COMMIT_MISSING
+  exit 12
+}
+[[ "$REV" =~ ^[0-9a-f]{40}$ ]] || { echo AARIS_PROBE_MAIN_SHA_INVALID; exit 12; }
+mkdir -p "$ISOLATED_ROOT"
+PROJECT="$ISOLATED_ROOT/$REV"
+if test ! -d "$PROJECT"; then
+  umask 077
+  if ! GIT_LFS_SKIP_SMUDGE=1 git -C "$SOURCE" \
+      -c filter.lfs.process= -c filter.lfs.smudge=cat \
+      -c filter.lfs.required=false worktree add --detach "$PROJECT" "$REV" >/dev/null 2>&1; then
+    echo AARIS_PROBE_ISOLATED_WORKTREE_CREATE_FAILED
+    exit 13
+  fi
+fi
+if test "$(git -C "$PROJECT" rev-parse HEAD)" != "$REV"; then
+  echo AARIS_PROBE_ISOLATED_WORKTREE_SHA_MISMATCH
+  exit 14
+fi
 cd "$PROJECT"
-test "$(git branch --show-current)" = main || { echo AARIS_PROBE_REQUIRES_MAIN; exit 12; }
+if ! git lfs pull >/dev/null 2>&1; then
+  echo AARIS_PROBE_ISOLATED_LFS_PULL_FAILED
+  exit 15
+fi
 SCENE="Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity"
-test -s "$SCENE" || { echo AARIS_PROBE_SCENE_MISSING; exit 13; }
+test -s "$SCENE" || { echo AARIS_PROBE_SCENE_MISSING; exit 16; }
 if head -c 110 "$SCENE" | grep -q 'version https://git-lfs.github.com/spec/v1'; then
   echo AARIS_PROBE_LFS_POINTER
-  exit 14
+  exit 17
 fi
 test -s "Assets/AarisWorld/Editor/AarisCodespaceSceneProbe.cs" || {
   echo AARIS_PROBE_SOURCE_NOT_SYNCED
-  exit 15
+  exit 18
 }
+echo AARIS_PROBE_ISOLATED_GIT_WORKTREE_READY
+echo "probe_commit=$REV"
 # Do not open the same Unity project twice. Never kill an existing GUI editor.
 if pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then
   echo AARIS_PROBE_EDITOR_ALREADY_OPEN_USE_CS_CLOSE_EDITOR
