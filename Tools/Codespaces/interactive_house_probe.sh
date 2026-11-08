@@ -35,6 +35,9 @@ fi
 test "$(git -C "$PROJECT" rev-parse HEAD)" = "$EXPECTED" || {
   echo AARIS_DOOR_WORKTREE_SHA_MISMATCH; exit 16;
 }
+# The immutable tree-mesh verifier runs 'git show HEAD:...' in its
+# process working directory; it MUST be the isolated PR checkout.
+cd "$PROJECT"
 # Verify all 793 LFS payloads against HEAD, never trust pointers alone.
 if python3 "$PROJECT/Tools/Codespaces/restore_preserved_source_lfs.py" "$PROJECT" \
   > "$RUN/private-lfs.log" 2>&1; then
