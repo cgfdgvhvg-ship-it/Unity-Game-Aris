@@ -376,6 +376,128 @@ namespace Aaris.MapReview.Editor
             }
         }
 
+
+        [Serializable]
+        private sealed class FoliageReport
+        {
+            public string mode;
+            public string status;
+            public string reason;
+            public string unityVersion;
+            public string graphicsDevice;
+            public int terrainTiles;
+            public int treePrototypes;
+            public int foliageRenderers;
+            public int customFoliageMaterials;
+            public float originalVariation;
+            public float distantLodVariation;
+            public float ambientVariation;
+            public string[] images;
+        }
+
+        // The test changes only the in-memory view settings and immediately
+        // restores them. No TerrainData, prefab, material or scene is saved.
+        // SpeedTree's LODGroup controls the actual LOD on painted SpeedTrees;
+        // lower treeLODBiasMultiplier and QualitySettings.lodBias force the
+        // long-distance presentation in an otherwise identical camera view.
+        [MenuItem("Aaris/CI/Diagnose SpeedTree foliage rendering")]
+        public static void DiagnoseFoliage()
+        {
+            Directory.CreateDirectory(Output);
+            FoliageReport report = new FoliageReport {
+                mode = "foliage", status = "failed",
+                unityVersion = Application.unityVersion,
+                graphicsDevice = SystemInfo.graphicsDeviceType.ToString()
+            };
+            GameObject rig = null;
+            Terrain[] terrains = null;
+            float[] originalBiases = null;
+            float qualityBias = QualitySettings.lodBias;
+            ShadowQuality shadowQuality = QualitySettings.shadows;
+            UnityEngine.Rendering.AmbientMode ambientMode = RenderSettings.ambientMode;
+            Color ambientColor = RenderSettings.ambientLight;
+            float ambientIntensity = RenderSettings.ambientIntensity;
+            try
+            {
+                terrains = LoadNativeScene();
+                report.terrainTiles = terrains.Length;
+                originalBiases = terrains.Select(t => t.treeLODBiasMultiplier).ToArray();
+                var prototypes = terrains.SelectMany(t => t.terrainData.treePrototypes)
+                    .Select(p => p.prefab).Where(p => p != null).Distinct().ToArray();
+                report.treePrototypes = prototypes.Length;
+                report.foliageRenderers = prototypes.Sum(p =>
+                    p.GetComponentsInChildren<MeshRenderer>(true).Length);
+                report.customFoliageMaterials = prototypes
+                    .SelectMany(p => p.GetComponentsInChildren<MeshRenderer>(true))
+                    .SelectMany(r => r.sharedMaterials)
+                    .Where(m => m != null && m.shader != null &&
+                        m.shader.name.IndexOf("SpeedTree", StringComparison.OrdinalIgnoreCase) >= 0)
+                    .Distinct().Count();
+
+                // Reproduce the verified dark foliage at coordinates 350/220.
+                rig = new GameObject("__Aaris_Transient_Foliage_Test_Camera");
+                rig.hideFlags = HideFlags.HideAndDontSave;
+                Camera camera = rig.AddComponent<Camera>();
+                camera.enabled = false;
+                camera.fieldOfView = 62f;
+                camera.nearClipPlane = 0.1f;
+                camera.farClipPlane = 5500f;
+                camera.clearFlags = CameraClearFlags.Skybox;
+                camera.allowHDR = true;
+                camera.transform.position = new Vector3(265f, 67.18f, 220f);
+                camera.transform.LookAt(new Vector3(350f, 7.66f, 220f), Vector3.up);
+                report.originalVariation = Render(camera, 1280, 720,
+                    Path.Combine(Output, "foliage-original.png"));
+
+                // For SpeedTree on terrain, the per-terrain LOD bias multiplier
+                // controls which LODGroup level is used, unlike the standard
+                // Tree Editor billboard settings.
+                QualitySettings.lodBias = 0.05f;
+                foreach (Terrain t in terrains) t.treeLODBiasMultiplier = 0.05f;
+                report.distantLodVariation = Render(camera, 1280, 720,
+                    Path.Combine(Output, "foliage-far-lod.png"));
+
+                // Restore LOD; compare a no-shadows, ambient-lit capture to
+                // distinguish bad LOD textures from lighting/AO/shadow artifacts.
+                QualitySettings.lodBias = qualityBias;
+                for (int i = 0; i < terrains.Length; i++)
+                    terrains[i].treeLODBiasMultiplier = originalBiases[i];
+                QualitySettings.shadows = ShadowQuality.Disable;
+                RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+                RenderSettings.ambientLight = new Color(0.69f, 0.70f, 0.65f);
+                RenderSettings.ambientIntensity = 1.2f;
+                report.ambientVariation = Render(camera, 1280, 720,
+                    Path.Combine(Output, "foliage-ambient-test.png"));
+
+                report.images = new[] { "foliage-original.png",
+                    "foliage-far-lod.png", "foliage-ambient-test.png" };
+                report.status = "passed";
+                report.reason = "REAL_SPEEDTREE_LOD_AND_LIGHTING_COMPARISON";
+                Debug.Log("AARIS_NATIVE_FOLIAGE_DIAG_PASSED");
+            }
+            catch (Exception e)
+            {
+                report.reason = e is InvalidOperationException
+                    ? e.Message : e.GetType().Name;
+                Debug.LogError("AARIS_NATIVE_FOLIAGE_DIAG_FAILED:" + report.reason);
+                throw;
+            }
+            finally
+            {
+                QualitySettings.lodBias = qualityBias;
+                QualitySettings.shadows = shadowQuality;
+                RenderSettings.ambientMode = ambientMode;
+                RenderSettings.ambientLight = ambientColor;
+                RenderSettings.ambientIntensity = ambientIntensity;
+                if (terrains != null && originalBiases != null)
+                    for (int i = 0; i < terrains.Length; i++)
+                        terrains[i].treeLODBiasMultiplier = originalBiases[i];
+                if (rig != null) UnityEngine.Object.DestroyImmediate(rig);
+                File.WriteAllText(Path.Combine(Output, "foliage-report.json"),
+                    JsonUtility.ToJson(report, true));
+            }
+        }
+
         [MenuItem("Aaris/CI/Native Play Mode smoke test")]
         public static void Play()
         {
