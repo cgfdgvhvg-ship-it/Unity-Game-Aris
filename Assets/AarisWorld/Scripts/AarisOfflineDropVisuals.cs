@@ -58,7 +58,21 @@ namespace Aaris.MapReview
             if (prefab != null)
             {
                 root = UnityEngine.Object.Instantiate(prefab, position, rotation);
-                // A local mesh can replace fuselage geometry, without relying on external URLs.
+                Material hullPaint = Paint(ref hull, new Color(0.36f, 0.44f, 0.47f));
+                Material cockpitPaint = Paint(ref dark, new Color(0.09f, 0.14f, 0.17f));
+                // OBJ/MTL importers can create non-URP materials; explicitly bind
+                // URP Lit on this runtime instance, preserving local mesh geometry.
+                foreach (var renderer in root.GetComponentsInChildren<Renderer>(true))
+                {
+                    var slots = renderer.sharedMaterials;
+                    for (int i = 0; i < slots.Length; i++)
+                    {
+                        string label = slots[i] != null ? slots[i].name : "";
+                        slots[i] = label.IndexOf("Cockpit", StringComparison.OrdinalIgnoreCase) >= 0
+                            ? cockpitPaint : hullPaint;
+                    }
+                    renderer.sharedMaterials = slots;
+                }
             }
             else
             {
@@ -131,7 +145,22 @@ namespace Aaris.MapReview
                 model.name = "LocalCanopyArt";
                 model.transform.localPosition = new Vector3(0f, 4.25f, 0f);
                 model.transform.localScale = Vector3.one;
-                // Keep ropes generated below so the canopy is visually connected to the harness.
+                Material navy = Paint(ref canopyBlue, new Color(0.05f, 0.23f, 0.39f));
+                Material ivory = Paint(ref canopyWhite, new Color(0.91f, 0.91f, 0.83f));
+                Material orange = Paint(ref canopyOrange, new Color(0.97f, 0.45f, 0.13f));
+                foreach (var renderer in model.GetComponentsInChildren<Renderer>(true))
+                {
+                    var slots = renderer.sharedMaterials;
+                    for (int i = 0; i < slots.Length; i++)
+                    {
+                        string label = slots[i] != null ? slots[i].name : "";
+                        slots[i] = label.IndexOf("Orange", StringComparison.OrdinalIgnoreCase) >= 0
+                            ? orange : label.IndexOf("White", StringComparison.OrdinalIgnoreCase) >= 0
+                            ? ivory : navy;
+                    }
+                    renderer.sharedMaterials = slots;
+                }
+                // Keep locally generated suspension lines attached to the harness.
             }
             else
             {
