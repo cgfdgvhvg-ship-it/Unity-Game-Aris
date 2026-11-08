@@ -51,11 +51,21 @@ python3 - "${PREFABS[@]}" <<'PY'
 import subprocess,sys
 allowed=set(sys.argv[1:])
 s=subprocess.run(["git","diff","--name-only","-z"],capture_output=True,check=True).stdout
+unexpected=[]
 for path in s.decode("utf-8","surrogateescape").split("\0"):
     if not path or path in allowed:continue
     a=subprocess.run(["git","check-attr","filter","--",path],capture_output=True,text=True,check=True).stdout
     if not a.strip().endswith(": filter: lfs"):
-        print("TREE_PUBLISH_UNEXPECTED_EDITOR_FILE_CHANGED");sys.exit(17)
+        unexpected.append(path)
+if unexpected:
+    print("TREE_PUBLISH_UNEXPECTED_EDITOR_FILE_CHANGED")
+    # Names only, never asset contents, logs, Unity credentials or tokens.
+    for name in sorted(unexpected)[:40]:
+        if name.startswith(("Assets/","Packages/","ProjectSettings/")) and \
+           __import__("re").fullmatch(r"[A-Za-z0-9_./ -]{1,220}",name):
+            print("unexpected_native_diff="+name)
+    print("unexpected_native_diff_count="+str(len(unexpected)))
+    sys.exit(17)
 PY
 python3 - "$OUT/mass-manifest.json" "$SHA" "${FILES[@]}" <<'PY'
 import hashlib,json,pathlib,sys
