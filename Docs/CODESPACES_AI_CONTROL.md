@@ -128,3 +128,10 @@ For example, `CS PHOTO -420 -210` (automatic elevation and useful viewing angle)
 The command uses native Unity Editor `EditorSceneManager.OpenScene` and a transient URP camera. It finds the real TerrainData elevation, raises the camera over terrain along the line of sight, and saves `photo-detail.png` plus a wider `photo-context.png` alongside `photo-report.json` in the same owner GitHub Actions artifact. No noVNC input, Linux desktop capture or synthetic image is involved. Use another `CS PHOTO` with a different yaw or distance to inspect the object from the other side. Only the owner can issue the command; `photo_request.py` rejects invalid coordinates, NaN, shell injection and unauthorized parameter shapes.
 
 For a fresh or hung Codespace editor, first use `CS EDITOR PROCESS`, the protected graceful shutdown/recovery process, and `CS SYNC` before `CS PHOTO`. A photo does not validate vehicle collision or gameplay; `CS SCENE PLAY` is a separate smoke test. Do not claim this setup is verified until a real Unity camera PNG has been inspected and the JSON report marks passed.
+
+
+### Update: protecting the GUI workspace during screenshot capture
+
+If `CS CHANGES` reports genuine changes in the live Codespace (such as 210 modified materials), do **not** reset or merge into that working directory. Native photo commands now automatically create/reuse an isolated, immutable `origin/main` Git worktree in `/tmp/aaris-native-photo-worktrees/<commit>`; they download the real Git LFS assets there. This keeps the original workspace and any unsaved Unity-edited scene/material settings untouched. The photo result reflects the committed GitHub map baseline, not uncommitted changes elsewhere in the Codespace.
+
+There is **no `CS SYNC` requirement for native `CS PHOTO` or `CS SCENE RENDER` anymore**, because the isolated checkout fetches its own current revision. You still need to gracefully close an existing Unity Editor to avoid its license/project process collisions, and a native photo passes only when both real PNG pixels and JSON report have been verified.
