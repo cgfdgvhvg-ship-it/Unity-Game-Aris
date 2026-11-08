@@ -4,8 +4,16 @@
 set -Eeuo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p /tmp/aaris-codespaces
-bash .devcontainer/start_screen.sh
-git lfs install --local
+if bash .devcontainer/start_screen.sh; then
+  echo AARIS_POSTCREATE_DISPLAY_READY
+else
+  echo AARIS_POSTCREATE_DISPLAY_DEFERRED_USE_CS_DEPS
+fi
+if git lfs install --local; then
+  echo AARIS_POSTCREATE_GIT_LFS_READY
+else
+  echo AARIS_POSTCREATE_GIT_LFS_DEFERRED_USE_CS_LFS
+fi
 
 # Avoid downloading 775 LFS assets again if the prebuild already contains them.
 if python3 Tools/Codespaces/verify_lfs.py; then
