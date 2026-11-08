@@ -24,6 +24,10 @@ The checked-in `.devcontainer/devcontainer.json` configures:
 
 GitHub executes `onCreateCommand` when producing its prebuild snapshot, but **not** `postCreateCommand` at that stage. Without a configured/ready prebuild, a brand new Codespace still has to download and install Unity Editor and LFS on its own. Prebuilds use storage and Actions quotas; they are **not guaranteed free or seconds-fast**, and a full Unity project import can still require time and an authorized licence.
 
+## Recovery-safe Ubuntu provisioning
+
+If the remote status returns Alpine rather than Ubuntu 22.04, treat it as an unverified Codespaces recovery-mode condition (not a working Unity runtime). The devcontainer startup now tolerates transient apt, Git LFS and Unity download failures instead of failing the entire container: check each with `CS STATUS`, `CS LFS REPORT` and `CS INSTALL`. The owner-only `CS FULL REBUILD` operation requests `gh codespace rebuild --full` **only for the selected account's unambiguous existing machine** after a read-only workspace preflight; it clears cached container images but preserves the persistent `/workspaces` checkout. The Unity Editor and private license must still be installed/activated independently. Do not use full rebuild on an unreviewed dirty workspace.
+
 ## Account-specific Codespace targeting (2026-11-09)
 
 The Termux switcher changes only the scoped `CODESPACE_PAT` account; repository ownership stays with `sundamunda289-art`. The original owner's protected Codespace is `aaris-ai-unity-ssh-vp5g97jv4r4gfpjgq`. The selected account `tomaaaris1234-pixel` created `aaris-ai-unity-ssh-r7x67xqjg4qphgx6` in Actions run `42514517744`. Owner-only `CS START` and diagnostics now select a **single unambiguous SSH Codespace** visible to the selected account, or use an explicit exact Codespace name through the workflow `machine` input. With multiple candidates the operation refuses to choose. This does not migrate unsaved changes from the old Codespace or transfer Unity licensing. The new machine runs its own idempotent `.devcontainer` setup. Creation success alone does not prove that the Editor or license is ready.

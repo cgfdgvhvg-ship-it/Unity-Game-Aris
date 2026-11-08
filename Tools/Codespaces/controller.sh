@@ -29,6 +29,7 @@ if test -n "$ISSUE"; then
     'CS FRESH') OP=fresh ;;
     'CS FRESH SSH') OP=fresh_ssh ;;
     'CS REBUILD') OP=rebuild ;;
+    'CS FULL REBUILD') OP=full_rebuild ;;
     'CS STATUS') OP=status ;;
     'CS LOGS') OP=logs ;;
     'CS INFO') OP=info ;;
@@ -76,7 +77,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
+  machines|info|quota|start|fresh|fresh_ssh|rebuild|full_rebuild|status|logs|sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -224,7 +225,7 @@ if test "$OP" = start; then
 fi
 # GitHub Codespaces preserves /workspaces on devcontainer rebuild.
 # Only the repository owner's exact CS REBUILD operation reaches this block.
-if test "$OP" = rebuild; then
+if test "$OP" = rebuild || test "$OP" = full_rebuild; then
   if ! jq -e '.image == "mcr.microsoft.com/devcontainers/base:ubuntu-22.04" and .remoteUser == "vscode"' "$GITHUB_WORKSPACE/.devcontainer/devcontainer.json" >/dev/null; then
     DETAIL="ubuntu_devcontainer_configuration_missing"; exit 21
   fi
@@ -235,8 +236,14 @@ if test "$OP" = rebuild; then
     DETAIL="rebuild_preflight_not_ready"; exit 23
   fi
   # Non-full rebuild; do not reset Git or overwrite /workspaces/LFS.
-  if timeout 2400 gh codespace rebuild -c "$CS" >/dev/null 2>/dev/null; then
-    echo "AARIS_UBUNTU_REBUILD_REQUEST_COMPLETED" >> "$OUT/terminal.txt"
+  REBUILD_FLAGS=()
+  if test "$OP" = full_rebuild; then REBUILD_FLAGS=(--full); fi
+  if timeout 2400 gh codespace rebuild -c "$CS" "${REBUILD_FLAGS[@]}" >/dev/null 2>/dev/null; then
+    if test "$OP" = full_rebuild; then
+      echo "AARIS_UBUNTU_FULL_REBUILD_REQUEST_COMPLETED" >> "$OUT/terminal.txt"
+    else
+      echo "AARIS_UBUNTU_REBUILD_REQUEST_COMPLETED" >> "$OUT/terminal.txt"
+    fi
     STATE="SUCCESS"; DETAIL="rebuild_command_completed_verify_status"; exit 0
   fi
   echo "AARIS_UBUNTU_REBUILD_COMMAND_FAILED" >> "$OUT/terminal.txt"

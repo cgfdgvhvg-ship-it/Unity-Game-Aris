@@ -211,6 +211,11 @@ assert 'Unity_auth_vault' not in remote
 controller=(r/'Tools/Codespaces/controller.sh').read_text()
 assert "'CS MACHINES')" in controller
 assert "'CS REBUILD')" in controller
+assert "'CS FULL REBUILD') OP=full_rebuild" in controller
+assert 'gh codespace rebuild -c "$CS" "${REBUILD_FLAGS[@]}"' in controller
+assert 'full_rebuild' in wf and 'full_rebuild' in response
+for lifecycle in ('bootstrap.sh','prebuild.sh','finalize.sh'):
+    assert 'DEFERRED' in (r/'.devcontainer'/lifecycle).read_text()
 assert "'CS FRESH')" in controller
 assert "'CS FRESH SSH')" in controller
 assert "aaris-ai-unity-ssh" in controller
