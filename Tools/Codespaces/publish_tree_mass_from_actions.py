@@ -85,6 +85,20 @@ def main(archive: Path, report: Path):
                 fail("TREE_PUBLISH_MESH_ASSET_UNHYDRATED")
             contents[path]=raw
 
+    for species, prefab in zip(
+        ("Conifer","Cypress","Pine_A","Pine_B","Pine_C","Pine_D"),
+        PREFABS
+    ):
+        # A prefab is correct only if its three mesh references point at
+        # the corresponding new Unity .meta GUIDs, not the old .st submeshes.
+        body=contents[prefab]
+        for lod in (0,1,2):
+            path=GEN+f"{species}_LOD{lod}.asset.meta"
+            match=re.search(rb"(?m)^guid: ([0-9a-f]{32})$",
+                            contents[path])
+            if not match or match.group(1) not in body:
+                fail("TREE_PUBLISH_PREFAB_MESH_GUID_NOT_LINKED")
+
     run("git","fetch","--quiet","origin","main",timeout=120)
     head=run("git","rev-parse","origin/main")
     if not re.fullmatch(r"[0-9a-f]{40}",head):
