@@ -49,6 +49,7 @@ if test -n "$ISSUE"; then
     'CS SCENE RENDER') OP=scene_render ;;
     'CS SCENE PLAY') OP=scene_play ;;
     'CS DROP VIDEO') OP=drop_video ;;
+    'CS MAP VERIFY') OP=map_verify ;;
     'CS PLAY DIAG') OP=play_diag ;;
     'CS FOLIAGE DIAG') OP=foliage_diag ;;
     'CS PHOTO '*) OP=photo ;;
@@ -65,7 +66,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|photo|play_diag|foliage_diag|test|stop) ;;
+  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|map_verify|photo|play_diag|foliage_diag|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -264,6 +265,7 @@ case "$OP" in
   editor) REMOTE_TIMEOUT=350 ;;
   scene_render|scene_play|photo|foliage_diag) REMOTE_TIMEOUT=1800 ;;
   drop_video) REMOTE_TIMEOUT=2100 ;;
+  map_verify) REMOTE_TIMEOUT=1800 ;;
 esac
 if test "$OP" = auth; then
   # Intercept the remote Unity OAuth URL, keep it OFF all public logs/artifacts.
@@ -278,6 +280,10 @@ SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/remote.sh"
 REMOTE_SHELL="bash -s -- $OP"
 if test "$OP" = drop_video; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/offline_drop_probe.sh"
+  REMOTE_SHELL="bash -s"
+fi
+if test "$OP" = map_verify; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/map_expansion_probe.sh"
   REMOTE_SHELL="bash -s"
 fi
 if test "$OP" = deps; then
@@ -338,7 +344,55 @@ for attempt in 1 2; do
       < "$SCRIPT_FILE" \
       > "$OUT/terminal.txt" 2>"$PRIVATE_ERRORS"; then
     rm -f "$PRIVATE_ERRORS"
-    if test "$OP" = drop_video; then
+    if test "$OP" = map_verify; then
+      # Read only JSON and fixed-name genuine Unity camera PNGs. Never publish
+      # raw Editor logs, original dirty Assets or private license material.
+      if ! timeout 180 gh codespace ssh -c "$CS" --         'base64 /tmp/aaris-codespaces/map-expansion-probe/report.json'         > "$OUT/map-report.b64" 2>"$PRIVATE_ERRORS"; then
+        DETAIL="map_probe_report_transfer_failed"; safe_error_summary; exit 39
+      fi
+      if ! base64 --decode "$OUT/map-report.b64" > "$OUT/map-report.json"; then
+        DETAIL="map_probe_report_decode_failed"; exit 40
+      fi
+      rm -f "$OUT/map-report.b64"
+      MAP_FILES=(
+        ARX_01_OldVillage_detached.png
+        ARX_03_ValleySettlement_detached.png
+        ARX_05_ClockTowerTown_detached.png
+        ARX_07_CoastalHamlet_detached.png
+        ARX_09_LakesideHamlet_cottage.png
+        ARX_13_HighlandObservatory_watchtower.png
+        ARX_14_ForestLookout_watchtower.png
+        ARX_15_SouthernAirfield_watchtower.png
+      )
+      PHOTO_FOUND=0
+      for BASENAME in "${MAP_FILES[@]}"; do
+        if timeout 180 gh codespace ssh -c "$CS" --           "base64 /tmp/aaris-codespaces/map-expansion-probe/$BASENAME"           > "$OUT/$BASENAME.b64" 2>"$PRIVATE_ERRORS"; then
+          if base64 --decode "$OUT/$BASENAME.b64" > "$OUT/$BASENAME" &&
+             file "$OUT/$BASENAME" | grep -q 'PNG image data'; then
+            PHOTO_FOUND=$((PHOTO_FOUND+1))
+          else
+            rm -f "$OUT/$BASENAME"
+          fi
+        fi
+        rm -f "$OUT/$BASENAME.b64"
+      done
+      if ! python3 - "$OUT/map-report.json" "$PHOTO_FOUND" <<'PYMAP'
+import json,sys
+try:
+  d=json.load(open(sys.argv[1]))
+  images=int(sys.argv[2])
+  ok=d.get("status")=="passed" and d.get("placed")==15
+  ok=ok and d.get("imageCount")==8 and images==8
+  ok=ok and d.get("runtimeErrors")==0 and d.get("terrainTiles")==4
+except (OSError,ValueError,TypeError):
+  ok=False
+sys.exit(0 if ok else 1)
+PYMAP
+      then
+        DETAIL="map_native_play_failed_artifacts_preserved"; exit 41
+      fi
+      DETAIL="real_unity_15_buildings_and_8_photos_verified"
+    elif test "$OP" = drop_video; then
       # Download genuine Unity camera video/report from the SAME Codespace;
       # do not transfer private Unity Editor logs or original working files.
       for BASENAME in drop.mp4 report.json; do
