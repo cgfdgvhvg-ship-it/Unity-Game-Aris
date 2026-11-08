@@ -35,7 +35,13 @@ active_shell='\n'.join(line.split('#', 1)[0] for line in shell.splitlines())
 assert '-nographics' not in active_shell and 'scrot' not in active_shell and 'xdotool' not in active_shell
 assert 'git reset' not in shell and 'git clean' not in shell
 assert 'pkill' not in shell and 'kill -9' not in shell and 'eval ' not in shell
-assert 'git branch --show-current' in shell and 'main' in shell
+assert 'git -C "$SOURCE" fetch --quiet origin main' in shell
+assert 'GIT_LFS_SKIP_SMUDGE=1 git -C "$SOURCE"' in shell
+assert 'worktree add --detach "$PROJECT" "$REV"' in shell
+assert 'ISOLATED_ROOT=' in shell and 'git lfs pull' in shell
+assert 'AARIS_PROBE_ISOLATED_GIT_WORKTREE_READY' in shell
+assert 'git reset' not in shell and 'git clean' not in shell
+assert 'rm -rf' not in shell and 'git stash' not in shell
 assert 'data.get("status")!="passed"' in shell
 assert 'data.get("frames",0)<60' in shell
 assert 'candidate.read_bytes()[:8]' in shell
