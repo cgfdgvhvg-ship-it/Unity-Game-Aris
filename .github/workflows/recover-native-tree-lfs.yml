@@ -28,7 +28,7 @@ jobs:
           persist-credentials: false
       - name: Retrieve immutable, real Unity tree bake
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p "$RUNNER_TEMP/aaris-tree-source"
           gh run download 42472771253 -R sundamunda289-art/Unity-Game-Aris \
@@ -57,7 +57,7 @@ jobs:
           persist-credentials: true
       - name: Retrieve the exact verified historical archive
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p "$RUNNER_TEMP/aaris-tree-source"
           gh run download 42472771253 -R sundamunda289-art/Unity-Game-Aris \
