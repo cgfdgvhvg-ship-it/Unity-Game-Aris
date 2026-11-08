@@ -113,6 +113,14 @@ assert 'refresh' in (r/'.github/workflows/aaris-codespaces-control.yml').read_te
 refresh=(r/'Tools/Codespaces/refresh_unity.sh').read_text()
 assert 'UNITY_ASSETS_REFRESH_REQUESTED' in refresh
 assert 'UNITY_VEHICLE_RECOMPILE_MTIME_REQUESTED' in refresh
+close=(r/'Tools/Codespaces/close_unity_editor.sh').read_text()
+assert "xdotool windowclose" in close
+assert "UNITY_EDITOR_GRACEFUL_EXIT_CONFIRMED" in close
+assert "SIGKILL" not in close or "do not send SIGKILL" in close
+assert "'CS CLOSE EDITOR') OP=close_editor" in (r/'Tools/Codespaces/controller.sh').read_text()
+assert 'close_editor' in (r/'.github/workflows/aaris-codespaces-control.yml').read_text()
+assert 'close_editor' in (r/'Tools/Codespaces/issue_response.py').read_text()
+assert 'close_unity_editor.sh' not in (r/'.devcontainer/prebuild.sh').read_text()
 assert "touch -c \"$MOTOR\" \"$MANIFEST\"" in refresh
 assert "com.unity.modules.vehicles" in refresh
 assert "UNITY_REFRESH_VEHICLES_MODULE_NOT_CONFIGURED" in refresh
