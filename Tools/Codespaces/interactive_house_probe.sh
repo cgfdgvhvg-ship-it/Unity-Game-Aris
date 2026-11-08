@@ -47,7 +47,11 @@ else
   echo AARIS_DOOR_LFS_VERIFICATION_FAILED
   # Emit only the helper's closed-vocabulary diagnostic classification.
   # Never print git-lfs HTTP error, raw logs, tokens, account paths or secrets.
-  grep -E '^AARIS_PRESERVED_LFS_RECOVERY_FAILED=[A-Z_]{3,65}test -s "$PROJECT/Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity" &&
+  grep -E '^AARIS_PRESERVED_LFS_RECOVERY_FAILED=[A-Z_]{3,65}$' "$RUN/private-lfs.log" | head -n 2 || true
+  grep -E '^AARIS_PRESERVED_OR_CACHED_LFS_HASH_VERIFIED=[0-9]{1,4}$' "$RUN/private-lfs.log" | head -n 1 || true
+  exit 17
+fi
+test -s "$PROJECT/Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity" &&
 test -s "$PROJECT/Assets/AarisWorld/Editor/AarisInteractiveHouseProbe.cs" || {
   echo AARIS_DOOR_REAL_UNITY_FILES_MISSING; exit 18;
 }
