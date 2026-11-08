@@ -381,7 +381,7 @@ PY
       # arguments, OAuth values, terminal output or proprietary logs leave
       # this Codespace. The wrapper is detached from the SSH session.
       nohup setsid env DISPLAY=:99 TMPDIR="$RUN/UnityTemp" LIBGL_ALWAYS_SOFTWARE=1 \
-        bash -c '"$1" -projectPath "$2" -logFile "$3"; rc=$?; printf "%s\\n" "$rc" > "$4"; exit "$rc"' \
+        bash -c 'rc=0; "$1" -projectPath "$2" -logFile "$3" || rc=$?; printf "%s\\n" "$rc" > "$4"; exit "$rc"' \
         bash "$EDITOR" "$PROJECT" "$RUN/Editor.log" "$RUN/editor-exit-code.txt" \
         </dev/null >"$RUN/editor-launch-stdout.log" 2>"$RUN/editor-launch-stderr.log" &
       sleep 8
