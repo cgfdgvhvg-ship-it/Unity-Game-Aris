@@ -70,7 +70,7 @@ class ExpansionIntegrity(unittest.TestCase):
         script_guid = re.search(r"^guid:\s*([0-9a-f]{32})$", script_meta, re.M).group(1)
         self.assertIn(script_guid, self.catalog)
         self.assertIn("AarisExpansionCatalog", self.catalog)
-        self.assertIn("fileID: 11400000", CATALOG.with_suffix(".asset.meta").read_text())
+        self.assertIn("mainObjectFileID: 11400000", CATALOG.with_suffix(".asset.meta").read_text())
         for key, model in MODELS.items():
             path = ROOT / "Assets" / "AarisWorld" / "Models" / model / f"{model}.prefab"
             self.assertTrue(path.is_file(), str(path))
