@@ -66,3 +66,29 @@ for i in hits[:3]:
           re.sub(r"[^A-Z0-9_]", "_", family.upper()))
     print("AARIS_NATIVE_LOGERROR_MESSAGE_SHA256_10="+
           hashlib.sha256(previous.encode("utf-8")).hexdigest()[:10])
+
+# Every displayed category below is selected from a static reviewed string in
+# this project's source. Never reveal raw Unity messages or arbitrary paths.
+known={
+ "INVALID_CHARACTER_CLIPS":"Aaris: imported animation clips invalid.",
+ "OFFLINE_DROP_MOTOR_OR_CAMERA_MISSING":"Aaris offline drop: existing motor, capsule or game camera missing.",
+ "INVALID_WEAPON_STATE":"Aaris: invalid weapon state configured.",
+ "PLAYER_CAMERA_MISSING":"Saved player camera is missing.",
+ "VEHICLE_CATALOG_MISSING":"Aaris vehicles: authored offline candidates/catalog are missing.",
+ "VEHICLE_WORLD_MISMATCH":"Aaris vehicles: source data does not match the 2km authored world.",
+ "VEHICLE_3D_MODEL_MISSING":"Aaris vehicles: not all required local CC0 3D vehicles imported",
+ "VEHICLE_URP_SHADER_MISSING":"Aaris vehicles: verified URP palette/shader missing",
+ "WEAPON_CATALOG_MISSING":"Aaris: missing embedded AarisWeapons/weapon_catalog.json.",
+ "WEAPON_CATALOG_INVALID":"Aaris: invalid local weapon catalog:",
+ "NO_GUN_VISIBLE_MESH":"Aaris: gun has no visible mesh:",
+ "LOOT_DATA_MISSING":"Aaris: no embedded offline authored loot locations.",
+ "LOOT_JSON_INVALID":"Aaris: invalid loot JSON:",
+ "LOOT_WORLD_MISMATCH":"Aaris: loot candidates do not describe the 2km map.",
+ "LOCAL_WEAPON_FBX_MISSING":"Missing local weapon FBX:",
+ "EXPANSION_CATALOG_MISSING":"AARIS_EXPANSION_LOCAL_CATALOG_MISSING",
+ "EXPANSION_JSON_INVALID":"AARIS_EXPANSION_INVALID_PLAN_JSON",
+ "EXPANSION_WORLD_MISMATCH":"AARIS_EXPANSION_SCHEMA_OR_WORLD_MISMATCH",
+}
+for kind,phrase in known.items():
+    count=sum(phrase in line for line in sample)
+    if count: print("AARIS_NATIVE_KNOWN_ERROR_"+kind+"="+str(min(count,999)))
