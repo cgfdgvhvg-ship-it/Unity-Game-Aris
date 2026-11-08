@@ -51,6 +51,25 @@ namespace Aaris.MapReview
             return true;
         }
 
+        // Reuse the existing local game's already imported URP textures.
+        // Never download unverified third-party art at gameplay runtime.
+        private static Material Match(GameObject original, string keywords,
+            Material fallback)
+        {
+            if (original == null) return fallback;
+            var renderer = original.GetComponentInChildren<MeshRenderer>(true);
+            if (renderer == null) return fallback;
+            foreach (var material in renderer.sharedMaterials)
+            {
+                if (material == null || material.shader == null ||
+                    material.shader.name != "Universal Render Pipeline/Lit") continue;
+                string label = material.name.ToLowerInvariant();
+                foreach (var term in keywords.Split('|'))
+                    if (label.Contains(term)) return material;
+            }
+            return fallback;
+        }
+
         private static GameObject Box(Transform parent, string label, Vector3 pos,
             Vector3 size, Material material, bool collide = true)
         {
@@ -147,12 +166,17 @@ namespace Aaris.MapReview
         }
 
         public static GameObject Create(Vector3 position,Quaternion rotation,
-            float width,float depth,float height,Transform parent,Transform player)
+            float width,float depth,float height,Transform parent,Transform player,
+            GameObject originalPrefab)
         {
             if (float.IsNaN(width) || float.IsInfinity(width) ||
                 float.IsNaN(depth) || float.IsInfinity(depth) ||
                 float.IsNaN(height) || float.IsInfinity(height) ||
                 width<8f || depth<9f || height<5f || !Prepare()) return null;
+            wall = Match(originalPrefab, "sandstone|plaster|brick|stone|concrete", wall);
+            roof = Match(originalPrefab, "slate|roof|tile|thatch", roof);
+            door = Match(originalPrefab, "wood|timber|oak", door);
+            trim = Match(originalPrefab, "metal|iron|steel", trim);
             GameObject home=new GameObject("Aaris Modular Door Window House");
             home.transform.SetParent(parent,false);
             home.transform.SetPositionAndRotation(position,rotation);
