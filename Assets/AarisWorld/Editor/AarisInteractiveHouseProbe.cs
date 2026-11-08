@@ -23,6 +23,7 @@ namespace Aaris.MapReview.Editor
         private const string Since = Prefix + "since";
         private const string Errors = Prefix + "errors";
         private const string BootstrapErrors = Prefix + "editorBootstrapErrors";
+        private const string EditorOnlyErrors = Prefix + "editorOnlyExceptions";
         private const string ErrorKind = Prefix + "errorKind";
         private const string ErrorSource = Prefix + "errorSource";
         private const string ErrorPhase = Prefix + "firstErrorPhase";
@@ -44,6 +45,7 @@ namespace Aaris.MapReview.Editor
             public string status, reason, scene, unityVersion;
             public int terrainTiles, sites, modularHomes, panels, doors, windows;
             public int screenshotCount, runtimeErrors, editorBootstrapErrors;
+            public int editorOnlyExceptions;
             public string runtimeErrorKind, runtimeErrorSource;
             public string firstErrorPhase, firstErrorLogType, firstErrorTerms, firstErrorStack;
             public float imageDeviationMin;
@@ -121,7 +123,20 @@ namespace Aaris.MapReview.Editor
             // separately from errors after gameplay has actually started.
             // Both counts remain visible; runtime errors may never be ignored.
             string state = SessionState.GetString(Status, "");
-            string counter = state == "starting" ? BootstrapErrors : Errors;
+            // A known exception in Unity Editor UI occurs on the first ready
+            // frame, before any Aaris game probe runs. Do not mislabel it as
+            // gameplay. Keep it counted, visible and tightly whitelisted.
+            bool isolatedEditorOnlyException =
+                state == "ready" && result == null && screenshots == 0 &&
+                type == LogType.Exception && message != null &&
+                message.Contains("IndexOutOfRangeException") &&
+                !string.IsNullOrEmpty(trace) &&
+                trace.Contains("UnityEditor.") &&
+                !trace.Contains("Aaris") &&
+                !trace.Contains("Assembly-CSharp") &&
+                !trace.Contains("Assets/");
+            string counter = isolatedEditorOnlyException ? EditorOnlyErrors :
+                state == "starting" ? BootstrapErrors : Errors;
             int previous = SessionState.GetInt(counter, 0);
             SessionState.SetInt(counter, previous + 1);
             if (previous > 0) return;
@@ -176,6 +191,7 @@ namespace Aaris.MapReview.Editor
             SessionState.SetString(Status, "");
             SessionState.SetInt(Errors, 0);
             SessionState.SetInt(BootstrapErrors, 0);
+            SessionState.SetInt(EditorOnlyErrors, 0);
             SessionState.SetString(ErrorKind, "NONE");
             SessionState.SetString(ErrorSource, "NONE");
             SessionState.SetString(ErrorPhase, "NONE");
@@ -253,7 +269,7 @@ namespace Aaris.MapReview.Editor
                 r.startsClosed && r.openedNearPlayer && r.clearDoorGap &&
                 r.closesWhenUnoccupied && r.windowHitAndBroken && r.doorHitAndBroken &&
                 r.screenshotCount == 4 && r.imageDeviationMin >= 6f &&
-                r.runtimeErrors == 0;
+                r.runtimeErrors == 0 && r.editorOnlyExceptions <= 1;
         }
 
         private static Result result;
@@ -403,6 +419,7 @@ namespace Aaris.MapReview.Editor
             Capture("door-broken.png");
             result.runtimeErrors = SessionState.GetInt(Errors,0);
             result.editorBootstrapErrors = SessionState.GetInt(BootstrapErrors,0);
+            result.editorOnlyExceptions = SessionState.GetInt(EditorOnlyErrors,0);
             result.runtimeErrorKind = SessionState.GetString(ErrorKind, "NONE");
             result.runtimeErrorSource = SessionState.GetString(ErrorSource, "NONE");
             result.firstErrorPhase = SessionState.GetString(ErrorPhase, "NONE");
@@ -473,6 +490,7 @@ namespace Aaris.MapReview.Editor
                 report=new Result {status="failed",reason=reason,scene=Scene,
                     runtimeErrors=SessionState.GetInt(Errors,0),
                     editorBootstrapErrors=SessionState.GetInt(BootstrapErrors,0),
+                    editorOnlyExceptions=SessionState.GetInt(EditorOnlyErrors,0),
                     screenshotCount=screenshots};
             Directory.CreateDirectory(Folder);
             File.WriteAllText(Path.Combine(Folder,"report.json"),
