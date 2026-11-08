@@ -184,6 +184,10 @@ class ExpansionIntegrity(unittest.TestCase):
         self.assertIn("if (TreesBlock(site, terrains))", script)
         self.assertIn("foreach (Terrain terrain in all)", script)
         self.assertIn("float.IsNaN(site.width)", script)
+        self.assertIn("FootprintHalfExtents(site, ObstacleMargin", script)
+        self.assertIn("FootprintHalfExtents(site, VegetationMargin", script)
+        self.assertIn("float cos = Mathf.Abs(Mathf.Cos(yaw))", script)
+        self.assertIn("float sin = Mathf.Abs(Mathf.Sin(yaw))", script)
         self.assertTrue((ROOT / "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity").is_file())
 
 
