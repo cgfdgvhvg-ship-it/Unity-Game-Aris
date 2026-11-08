@@ -3,12 +3,14 @@ on:
   pull_request:
     paths:
       - 'Assets/AarisWorld/Scripts/AarisSettlementExpansion.cs'
+      - 'Assets/AarisWorld/Scripts/AarisExpansionCatalog.cs'
       - 'Assets/Resources/AarisExpansion/**'
       - 'Tools/Validation/test_settlement_expansion.py'
       - '.github/workflows/aaris-settlement-validation.yml'
   push:
     paths:
       - 'Assets/AarisWorld/Scripts/AarisSettlementExpansion.cs'
+      - 'Assets/AarisWorld/Scripts/AarisExpansionCatalog.cs'
       - 'Assets/Resources/AarisExpansion/**'
       - 'Tools/Validation/test_settlement_expansion.py'
   workflow_dispatch:
