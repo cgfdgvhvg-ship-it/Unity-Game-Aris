@@ -60,6 +60,10 @@ assert 'lfs.storage' in remote
 assert 'aaris-unity-editors' in remote
 assert 'project-cache' in remote
 assert 'UNITY_CLI_DISCOVERED' in remote
+assert "'CS EDITOR DIAG')" in (r/'Tools/Codespaces/controller.sh').read_text()
+assert 'AARIS_EDITOR_DIAG_LOG_MISSING' in remote
+assert 'AARIS_EDITOR_DIAG_LICENSING' not in remote or 'LICENSING' in remote
+assert 'editor_diag' in (r/'.github/workflows/aaris-codespaces-control.yml').read_text()
 assert '$AUTH_HOME/.local/share/aaris-unity-cli/bin/unity' in remote
 assert 'Codespaces' in (r/'Docs/CODESPACES_FAST_START.md').read_text()
 assert 'EDITOR_ROOT="$HOME/.local/share/aaris-unity-editors"' in (r/'Tools/Codespaces/install_unity.sh').read_text()
