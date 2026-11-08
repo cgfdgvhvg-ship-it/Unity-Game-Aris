@@ -3,14 +3,14 @@ import hashlib,json,sys
 from pathlib import Path
 ROOT=Path.cwd();sys.path.insert(0,str(ROOT/'Tools/MapBuild'))
 from ground_review import documents
-from render_review import floats,PIPELINE,RENDERER
+from render_review import floats,material_record,PIPELINE,RENDERER
 
 def check():
     report=json.loads((ROOT/'Docs/RENDER_REVIEW_REPORT.json').read_text());audit=json.loads((ROOT/'Docs/RENDER_SOURCE_AUDIT.json').read_text())
     assert report['native_assets_materialized'] and report['materials_checked']==182
     assert audit['cull_mismatches']==audit['normal_scale_mismatches']==audit['occlusion_strength_mismatches']==0
     for row in audit['materials']:
-        d=documents(ROOT/row['path'])[0][3];f=floats(d)
+        d=material_record(documents(ROOT/row['path']));f=floats(d)
         assert f['_Cull']==row['expected_cull'] and f['_BumpScale']==row['source_normal_scale']
         assert f['_OcclusionStrength']==row['source_occlusion_strength'] and d['m_DoubleSidedGI']==int(row['source_double_sided'])
     for relative,expected in report['native_pipeline_files'].items():
@@ -27,7 +27,7 @@ def check():
         assert all(mask&(1<<layer) for layer in used),(used,mask,'Renderer hides a saved scene layer')
         assert mask&(1<<8),'Player layer is invisible'
     assert report['render_scale']==report['hdr']==report['srp_batcher']==1
-    water=documents(ROOT/'Assets/AarisWorld/Surfaces/CoastalWater.mat')[0][3];assert floats(water)['_Smoothness']==.82
+    water=material_record(documents(ROOT/'Assets/AarisWorld/Surfaces/CoastalWater.mat'));assert floats(water)['_Smoothness']==.82
     shader=ROOT/'Assets/AarisWorld/Surfaces/CoastalWater.shader';source=shader.read_text()
     assert '"LightMode"="DepthOnly"'in source and 'UniversalFragmentPBR(lighting, water)'in source
     hlsl=json.loads((ROOT/'Docs/WATER_HLSL_CHECKS.json').read_text())
