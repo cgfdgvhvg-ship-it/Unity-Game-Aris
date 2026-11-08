@@ -294,6 +294,9 @@ else:
         print("UNITY_CLI_INSTALL_LOG_REJECTED_"+name+"="+("yes" if re.search(bad,s,re.I|re.S) else "no"))
 PY
     ;;
+  bootstrap)
+    bash "$PROJECT/.devcontainer/bootstrap.sh"
+    ;;
   install)
     bash "$PROJECT/Tools/Codespaces/install_unity.sh"
     ;;
