@@ -122,6 +122,15 @@ class OfflineCombatAssetChecks(unittest.TestCase):
         self.assertEqual(len(set(keys.values())), len(keys))
         self.assertIn("Input.GetKeyUp(KeyCode.B)", wall)
 
+    def test_wall_touch_hold_recovers_after_vehicle_and_focus_change(self):
+        tactical = (SCRIPTS / "AarisOfflineTacticalHUD.cs").read_text("utf-8")
+        cover = (SCRIPTS / "AarisOfflineGlooWall.cs").read_text("utf-8")
+        self.assertIn("if (wallTouch != null) wallTouch.CancelHold();", tactical)
+        self.assertIn("holding = int.MinValue;", tactical)
+        self.assertIn("if (paused) CancelHold();", tactical)
+        self.assertIn("if (!focused) CancelHold();", tactical)
+        self.assertIn("if (paused) CancelAim();", cover)
+
     def test_cover_damage_ignores_nan_and_infinity(self):
         wall = (SCRIPTS / "AarisOfflineGlooWall.cs").read_text("utf-8")
         self.assertIn("float.IsNaN(amount)", wall)
