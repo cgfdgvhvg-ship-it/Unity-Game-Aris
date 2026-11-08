@@ -191,27 +191,6 @@ PYREPORT
   fi
   exit 20
 fi
-if test "$MODE" = survey; then
-  # Make four contact sheets, six distinct real Unity frames per PNG.
-  # Keep the 24 full-resolution camera frames in this private Codespace;
-  # transfer only the four compact sheets and their sanitized report.
-  command -v montage >/dev/null 2>&1 || { echo AARIS_SURVEY_MONTAGE_MISSING; exit 28; }
-  for group in 1 2 3 4; do
-    first=$(( (group-1)*3 + 1 ))
-    sources=()
-    for offset in 0 1 2; do
-      n="$(printf '%02d' "$(( first + offset ))")"
-      sources+=("$RUN/survey-$n-detail.png" "$RUN/survey-$n-context.png")
-    done
-    for source in "${sources[@]}"; do
-      test -s "$source" || { echo AARIS_SURVEY_SOURCE_FRAME_MISSING; exit 28; }
-    done
-    montage "${sources[@]}" -tile 3x2 -geometry 640x360+6+6 \
-      -background '#15202d' "$RUN/survey-sheet-$group.png" >/dev/null 2>&1 || {
-        echo AARIS_SURVEY_CONTACT_SHEET_FAILED; exit 28;
-      }
-  done
-fi
 python3 - "$REPORT" "$IMAGE" "$MODE" <<'PY'
 import json, pathlib, sys
 report, image, mode = (pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]), sys.argv[3])
