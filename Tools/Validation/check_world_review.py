@@ -49,7 +49,9 @@ def check(native=False):
     assert sky['m_Shader']['fileID']==106 and '_SUNDISK_HIGH_QUALITY'in sky['m_ValidKeywords']
     assert next(f['_Exposure'] for f in sky['m_SavedProperties']['m_Floats'] if '_Exposure'in f)==1.15
     rs=next(d for c,i,n,d in objects if n=='RenderSettings');sun=next((i,d) for c,i,n,d in objects if n=='Light' and names[d['m_GameObject']['fileID']]=='Sun')
-    assert rs['m_Sun']['fileID']==sun[0] and rs['m_AmbientMode']==1
+    assert rs['m_Sun']['fileID']==sun[0] and rs['m_AmbientMode']==3
+    assert rs['m_AmbientIntensity']==1.2
+    assert rs['m_AmbientSkyColor']=={'r':.69,'g':.70,'b':.65,'a':1.0}
     assert sun[1]['m_Intensity']==1.35 and sun[1]['m_Shadows']['m_Strength']==.55
     q=transforms['Sun']['m_LocalRotation'];assert abs(sum(v*v for v in q.values())-1)<1e-6
     incoming_y=-2*(q['y']*q['z']-q['w']*q['x']);elevation=math.degrees(math.asin(incoming_y))
