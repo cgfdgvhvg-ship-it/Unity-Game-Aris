@@ -58,6 +58,7 @@ if test -n "$ISSUE"; then
     'CS FOLIAGE DIAG') OP=foliage_diag ;;
     'CS TREE AUDIT') OP=tree_audit ;;
     'CS TREE PREVIEW') OP=tree_preview ;;
+    'CS TREE PUBLISH') OP=tree_publish ;;
     'CS PHOTO '*) OP=photo ;;
     'CS ACCEPT TERMS') OP=accept_terms ;;
     'CS SAFE MODE') OP=safe_mode ;;
@@ -72,7 +73,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|test|stop) ;;
+  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -271,7 +272,7 @@ case "$OP" in
   retry_assets) REMOTE_TIMEOUT=900 ;;
   test) REMOTE_TIMEOUT=500 ;;
   editor) REMOTE_TIMEOUT=350 ;;
-  scene_render|scene_play|photo|foliage_diag|survey|tree_audit|tree_preview) REMOTE_TIMEOUT=1800 ;;
+  scene_render|scene_play|photo|foliage_diag|survey|tree_audit|tree_preview|tree_publish) REMOTE_TIMEOUT=1800 ;;
   drop_video) REMOTE_TIMEOUT=2100 ;;
   drop_frames) REMOTE_TIMEOUT=420 ;;
   map_verify) REMOTE_TIMEOUT=1800 ;;
@@ -356,6 +357,10 @@ if test "$OP" = install; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/install_unity.sh"
   REMOTE_SHELL="bash -s"
 fi
+if test "$OP" = tree_publish; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/tree_mass_pack.sh"
+  REMOTE_SHELL="bash -s"
+fi
 if test "$OP" = tree_preview; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/tree_mass_preview.sh"
   REMOTE_SHELL="bash -s"
@@ -388,7 +393,22 @@ for attempt in 1 2; do
       < "$SCRIPT_FILE" \
       > "$OUT/terminal.txt" 2>"$PRIVATE_ERRORS"; then
     rm -f "$PRIVATE_ERRORS"
-    if test "$OP" = tree_preview; then
+    if test "$OP" = tree_publish; then
+      if ! timeout 900 gh codespace ssh -c "$CS" -- \
+          'base64 /tmp/aaris-codespaces/tree-mass/mass-package.tar.gz' \
+          > "$OUT/mass-package.tar.gz.b64" 2>"$PRIVATE_ERRORS"; then
+        DETAIL="tree_mass_package_transfer_failed"; safe_error_summary; exit 69
+      fi
+      if ! base64 --decode "$OUT/mass-package.tar.gz.b64" > "$OUT/mass-package.tar.gz"; then
+        DETAIL="tree_mass_package_decode_failed"; exit 70
+      fi
+      rm -f "$OUT/mass-package.tar.gz.b64"
+      if ! python3 "$GITHUB_WORKSPACE/Tools/Codespaces/publish_tree_mass_from_actions.py" \
+           "$OUT/mass-package.tar.gz" "$OUT/publish-report.json" >> "$OUT/terminal.txt" 2>/dev/null; then
+        DETAIL="tree_mass_lfs_review_branch_publish_failed"; exit 71
+      fi
+      DETAIL="18_speedtree_meshes_published_as_lfs_on_review_branch"
+    elif test "$OP" = tree_preview; then
       TREE_MASS_FILES=(mass-report.json)
       for NAME in "${TREE_MASS_FILES[@]}"; do
         timeout 180 gh codespace ssh -c "$CS" -- \
