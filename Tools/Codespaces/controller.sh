@@ -44,13 +44,14 @@ if test -n "$ISSUE"; then
     'CS AUTH') OP=auth ;;
     'CS PROBE') OP=probe ;;
     'CS SHOT') OP=shot ;;
+    'CS ACCEPT TERMS') OP=accept_terms ;;
     'CS TEST') OP=test ;;
     'CS STOP') OP=stop ;;
     *) DETAIL="unsupported_issue_command"; exit 2 ;;
   esac
 fi
 case "$OP" in
-  machines|info|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|test|stop) ;;
+  machines|info|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test -z "$GH_TOKEN"; then DETAIL="CODESPACE_PAT_missing"; exit 3; fi
@@ -242,6 +243,10 @@ SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/remote.sh"
 REMOTE_SHELL="bash -s -- $OP"
 if test "$OP" = deps; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/unity_gui_deps.sh"
+  REMOTE_SHELL="bash -s"
+fi
+if test "$OP" = accept_terms; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/accept_unity_terms.sh"
   REMOTE_SHELL="bash -s"
 fi
 if test "$OP" = install; then
