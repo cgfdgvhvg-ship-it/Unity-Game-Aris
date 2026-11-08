@@ -85,6 +85,11 @@ assert "'CS FOLIAGE DIAG') OP=foliage_diag" in controller
 assert 'foliage_diag' in workflow and 'foliage_diag' in issue
 assert 'CS FOLIAGE DIAG' in agent
 assert 'runtimeErrorKind' in editor and 'CategorizePlayError' in editor
+# Count Awake/OnEnable/Start errors as well as errors after first Play frame.
+onlog = editor.split('private static void OnLog(', 1)[1].split('private static string CategorizePlayError(', 1)[0]
+assert 'state != "starting" && state != "running"' in onlog
+play_method = editor.split('public static void Play()', 1)[1].split('private static void Tick()', 1)[0]
+assert play_method.index('SessionState.SetString(State, "starting")') < play_method.index('EditorApplication.isPlaying = true')
 assert 'runtimeErrorSource' in editor and 'CategorizeErrorSource' in editor
 assert 'runtime_error_source=' in shell
 assert 'if test "$MODE" = play && test -f "$RUN/play-report.json"; then' in shell

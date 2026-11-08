@@ -57,7 +57,10 @@ namespace Aaris.MapReview.Editor
 
         private static void OnLog(string message, string trace, LogType type)
         {
-            if (SessionState.GetString(State, "") != "running") return;
+            // Awake/OnEnable/Start may log errors while the Editor is still
+            // transitioning into Play Mode. Treat those as test failures too.
+            string state = SessionState.GetString(State, "");
+            if (state != "starting" && state != "running") return;
             if (type == LogType.Exception || type == LogType.Error || type == LogType.Assert)
             {
                 SessionState.SetInt(Errors, Math.Min(10000, SessionState.GetInt(Errors, 0) + 1));
