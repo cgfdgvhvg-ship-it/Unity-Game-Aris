@@ -39,6 +39,7 @@ CS SHOT
 CS ACCEPT TERMS
 CS SAFE MODE
 CS COMPILE REPORT
+CS REFRESH
 ```
 
 `CS STATUS` must show `editor_installed=yes`. `CS LFS REPORT` must show `lfs_unhydrated_pointer_count=0`. `CS LICENSE` searches the effective SSH user's CLI home and reports whether the **license status command** succeeds. `CS EDITOR` can only prove that an Editor process started. `CS SHOT` is only a virtual-desktop capture and needs visual inspection; it is not proof that the map is rendered. If the Editor quits after launch because its Linux shared libraries are absent, run `CS DEPS` once; it only installs a fixed set of Ubuntu 22.04 GUI/OpenGL packages and never changes the Unity map or license. This same package step is included in new prebuilds. Then retry `CS EDITOR`. If the Editor still quits, run `CS EDITOR DIAG`: it classifies local launch failures without publishing raw Editor logs. A genuine Unity-rendered scene screenshot and successful scene load are separate acceptance tests.
@@ -73,3 +74,7 @@ The old SSH Codespace can show exactly 11 known false-positive LFS tracked asset
 The owner-only `CS SYNC` operation verifies that the ONLY tracked changes are those known 11 assets (each byte-for-byte identical to the Git index) and the two specific Unity ProjectSettings files. It saves private persistent copies of the ProjectSettings files under `/workspaces/Unity-Game-Aris/.aaris-recovery/project-settings/`, makes a scoped Git stash of ONLY those two files, and then performs a regular fast-forward to `origin/main` followed by `git lfs pull`. If any unexpected file is different, sync fails closed. It reports `SYNC_SETTINGS_BACKUP_AND_STASH_SAVED` and `SYNC_LFS_READY`, never raw settings.
 
 The saved ProjectSettings migration is deliberately **not reapplied automatically**. Review it separately after the Unity Editor loads the updated project, especially if Unity upgrades its project settings format. Original scene and map files are unchanged.
+
+## Re-compile after a reviewed Unity package fix
+
+After a source fast-forward and hydrated LFS, if Unity remains in Safe Mode, first use the owner-only `CS REFRESH`. It focuses the existing Unity project window and invokes **Assets > Refresh** via Ctrl+R (Unity's built-in shortcut). This causes Unity's Asset Database to rescan changed `Assets` and `Packages` files and recompile associated code. Use `CS SHOT` and `CS COMPILE REPORT` to inspect the new result. Do not interpret old timestamped Console errors in the persistent Editor.log as new failures. If a fresh compilation error remains, fix its underlying package/assembly reference or source with a reviewed PR; never remove vehicle physics to suppress an error.
