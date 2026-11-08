@@ -42,10 +42,15 @@ namespace Aaris.MapReview
             bool shouldOpen = near || Time.time - lastNear < 1.5f;
             // Never shut a moving solid door across a player, car or other
             // interactive collider. Saturated queries also fail open.
-            if (!shouldOpen && ClosingBlocked()) shouldOpen = true;
-            currentAngle = Mathf.MoveTowards(currentAngle, shouldOpen ? OpenAngle : 0f,
+            if (!shouldOpen && currentAngle > .01f && ClosingBlocked())
+                shouldOpen = true;
+            float next = Mathf.MoveTowards(currentAngle, shouldOpen ? OpenAngle : 0f,
                 OpenSpeed * Time.deltaTime);
-            transform.localRotation = Quaternion.Euler(0f, currentAngle, 0f);
+            if (Mathf.Abs(next - currentAngle) > .001f)
+            {
+                currentAngle = next;
+                transform.localRotation = Quaternion.Euler(0f, currentAngle, 0f);
+            }
         }
 
         private bool ClosingBlocked()
