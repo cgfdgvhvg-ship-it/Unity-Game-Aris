@@ -167,22 +167,16 @@ if test "$OP" = fresh_ssh; then
   fi
   STATE="SUCCESS"; DETAIL="ssh_codespace_created_preserving_previous_workspaces"; exit 0
 fi
-CS="$(jq -r '[.[] | select(.displayName=="aaris-ai-unity-ssh")][0].name // [.[] | select(.displayName=="aaris-ai-unity")][0].name // .[0].name // ""' <<< "$LIST")"
-if test -z "$CS" && test "$OP" = start; then
-  if test -z "$MACHINE"; then
-    TYPES="$(gh api "/repos/$REPO/codespaces/machines" 2>/dev/null)" || { DETAIL="machine_API_unavailable"; exit 5; }
-    MACHINE="$(jq -r '[.machines[] | select(.cpus>=4 and .memory_in_bytes>=16000000000)] | sort_by(.cpus) | .[0].name // ""' <<< "$TYPES")"
-  fi
-  test -n "$MACHINE" || { DETAIL="no_available_4core_16gb_machine"; exit 7; }
-  CS="$(gh codespace create -R "$REPO" -b main -m "$MACHINE" --idle-timeout 240m --display-name aaris-ai-unity --default-permissions 2>/dev/null)" || {
-    DETAIL="codespace_create_failed_quota_or_permissions"; exit 8
-  }
-  CS="$(printf '%s' "$CS" | tail -n 1 | tr -d '[:space:]')"
-  [[ "$CS" =~ ^[A-Za-z0-9-]+$ ]] || { DETAIL="bad_codespace_response"; exit 9; }
-  printf 'codespace=%s\nmachine=%s\n' "$CS" "$MACHINE" > "$OUT/terminal.txt"
-  STATE="SUCCESS"; DETAIL="codespace_created"; exit 0
+# Ordinary owner commands are pinned to the EXISTING 4 CPU/16 GiB machine.
+# Display names are not unique and the first list entry may belong to another
+# Codespace. Never auto-create, switch or reset a workspace from CS START.
+# Explicit CS FRESH / CS FRESH SSH remain separate intentional operations.
+TARGET_CODESPACE="aaris-ai-unity-ssh-vp5g97jv4r4gfpjgq"
+CS="$(jq -r --arg target "$TARGET_CODESPACE" '[.[] | select(.name == $target)][0].name // ""' <<< "$LIST")"
+if test -z "$CS"; then
+  printf 'target_codespace=%s\nreason=exact_existing_codespace_not_visible\n' "$TARGET_CODESPACE" > "$OUT/terminal.txt"
+  STATE="TARGET_UNAVAILABLE"; DETAIL="never_create_or_select_another_codespace_implicitly"; exit 0
 fi
-if test -z "$CS"; then STATE="NO_CODESPACE"; DETAIL="run_CS_START"; exit 0; fi
 [[ "$CS" =~ ^[A-Za-z0-9-]+$ ]] || { DETAIL="bad_codespace_name"; exit 9; }
 # Read Codespace machine and state without SSH. Safe when the old container is unavailable.
 if test "$OP" = logs; then
