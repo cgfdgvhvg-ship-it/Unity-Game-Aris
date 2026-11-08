@@ -110,10 +110,10 @@ class OfflineCombatAssetChecks(unittest.TestCase):
         tactical = (SCRIPTS / "AarisOfflineTacticalHUD.cs").read_text("utf-8")
         weapons = (SCRIPTS / "AarisWeaponInventory.cs").read_text("utf-8")
         bindings = {
-            "cover": re.search(r"Input\\.GetKeyDown\\(KeyCode\\.(\\w+)\\)\\) BeginAim", wall),
-            "frag": re.search(r"Input\\.GetKeyDown\\(KeyCode\\.(\\w+)\\)\\) ThrowFrag", tactical),
-            "aim": re.search(r"Input\\.GetKeyDown\\(KeyCode\\.(\\w+)\\)\\) ToggleAim", weapons),
-            "drop": re.search(r"Input\\.GetKeyDown\\(KeyCode\\.(\\w+)\\)\\) DropCurrent", weapons),
+            "cover": re.search(r"Input\.GetKeyDown\(KeyCode\.(\w+)\)\) BeginAim", wall),
+            "frag": re.search(r"Input\.GetKeyDown\(KeyCode\.(\w+)\)\) ThrowFrag", tactical),
+            "aim": re.search(r"Input\.GetKeyDown\(KeyCode\.(\w+)\)\) ToggleAim", weapons),
+            "drop": re.search(r"Input\.GetKeyDown\(KeyCode\.(\w+)\)\) DropCurrent", weapons),
         }
         for action, match in bindings.items():
             self.assertIsNotNone(match, f"Missing desktop input for {action}")
