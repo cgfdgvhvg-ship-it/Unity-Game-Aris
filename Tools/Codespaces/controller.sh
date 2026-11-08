@@ -57,6 +57,7 @@ if test -n "$ISSUE"; then
     'CS PLAY DIAG') OP=play_diag ;;
     'CS FOLIAGE DIAG') OP=foliage_diag ;;
     'CS TREE AUDIT') OP=tree_audit ;;
+    'CS TREE PREVIEW') OP=tree_preview ;;
     'CS PHOTO '*) OP=photo ;;
     'CS ACCEPT TERMS') OP=accept_terms ;;
     'CS SAFE MODE') OP=safe_mode ;;
@@ -71,7 +72,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|test|stop) ;;
+  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -270,7 +271,7 @@ case "$OP" in
   retry_assets) REMOTE_TIMEOUT=900 ;;
   test) REMOTE_TIMEOUT=500 ;;
   editor) REMOTE_TIMEOUT=350 ;;
-  scene_render|scene_play|photo|foliage_diag|survey|tree_audit) REMOTE_TIMEOUT=1800 ;;
+  scene_render|scene_play|photo|foliage_diag|survey|tree_audit|tree_preview) REMOTE_TIMEOUT=1800 ;;
   drop_video) REMOTE_TIMEOUT=2100 ;;
   drop_frames) REMOTE_TIMEOUT=420 ;;
   map_verify) REMOTE_TIMEOUT=1800 ;;
@@ -355,6 +356,10 @@ if test "$OP" = install; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/install_unity.sh"
   REMOTE_SHELL="bash -s"
 fi
+if test "$OP" = tree_preview; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/tree_mass_preview.sh"
+  REMOTE_SHELL="bash -s"
+fi
 if test "$OP" = tree_audit; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/tree_mass_audit.sh"
   REMOTE_SHELL="bash -s"
@@ -383,7 +388,41 @@ for attempt in 1 2; do
       < "$SCRIPT_FILE" \
       > "$OUT/terminal.txt" 2>"$PRIVATE_ERRORS"; then
     rm -f "$PRIVATE_ERRORS"
-    if test "$OP" = tree_audit; then
+    if test "$OP" = tree_preview; then
+      TREE_MASS_FILES=(mass-report.json)
+      for NAME in "${TREE_MASS_FILES[@]}"; do
+        timeout 180 gh codespace ssh -c "$CS" -- \
+            "base64 /tmp/aaris-codespaces/tree-mass/$NAME" > "$OUT/$NAME.b64" 2>"$PRIVATE_ERRORS" || {
+              DETAIL="tree_mass_report_transfer_failed"; safe_error_summary; exit 64;
+            }
+        base64 --decode "$OUT/$NAME.b64" > "$OUT/$NAME" || { DETAIL="tree_mass_decode_failed"; exit 65; }
+        rm -f "$OUT/$NAME.b64"
+      done
+      TREE_IMAGES=(foliage-report.json foliage-original.png foliage-far-lod.png foliage-ambient-only.png foliage-shadows-only.png foliage-ambient-test.png)
+      for NAME in "${TREE_IMAGES[@]}"; do
+        timeout 180 gh codespace ssh -c "$CS" -- \
+            "base64 /tmp/aaris-codespaces/scene-probe/$NAME" > "$OUT/$NAME.b64" 2>"$PRIVATE_ERRORS" || {
+              DETAIL="tree_mass_image_transfer_failed"; safe_error_summary; exit 66;
+            }
+        base64 --decode "$OUT/$NAME.b64" > "$OUT/$NAME" || { DETAIL="tree_mass_image_decode_failed"; exit 67; }
+        rm -f "$OUT/$NAME.b64"
+      done
+      if ! python3 - "$OUT" <<'PYMASS'
+import pathlib,json,sys
+try:
+ p=pathlib.Path(sys.argv[1]);m=json.loads((p/"mass-report.json").read_text());f=json.loads((p/"foliage-report.json").read_text())
+ ok=m.get("status")=="passed" and m.get("species")==6 and m.get("meshAssets")==18
+ ok=ok and f.get("status")=="passed" and f.get("terrainTiles")==4
+ for name in ("foliage-original.png","foliage-far-lod.png","foliage-ambient-only.png","foliage-shadows-only.png","foliage-ambient-test.png"):
+  v=p/name;ok=ok and v.stat().st_size>8192 and v.read_bytes()[:8]==b"\\x89PNG\\r\\n\\x1a\\n"
+except (OSError,ValueError,TypeError,KeyError):ok=False
+sys.exit(0 if ok else 1)
+PYMASS
+      then
+        DETAIL="tree_mass_preview_invalid"; exit 68
+      fi
+      DETAIL="six_sculpted_tree_species_native_preview_verified"
+    elif test "$OP" = tree_audit; then
       if ! timeout 120 gh codespace ssh -c "$CS" -- \
           'base64 /tmp/aaris-codespaces/tree-mass/audit.json' \
           > "$OUT/tree-mass-audit.b64" 2>"$PRIVATE_ERRORS"; then
