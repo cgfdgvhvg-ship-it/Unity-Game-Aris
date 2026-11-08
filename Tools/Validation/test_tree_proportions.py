@@ -101,7 +101,7 @@ class NaturalTreePrefabTests(unittest.TestCase):
                 self.assertIn("    - _WindQuality: 2", source)
                 self.assertIn("    - _AlphaClip: 1", source)
                 if alpha is not None:
-                    self.assertIn(f"    - _AlphaClipThreshold: {alpha}", source)
+                    self.assertIn(f"    - _AlphaClipThreshold: {alpha:.2f}", source)
                     self.assertGreaterEqual(alpha, 0.18)  # avoid excessive overdraw
                     self.assertLessEqual(alpha, 0.22)
 
