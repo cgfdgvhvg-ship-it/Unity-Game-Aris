@@ -296,14 +296,29 @@ PY
     else echo 'EDITOR_LAUNCH_FAILED'; exit 12; fi
     ;;
   license)
-    CLI="$HOME/.local/bin/unity"
-    if ! test -x "$CLI"; then CLI="$HOME/.unity/bin/unity"; fi
-    if ! test -x "$CLI"; then CLI="/tmp/aaris-unity-runtime/cli/bin/unity"; fi
-    if test -x "$CLI"; then
-      if env UNITY_CLI_HOME="$HOME/.local/share/aaris-unity-cli" "$CLI" license status --format json --non-interactive >/dev/null 2>&1; then
+    # Unity CLI may be installed under UNITY_CLI_HOME/bin, not ~/.local/bin.
+    # Use the effective SSH user's real home when inherited HOME is misleading.
+    AUTH_HOME="$(getent passwd "$(id -u)" | cut -d: -f6)"
+    if ! test -d "$AUTH_HOME"; then AUTH_HOME="$HOME"; fi
+    CLI=""
+    for candidate in "$AUTH_HOME/.local/share/aaris-unity-cli/bin/unity" \
+                     "$AUTH_HOME/.local/bin/unity" "$AUTH_HOME/.unity/bin/unity" \
+                     "$HOME/.local/share/aaris-unity-cli/bin/unity" "$HOME/.local/bin/unity" \
+                     "/home/vscode/.local/share/aaris-unity-cli/bin/unity" \
+                     "/home/vscode/.local/bin/unity" "/tmp/aaris-unity-runtime/cli/bin/unity"; do
+      if test -x "$candidate"; then CLI="$candidate"; break; fi
+    done
+    if test -z "$CLI"; then
+      echo 'UNITY_CLI_NOT_INSTALLED'
+    else
+      echo 'UNITY_CLI_DISCOVERED'
+      if env UNITY_CLI_HOME="$AUTH_HOME/.local/share/aaris-unity-cli" \
+          "$CLI" license status --format json --non-interactive >/dev/null 2>&1; then
         echo 'UNITY_PERSONAL_OR_SUBSCRIPTION_LICENSE_ACTIVE'
-      else echo 'UNITY_LICENSE_NOT_VERIFIED'; fi
-    else echo 'UNITY_CLI_NOT_INSTALLED'; fi
+      else
+        echo 'UNITY_LICENSE_NOT_VERIFIED'
+      fi
+    fi
     ;;
   shot)
     pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null || { echo 'SHOT_BLOCKED_EDITOR_NOT_RUNNING'; exit 14; }
