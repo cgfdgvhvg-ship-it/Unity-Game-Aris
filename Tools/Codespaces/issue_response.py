@@ -9,7 +9,7 @@ try:
     data = json.loads((folder / 'result.json').read_text())
 except (OSError, ValueError):
     data = {}
-operations = set('machines info quota start fresh fresh_ssh rebuild status logs sync lfs lfs_report changes preserve_assets retry_assets install deps cli_diag editor editor_diag license auth probe shot accept_terms safe_mode compile_report refresh close_editor editor_process editor_recover scene_render scene_play drop_video drop_frames map_verify photo play_diag foliage_diag test stop'.split())
+operations = set('machines info quota start fresh fresh_ssh rebuild status logs sync lfs lfs_report changes preserve_assets retry_assets install deps cli_diag editor editor_diag editor_isolate license auth probe shot accept_terms safe_mode compile_report refresh close_editor editor_process editor_recover scene_render scene_play drop_video drop_frames map_verify photo play_diag foliage_diag test stop'.split())
 statuses = {'SUCCESS', 'FAILED', 'NO_CODESPACE', 'TARGET_UNAVAILABLE', 'UNKNOWN'}
 op = data.get('operation', 'unknown')
 state = data.get('status', 'FAILED')
