@@ -68,6 +68,14 @@ diag=(ROOT/'Tools/Codespaces/play_probe_diagnostic.sh').read_text()
 assert 'play-report.json' in diag and 'unity-probe-editor.log' in diag
 assert 'AARIS_PLAY_DIAG_REPORT_FOUND' in diag
 assert 'AARIS_PLAY_ERROR_KIND_' in diag and 'AARIS_PLAY_ERROR_SOURCE_' in diag
+# Classify the first frame and allowlisted Unity Editor subsystem safely,
+# without leaking arbitrary messages, project paths, or user data.
+assert 'latest_marker=text.rfind("AARIS_NATIVE_PLAY_REQUESTED")' in diag
+assert 'AARIS_PLAY_EXCEPTION_FIRST_FRAME_FAMILY_' in diag
+assert 'AARIS_PLAY_EXCEPTION_SUBSYSTEM_' in diag
+assert 'AARIS_PLAY_EXCEPTION_STACK_FRAMES=' in diag
+assert 'UnityEditor.UIElements' in diag and 'UnityEditor.GameView' in diag
+assert 'print("AARIS_PLAY_EXCEPTION_SUBSYSTEM_"+label)' in diag
 assert 'NullReferenceException' in diag and 'AarisVehicleWorld' in diag
 assert 'AARIS_PLAY_LOG_COMPILE' not in diag or '"COMPILE":' in diag
 assert "'CS PLAY DIAG') OP=play_diag" in controller
