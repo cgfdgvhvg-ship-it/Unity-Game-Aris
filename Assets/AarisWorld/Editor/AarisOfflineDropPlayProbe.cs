@@ -26,6 +26,7 @@ namespace Aaris.MapReview.Editor
         private const string FrameCount = "aaris.offline.drop.probe.frames";
         private const string ErrorCount = "aaris.offline.drop.probe.errors";
         private const string ErrorCode = "aaris.offline.drop.probe.errorcode";
+        private const string ErrorSource = "aaris.offline.drop.probe.errorsource";
         private const string ExitCode = "aaris.offline.drop.probe.exit";
         private const string SeenPrefix = "aaris.offline.drop.probe.phase.";
         private const int Width = 960, Height = 540;
@@ -43,6 +44,7 @@ namespace Aaris.MapReview.Editor
             public int frames;
             public int errors;
             public string errorCode;
+            public string errorSource;
             public bool observedInPlane;
             public bool observedFreefall;
             public bool observedOpening;
@@ -72,6 +74,7 @@ namespace Aaris.MapReview.Editor
             SessionState.SetInt(FrameCount, 0);
             SessionState.SetInt(ErrorCount, 0);
             SessionState.SetString(ErrorCode, "");
+            SessionState.SetString(ErrorSource, "");
             SessionState.SetFloat(Began, 0f);
             SessionState.SetFloat(LastFrame, 0f);
             foreach (string phase in Enum.GetNames(typeof(AarisOfflineDrop.DropPhase)))
@@ -118,6 +121,7 @@ namespace Aaris.MapReview.Editor
                 frames = SessionState.GetInt(FrameCount, 0),
                 errors = SessionState.GetInt(ErrorCount, 0),
                 errorCode = SessionState.GetString(ErrorCode, ""),
+                errorSource = SessionState.GetString(ErrorSource, ""),
                 observedInPlane = Seen("InPlane"),
                 observedFreefall = Seen("Freefall"),
                 observedOpening = Seen("Opening"),
@@ -138,6 +142,24 @@ namespace Aaris.MapReview.Editor
                 message != null && message.Contains("Exception") ? "RUNTIME_EXCEPTION" :
                 "UNITY_LOG_ERROR";
             SessionState.SetString(ErrorCode, code);
+            // Report ONLY a whitelisted subsystem label; never raw exception
+            // messages, call stacks or paths from the user's Codespace.
+            string[] modules = {
+                "AarisOfflineDropVisuals", "AarisOfflineDrop",
+                "AarisOfflineTacticalHUD", "AarisThirdPersonPlayer",
+                "AarisCharacterVisual", "AarisWeaponLootWorld",
+                "AarisVehicleWorld", "AarisBattleActions",
+                "AarisCodespaceSceneProbe", "UnityEngine.UI"
+            };
+            string source = "OTHER";
+            foreach (string module in modules)
+                if (!string.IsNullOrEmpty(stack) &&
+                    stack.IndexOf(module, StringComparison.Ordinal) >= 0)
+                {
+                    source = module;
+                    break;
+                }
+            SessionState.SetString(ErrorSource, source);
         }
 
         private static bool Seen(string phase) => SessionState.GetBool(SeenPrefix + phase, false);
@@ -222,9 +244,12 @@ namespace Aaris.MapReview.Editor
                 }
             }
 
-            if (SessionState.GetInt(ErrorCount, 0) > 0)
+            // Retain the REAL video even if a single existing, nonfatal game
+            // script logs an exception. The final assertion still FAILS if
+            // any runtime errors occurred. Stop only on repeated error storms.
+            if (SessionState.GetInt(ErrorCount, 0) >= 30)
             {
-                Finish(false, "GAMEPLAY_RUNTIME_ERRORS");
+                Finish(false, "REPEATED_GAMEPLAY_RUNTIME_ERRORS");
                 return;
             }
 
