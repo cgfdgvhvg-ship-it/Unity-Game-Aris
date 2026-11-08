@@ -52,6 +52,49 @@ if log.is_file():
     }
     for k,pattern in signatures.items():
         if re.search(pattern,text,re.I):print("AARIS_PLAY_LOG_"+k)
+
+    # Only classify exception types and public, known game-script names. Never
+    # print the underlying error line, stack trace, paths or user data.
+    error_types={
+        "NullReferenceException":"NULL_REFERENCE",
+        "MissingReferenceException":"MISSING_REFERENCE",
+        "ArgumentException":"INVALID_ARGUMENT",
+        "InvalidOperationException":"INVALID_OPERATION",
+        "IndexOutOfRangeException":"ARRAY_INDEX",
+        "ArgumentOutOfRangeException":"ARRAY_INDEX",
+        "UnassignedReferenceException":"UNASSIGNED_REFERENCE",
+        "MissingComponentException":"MISSING_COMPONENT",
+        "UnityException":"UNITY_EXCEPTION",
+        "NotSupportedException":"UNSUPPORTED_OPERATION",
+        "TypeLoadException":"TYPE_LOAD",
+        "FileNotFoundException":"FILE_NOT_FOUND",
+    }
+    known_scripts={
+        "AarisVehicleWorld","AarisVehicleMotor","AarisVehicleSession",
+        "AarisThirdPersonPlayer","AarisNearbyColliders","AarisBattleActions",
+        "AarisMobileRuntime","AarisVehicleHUD","AarisExplorerBuild",
+        "AarisCodespaceSceneProbe","AarisCICapture","AarisTreeColliderManager",
+    }
+    lines=text.splitlines()
+    matching=[]
+    for i,line in enumerate(lines):
+        exception=next((label for name,label in error_types.items()
+                        if re.search(r"\b"+name+r"\b",line)),None)
+        source=None
+        if exception:
+            matching.append((i,exception))
+        elif re.search(r"^\s*(?:Aaris (?:vehicles|world|map|player|terrain)|ERROR:|Error:)",line,re.I):
+            matching.append((i,"REPORTED_GAME_ERROR"))
+    if matching:
+        print("AARIS_PLAY_LOG_ERROR_CANDIDATES")
+        for index,kind in matching[-4:]:
+            print("AARIS_PLAY_ERROR_KIND_"+kind)
+            context="\n".join(lines[index:index+16])
+            scripts=sorted(x for x in known_scripts if re.search(r"\b"+x+r"\b",context))
+            for script in scripts[:4]:
+                print("AARIS_PLAY_ERROR_SOURCE_"+script.upper())
+    elif re.search(r"\b(?:LogType\.Error|Exception)\b",text):
+        print("AARIS_PLAY_LOG_ERROR_UNCLASSIFIED")
 else:
     print("AARIS_PLAY_DIAG_UNITY_LOG_MISSING")
 PY
