@@ -176,6 +176,10 @@ namespace Aaris.MapReview
         public void SetInput(float forwardAxis, float steerAxis)
         {
             if (driver == null) return;
+            // Ignore corrupted/non-finite input rather than poisoning the
+            // WheelCollider torque or steering angle with NaN.
+            if (float.IsNaN(forwardAxis) || float.IsInfinity(forwardAxis)) forwardAxis = 0f;
+            if (float.IsNaN(steerAxis) || float.IsInfinity(steerAxis)) steerAxis = 0f;
             forward = Mathf.Clamp(forwardAxis, -1f, 1f);
             steering = Mathf.Clamp(steerAxis, -1f, 1f);
         }
