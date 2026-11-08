@@ -1,0 +1,71 @@
+name: Recover verified native tree LFS objects
+
+on:
+  pull_request:
+    paths:
+      - 'Tools/Codespaces/recover_verified_tree_lfs.py'
+      - '.github/workflows/recover-native-tree-lfs.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'Tools/Codespaces/recover_verified_tree_lfs.py'
+      - '.github/workflows/recover-native-tree-lfs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-original-meshes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          persist-credentials: false
+      - name: Retrieve immutable, real Unity tree bake
+        env:
+          GH_TOKEN: \${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/aaris-tree-source"
+          gh run download 42472771253 -R sundamunda289-art/Unity-Game-Aris \
+            --name aaris-codespace-42472771253 -D "$RUNNER_TEMP/aaris-tree-source"
+      - name: Verify 18 SHA-256 hashes against this commit's LFS pointers
+        run: |
+          python3 -m py_compile Tools/Codespaces/recover_verified_tree_lfs.py
+          python3 Tools/Codespaces/recover_verified_tree_lfs.py --verify \
+            "$RUNNER_TEMP/aaris-tree-source/mass-package.tar.gz"
+
+  publish-missing-objects:
+    if: github.event_name != 'pull_request'
+    needs: validate-original-meshes
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: aaris-original-tree-lfs-upload
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          persist-credentials: true
+      - name: Retrieve the exact verified historical archive
+        env:
+          GH_TOKEN: \${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/aaris-tree-source"
+          gh run download 42472771253 -R sundamunda289-art/Unity-Game-Aris \
+            --name aaris-codespace-42472771253 -D "$RUNNER_TEMP/aaris-tree-source"
+      - name: Upload only exact native mesh object IDs, then remote-refetch
+        env:
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          git lfs install --local
+          python3 Tools/Codespaces/recover_verified_tree_lfs.py --push \
+            "$RUNNER_TEMP/aaris-tree-source/mass-package.tar.gz"
