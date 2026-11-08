@@ -40,6 +40,7 @@ CS ACCEPT TERMS
 CS SAFE MODE
 CS COMPILE REPORT
 CS REFRESH
+CS CLOSE EDITOR
 ```
 
 `CS STATUS` must show `editor_installed=yes`. `CS LFS REPORT` must show `lfs_unhydrated_pointer_count=0`. `CS LICENSE` searches the effective SSH user's CLI home and reports whether the **license status command** succeeds. `CS EDITOR` can only prove that an Editor process started. `CS SHOT` is only a virtual-desktop capture and needs visual inspection; it is not proof that the map is rendered. If the Editor quits after launch because its Linux shared libraries are absent, run `CS DEPS` once; it only installs a fixed set of Ubuntu 22.04 GUI/OpenGL packages and never changes the Unity map or license. This same package step is included in new prebuilds. Then retry `CS EDITOR`. If the Editor still quits, run `CS EDITOR DIAG`: it classifies local launch failures without publishing raw Editor logs. A genuine Unity-rendered scene screenshot and successful scene load are separate acceptance tests.
@@ -78,3 +79,7 @@ The saved ProjectSettings migration is deliberately **not reapplied automaticall
 ## Re-compile after a reviewed Unity package fix
 
 After a source fast-forward and hydrated LFS, if Unity remains in Safe Mode, first use the owner-only `CS REFRESH`. It focuses the existing Unity project window and invokes **Assets > Refresh** via Ctrl+R (Unity's built-in shortcut). This explicitly validates `com.unity.modules.vehicles=1.0.0`, updates only the modification times of the checked-in `AarisVehicleMotor.cs` and `Packages/manifest.json` (without changing their bytes), and causes Unity's Asset Database to rescan these files and recompile associated code. Use `CS SHOT` and `CS COMPILE REPORT` to inspect the new result. Do not interpret old timestamped Console errors in the persistent Editor.log as new failures. If a fresh compilation error remains, fix its underlying package/assembly reference or source with a reviewed PR; never remove vehicle physics to suppress an error.
+
+## Restart Unity without deleting the Codespace
+
+If the Unity Safe Mode Console still shows a stale timestamped error after the corrected manifest is present and a forced `CS REFRESH`, the owner can run `CS CLOSE EDITOR`. This sends only an X11 **WM_DELETE_WINDOW** event to the exact running Unity-Game-Aris Editor, then waits for a clean exit. It never uses SIGKILL, deletes caches, resets scenes or stops the Codespace. If Unity shows an unsaved-changes dialog, the command stops and requires handling that dialog before restarting. Once `UNITY_EDITOR_GRACEFUL_EXIT_CONFIRMED` appears, run `CS EDITOR` to reopen the same Unity version and project and perform a fresh startup compilation. Inspect the new screenshot and logs.
