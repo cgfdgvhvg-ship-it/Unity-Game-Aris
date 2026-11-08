@@ -67,6 +67,8 @@ assert 'noVNC' in agent
 diag=(ROOT/'Tools/Codespaces/play_probe_diagnostic.sh').read_text()
 assert 'play-report.json' in diag and 'unity-probe-editor.log' in diag
 assert 'AARIS_PLAY_DIAG_REPORT_FOUND' in diag
+assert 'AARIS_PLAY_ERROR_KIND_' in diag and 'AARIS_PLAY_ERROR_SOURCE_' in diag
+assert 'NullReferenceException' in diag and 'AarisVehicleWorld' in diag
 assert 'AARIS_PLAY_LOG_COMPILE' not in diag or '"COMPILE":' in diag
 assert "'CS PLAY DIAG') OP=play_diag" in controller
 assert 'play_diag' in workflow and 'play_diag' in issue
