@@ -226,7 +226,7 @@ assert 'COUNT="$(jq' in controller and 'if test "$COUNT" -eq 1' in controller
 assert 'selected_account_codespace_missing_or_ambiguous' in controller
 assert 'if test -n "$MACHINE"; then' in controller
 assert 'never_create_or_select_another_codespace_implicitly' not in controller
-assert 'never_create_or_select_another_codespace_implicitly' in controller
+assert 'existing_target_not_unambiguously_selected' in controller
 assert '[.[] | select(.name == $target)][0].name' in controller
 assert 'rebuild_preflight.sh' in controller
 assert 'bash -s -- $OP' in controller
