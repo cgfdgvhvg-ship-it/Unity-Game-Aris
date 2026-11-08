@@ -92,3 +92,58 @@ known={
 for kind,phrase in known.items():
     count=sum(phrase in line for line in sample)
     if count: print("AARIS_NATIVE_KNOWN_ERROR_"+kind+"="+str(min(count,999)))
+
+# Unity exception callbacks sometimes happen BEFORE the last expansion summary.
+# Search the entire private log, but export ONLY known bounded classifications.
+exception_patterns={
+ "NULL_REFERENCE":r"\bNullReferenceException\b",
+ "MISSING_REFERENCE":r"\bMissingReferenceException\b",
+ "INVALID_OPERATION":r"\bInvalidOperationException\b",
+ "ARGUMENT":r"\bArgumentException\b",
+ "INDEX_OUT_OF_RANGE":r"\bIndexOutOfRangeException\b",
+ "NOT_SUPPORTED":r"\bNotSupportedException\b",
+ "TYPE_INITIALIZATION":r"\bTypeInitializationException\b",
+ "TARGET_INVOCATION":r"\bTargetInvocationException\b",
+ "UNITY":r"\bUnityException\b",
+ "UNASSIGNED_REFERENCE":r"\bUnassignedReferenceException\b",
+ "FORMAT":r"\bFormatException\b",
+ "MISSING_COMPONENT":r"\bMissingComponentException\b",
+ "OTHER_GENERIC_EXCEPTION":r"(?<![a-zA-Z])Exception:(?![a-zA-Z])",
+}
+for category,pattern in exception_patterns.items():
+    cnt=sum(bool(re.search(pattern,line)) for line in lines)
+    if cnt:
+        print("AARIS_NATIVE_GLOBAL_EXCEPTION_"+category+"="+str(min(cnt,999)))
+# Whitelist explicit source class tokens to diagnose which subsystem emitted
+# an exception. These are literal owned script names, not paths or free text.
+classes=(
+ "AarisCharacterVisual","AarisOfflineDrop","AarisVehicleWorld",
+ "AarisVehicleMotor","AarisWeaponCatalog","AarisWeaponInventory",
+ "AarisSettlementExpansion","AarisModularHouse",
+ "AarisBreakablePanel","AarisInteractiveHouseProbe",
+ "AarisNearbyColliders","AarisBattleActions",
+ "AarisEquippedGun","AarisOfflineGlooWall",
+)
+for category in classes:
+    cnt=sum(category in row for row in lines)
+    if cnt:
+        print("AARIS_NATIVE_GLOBAL_STACK_"+category.upper()+"="+str(min(cnt,999)))
+# Some Unity callback errors are not named *Exception in the log.
+# Group only reviewed Unity engine phrases; no raw error text.
+known_unity={
+ "DESTROY_IMMEDIATE_PLAY_MODE":"DestroyImmediate in play mode",
+ "UNLOAD_ASSET_IN_USE":"Cannot unload asset",
+ "RENDER_TEXTURE_FAILURE":"RenderTexture creation failed",
+ "CALLBACK_EXCEPTION":"Exception while",
+ "SCENE_CAMERA_MISSING":"No cameras rendering",
+ "NATIVE_GRAPHICS_FAILURE":"Graphics device is null",
+ "PLAY_MODE_DOMAIN_ERROR":"An error occurred while entering play mode",
+ "ASSET_IMPORT_ERROR":"An error occurred during",
+ "INVALID_OPERATION_RUNTIME":"operation is not allowed",
+ "EDITOR_THREAD_ERROR":"can only be called from the main thread",
+}
+for name,phrase in known_unity.items():
+    num=sum(phrase.lower() in row.lower() for row in lines)
+    if num:
+        print("AARIS_NATIVE_GLOBAL_ENGINE_"+name+"="+str(min(num,999)))
+print("AARIS_NATIVE_GLOBAL_LOG_LINES="+str(min(len(lines),999999)))
