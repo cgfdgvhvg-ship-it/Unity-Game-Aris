@@ -8,6 +8,17 @@ from native_assets import Glb,write_yaml
 PIPELINE='Assets/TerrainDemoScene_URP/Settings/URP/URP-HighQuality Pipeline Asset.asset'
 RENDERER='Assets/TerrainDemoScene_URP/Settings/URP/Universal Render Pipeline Asset_Renderer.asset'
 
+def material_record(objects):
+    """Select the Material YAML document, not Unity's URP AssetVersion prelude.
+
+    Unity 6000.3 can auto-save a MonoBehaviour version record before !u!21
+    Material. Never select document index zero for a material asset.
+    """
+    matches=[d for _class,_id,kind,d in objects if kind=='Material']
+    if len(matches)!=1:
+        raise ValueError('Expected exactly one Material document')
+    return matches[0]
+
 def floats(material):return {k:v for item in material['m_SavedProperties']['m_Floats'] for k,v in item.items()}
 
 def audit(root):
@@ -17,7 +28,7 @@ def audit(root):
         glb=Glb(cache/(source['id']+'.glb'));folder=root/'Assets/AarisWorld/Models'/source['id']
         for path in sorted(folder.glob('Material_*.mat')):
             index=int(path.stem.split('_')[-1]);source_material=glb.g.get('materials',[])[index] if index>=0 else {}
-            material=documents(path)[0][3];settings=floats(material)
+            material=material_record(documents(path));settings=floats(material)
             entries.append({'path':str(path.relative_to(root)),'source_sha256':source['sha256'],'source_material_index':index,
                 'source_double_sided':source_material.get('doubleSided',False),'saved_cull':settings['_Cull'],
                 'expected_cull':0 if source_material.get('doubleSided',False) else 2,
@@ -58,18 +69,18 @@ def save(root):
     # Native geometry pointers/bytes must remain untouched by a material-only refinement.
     preserved.update({str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (root/'Assets/AarisWorld').rglob('*.asset')})
     for row in before['materials']:
-        path=root/row['path'];objects=documents(path);material=objects[0][3];immutable=unchanged_material_fields(material)
+        path=root/row['path'];objects=documents(path);material=material_record(objects);immutable=unchanged_material_fields(material)
         changed_cull+=int(row['saved_cull']!=row['expected_cull']);changed_normal+=int(row['saved_normal_scale']!=row['source_normal_scale'])
         set_float(material,'_Cull',row['expected_cull']);set_float(material,'_BumpScale',row['source_normal_scale'])
         set_float(material,'_OcclusionStrength',row['source_occlusion_strength']);material['m_DoubleSidedGI']=int(row['source_double_sided'])
         write_yaml(path,objects)
-        assert unchanged_material_fields(documents(path)[0][3])==immutable,'Unexpected material texture/color/keyword change'
+        assert unchanged_material_fields(material_record(documents(path)))==immutable,'Unexpected material texture/color/keyword change'
     renderer_objects=documents(root/RENDERER);renderer=renderer_objects[0][3]
     old_masks={k:renderer[k]['m_Bits'] for k in ['m_OpaqueLayerMask','m_TransparentLayerMask']}
     for key in old_masks:renderer[key]['m_Bits']|=(1<<6)|(1<<8)
     write_yaml(root/RENDERER,renderer_objects)
     water_path=root/'Assets/AarisWorld/Surfaces/CoastalWater.mat';water=documents(water_path)
-    set_float(water[0][3],'_Smoothness',.82);write_yaml(water_path,water)
+    set_float(material_record(water),'_Smoothness',.82);write_yaml(water_path,water)
     after=audit(root);assert after['cull_mismatches']==after['normal_scale_mismatches']==after['occlusion_strength_mismatches']==0
     assert all(hashlib.sha256((root/path).read_bytes()).hexdigest()==sha for path,sha in preserved.items()),'Geometry, textures, metadata or saved world changed'
     native_files={}
