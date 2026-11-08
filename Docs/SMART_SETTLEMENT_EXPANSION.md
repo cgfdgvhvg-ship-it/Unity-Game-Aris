@@ -21,6 +21,8 @@ A new **15-site** offline expansion is proposed: **12 residential buildings and 
 
 Locations, rotations, approximate prefab extents and district ground anchors are in `Assets/Resources/AarisExpansion/WorldExpansionPlan.json`.
 
+At full near-camera LOD, the 15 added instances total approximately **173,242 source triangles** before normal LOD culling; this is a data budget, not an Android FPS measurement. All four reused model families have exactly one `LODGroup`, at least three renderers and one solid `MeshCollider`.
+
 **Only existing, repository-owned local prefab assets are referenced** through the serialized `AarisExpansionCatalog.asset`. This reuses original mesh materials, collider geometry and near/middle/far LODs. No external model/CDN URL is needed at build time or runtime. No new artist model is claimed to have been created.
 
 ## Deterministic in-game integration
