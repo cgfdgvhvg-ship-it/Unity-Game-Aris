@@ -36,6 +36,7 @@ if test -n "$ISSUE"; then
     'CS LFS REPORT') OP=lfs_report ;;
     'CS CHANGES') OP=changes ;;
     'CS INSTALL') OP=install ;;
+    'CS DEPS') OP=deps ;;
     'CS CLI DIAG') OP=cli_diag ;;
     'CS EDITOR') OP=editor ;;
     'CS EDITOR DIAG') OP=editor_diag ;;
@@ -49,7 +50,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|cli_diag|editor|editor_diag|license|auth|probe|shot|test|stop) ;;
+  machines|info|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test -z "$GH_TOKEN"; then DETAIL="CODESPACE_PAT_missing"; exit 3; fi
@@ -223,6 +224,7 @@ PY
 REMOTE_TIMEOUT=130
 case "$OP" in
   install) REMOTE_TIMEOUT=3000 ;;
+  deps) REMOTE_TIMEOUT=900 ;;
   sync|lfs) REMOTE_TIMEOUT=1200 ;;
   test) REMOTE_TIMEOUT=500 ;;
   editor) REMOTE_TIMEOUT=350 ;;
@@ -238,6 +240,10 @@ if test "$OP" = auth; then
 fi
 SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/remote.sh"
 REMOTE_SHELL="bash -s -- $OP"
+if test "$OP" = deps; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/unity_gui_deps.sh"
+  REMOTE_SHELL="bash -s"
+fi
 if test "$OP" = install; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/install_unity.sh"
   REMOTE_SHELL="bash -s"
