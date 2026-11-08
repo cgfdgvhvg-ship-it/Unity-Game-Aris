@@ -138,7 +138,7 @@ def save_world(root):
             d['m_LocalRotation']=Flow(x=math.cos(y/2)*math.sin(p/2),y=math.sin(y/2)*math.cos(p/2),z=-math.sin(y/2)*math.sin(p/2),w=math.cos(y/2)*math.cos(p/2))
             d['m_LocalEulerAnglesHint']=vec(12,spawn_yaw,0)
         if n=='RenderSettings':
-            d.update(m_AmbientMode=1,m_AmbientIntensity=1,m_AmbientSkyColor=color(.62,.72,.86),
+            d.update(m_AmbientMode=3,m_AmbientIntensity=1.2,m_AmbientSkyColor=color(.69,.70,.65),
                 m_AmbientEquatorColor=color(.54,.58,.56),m_AmbientGroundColor=color(.32,.34,.31),m_ReflectionIntensity=.75)
         if n=='Light' and d['m_GameObject']['fileID']==sun_go:
             d['m_Intensity']=1.35;d['m_Color']=color(1,.973,.925);d['m_Shadows']['m_Strength']=.55
