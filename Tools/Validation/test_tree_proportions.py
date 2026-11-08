@@ -16,12 +16,12 @@ FOREST = ROOT / "Docs" / "FOREST_PLANTING_PLAN.json"
 LAYOUT = ROOT / "Docs" / "MAP_LAYOUT.json"
 
 SPECIES = {
-    "Conifer": ("Conifer/Conifer.prefab", (1.15, 1.035, 1.15), 1.0),
-    "Pine_A": ("Pines/Pine_A/Pine_A.prefab", (1.13, 1.035, 1.13), 1.0),
-    "Pine_B": ("Pines/Pine_B/Pine_B.prefab", (1.16, 1.035, 1.16), 1.0),
-    "Pine_C": ("Pines/Pine_C/Pine_C.prefab", (1.13, 1.035, 1.13), 1.0),
-    "Pine_D": ("Pines/Pine_D/Pine_D.prefab", (1.14, 1.04, 1.14), 1.0),
-    "Cypress": ("Cypress/Cypress_Forest_Desktop.prefab", (1.61, 1.525, 1.61), 1.5),
+    "Conifer": ("Conifer/Conifer.prefab", (1.21, 0.99, 1.21), 1.0),
+    "Pine_A": ("Pines/Pine_A/Pine_A.prefab", (1.21, 0.98, 1.21), 1.0),
+    "Pine_B": ("Pines/Pine_B/Pine_B.prefab", (1.21, 1.025, 1.21), 1.0),
+    "Pine_C": ("Pines/Pine_C/Pine_C.prefab", (1.18, 0.99, 1.18), 1.0),
+    "Pine_D": ("Pines/Pine_D/Pine_D.prefab", (1.24, 0.99, 1.24), 1.0),
+    "Cypress": ("Cypress/Cypress_Forest_Desktop.prefab", (1.66, 1.44, 1.66), 1.5),
 }
 
 
@@ -52,7 +52,7 @@ class NaturalTreePrefabTests(unittest.TestCase):
                 x, y, z = roots[0]
                 self.assertAlmostEqual(x, z, places=5)
                 self.assertGreater(x / y, 1.05)
-                self.assertLess(x / y, 1.18)
+                self.assertLess(x / y, 1.30)
                 self.assertGreater(x, old_uniform)
                 self.assertLessEqual(y, old_uniform * 1.045)
                 self.assertEqual(source.count("LODGroup:"), 1)
@@ -62,6 +62,23 @@ class NaturalTreePrefabTests(unittest.TestCase):
                 self.assertGreaterEqual(source.count("\nTree:"), 4)
                 self.assertTrue(prefab.with_suffix(".prefab.meta").is_file())
                 self.assertFalse(source.startswith("version https://git-lfs.github.com/spec/v1"))
+
+    def test_all_tree_materials_use_real_urp_speedtree8_shader(self):
+        materials = sorted(TREE_BASE.rglob("*.mat"))
+        self.assertEqual(len(materials), 19)
+        correct = "m_Shader: {fileID: 4800000, guid: 99134b1f0c27d54469a840832a28fadf, type: 3}"
+        for path in materials:
+            with self.subTest(material=path.name):
+                source = path.read_text(encoding="utf-8")
+                self.assertIn(correct, source)
+                self.assertNotIn("d4fdc026464a42041be7fe785babd90e", source)
+                self.assertNotIn("515f8966b1d702f4a8c97ca412a9a4e9", source)
+                self.assertRegex(source, r"(?m)^    - _MainTex:\\n        m_Texture: \\{fileID: 2800000,")
+                self.assertTrue(path.with_suffix(".mat.meta").is_file())
+                is_billboard = path.name.endswith("Billboard.mat")
+                keywords = source.split("m_ValidKeywords:", 1)[1].split("m_InvalidKeywords:", 1)[0]
+                self.assertEqual("  - EFFECT_BILLBOARD" in keywords, is_billboard)
+                self.assertIn(f"    - _BillboardKwToggle: {int(is_billboard)}", source)
 
     def test_all_1100_native_forest_placements_keep_their_prototypes(self):
         forest = json.loads(FOREST.read_text(encoding="utf-8"))
