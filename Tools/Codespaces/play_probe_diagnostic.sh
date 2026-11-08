@@ -116,3 +116,79 @@ if log.is_file():
 else:
     print("AARIS_PLAY_DIAG_UNITY_LOG_MISSING")
 PY
+
+
+# Diagnose the offline aircraft/parachute video probe WITHOUT exposing private
+# Unity/SSH logs, credentials or user-editable source content.  It is run inside
+# the SAME authorized Codespace as CS DROP VIDEO.
+OFFLINE=/tmp/aaris-codespaces/offline-drop-probe
+if test -d "$OFFLINE"; then
+python3 - "$OFFLINE" <<'PYDROP'
+import json,re,sys
+from pathlib import Path
+folder=Path(sys.argv[1])
+report=folder/"report.json"
+log=folder/"unity-private.log"
+frames=folder/"frames"
+shot_dir=folder/"shots"
+video=folder/"drop.mp4"
+print("AARIS_DROP_DIAG_DIRECTORY_FOUND")
+jpg_count=sum(1 for _ in frames.glob("frame_*.jpg")) if frames.is_dir() else 0
+print("AARIS_DROP_DIAG_FRAMES_PRESENT" if jpg_count else "AARIS_DROP_DIAG_FRAMES_MISSING")
+if video.is_file() and video.stat().st_size>=32768:
+    print("AARIS_DROP_DIAG_VIDEO_PRESENT")
+else:
+    print("AARIS_DROP_DIAG_VIDEO_MISSING")
+if report.is_file():
+    try:
+        d=json.loads(report.read_text(errors="replace"))
+        if d.get("mode")=="offline_drop_video":
+            print("AARIS_DROP_DIAG_REPORT_FOUND")
+            print("play_status="+("passed" if d.get("status")=="passed" else "failed"))
+            if isinstance(d.get("frames"),int) and 0<=d["frames"]<=30000:
+                print("frames="+str(d["frames"]))
+            if isinstance(d.get("errors"),int) and 0<=d["errors"]<=10000:
+                print("runtimeErrors="+str(d["errors"]))
+            reason=str(d.get("reason",""))
+            if re.fullmatch(r"[A-Z0-9_]{2,60}",reason):
+                print("play_reason="+reason)
+            for prop in ("observedInPlane","observedFreefall","observedOpening",
+                         "observedGliding","observedLanded","existingMotorRestored",
+                         "canopyActuallyRendered"):
+                if isinstance(d.get(prop),bool):
+                    print("AARIS_DROP_"+prop.upper()+"_"+("YES" if d[prop] else "NO"))
+        else: print("AARIS_DROP_DIAG_REPORT_TYPE_INVALID")
+    except (OSError,ValueError,TypeError):
+        print("AARIS_DROP_DIAG_REPORT_INVALID")
+else: print("AARIS_DROP_DIAG_REPORT_MISSING")
+if log.is_file():
+    print("AARIS_DROP_DIAG_UNITY_LOG_FOUND")
+    size=log.stat().st_size
+    # Scan bounded tail only; raw lines are NEVER emitted.
+    with log.open("rb") as stream:
+        stream.seek(max(0,size-600000))
+        content=stream.read().decode("utf-8","replace")
+    signatures={
+        "UNITY_COMPILE_ERROR":r"error CS\d{4}|Compilation failed|Script Compilation Error",
+        "UNITY_BOOT_ERROR":r"Unity Editor.*failed|failed to load native|Editor initialization failed",
+        "UNITY_LICENSE_ERROR":r"no valid.{0,24}licen[sc]e|licen[sc]e.{0,45}(invalid|failed|expired)",
+        "UNITY_OOM":r"out of memory|failed to allocate|malloc failed|oom killer",
+        "UNITY_CRASH":r"segmentation fault|SIGSEGV|signal 11|crash handler",
+        "UNITY_PLAY_REQUESTED":r"AARIS_OFFLINE_DROP_VIDEO_PLAYMODE_REQUESTED",
+        "UNITY_PROBE_PASSED":r"AARIS_OFFLINE_DROP_VIDEO_PROBE_PASSED",
+        "UNITY_PROBE_FAILED":r"AARIS_OFFLINE_DROP_VIDEO_PROBE_FAILED",
+        "UNITY_BATCH_EXIT":r"Exiting batchmode|EditorApplication.Exit",
+        "UNITY_SCENE_IMPORT":r"Importing.*assets|AssetDatabase.*Refresh",
+        "UNITY_PACKAGE_ERROR":r"Package Manager.*error|Resolution failed|error.*PackageCache",
+        "UNITY_NULL_REFERENCE":r"NullReferenceException",
+        "UNITY_INVALID_OPERATION":r"InvalidOperationException",
+        "UNITY_ASSET_IMPORT_ERROR":r"Asset import failed|Import Error",
+    }
+    for name,pattern in signatures.items():
+        if re.search(pattern,content,re.I):print("AARIS_DROP_LOG_"+name)
+    codes=sorted(set(re.findall(r"error (CS\d{4})",content,re.I)))
+    for code in codes[:8]:
+        print("AARIS_DROP_COMPILER_"+code.upper())
+else: print("AARIS_DROP_DIAG_UNITY_LOG_MISSING")
+PYDROP
+fi
