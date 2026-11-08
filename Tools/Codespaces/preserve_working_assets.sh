@@ -71,10 +71,23 @@ for entry in entries:
     if file.stat().st_size>600*1024**2:
         print('AARIS_CHECKPOINT_FILE_TOO_LARGE')
         raise SystemExit(20)
-    if path.parts[0]=='ProjectSettings' and name not in {
-        'ProjectSettings/ProjectSettings.asset','ProjectSettings/ProjectVersion.txt'}:
-        print('AARIS_CHECKPOINT_SETTINGS_REVIEW_REQUIRED')
-        raise SystemExit(21)
+    if path.parts[0]=='ProjectSettings':
+        # Unity Editor legitimately rewrites more than two tracked settings.
+        # Copy them as independent files, never discard or hide them. Keep the
+        # strict file-type, size and credential-content gates for public GitHub.
+        if len(path.parts)!=2 or path.suffix.lower() not in {'.asset','.txt','.json'}:
+            print('AARIS_CHECKPOINT_SETTINGS_UNEXPECTED_TYPE')
+            raise SystemExit(21)
+        if file.stat().st_size > 12*1024**2:
+            print('AARIS_CHECKPOINT_SETTINGS_UNEXPECTED_SIZE')
+            raise SystemExit(21)
+        blob=file.read_bytes()
+        if re.search(rb'-----BEGIN (?:RSA |EC |OPENSSH |)PRIVATE KEY-----|'
+                     rb'github_pat_[A-Za-z0-9_]{20,}|ghp_[A-Za-z0-9]{20,}|'
+                     rb'sk-[A-Za-z0-9]{25,}|xox[baprs]-[A-Za-z0-9-]{20,}',
+                     blob):
+            print('AARIS_CHECKPOINT_SETTINGS_SECRET_GUARD')
+            raise SystemExit(21)
     # A locally changed tracked file must not override a separately changed
     # upstream file. In that case stop and do manual three-way merge.
     if path_blob('HEAD',name)!=path_blob('refs/remotes/origin/main',name):
