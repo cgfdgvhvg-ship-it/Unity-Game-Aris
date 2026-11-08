@@ -75,7 +75,10 @@ if log.is_file():
         "AarisMobileRuntime","AarisVehicleHUD","AarisExplorerBuild",
         "AarisCodespaceSceneProbe","AarisCICapture","AarisTreeColliderManager",
     }
-    lines=text.splitlines()
+    # Inspect only the newest Play session, not a previous editor attempt.
+    latest_marker=text.rfind("AARIS_NATIVE_PLAY_REQUESTED")
+    active=text[latest_marker:] if latest_marker>=0 else text
+    lines=active.splitlines()
     matching=[]
     for i,line in enumerate(lines):
         exception=next((label for name,label in error_types.items()
@@ -111,7 +114,59 @@ if log.is_file():
             scripts=sorted(x for x in known_scripts if re.search(r"\b"+x+r"\b",context))
             for script in scripts[:4]:
                 print("AARIS_PLAY_ERROR_SOURCE_"+script.upper())
-    elif re.search(r"\b(?:LogType\.Error|Exception)\b",text):
+        # Inspect the latest exception using ONLY fixed public stack
+        # families. Never emit full methods, raw traces, paths or messages.
+        exceptions=[i for i,kind in matching if kind!="REPORTED_GAME_ERROR"]
+        if exceptions:
+            context_lines=lines[exceptions[-1]+1:exceptions[-1]+37]
+            stack="\n".join(context_lines)
+            frames=[]
+            for line in context_lines:
+                m=re.match(r"^\s*(?:at\s+)?((?:UnityEditor|UnityEngine|Aaris|System|Unity)\.[A-Za-z_][A-Za-z0-9_.+]+)\s*\(",line)
+                if m: frames.append(m.group(1))
+            if frames:
+                first=frames[0]
+                if first.startswith("Aaris."): family="AARIS"
+                elif first.startswith("UnityEditor."): family="UNITY_EDITOR"
+                elif first.startswith("UnityEngine."): family="UNITY_ENGINE"
+                elif first.startswith("System."): family="SYSTEM"
+                elif first.startswith("Unity."): family="UNITY_PACKAGE"
+                else: family="OTHER"
+            else: family="NO_FRAME"
+            print("AARIS_PLAY_EXCEPTION_FIRST_FRAME_FAMILY_"+family)
+            print("AARIS_PLAY_EXCEPTION_STACK_FRAMES="+str(min(len(frames),36)))
+            known_subsystems=(
+                ("UnityEditor.UIElements","UI_ELEMENTS"),
+                ("UnityEditor.GameView","GAME_VIEW"),
+                ("UnityEditor.GUIView","GUI_VIEW"),
+                ("UnityEditor.SceneView","SCENE_VIEW"),
+                ("UnityEditor.IMGUI","IMGUI"),
+                ("UnityEditor.EditorGUI","IMGUI"),
+                ("UnityEditor.EditorGUILayout","IMGUI"),
+                ("UnityEditor.Terrain","TERRAIN_EDITOR"),
+                ("UnityEditor.AssetDatabase","ASSET_DATABASE"),
+                ("UnityEditor.PrefabUtility","PREFAB_EDITOR"),
+                ("UnityEditor.Animation","ANIMATION_EDITOR"),
+                ("UnityEditor.PackageManager","PACKAGE_MANAGER"),
+                ("UnityEditor.EditorApplication","EDITOR_LIFECYCLE"),
+                ("UnityEditor.PlayMode","PLAY_MODE"),
+                ("UnityEditor.Rendering","RENDER_PIPELINE"),
+                ("UnityEditor.Shader","SHADER_IMPORT"),
+                ("UnityEditor.Serialized","SERIALIZATION"),
+                ("UnityEditorInternal.ReorderableList","REORDERABLE_LIST"),
+                ("UnityEngine.UIElements","RUNTIME_UI"),
+            )
+            found=[label for source,label in known_subsystems if source in stack]
+            if found:
+                for label in dict.fromkeys(found[:3]):
+                    print("AARIS_PLAY_EXCEPTION_SUBSYSTEM_"+label)
+            elif "UnityEditor." in stack or "UnityEditorInternal." in stack:
+                print("AARIS_PLAY_EXCEPTION_SUBSYSTEM_OTHER_UNITY_EDITOR")
+            elif any(f.startswith("Aaris.") for f in frames):
+                print("AARIS_PLAY_EXCEPTION_SUBSYSTEM_GAME_SCRIPT")
+            else:
+                print("AARIS_PLAY_EXCEPTION_SUBSYSTEM_UNCLASSIFIED")
+    elif re.search(r"\b(?:LogType\.Error|Exception)\b",active):
         print("AARIS_PLAY_LOG_ERROR_UNCLASSIFIED")
 else:
     print("AARIS_PLAY_DIAG_UNITY_LOG_MISSING")
