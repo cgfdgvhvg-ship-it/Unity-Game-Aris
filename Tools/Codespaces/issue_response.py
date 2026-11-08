@@ -9,7 +9,7 @@ try:
     data = json.loads((folder / 'result.json').read_text())
 except (OSError, ValueError):
     data = {}
-operations = set('machines info quota start fresh fresh_ssh rebuild status logs sync lfs lfs_report changes install deps cli_diag editor editor_diag license auth probe shot accept_terms safe_mode compile_report refresh close_editor editor_process editor_recover scene_render scene_play drop_video map_verify photo play_diag foliage_diag test stop'.split())
+operations = set('machines info quota start fresh fresh_ssh rebuild status logs sync lfs lfs_report changes install deps cli_diag editor editor_diag license auth probe shot accept_terms safe_mode compile_report refresh close_editor editor_process editor_recover scene_render scene_play drop_video drop_frames map_verify photo play_diag foliage_diag test stop'.split())
 statuses = {'SUCCESS', 'FAILED', 'NO_CODESPACE', 'UNKNOWN'}
 op = data.get('operation', 'unknown')
 state = data.get('status', 'FAILED')
@@ -45,6 +45,8 @@ for line in lines:
         r'(terrain_tiles|pixel_deviation|image_bytes|play_frames|runtime_errors|photo_target_x|photo_target_z|photo_camera_y)=[0-9.]{1,20}', line):
         safe.append(line)
     elif op == 'map_verify' and re.fullmatch(r'(placed|overlay_files|skipped_terrain|skipped_trees|skipped_obstacles|skipped_assets|image_count|runtime_errors)=[0-9]{1,8}', line):
+        safe.append(line)
+    elif op == 'drop_frames' and re.fullmatch(r'(frame_count|package_bytes)=[0-9]{1,13}', line):
         safe.append(line)
     elif op == 'drop_video' and re.fullmatch(r'(overlay_files|overlay_bytes|video_bytes|play_frames|runtime_errors)=[0-9]{1,13}', line):
         safe.append(line)
