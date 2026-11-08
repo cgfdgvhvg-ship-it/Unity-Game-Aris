@@ -94,6 +94,7 @@ namespace Aaris.MapReview
         private void UpdatePlacement()
         {
             placementValid = false;
+            if (ghost != null) ghost.SetActive(false);
             if (motor == null || motor.AimCamera == null) { if (ghost != null) ghost.SetActive(false); return; }
             Vector3 look = motor.AimCamera.transform.forward;
             Vector3 ahead = Vector3.ProjectOnPlane(look, Vector3.up).normalized;
