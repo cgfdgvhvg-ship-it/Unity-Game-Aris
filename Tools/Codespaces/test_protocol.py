@@ -233,6 +233,13 @@ for lifecycle in ('bootstrap.sh','prebuild.sh','finalize.sh'):
     assert 'DEFERRED' in (r/'.devcontainer'/lifecycle).read_text()
 assert "'CS FRESH')" in controller
 assert "'CS FRESH SSH')" in controller
+assert "'CS FRESH MINIMAL') OP=fresh_minimal" in controller
+assert "'CS BOOTSTRAP') OP=bootstrap" in controller
+assert 'aaris-ai-ubuntu-minimal' in controller
+assert 'minimal-ubuntu/devcontainer.json' in controller
+assert 'bootstrap' in wf and 'bootstrap' in response
+assert 'fresh_minimal' in wf and 'fresh_minimal' in response
+assert 'bash "$PROJECT/.devcontainer/bootstrap.sh"' in remote_source
 assert "aaris-ai-unity-ssh" in controller
 assert '--devcontainer-path .devcontainer/devcontainer.json' in controller
 assert '--idle-timeout 240m' in controller
@@ -334,9 +341,12 @@ selection_line=next(line for line in direct.splitlines() if line.startswith('CS=
 selector=selection_line.split("jq -r '",1)[1].split("'",1)[0]
 old={"displayName":"aaris-ai-unity","name":"old-unreachable"}
 ssh={"displayName":"aaris-ai-unity-ssh","name":"new-ssh-ready"}
+minimal={"displayName":"aaris-ai-ubuntu-minimal","name":"new-minimal-ubuntu"}
 for candidates, expected in (([old,ssh],"new-ssh-ready"),
                              ([ssh,old],"new-ssh-ready"),
-                             ([old],"old-unreachable")):
+                             ([old],"old-unreachable"),
+                             ([ssh,minimal],"new-minimal-ubuntu"),
+                             ([minimal,old,ssh],"new-minimal-ubuntu")):
     selected=subprocess.run(["jq","-r",selector],input=json.dumps(candidates),
                             capture_output=True,text=True,check=True).stdout.strip()
     assert selected==expected, (selected,expected)
