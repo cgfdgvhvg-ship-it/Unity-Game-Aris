@@ -9,8 +9,8 @@ try:
     data = json.loads((folder / 'result.json').read_text())
 except (OSError, ValueError):
     data = {}
-operations = set('machines info quota start fresh fresh_ssh rebuild status logs sync lfs lfs_report changes preserve_assets retry_assets install deps cli_diag editor editor_diag license auth probe shot accept_terms safe_mode compile_report refresh close_editor editor_process editor_recover scene_render scene_play drop_video drop_frames map_verify photo play_diag foliage_diag test stop'.split())
-statuses = {'SUCCESS', 'FAILED', 'NO_CODESPACE', 'UNKNOWN'}
+operations = set('machines info quota start fresh fresh_ssh rebuild status logs sync lfs lfs_report changes preserve_assets retry_assets install deps cli_diag editor editor_diag editor_isolate license auth probe shot accept_terms safe_mode compile_report refresh close_editor editor_process editor_recover scene_render scene_play drop_video drop_frames map_verify photo play_diag foliage_diag test stop'.split())
+statuses = {'SUCCESS', 'FAILED', 'NO_CODESPACE', 'TARGET_UNAVAILABLE', 'UNKNOWN'}
 op = data.get('operation', 'unknown')
 state = data.get('status', 'FAILED')
 if op not in operations:
@@ -30,7 +30,7 @@ safe = []
 for line in lines:
     if re.fullmatch(r'[A-Z][A-Z0-9_]{2,90}', line):
         safe.append(line)
-    elif re.fullmatch(r'(commit|arch|os_id|os_version|glibc|docker_ready|cpus|memory_mb|workspace_free_kb|tmp_free_kb|lfs_tracked_count|lfs_unhydrated_pointer_count|lfs_log_recorded|lfs_error_kind|lfs_error_hash_count|lfs_object_hash_1|lfs_object_hash_2|lfs_object_hash_3|changed_files_count|raw_identical_count|raw_different_count|state|idle_minutes|devcontainer|editor_installed|editor_running|display|scene|machine|codespace)=[A-Za-z0-9_.-]{1,80}', line):
+    elif re.fullmatch(r'(commit|arch|os_id|os_version|glibc|docker_ready|cpus|memory_mb|workspace_free_kb|tmp_free_kb|lfs_tracked_count|lfs_unhydrated_pointer_count|lfs_log_recorded|lfs_error_kind|lfs_error_hash_count|lfs_object_hash_1|lfs_object_hash_2|lfs_object_hash_3|changed_files_count|raw_identical_count|raw_different_count|state|idle_minutes|devcontainer|editor_installed|editor_running|display|scene|machine|codespace|target_codespace|reason)=[A-Za-z0-9_.-]{1,80}', line):
         safe.append(line)
     elif op == 'cli_diag' and re.fullmatch(
         r'(UNITY_CLI_PRESENT|UNITY_CLI_INSTALL_LOG_RECORDED|'
