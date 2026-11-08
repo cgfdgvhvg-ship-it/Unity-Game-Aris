@@ -112,6 +112,10 @@ assert 'refresh_unity.sh' in (r/'Tools/Codespaces/controller.sh').read_text()
 assert 'refresh' in (r/'.github/workflows/aaris-codespaces-control.yml').read_text()
 refresh=(r/'Tools/Codespaces/refresh_unity.sh').read_text()
 assert 'UNITY_ASSETS_REFRESH_REQUESTED' in refresh
+assert 'UNITY_VEHICLE_RECOMPILE_MTIME_REQUESTED' in refresh
+assert "touch -c \"$MOTOR\" \"$MANIFEST\"" in refresh
+assert "com.unity.modules.vehicles" in refresh
+assert "UNITY_REFRESH_VEHICLES_MODULE_NOT_CONFIGURED" in refresh
 assert "ctrl+r" in refresh
 assert 'Unity-Game-Aris' in refresh
 assert 'refresh_unity.sh' not in (r/'.devcontainer/prebuild.sh').read_text()
