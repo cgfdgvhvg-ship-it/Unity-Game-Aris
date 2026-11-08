@@ -16,6 +16,7 @@ namespace Aaris.MapReview
 
         private AarisThirdPersonPlayer motor;
         private AarisOfflineGlooWall gloo;
+        private AarisGlooTouchButton wallTouch;
         private AarisOfflineDrop drop;
         private AarisVehicleSession vehicle;
         private Canvas canvas;
@@ -57,7 +58,14 @@ namespace Aaris.MapReview
             bool onFoot = (drop == null || drop.HasLanded) &&
                 (vehicle == null || !vehicle.IsDriving);
             if (canvas != null && canvas.enabled != onFoot) canvas.enabled = onFoot;
-            if (!onFoot) { if (gloo.Aiming) gloo.CancelAim(); return; }
+            if (!onFoot)
+            {
+                // Canvas.enabled=false does not invoke the touch button's OnDisable.
+                // Clear its pointer ID so re-entering on-foot mode never locks WALL.
+                if (wallTouch != null) wallTouch.CancelHold();
+                else if (gloo.Aiming) gloo.CancelAim();
+                return;
+            }
             if (Input.GetKeyDown(KeyCode.Q)) ThrowFrag();
             if (wallLabel != null) wallLabel.text = "WALL\nx" + gloo.Count;
             if (grenadeLabel != null) grenadeLabel.text = "FRAG\nx" + fragGrenades;
@@ -110,8 +118,8 @@ namespace Aaris.MapReview
             wallLabel = CreateAction("Gloo Wall", new Vector2(1f, 0.64f),
                 new Vector2(-395f, 0f), new Color(0.18f, 0.59f, 0.83f, 0.86f),
                 out GameObject wallButtonObject);
-            var held = wallButtonObject.AddComponent<AarisGlooTouchButton>();
-            held.Bind(gloo);
+            wallTouch = wallButtonObject.AddComponent<AarisGlooTouchButton>();
+            wallTouch.Bind(gloo);
             grenadeLabel = CreateAction("Frag Grenade", new Vector2(1f, 0.27f),
                 new Vector2(-395f, 0f), new Color(0.36f, 0.42f, 0.32f, 0.90f),
                 out GameObject grenadeButton);
@@ -154,6 +162,8 @@ namespace Aaris.MapReview
 
         private void LateUpdate() => RefreshSafeArea();
 
+        private void OnDisable() { if (wallTouch != null) wallTouch.CancelHold(); }
+
         private void OnDestroy()
         {
             if (canvas != null) Destroy(canvas.gameObject);
@@ -186,10 +196,13 @@ namespace Aaris.MapReview
             holding = int.MinValue;
             if (wall != null) wall.CancelAim();
         }
-        private void OnDisable()
+        public void CancelHold()
         {
             holding = int.MinValue;
             if (wall != null) wall.CancelAim();
         }
+        private void OnDisable() => CancelHold();
+        private void OnApplicationPause(bool paused) { if (paused) CancelHold(); }
+        private void OnApplicationFocus(bool focused) { if (!focused) CancelHold(); }
     }
 }
