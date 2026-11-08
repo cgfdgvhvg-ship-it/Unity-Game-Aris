@@ -47,19 +47,28 @@ if test -z "$CLI" || ! test -x "$CLI"; then echo "UNITY_CLI_BINARY_MISSING"; exi
 echo "UNITY_CLI_READY"
 echo "UNITY_EDITOR_PERSISTENT_INSTALL_START"
 # Unity installer downloads to a portable Editor directory and can resume partial downloads.
-if ! "$CLI" install "$VERSION" --changeset "$CHANGESET" --download-directory "$EDITOR_ROOT" --resume --non-interactive >"$RUN/cli-editor-install.log" 2>&1; then
+# Explicitly satisfy the CLI's required non-interactive confirmation and EULA
+# switches. Keep the full CLI response private; emit only an integer exit code
+# and fixed error category to the public Actions control channel.
+if "$CLI" install "$VERSION" --changeset "$CHANGESET" --download-directory "$EDITOR_ROOT" --resume --non-interactive --yes --accept-eula --format json >"$RUN/cli-editor-install.log" 2>&1; then
+  :
+else
+  INSTALL_EXIT=$?
+  printf 'UNITY_EDITOR_INSTALL_EXIT_CODE_%d\n' "$INSTALL_EXIT"
   python3 - "$RUN/cli-editor-install.log" <<'PY'
 from pathlib import Path
 import sys,re
 s=Path(sys.argv[1]).read_text(errors="replace")[-30000:]
 k=[
-("EULA",r"accept-eula|terms.*not accepted|eula|TERMS_ACCEPT"),
+("EULA",r"accept-eula|terms.*not accepted|eula|TERMS_ACCEPT|CONSENT_REQUIRED|confirmation required"),
 ("LOW_DISK",r"no space left|insufficient space|disk.*full"),
 ("AUTHORIZATION",r"authentication required|not signed in|unauthorized|403"),
 ("NETWORK",r"timed out|TLS|certificate|network|connection reset"),
 ("VERSION",r"changeset.*not|not.*changeset|release.*not found|404"),
-("CLI_USAGE",r"unknown command|unknown flag|unexpected argument|usage:"),
+("CLI_USAGE",r"unknown command|unknown flag|unexpected argument|usage:|invalid option|unrecognized option"),
 ("INSTALL_BUSY",r"install.*lock|another install|waiting for another"),
+("PERMISSIONS",r"permission denied|operation not permitted|EACCES"),
+("RELEASE_SERVICE",r"RELEASE_NOT_FOUND|release.*service unavailable|release.*feed unavailable"),
 ]
 print("UNITY_EDITOR_INSTALL_CATEGORY_"+next((name for name,pat in k if re.search(pat,s,re.I)),"UNCLASSIFIED"))
 PY
