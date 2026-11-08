@@ -166,6 +166,19 @@ namespace Aaris.MapReview
                 site.width > 50f || site.depth > 50f || site.height > 50f);
         }
 
+        // Conservative projected extents of the rotated footprint, shared by
+        // foundation samples and native-tree clearance. This handles 90-degree
+        // watchtowers and arbitrary future yaw values on multi-tile seams.
+        private static void FootprintHalfExtents(AarisExpansionSite site, float margin,
+            out float halfX, out float halfZ)
+        {
+            float yaw = site.yaw * Mathf.Deg2Rad;
+            float cos = Mathf.Abs(Mathf.Cos(yaw));
+            float sin = Mathf.Abs(Mathf.Sin(yaw));
+            halfX = (site.width * cos + site.depth * sin) * 0.5f + margin;
+            halfZ = (site.width * sin + site.depth * cos) * 0.5f + margin;
+        }
+
         private static bool TryTerrainAt(float x, float z, Terrain[] all,
             out Terrain terrain, out float height)
         {
@@ -205,8 +218,7 @@ namespace Aaris.MapReview
             if (support.terrainData.GetSteepness(nx, nz) > MaxSlopeDegrees)
                 return false;
 
-            float halfX = site.width * 0.5f + ObstacleMargin;
-            float halfZ = site.depth * 0.5f + ObstacleMargin;
+            FootprintHalfExtents(site, ObstacleMargin, out float halfX, out float halfZ);
             for (int xi = -1; xi <= 1; xi++)
                 for (int zi = -1; zi <= 1; zi++)
                 {
@@ -222,8 +234,7 @@ namespace Aaris.MapReview
         {
             // A footprint on the seam between native tiles must check trees
             // from BOTH tiles, not only the tile containing its centre.
-            float hx = site.width * 0.5f + VegetationMargin;
-            float hz = site.depth * 0.5f + VegetationMargin;
+            FootprintHalfExtents(site, VegetationMargin, out float hx, out float hz);
             foreach (Terrain terrain in all)
             {
                 if (terrain == null || terrain.terrainData == null ||
