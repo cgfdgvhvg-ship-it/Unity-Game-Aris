@@ -16,5 +16,10 @@ fi
 
 # The verified Editor installer is idempotent. It only downloads when missing,
 # and does NOT run Unity ID sign-in or request/store a machine license.
-bash Tools/Codespaces/install_unity.sh
-echo AARIS_PREBUILD_EDITOR_READY
+# A failed multi-gigabyte Editor download must never turn the entire Codespace
+# into an inaccessible recovery container. Retry later with CS INSTALL.
+if bash Tools/Codespaces/install_unity.sh >/tmp/aaris-codespaces/prebuild-editor-install.log 2>&1; then
+  echo AARIS_PREBUILD_EDITOR_READY
+else
+  echo AARIS_PREBUILD_EDITOR_DEFERRED_USE_CS_INSTALL
+fi
