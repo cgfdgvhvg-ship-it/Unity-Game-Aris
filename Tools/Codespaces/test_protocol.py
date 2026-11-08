@@ -15,6 +15,13 @@ assert 'UNITY_LICENSE' not in (r/'.devcontainer/prebuild.sh').read_text()
 assert 'UNITY_LICENSE' not in (r/'.devcontainer/finalize.sh').read_text()
 assert d['postStartCommand']=='bash .devcontainer/start_screen.sh'
 assert 'ghcr.io/devcontainers/features/sshd:1' in d['features']
+# Regression: WheelCollider / WheelFrictionCurve live in the Unity built-in
+# VehiclesModule; leaving it out makes the entire vehicle assembly fail to compile.
+manifest=json.loads((r/'Packages/manifest.json').read_text())['dependencies']
+assert manifest.get('com.unity.modules.vehicles')=='1.0.0'
+vehicle=(r/'Assets/AarisWorld/Scripts/AarisVehicleMotor.cs').read_text()
+assert 'WheelCollider' in vehicle and 'WheelFrictionCurve' in vehicle
+assert manifest.get('com.unity.modules.physics')=='1.0.0'
 wf=(r/'.github/workflows/aaris-codespaces-control.yml').read_text()
 assert "github.event.comment.user.login == 'sundamunda289-art'" in wf
 assert "github.event.issue.number == 77" in wf
