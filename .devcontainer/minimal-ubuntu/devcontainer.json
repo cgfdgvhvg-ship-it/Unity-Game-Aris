@@ -1,0 +1,11 @@
+{
+  "name": "Aaris minimal Ubuntu SSH Codespace (recoverable)",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspaces/Unity-Game-Aris",
+  "features": {
+    "ghcr.io/devcontainers/features/sshd:1": {
+      "version": "latest"
+    }
+  }
+}

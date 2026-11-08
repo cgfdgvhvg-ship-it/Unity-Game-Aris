@@ -28,6 +28,7 @@ if test -n "$ISSUE"; then
     'CS START') OP=start ;;
     'CS FRESH') OP=fresh ;;
     'CS FRESH SSH') OP=fresh_ssh ;;
+    'CS FRESH MINIMAL') OP=fresh_minimal ;;
     'CS REBUILD') OP=rebuild ;;
     'CS FULL REBUILD') OP=full_rebuild ;;
     'CS STATUS') OP=status ;;
@@ -42,6 +43,7 @@ if test -n "$ISSUE"; then
     'CS SAVE CHANGES') OP=preserve_assets ;;
     'CS RETRY SAVE') OP=retry_assets ;;
     'CS INSTALL') OP=install ;;
+    'CS BOOTSTRAP') OP=bootstrap ;;
     'CS DEPS') OP=deps ;;
     'CS CLI DIAG') OP=cli_diag ;;
     'CS EDITOR') OP=editor ;;
@@ -78,7 +80,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|fresh|fresh_ssh|rebuild|full_rebuild|status|logs|sync|recovery_sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
+  machines|info|quota|start|fresh|fresh_ssh|fresh_minimal|rebuild|full_rebuild|status|logs|sync|recovery_sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|bootstrap|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -171,6 +173,34 @@ if test "$OP" = fresh_ssh; then
   fi
   STATE="SUCCESS"; DETAIL="ssh_codespace_created_preserving_previous_workspaces"; exit 0
 fi
+# Create an independent, lightweight Ubuntu SSH Codespace on the CURRENT
+# Codespaces billing account. It does not alter/delete any existing worktree.
+if test "$OP" = fresh_minimal; then
+  EXISTING="$(jq -r '[.[] | select(.displayName=="aaris-ai-ubuntu-minimal")][0].name // ""' <<< "$LIST")"
+  if test -n "$EXISTING"; then
+    printf 'codespace=%s\n' "$EXISTING" > "$OUT/terminal.txt"
+    STATE="SUCCESS"; DETAIL="existing_minimal_codespace_selected"; exit 0
+  fi
+  if ! jq -e '.image == "mcr.microsoft.com/devcontainers/base:ubuntu-22.04" and .remoteUser == "vscode" and .features["ghcr.io/devcontainers/features/sshd:1"] != null' "$GITHUB_WORKSPACE/.devcontainer/minimal-ubuntu/devcontainer.json" >/dev/null; then
+    DETAIL="minimal_ubuntu_ssh_configuration_missing"; exit 38
+  fi
+  if ! gh api "/repos/$REPO/codespaces/machines" --jq '.machines[].name' 2>/dev/null | grep -qxF "standardLinux32gb"; then
+    DETAIL="minimal_4core_16gb_unavailable"; exit 39
+  fi
+  if ! NEW="$(timeout 1200 gh codespace create -R "$REPO" -b main -m standardLinux32gb --devcontainer-path .devcontainer/minimal-ubuntu/devcontainer.json --idle-timeout 240m --display-name aaris-ai-ubuntu-minimal --default-permissions 2>/dev/null)"; then
+    DETAIL="minimal_codespace_creation_failed_check_quota"; exit 40
+  fi
+  NEW="$(printf '%s\n' "$NEW" | tail -n 1 | tr -d "[:space:]")"
+  [[ "$NEW" =~ ^[A-Za-z0-9-]+$ ]] || { DETAIL="minimal_creation_response_unverified"; exit 41; }
+  printf 'codespace=%s\nmachine=standardLinux32gb\n' "$NEW" > "$OUT/terminal.txt"
+  echo 'AARIS_MINIMAL_UBUNTU_SSH_CREATED' >> "$OUT/terminal.txt"
+  # Pause compute on only the known failed worker machine, never delete it.
+  OLD="aaris-ai-unity-ssh-r7x67xqjg4qphgx6"
+  if jq -e --arg target "$OLD" 'any(.[]; .name == $target)' <<< "$LIST" >/dev/null; then
+    gh codespace stop -c "$OLD" >/dev/null 2>/dev/null || true
+  fi
+  STATE="SUCCESS"; DETAIL="minimal_ubuntu_codespace_created_old_preserved"; exit 0
+fi
 # Account-aware selection for existing Codespaces. The CODESPACE_PAT GitHub CLI
 # can only list the selected account's Codespaces, not the master account's.
 # Never pick the first result when multiple match; never create on CS START.
@@ -183,12 +213,20 @@ if test -n "$MACHINE"; then
 elif jq -e --arg target "$TARGET_CODESPACE" 'any(.[]; .name == $target)' <<< "$LIST" >/dev/null; then
   CS="$TARGET_CODESPACE"
 else
-  COUNT="$(jq '[.[] | select(.displayName == "aaris-ai-unity-ssh")] | length' <<< "$LIST")"
-  if test "$COUNT" -eq 1; then
-    CS="$(jq -r '.[] | select(.displayName == "aaris-ai-unity-ssh") | .name' <<< "$LIST")"
+  MINIMAL_COUNT="$(jq '[.[] | select(.displayName == "aaris-ai-ubuntu-minimal")] | length' <<< "$LIST")"
+  if test "$MINIMAL_COUNT" -eq 1; then
+    CS="$(jq -r '.[] | select(.displayName == "aaris-ai-ubuntu-minimal") | .name' <<< "$LIST")"
     TARGET_CODESPACE="$CS"
-  else
+  elif test "$MINIMAL_COUNT" -gt 1; then
     CS=""
+  else
+    COUNT="$(jq '[.[] | select(.displayName == "aaris-ai-unity-ssh")] | length' <<< "$LIST")"
+    if test "$COUNT" -eq 1; then
+      CS="$(jq -r '.[] | select(.displayName == "aaris-ai-unity-ssh") | .name' <<< "$LIST")"
+      TARGET_CODESPACE="$CS"
+    else
+      CS=""
+    fi
   fi
 fi
 if test -z "$CS"; then
@@ -298,6 +336,7 @@ PY
 REMOTE_TIMEOUT=130
 case "$OP" in
   install) REMOTE_TIMEOUT=3000 ;;
+  bootstrap) REMOTE_TIMEOUT=1500 ;;
   deps) REMOTE_TIMEOUT=900 ;;
   sync|lfs) REMOTE_TIMEOUT=1200 ;;
   preserve_assets) REMOTE_TIMEOUT=1500 ;;
