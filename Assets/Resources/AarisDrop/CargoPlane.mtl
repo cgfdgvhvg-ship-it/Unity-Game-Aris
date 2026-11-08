@@ -1,0 +1,8 @@
+newmtl HulledMetal
+Kd 0.37 0.44 0.47
+Ka 0.08 0.08 0.08
+Ns 38
+newmtl DarkCockpit
+Kd 0.08 0.14 0.18
+Ka 0.04 0.06 0.06
+Ns 80
