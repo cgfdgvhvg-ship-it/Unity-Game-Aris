@@ -175,6 +175,170 @@ namespace Aaris.MapReview.Editor
             }
         }
 
+
+        // Owner-approved map coordinates and azimuth. Terrain elevation is
+        // sampled from the real LFS TerrainData, not guessed from a blueprint.
+        private static float PhotoOption(string key, float fallback, float low, float high)
+        {
+            string prefix = "-aaris" + key + "=";
+            foreach (string arg in Environment.GetCommandLineArgs())
+            {
+                if (!arg.StartsWith(prefix, StringComparison.Ordinal)) continue;
+                float result;
+                if (!float.TryParse(arg.Substring(prefix.Length),
+                    System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out result) ||
+                    float.IsNaN(result) || float.IsInfinity(result) ||
+                    result < low || result > high)
+                    throw new ArgumentException("INVALID_PHOTO_" + key.ToUpperInvariant());
+                return result;
+            }
+            return fallback;
+        }
+
+        private static float Elevation(Terrain[] terrains, float x, float z, float fallback)
+        {
+            foreach (Terrain t in terrains)
+            {
+                Vector3 p = t.transform.position;
+                Vector3 size = t.terrainData.size;
+                if (x >= p.x && x <= p.x + size.x && z >= p.z && z <= p.z + size.z)
+                    return t.SampleHeight(new Vector3(x, 0, z)) + p.y;
+            }
+            return fallback; // Camera can be outside the saved map, target cannot.
+        }
+
+        [Serializable]
+        private sealed class PhotoReport
+        {
+            public string status;
+            public string reason;
+            public string scene;
+            public string unityVersion;
+            public string graphicsDevice;
+            public int terrainTiles;
+            public float targetX, targetY, targetZ;
+            public float cameraX, cameraY, cameraZ;
+            public float yaw, pitch, distance;
+            public float detailVariation, contextVariation;
+            public string[] images;
+        }
+
+        // Frame any requested X/Z in the saved world. Its Y is the true terrain
+        // height, and the requested yaw/pitch/distance fix the viewing direction.
+        // A second wider view allows AI to identify landmarks around the target.
+        [MenuItem("Aaris/CI/Take coordinate photo")]
+        public static void CaptureAt()
+        {
+            Directory.CreateDirectory(Output);
+            PhotoReport result = new PhotoReport {
+                status = "failed", scene = Scene,
+                unityVersion = Application.unityVersion,
+                graphicsDevice = SystemInfo.graphicsDeviceType.ToString()
+            };
+            GameObject go = null;
+            try
+            {
+                float x = PhotoOption("X", 0f, -1000f, 1000f);
+                float z = PhotoOption("Z", 0f, -1000f, 1000f);
+                float yaw = PhotoOption("Yaw", 35f, -360f, 360f);
+                float pitch = PhotoOption("Pitch", 30f, 12f, 75f);
+                float distance = PhotoOption("Distance", 85f, 20f, 450f);
+                Terrain[] terrains = LoadNativeScene();
+                result.terrainTiles = terrains.Length;
+                float ground = Elevation(terrains, x, z, float.NaN);
+                if (float.IsNaN(ground)) throw new InvalidOperationException("TARGET_NOT_ON_NATIVE_TERRAIN");
+
+                // Frame the nearest modest-size renderer if its center is
+                // close to the selected coordinate. This avoids cutting off a
+                // nearby roof or tree, but never substitutes a different target.
+                float aimHeight = ground + 3f;
+                float best = 28f * 28f;
+                foreach (Renderer renderer in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+                {
+                    Bounds bounds = renderer.bounds;
+                    if (bounds.size.magnitude > 130f) continue;
+                    float dx = bounds.center.x - x, dz = bounds.center.z - z;
+                    float score = dx * dx + dz * dz;
+                    if (score < best && bounds.max.y > ground + 2f)
+                    {
+                        best = score;
+                        aimHeight = Mathf.Clamp(bounds.center.y, ground + 2f, ground + 55f);
+                    }
+                }
+                Vector3 target = new Vector3(x, aimHeight, z);
+                float angle = yaw * Mathf.Deg2Rad;
+                Vector3 backward = new Vector3(-Mathf.Sin(angle), 0, -Mathf.Cos(angle));
+                Vector3 cameraPosition = target + backward * distance
+                    + Vector3.up * (distance * Mathf.Tan(pitch * Mathf.Deg2Rad));
+                cameraPosition.y = Mathf.Max(cameraPosition.y,
+                    Elevation(terrains, cameraPosition.x, cameraPosition.z, ground) + 5f);
+
+                // Lift the camera above every sampled point of the terrain
+                // along the view ray, so a mountain cannot simply fill the shot.
+                for (int i = 1; i <= 24; i++)
+                {
+                    float t = i / 25f;
+                    Vector3 sample = Vector3.Lerp(cameraPosition, target, t);
+                    float terrainY = Elevation(terrains, sample.x, sample.z, -100000f);
+                    float needed = (terrainY + 3f - t * target.y) / (1f - t);
+                    if (terrainY > -99999f) cameraPosition.y = Mathf.Max(cameraPosition.y, needed);
+                }
+                cameraPosition.y = Mathf.Min(cameraPosition.y, target.y + 1800f);
+
+                go = new GameObject("__Aaris_Coordinate_Photo_Camera");
+                go.hideFlags = HideFlags.HideAndDontSave;
+                Camera camera = go.AddComponent<Camera>();
+                camera.enabled = false;
+                camera.orthographic = false;
+                camera.fieldOfView = 62f;
+                camera.nearClipPlane = 0.1f;
+                camera.farClipPlane = 5500f;
+                camera.clearFlags = CameraClearFlags.Skybox;
+                camera.allowHDR = true;
+                camera.transform.position = cameraPosition;
+                camera.transform.LookAt(target, Vector3.up);
+                result.detailVariation = Render(camera, 1600, 900, Path.Combine(Output, "photo-detail.png"));
+                result.cameraX = cameraPosition.x;
+                result.cameraY = cameraPosition.y;
+                result.cameraZ = cameraPosition.z;
+
+                // Context frame is deliberately wider, from the same azimuth,
+                // to show roads/trees/buildings around the inspection point.
+                Vector3 widePosition = target + backward * Mathf.Max(130f, distance * 2.25f)
+                    + Vector3.up * Mathf.Max(95f, distance * 1.8f);
+                widePosition.y = Mathf.Max(widePosition.y,
+                    Elevation(terrains, widePosition.x, widePosition.z, ground) + 12f);
+                camera.transform.position = widePosition;
+                camera.transform.LookAt(target, Vector3.up);
+                result.contextVariation = Render(camera, 1600, 900,
+                    Path.Combine(Output, "photo-context.png"));
+                result.targetX = x;
+                result.targetY = aimHeight;
+                result.targetZ = z;
+                result.yaw = yaw;
+                result.pitch = pitch;
+                result.distance = distance;
+                result.images = new[] { "photo-detail.png", "photo-context.png" };
+                result.status = "passed";
+                result.reason = "NATIVE_COORDINATE_CAMERA_AND_CONTEXT_RENDERED";
+                Debug.Log("AARIS_NATIVE_COORDINATE_PHOTO_PASSED");
+            }
+            catch (Exception e)
+            {
+                result.reason = e is InvalidOperationException || e is ArgumentException
+                    ? e.Message : e.GetType().Name;
+                Debug.LogError("AARIS_NATIVE_COORDINATE_PHOTO_FAILED:" + result.reason);
+                throw;
+            }
+            finally
+            {
+                if (go != null) UnityEngine.Object.DestroyImmediate(go);
+                File.WriteAllText(Path.Combine(Output, "photo-report.json"),
+                    JsonUtility.ToJson(result, true));
+            }
+        }
+
         [MenuItem("Aaris/CI/Native Play Mode smoke test")]
         public static void Play()
         {
