@@ -278,6 +278,51 @@ case "$OP" in
   drop_frames) REMOTE_TIMEOUT=420 ;;
   map_verify) REMOTE_TIMEOUT=1800 ;;
 esac
+# The Codespace account can read its 775 saved LFS files but Git LFS remote
+# fetches for the 18 new meshes may fail even after server-side OID verification.
+# Transfer the ORIGINAL historical Unity bake from the trusted Actions artifact,
+# never a model-generated replacement or an account token. All payload hashes
+# are checked again by restore_preserved_source_lfs.py against main's pointers.
+if [[ "$OP" =~ ^(scene_render|scene_play|photo|foliage_diag|survey)$ ]]; then
+  ARCHIVE_DIR="$RUNNER_TEMP/aaris-verified-native-tree-archive"
+  mkdir -p "$ARCHIVE_DIR"
+  if ! GH_TOKEN="$AARIS_ISSUE_REPLY_TOKEN" gh run download 42472771253 \
+      -R "$REPO" --name aaris-codespace-42472771253 \
+      -D "$ARCHIVE_DIR" >/dev/null 2>"$PRIVATE_ERRORS"; then
+    DETAIL="verified_native_tree_archive_not_downloadable"
+    safe_error_summary
+    exit 72
+  fi
+  TREE_ARCHIVE="$ARCHIVE_DIR/mass-package.tar.gz"
+  EXPECTED_TREE_ARCHIVE_SHA=234024b842e8cc5e1253607ce41b5a6aebec6a7abd3c9fd81837bc960a24197d
+  if ! test -f "$TREE_ARCHIVE" ||
+     test "$(stat -c %s "$TREE_ARCHIVE")" != "4757727" ||
+     test "$(sha256sum "$TREE_ARCHIVE" | cut -d ' ' -f1)" != "$EXPECTED_TREE_ARCHIVE_SHA"; then
+    DETAIL="historical_native_tree_archive_hash_mismatch"
+    exit 73
+  fi
+  # This fixed 4.7 MB original archive is non-secret and goes ONLY to /tmp.
+  # The project working tree, LFS .git database and Unity license are untouched.
+  if ! timeout 180 gh codespace ssh -c "$CS" -- \
+      'bash -c "umask 077; mkdir -p /tmp/aaris-codespaces/scene-probe; cat > /tmp/aaris-codespaces/scene-probe/verified-tree-mass-package.tar.gz"' \
+      < "$TREE_ARCHIVE" >/dev/null 2>"$PRIVATE_ERRORS"; then
+    DETAIL="verified_native_tree_archive_transfer_failed"
+    safe_error_summary
+    exit 74
+  fi
+  REMOTE_TREE_SHA="$(timeout 50 gh codespace ssh -c "$CS" -- \
+      'sha256sum /tmp/aaris-codespaces/scene-probe/verified-tree-mass-package.tar.gz' \
+      2>"$PRIVATE_ERRORS" | cut -d ' ' -f1 | tr -d '\r\n')" || {
+    DETAIL="remote_native_tree_archive_hash_unavailable"
+    safe_error_summary
+    exit 75
+  }
+  if test "$REMOTE_TREE_SHA" != "$EXPECTED_TREE_ARCHIVE_SHA"; then
+    DETAIL="remote_native_tree_archive_hash_mismatch"
+    exit 76
+  fi
+fi
+
 if test "$OP" = retry_assets; then
   # Authenticated GitHub Actions checkout handles only the exact saved 210
   # project edits. Existing Codespace is accessed read-only; no new machine.
