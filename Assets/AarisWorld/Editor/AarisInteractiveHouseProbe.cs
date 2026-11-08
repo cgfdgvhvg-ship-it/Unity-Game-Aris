@@ -22,6 +22,8 @@ namespace Aaris.MapReview.Editor
         private const string Status = Prefix + "state";
         private const string Since = Prefix + "since";
         private const string Errors = Prefix + "errors";
+        private const string ErrorKind = Prefix + "errorKind";
+        private const string ErrorSource = Prefix + "errorSource";
         private const string ExitCode = Prefix + "exit";
         private static AarisBreakablePanel door, pane;
         private static Collider doorCollider, paneCollider;
@@ -37,6 +39,7 @@ namespace Aaris.MapReview.Editor
             public string status, reason, scene, unityVersion;
             public int terrainTiles, sites, modularHomes, panels, doors, windows;
             public int screenshotCount, runtimeErrors;
+            public string runtimeErrorKind, runtimeErrorSource;
             public float imageDeviationMin;
             public bool startsClosed, openedNearPlayer, clearDoorGap;
             public bool closesWhenUnoccupied, windowHitAndBroken, doorHitAndBroken;
@@ -55,7 +58,43 @@ namespace Aaris.MapReview.Editor
             if (SessionState.GetString(Status, "") == "" ||
                 (type != LogType.Error && type != LogType.Assert &&
                  type != LogType.Exception)) return;
-            SessionState.SetInt(Errors, SessionState.GetInt(Errors, 0) + 1);
+            int previous = SessionState.GetInt(Errors, 0);
+            SessionState.SetInt(Errors, previous + 1);
+            if (previous > 0) return;
+            // Only fixed, reviewed categories leave the private Unity Editor log.
+            // Never publish error messages, paths, stack traces or license data.
+            string kind =
+                message != null && message.Contains("imported animation clips invalid")
+                    ? "CHARACTER_ANIMATION_FALLBACK" :
+                message != null && message.Contains("Aaris vehicles:")
+                    ? "OFFLINE_VEHICLE_STARTUP" :
+                message != null && message.Contains("Aaris offline drop:")
+                    ? "OFFLINE_DROP_STARTUP" :
+                message != null && message.Contains("Aaris: invalid local weapon")
+                    ? "OFFLINE_WEAPON_CATALOG" :
+                message != null && message.Contains("AARIS_EXPANSION_")
+                    ? "SETTLEMENT_EXPANSION" :
+                message != null && message.Contains("NullReferenceException")
+                    ? "NULL_REFERENCE" :
+                message != null && message.Contains("MissingReferenceException")
+                    ? "MISSING_REFERENCE" :
+                message != null && message.Contains("Shader")
+                    ? "URP_SHADER" :
+                message != null && message.Contains("FMOD")
+                    ? "AUDIO_SUBSYSTEM" :
+                type == LogType.Assert ? "UNITY_ASSERTION" :
+                type == LogType.Exception ? "OTHER_EXCEPTION" :
+                    "OTHER_UNITY_ERROR";
+            string source =
+                trace != null && trace.Contains("AarisCharacterVisual") ? "CHARACTER" :
+                trace != null && trace.Contains("AarisOfflineDrop") ? "DROP" :
+                trace != null && trace.Contains("AarisVehicleWorld") ? "VEHICLE" :
+                trace != null && trace.Contains("AarisSettlementExpansion") ? "SETTLEMENT" :
+                trace != null && trace.Contains("AarisBreakablePanel") ? "DOOR_WINDOW" :
+                trace != null && trace.Contains("AarisInteractiveHouseProbe") ? "PROBE" :
+                    "UNKNOWN_SOURCE";
+            SessionState.SetString(ErrorKind, kind);
+            SessionState.SetString(ErrorSource, source);
         }
 
         [MenuItem("Aaris/CI/Real Interactive Doors and Windows")]
@@ -68,6 +107,8 @@ namespace Aaris.MapReview.Editor
                 File.Delete(Path.Combine(Folder, file));
             SessionState.SetString(Status, "");
             SessionState.SetInt(Errors, 0);
+            SessionState.SetString(ErrorKind, "NONE");
+            SessionState.SetString(ErrorSource, "NONE");
             screenshots = 0;
             minVariance = float.PositiveInfinity;
             try
@@ -145,6 +186,10 @@ namespace Aaris.MapReview.Editor
         private static Result result;
         private static void Initialize()
         {
+            // Unity's Enter Play Mode performs an assembly/domain reload.
+            // Reset the quality accumulator AFTER reload, not just in Verify().
+            minVariance = float.PositiveInfinity;
+            screenshots = 0;
             var world = UnityEngine.Object.FindFirstObjectByType<AarisSettlementExpansion>();
             if (world == null) throw new InvalidOperationException("EXPANSION_BOOT_MISSING");
             result = new Result {
@@ -284,6 +329,8 @@ namespace Aaris.MapReview.Editor
                 door.IsBroken && !doorCollider.enabled && CanPassThreshold();
             Capture("door-broken.png");
             result.runtimeErrors = SessionState.GetInt(Errors,0);
+            result.runtimeErrorKind = SessionState.GetString(ErrorKind, "NONE");
+            result.runtimeErrorSource = SessionState.GetString(ErrorSource, "NONE");
             result.screenshotCount = screenshots;
             result.imageDeviationMin = float.IsInfinity(minVariance) ? 0f : minVariance;
             result.status = Pass(result) ? "passed" : "failed";
