@@ -10,7 +10,7 @@ namespace Aaris.MapReview
     /// after actual CollisionFlags.Below / terrain or roof contact. No network code.
     /// </summary>
     [RequireComponent(typeof(AarisThirdPersonPlayer), typeof(CharacterController))]
-    [DisallowMultipleComponent, DefaultExecutionOrder(-150)]
+    [DisallowMultipleComponent, DefaultExecutionOrder(150)]
     public sealed class AarisOfflineDrop : MonoBehaviour
     {
         public enum DropPhase { InPlane, Freefall, Opening, Gliding, Landing, Landed }
