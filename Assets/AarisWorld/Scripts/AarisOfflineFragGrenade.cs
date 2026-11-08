@@ -13,6 +13,7 @@ namespace Aaris.MapReview
         [SerializeField] private LayerMask damageMask = ~0;
 
         private static Material grenadeMaterial;
+        private static PhysicsMaterial bounceMaterial;
         private readonly Collider[] overlaps = new Collider[96];
         private readonly RaycastHit[] rays = new RaycastHit[48];
         private readonly HashSet<IAarisDamageable> damaged = new HashSet<IAarisDamageable>();
@@ -27,6 +28,15 @@ namespace Aaris.MapReview
             grenade.transform.position = origin;
             var sphere = grenade.AddComponent<SphereCollider>();
             sphere.radius = 0.13f;
+            if (bounceMaterial == null)
+                bounceMaterial = new PhysicsMaterial("AarisFrag_Bounce")
+                {
+                    dynamicFriction = 0.43f,
+                    staticFriction = 0.62f,
+                    bounciness = 0.33f,
+                    bounceCombine = PhysicsMaterialCombine.Maximum
+                };
+            sphere.sharedMaterial = bounceMaterial;
             GameObject imported = Resources.Load<GameObject>("AarisCombat/FragGrenade");
             GameObject visual = imported != null
                 ? Instantiate(imported, grenade.transform, false)
