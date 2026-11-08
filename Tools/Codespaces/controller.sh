@@ -32,6 +32,7 @@ if test -n "$ISSUE"; then
     'CS STATUS') OP=status ;;
     'CS LOGS') OP=logs ;;
     'CS INFO') OP=info ;;
+    'CS QUOTA') OP=quota ;;
     'CS SYNC') OP=sync ;;
     'CS LFS') OP=lfs ;;
     'CS LFS REPORT') OP=lfs_report ;;
@@ -63,7 +64,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|photo|play_diag|foliage_diag|test|stop) ;;
+  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|photo|play_diag|foliage_diag|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -81,6 +82,17 @@ if test "$OP" = probe; then
     STATE="SUCCESS"; DETAIL="oidc_relay_preflight_ok"; exit 0
   fi
   DETAIL="oidc_relay_preflight_failed"; exit 19
+fi
+if test "$OP" = quota; then
+  # Read authenticated GitHub billing on the Actions runner, without waking or
+  # remotely SSHing into the selected Codespace. Never log raw billing JSON.
+  python3 "$GITHUB_WORKSPACE/Tools/Codespaces/billing_quota.py" > "$OUT/terminal.txt" 2>/dev/null || {
+    DETAIL="codespace_quota_script_failed"; exit 37;
+  }
+  if grep -qx 'CODESPACES_BILLING_REPORT=SUCCESS' "$OUT/terminal.txt"; then
+    STATE="SUCCESS"; DETAIL="codespace_quota_account_billing_read"; exit 0
+  fi
+  STATE="UNKNOWN"; DETAIL="codespace_billing_account_permission_missing"; exit 0
 fi
 if test "$OP" = machines; then
   if gh api "/repos/$REPO/codespaces/machines" --jq '.machines[] | [.name, (.cpus|tostring), ((.memory_in_bytes/1073741824|floor)|tostring)] | @tsv' > "$OUT/terminal.txt" 2>/dev/null; then
