@@ -28,7 +28,7 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
-  - _WINDQUALITY_BEST
+  - _WINDQUALITY_FAST
   - EFFECT_BUMP
   - EFFECT_HUE_VARIATION
   - EFFECT_SUBSURFACE
@@ -158,7 +158,7 @@ Material:
     - _TransparentZWrite: 0
     - _UseShadowThreshold: 0
     - _WINDQUALITY: 3
-    - _WindQuality: 4
+    - _WindQuality: 2
     - _WorkflowMode: 1
     - _ZTest: 4
     - _ZTestDepthEqualForOpaque: 3

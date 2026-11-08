@@ -80,6 +80,31 @@ class NaturalTreePrefabTests(unittest.TestCase):
                 self.assertEqual("  - EFFECT_BILLBOARD" in keywords, is_billboard)
                 self.assertIn(f"    - _BillboardKwToggle: {int(is_billboard)}", source)
 
+    def test_mobile_foliage_quality_without_extra_meshes(self):
+        # Species keep exactly their original SpeedTree meshes, texture GUIDs,
+        # billboards and native TerrainData instances. Tuning happens on the
+        # original opaque/alpha-cutout leaf materials only (no extra geometry).
+        foliage = {
+            "Conifer/Materials/Conifer_Branches.mat": None,
+            "Cypress/Materials/Cypress_Forest_Desktop.mat": None,
+            "Pines/Pine_A/Materials/Pine_A.mat": 0.22,
+            "Pines/Pine_B/Materials/Pine_B.mat": None,
+            "Pines/Pine_C/Materials/Pine_C.mat": 0.20,
+            "Pines/Pine_D/Materials/Pine_D.mat": 0.20,
+        }
+        for relative, alpha in foliage.items():
+            with self.subTest(material=relative):
+                source = (TREE_BASE / relative).read_text(encoding="utf-8")
+                keywords = source.split("m_ValidKeywords:", 1)[1].split("m_InvalidKeywords:", 1)[0]
+                self.assertIn("  - _WINDQUALITY_FAST", keywords)
+                self.assertEqual(keywords.count("_WINDQUALITY_"), 1)
+                self.assertIn("    - _WindQuality: 2", source)
+                self.assertIn("    - _AlphaClip: 1", source)
+                if alpha is not None:
+                    self.assertIn(f"    - _AlphaClipThreshold: {alpha:.2f}", source)
+                    self.assertGreaterEqual(alpha, 0.18)  # avoid excessive overdraw
+                    self.assertLessEqual(alpha, 0.22)
+
     def test_all_1100_native_forest_placements_keep_their_prototypes(self):
         forest = json.loads(FOREST.read_text(encoding="utf-8"))
         places = forest["placements"]
