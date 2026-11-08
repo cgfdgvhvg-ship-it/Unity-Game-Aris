@@ -22,7 +22,7 @@ REMOTE_ARCHIVE = "/tmp/aaris-codespaces/working-changes-checkpoint/validated-uni
 BRANCH = "backup/codespace-local-changes-20261108"
 
 
-def shell(args, *, stdin=None, stdout=None, timeout=240):
+def shell(args, *, stdin=None, stdout=None, timeout=240, env=None):
     return subprocess.run(
         args,
         stdin=stdin,
@@ -30,6 +30,7 @@ def shell(args, *, stdin=None, stdout=None, timeout=240):
         stderr=subprocess.PIPE,
         timeout=timeout,
         cwd=REPO,
+        env=env,
         check=False,
     )
 
@@ -123,26 +124,48 @@ def main():
         print("AARIS_RUNNER_EXACT_210_EDITED_FILES_VERIFIED", flush=True)
         print("lfs_changed_count=1", flush=True)
         print("lfs_object_bytes=" + str(raw.stat().st_size), flush=True)
-
+        # Preserve the exact reviewed file manifest as Actions evidence even
+        # when Git applies a patch conflict and no branch may be published.
+        evidence = REPO / "codespace-results"
+        evidence.mkdir(exist_ok=True)
+        shutil.copyfile(work / "manifest.json", evidence / "changes-manifest.json")
         git("config", "user.name", "Aaris Codespace Changes")
         git("config", "user.email", "codespace-recovery@users.noreply.github.com")
         git("lfs", "install", "--local")
-        result = shell(["git", "am", "--3way", str(work / "checkpoint.patch")])
-        if result.returncode:
-            shell(["git", "am", "--abort"])
-            abort("AARIS_RUNNER_PATCH_CONFLICT_REVIEW_REQUIRED")
-        actual = sorted(p for p in git("diff-tree", "--no-commit-id",
-                                       "--name-only", "-r", "-z", "HEAD").decode().split("\0") if p)
-        if actual != sorted(paths):
-            abort("AARIS_RUNNER_COMMIT_PATHS_DIFFER_FROM_210_EDITS")
-        print("AARIS_RUNNER_ONLY_210_TRACKED_CHANGES_APPLIED", flush=True)
-
+        # actions/checkout defaults to a shallow clone. Fetch history for
+        # reliable three-way application against the checkpoint's old main.
+        shallow = git("rev-parse", "--is-shallow-repository").decode().strip()
+        if shallow == "true":
+            fetched = shell(["git", "fetch", "--unshallow", "origin"], timeout=360)
+            if fetched.returncode:
+                abort("AARIS_RUNNER_HISTORY_FETCH_FAILED")
+            print("AARIS_RUNNER_THREE_WAY_HISTORY_AVAILABLE", flush=True)
+        # Install the ONE original LFS object before Git rewrites the working
+        # tree, which otherwise can fail during pointer-to-object smudging.
         gitdir = Path(git("rev-parse", "--git-dir").decode().strip())
         target = gitdir / "lfs" / "objects" / oid[:2] / oid[2:4] / oid
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(raw, target)
         if hashlib.sha256(target.read_bytes()).hexdigest() != oid:
             abort("AARIS_RUNNER_LOCAL_LFS_CACHE_INVALID")
+        env = dict(os.environ)
+        env["GIT_LFS_SKIP_SMUDGE"] = "1"
+        result = shell(["git", "am", "--3way", str(work / "checkpoint.patch")], env=env)
+        if result.returncode:
+            err = (result.stderr + result.stdout).decode(errors="replace")[-20000:]
+            shell(["git", "am", "--abort"])
+            if re.search(r"smudge|lfs|filter.process", err, re.I):
+                abort("AARIS_RUNNER_PATCH_LFS_FILTER_FAILED")
+            if re.search(r"could not build fake ancestor|missing blob|shallow", err, re.I):
+                abort("AARIS_RUNNER_PATCH_BASE_HISTORY_MISSING")
+            if re.search(r"Patch failed at|does not apply|conflict", err, re.I):
+                abort("AARIS_RUNNER_REAL_PATCH_CONFLICT")
+            abort("AARIS_RUNNER_PATCH_APPLY_FAILED")
+        actual = sorted(p for p in git("diff-tree", "--no-commit-id",
+                                       "--name-only", "-r", "-z", "HEAD").decode().split("\0") if p)
+        if actual != sorted(paths):
+            abort("AARIS_RUNNER_COMMIT_PATHS_DIFFER_FROM_210_EDITS")
+        print("AARIS_RUNNER_ONLY_210_TRACKED_CHANGES_APPLIED", flush=True)
 
         result = shell(["git", "lfs", "push", "--object-id", "origin", oid], timeout=460)
         if result.returncode:
