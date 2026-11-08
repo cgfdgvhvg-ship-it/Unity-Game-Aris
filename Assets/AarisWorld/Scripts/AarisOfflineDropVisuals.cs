@@ -143,7 +143,10 @@ namespace Aaris.MapReview
             {
                 var model = UnityEngine.Object.Instantiate(imported, root.transform, false);
                 model.name = "LocalCanopyArt";
-                model.transform.localPosition = new Vector3(0f, 4.25f, 0f);
+                // The bundled OBJ vertices are already in player-local coordinates
+                // (canopy rim about 4.55m above the player). Offsetting it another
+                // 4.25m would detach the canopy visually from the suspension ropes.
+                model.transform.localPosition = Vector3.zero;
                 model.transform.localScale = Vector3.one;
                 Material navy = Paint(ref canopyBlue, new Color(0.05f, 0.23f, 0.39f));
                 Material ivory = Paint(ref canopyWhite, new Color(0.91f, 0.91f, 0.83f));
