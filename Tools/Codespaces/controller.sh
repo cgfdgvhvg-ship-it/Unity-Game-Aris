@@ -48,6 +48,7 @@ if test -n "$ISSUE"; then
     'CS SHOT') OP=shot ;;
     'CS SCENE RENDER') OP=scene_render ;;
     'CS SCENE PLAY') OP=scene_play ;;
+    'CS DROP VIDEO') OP=drop_video ;;
     'CS PLAY DIAG') OP=play_diag ;;
     'CS FOLIAGE DIAG') OP=foliage_diag ;;
     'CS PHOTO '*) OP=photo ;;
@@ -64,7 +65,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|photo|play_diag|foliage_diag|test|stop) ;;
+  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|photo|play_diag|foliage_diag|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -262,6 +263,7 @@ case "$OP" in
   test) REMOTE_TIMEOUT=500 ;;
   editor) REMOTE_TIMEOUT=350 ;;
   scene_render|scene_play|photo|foliage_diag) REMOTE_TIMEOUT=1800 ;;
+  drop_video) REMOTE_TIMEOUT=2100 ;;
 esac
 if test "$OP" = auth; then
   # Intercept the remote Unity OAuth URL, keep it OFF all public logs/artifacts.
@@ -274,6 +276,10 @@ if test "$OP" = auth; then
 fi
 SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/remote.sh"
 REMOTE_SHELL="bash -s -- $OP"
+if test "$OP" = drop_video; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/offline_drop_probe.sh"
+  REMOTE_SHELL="bash -s"
+fi
 if test "$OP" = deps; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/unity_gui_deps.sh"
   REMOTE_SHELL="bash -s"
@@ -332,7 +338,37 @@ for attempt in 1 2; do
       < "$SCRIPT_FILE" \
       > "$OUT/terminal.txt" 2>"$PRIVATE_ERRORS"; then
     rm -f "$PRIVATE_ERRORS"
-    if test "$OP" = shot; then
+    if test "$OP" = drop_video; then
+      # Download genuine Unity camera video/report from the SAME Codespace;
+      # do not transfer private Unity Editor logs or original working files.
+      for BASENAME in drop.mp4 report.json; do
+        if ! timeout 240 gh codespace ssh -c "$CS" -- "base64 /tmp/aaris-codespaces/offline-drop-probe/$BASENAME" \
+             > "$OUT/$BASENAME.b64" 2>"$PRIVATE_ERRORS"; then
+          DETAIL="drop_video_artifact_transfer_failed"; safe_error_summary; exit 36
+        fi
+        if ! base64 --decode "$OUT/$BASENAME.b64" > "$OUT/$BASENAME"; then
+          DETAIL="drop_video_artifact_decode_failed"; exit 37
+        fi
+        rm -f "$OUT/$BASENAME.b64"
+      done
+      if ! python3 - "$OUT/report.json" "$OUT/drop.mp4" <<'PYVERIFY'
+import json,sys,pathlib
+try:
+  data=json.load(open(sys.argv[1])); video=pathlib.Path(sys.argv[2])
+  ok=video.is_file() and video.stat().st_size>=32768 and b'ftyp' in video.read_bytes()[:64]
+  ok=ok and data.get('mode')=='offline_drop_video' and data.get('status')=='passed'
+  ok=ok and data.get('observedInPlane') and data.get('observedFreefall')
+  ok=ok and data.get('observedOpening') and data.get('observedGliding') and data.get('observedLanded')
+  ok=ok and data.get('existingMotorRestored') and data.get('canopyActuallyRendered')
+  ok=ok and data.get('errors')==0 and data.get('terrainTiles')==4
+except (OSError,ValueError,TypeError,KeyError): ok=False
+sys.exit(0 if ok else 1)
+PYVERIFY
+      then
+        DETAIL="drop_video_test_failed_artifact_preserved"; exit 38
+      fi
+      DETAIL="real_unity_parachute_video_verified"
+    elif test "$OP" = shot; then
       if timeout 90 gh codespace ssh -c "$CS" -- 'base64 /tmp/aaris-codespaces/screen.png' \
           > "$OUT/screen.b64" 2>"$PRIVATE_ERRORS"; then
         base64 --decode "$OUT/screen.b64" > "$OUT/screen.png"
