@@ -254,8 +254,11 @@ namespace Aaris.MapReview.Editor
 
         // Owner-approved map coordinates and azimuth. Terrain elevation is
         // sampled from the real LFS TerrainData, not guessed from a blueprint.
+        private static readonly Dictionary<string, float> SurveyOverrides = new Dictionary<string, float>();
+
         private static float PhotoOption(string key, float fallback, float low, float high)
         {
+            if (SurveyOverrides.TryGetValue(key, out float surveyValue)) return surveyValue;
             string prefix = "-aaris" + key + "=";
             foreach (string arg in Environment.GetCommandLineArgs())
             {
@@ -282,6 +285,105 @@ namespace Aaris.MapReview.Editor
                     return t.SampleHeight(new Vector3(x, 0, z)) + p.y;
             }
             return fallback; // Camera can be outside the saved map, target cannot.
+        }
+
+
+        [Serializable]
+        private sealed class SurveyEntry
+        {
+            public string name;
+            public float x, z, yaw, pitch, distance;
+            public string detail, context;
+            public float detailVariation, contextVariation;
+        }
+
+        [Serializable]
+        private sealed class SurveyReport
+        {
+            public string mode = "survey";
+            public string status = "failed";
+            public string reason = "NOT_STARTED";
+            public string unityVersion;
+            public string graphicsDevice;
+            public int terrainTiles;
+            public int locationCount;
+            public int frameCount;
+            public SurveyEntry[] locations;
+        }
+
+        // One real licensed Editor session; twenty-four native camera frames from
+        // twelve reviewed world positions, including three forest-density sites.
+        // No generated art, saved-scene changes, fabricated frames or GPU bypass.
+        [MenuItem("Aaris/CI/Photograph 12 regions (24 native frames)")]
+        public static void CaptureSurvey()
+        {
+            Directory.CreateDirectory(Output);
+            var sites = new[] {
+                new SurveyEntry { name="Canal Market",       x=-120f, z=650f,  yaw=215f, pitch=30f, distance=105f },
+                new SurveyEntry { name="Northern Ridge",     x=300f,  z=650f,  yaw=115f, pitch=30f, distance=100f },
+                new SurveyEntry { name="Eastern Port",       x=840f,  z=350f,  yaw=205f, pitch=30f, distance=110f },
+                new SurveyEntry { name="Clock Tower Town",   x=350f,  z=220f,  yaw=90f,  pitch=35f, distance=85f },
+                new SurveyEntry { name="Lakeside Hamlet",    x=-720f, z=65f,   yaw=45f,  pitch=30f, distance=95f },
+                new SurveyEntry { name="Valley Settlement",  x=-420f, z=-210f, yaw=35f,  pitch=30f, distance=85f },
+                new SurveyEntry { name="Old Village",        x=-530f, z=-590f, yaw=70f,  pitch=30f, distance=95f },
+                new SurveyEntry { name="Southern Airfield",  x=180f,  z=-430f, yaw=170f, pitch=30f, distance=120f },
+                new SurveyEntry { name="Highland Observatory",x=570f, z=-630f, yaw=45f, pitch=30f, distance=105f },
+                new SurveyEntry { name="Pine forest close 1",x=418f,  z=-350f, yaw=40f,  pitch=18f, distance=30f },
+                new SurveyEntry { name="Pine forest close 2",x=65f,   z=870f,  yaw=165f, pitch=18f, distance=30f },
+                new SurveyEntry { name="Pine forest close 3",x=48f,   z=-828f, yaw=70f,  pitch=18f, distance=28f },
+            };
+            var report = new SurveyReport {
+                unityVersion = Application.unityVersion,
+                graphicsDevice = SystemInfo.graphicsDeviceType.ToString(),
+                locations = sites
+            };
+            try
+            {
+                foreach (var site in sites)
+                {
+                    SurveyOverrides.Clear();
+                    SurveyOverrides["X"] = site.x;
+                    SurveyOverrides["Z"] = site.z;
+                    SurveyOverrides["Yaw"] = site.yaw;
+                    SurveyOverrides["Pitch"] = site.pitch;
+                    SurveyOverrides["Distance"] = site.distance;
+                    CaptureAt(); // Uses real four-tile scene and validates every GPU frame.
+                    var photo = JsonUtility.FromJson<PhotoReport>(
+                        File.ReadAllText(Path.Combine(Output, "photo-report.json")));
+                    if (photo == null || photo.status != "passed" || photo.terrainTiles != 4 ||
+                        photo.detailVariation < 6f || photo.contextVariation < 6f)
+                        throw new InvalidOperationException("SURVEY_PHOTO_VALIDATION_FAILED");
+                    string index = (report.locationCount + 1).ToString("00");
+                    site.detail = "survey-" + index + "-detail.png";
+                    site.context = "survey-" + index + "-context.png";
+                    File.Copy(Path.Combine(Output, "photo-detail.png"),
+                              Path.Combine(Output, site.detail), true);
+                    File.Copy(Path.Combine(Output, "photo-context.png"),
+                              Path.Combine(Output, site.context), true);
+                    site.detailVariation = photo.detailVariation;
+                    site.contextVariation = photo.contextVariation;
+                    report.locationCount++;
+                    report.frameCount += 2;
+                    report.terrainTiles = photo.terrainTiles;
+                }
+                if (report.locationCount != 12 || report.frameCount != 24)
+                    throw new InvalidOperationException("SURVEY_INCOMPLETE");
+                report.status = "passed";
+                report.reason = "TWENTY_FOUR_REAL_UNITY_CAMERA_FRAMES";
+                Debug.Log("AARIS_NATIVE_SURVEY_PASSED");
+            }
+            catch (Exception e)
+            {
+                report.reason = e is InvalidOperationException ? e.Message : e.GetType().Name;
+                Debug.LogError("AARIS_NATIVE_SURVEY_FAILED:" + report.reason);
+                throw;
+            }
+            finally
+            {
+                SurveyOverrides.Clear();
+                File.WriteAllText(Path.Combine(Output, "survey-report.json"),
+                    JsonUtility.ToJson(report, true));
+            }
         }
 
         [Serializable]
