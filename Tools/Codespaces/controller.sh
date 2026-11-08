@@ -365,7 +365,7 @@ try:
         if not item.isfile() or item.size>8*1024*1024 or not safe:raise ValueError()
 except (OSError,ValueError,tarfile.TarError):
     sys.exit(1)
-PYСHECK
+PYCHECK
       then
         DETAIL="drop_frame_archive_invalid"; exit 44
       fi
