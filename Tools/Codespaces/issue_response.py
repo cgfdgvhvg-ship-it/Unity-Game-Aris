@@ -9,7 +9,7 @@ try:
     data = json.loads((folder / 'result.json').read_text())
 except (OSError, ValueError):
     data = {}
-operations = set('machines info start fresh fresh_ssh rebuild status logs sync lfs lfs_report changes install deps cli_diag editor editor_diag license auth probe shot accept_terms safe_mode compile_report refresh close_editor editor_process editor_recover scene_render scene_play photo play_diag foliage_diag test stop'.split())
+operations = set('machines info quota start fresh fresh_ssh rebuild status logs sync lfs lfs_report changes install deps cli_diag editor editor_diag license auth probe shot accept_terms safe_mode compile_report refresh close_editor editor_process editor_recover scene_render scene_play photo play_diag foliage_diag test stop'.split())
 statuses = {'SUCCESS', 'FAILED', 'NO_CODESPACE', 'UNKNOWN'}
 op = data.get('operation', 'unknown')
 state = data.get('status', 'FAILED')
@@ -54,6 +54,13 @@ for line in lines:
         safe.append(line)
     elif op == 'scene_play' and re.fullmatch(
         r'(runtime_errors)=[0-9]{1,5}|(runtime_error_kind|runtime_error_source|play_reason)=[A-Z_]{1,60}', line):
+        safe.append(line)
+    elif op == 'quota' and (
+        re.fullmatch(r'CODESPACES_(BILLING_PERIOD)=[0-9]{4}-[0-9]{2}', line) or
+        re.fullmatch(r'CODESPACES_(COMPUTE_LINES|STORAGE_LINES)=[0-9]{1,6}', line) or
+        re.fullmatch(r'CODESPACES_(USED_CORE_HOURS|REMAINING_CORE_HOURS|REMAINING_4CORE_HOURS|FREE_REMAINING_CORE_HOURS|PRO_REMAINING_CORE_HOURS)=[0-9]{1,9}(?:\.[0-9]{1,4})?', line) or
+        re.fullmatch(r'CODESPACES_(PLAN|BILLING_REPORT|HOURS_STATUS)=[A-Z_]{2,42}', line) or
+        re.fullmatch(r'CODESPACES_(INCLUDED_CORE_HOURS)=[0-9]{1,6}', line)):
         safe.append(line)
     elif op == 'machines' and re.fullmatch(r'[A-Za-z0-9-]{3,55}\t\d{1,2}\t\d{1,3}', line):
         safe.append(line)
