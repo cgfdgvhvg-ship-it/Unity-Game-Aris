@@ -6,7 +6,7 @@ umask 077
 SOURCE=/workspaces/Unity-Game-Aris
 RUN=/tmp/aaris-codespaces/offline-drop-probe
 TEMP_ROOT=/tmp/aaris-offline-drop-worktrees
-FEATURE=feature/offline-combat-drop-20261108
+FEATURE=main
 EDITOR="$HOME/.local/share/aaris-unity-editors/6000.3.26f1/Editor/Unity"
 for candidate in "/workspaces/.aaris-unity-editors/6000.3.26f1/Editor/Unity" "/tmp/aaris-unity-runtime/editors/6000.3.26f1/Editor/Unity"; do
   if ! test -x "$EDITOR" && test -x "$candidate"; then EDITOR="$candidate"; fi
@@ -14,7 +14,7 @@ done
 test -x "$EDITOR" || { echo AARIS_DROP_EDITOR_MISSING; exit 11; }
 test -d "$SOURCE/.git" || { echo AARIS_DROP_SOURCE_MISSING; exit 12; }
 
-# The original Codespace currently contains 210 tracked modified files.
+# The original Codespace may contain tracked Unity Editor changes.
 # Never checkout, reset, stash, force clean, or run Unity batchmode on this source.
 if pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then
   echo AARIS_DROP_EDITOR_BUSY_NO_FORCE_KILL
@@ -42,7 +42,7 @@ git -C "$PROJECT" lfs pull >/dev/null 2>&1 || {
   echo AARIS_DROP_LFS_NOT_HYDRATED; exit 17;
 }
 # Copy ALL real working-tree tracked edits from the existing Codespace to temp,
-# except feature-modified scripts. Never change the source or its git index.
+# except protected player/probe scripts. Never change the source or its git index.
 # Dot files, symlinks, credentials, Library, Temp, hidden secret dirs are excluded.
 python3 - "$SOURCE" "$PROJECT" "$SHA" <<'PY'
 import os, subprocess, sys
