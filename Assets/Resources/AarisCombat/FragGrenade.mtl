@@ -1,0 +1,9 @@
+newmtl OliveShell
+Kd 0.14 0.23 0.13
+Ns 20
+newmtl OliveLight
+Kd 0.20 0.28 0.15
+Ns 20
+newmtl DarkMetal
+Kd 0.08 0.10 0.11
+Ns 70

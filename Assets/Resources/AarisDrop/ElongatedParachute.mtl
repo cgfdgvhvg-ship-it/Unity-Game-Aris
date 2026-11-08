@@ -1,0 +1,12 @@
+newmtl DeepOceanBlue
+Kd 0.05 0.24 0.43
+Ka 0.04 0.05 0.06
+Ns 30
+newmtl IvoryWhite
+Kd 0.87 0.9 0.82
+Ka 0.06 0.06 0.06
+Ns 30
+newmtl SunsetOrange
+Kd 0.97 0.45 0.12
+Ka 0.07 0.05 0.05
+Ns 28

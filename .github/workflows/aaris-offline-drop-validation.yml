@@ -1,0 +1,33 @@
+name: Aaris offline BR static asset validation
+on:
+  pull_request:
+    paths:
+      - 'Assets/AarisWorld/Scripts/AarisOffline*.cs'
+      - 'Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs'
+      - 'Assets/Resources/AarisDrop/**'
+      - 'Assets/Resources/AarisCombat/**'
+      - 'Tools/Validation/test_offline_drop_assets.py'
+      - '.github/workflows/aaris-offline-drop-validation.yml'
+  push:
+    paths:
+      - 'Assets/AarisWorld/Scripts/AarisOffline*.cs'
+      - 'Assets/Resources/AarisDrop/**'
+      - 'Assets/Resources/AarisCombat/**'
+      - 'Tools/Validation/test_offline_drop_assets.py'
+  workflow_dispatch:
+jobs:
+  asset-integrity:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          lfs: false
+      - name: Validate local geometry and offline combat integration
+        run: python3 Tools/Validation/test_offline_drop_assets.py
+      - name: Clarify what has and has not been tested
+        run: |
+          echo 'Static OBJ, GUID and API presence checks completed.'
+          echo 'A licensed Unity compile, real native Play Mode and device FPS tests are still required.'

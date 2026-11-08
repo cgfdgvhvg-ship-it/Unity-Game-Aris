@@ -476,6 +476,36 @@ namespace Aaris.MapReview
         }
         private void LateUpdate() { PlaceCamera(false); }
 
+        /// <summary>
+        /// Restore sole on-foot movement authority after a real aerial touchdown.
+        /// Refresh cached yaw/gravity/camera AND reset the HOME point to the landing spot.
+        /// This is deliberately not an extra motor and never teleports the player.
+        /// </summary>
+        public void ResumeFromAerialDrop()
+        {
+            if (controller == null) controller = GetComponent<CharacterController>();
+            if (controller == null) return;
+            yaw = transform.eulerAngles.y;
+            pitch = 12f;
+            spawn = transform.position;
+            spawnRotation = transform.rotation;
+            horizontalVelocity = Vector3.zero;
+            verticalVelocity = -groundedDownVelocity;
+            lastGrounded = Time.unscaledTime;
+            lastLanding = Time.unscaledTime;
+            lastJumpStarted = jumpUntil = -10f;
+            travelSpeed = gait = 0f;
+            running = jumpButtonHeld = false;
+            moveFinger = lookFinger = -1;
+            moveInput = Vector2.zero;
+            controller.stepOffset = battle != null ? battle.GroundStepOffset : savedGroundStepOffset;
+            cameraVelocity = Vector3.zero;
+            if (followCamera != null) followCamera.fieldOfView = normalCameraFov;
+            weaponAimFov = -1f;
+            lastMouse = Input.mousePosition;
+            PlaceCamera(true);
+        }
+
         /// <summary>Release the vehicle chase camera back to the walking motor.</summary>
         public void ResetCameraAfterVehicle()
         {

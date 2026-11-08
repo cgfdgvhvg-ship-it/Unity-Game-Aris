@@ -51,6 +51,7 @@ namespace Aaris.MapReview
         private float seenTakeoff = -10f, seenTouchdown = -10f;
         private AarisBattleActions actions;
         private AarisThirdPersonPlayer playerMotor;
+        private AarisOfflineDrop aerialDrop;
         private Transform punchArm;
         private Vector3 restingLocalPosition;
         private Quaternion restingLocalRotation;
@@ -390,6 +391,16 @@ namespace Aaris.MapReview
             Quaternion upright = restingLocalRotation * Quaternion.Euler(leaning, 0f, 0f);
             Quaternion proneRotation = restingLocalRotation * Quaternion.Euler(80f, 0f, 0f);
             visual.transform.localRotation = Quaternion.Slerp(upright, proneRotation, proneBlend);
+            // Visual-only skydiving pose; never tilt the physical CharacterController.
+            // Fall/riser animation clips can later replace this safe fallback.
+            if (aerialDrop == null) aerialDrop = GetComponent<AarisOfflineDrop>();
+            if (aerialDrop != null && !aerialDrop.HasLanded)
+            {
+                float aerialPitch = aerialDrop.IsFreefall ? 64f :
+                    aerialDrop.IsUnderCanopy ? 6f : 0f;
+                visual.transform.localRotation = restingLocalRotation *
+                    Quaternion.Euler(aerialPitch, 0f, 0f);
+            }
 
             float landingAge = playerMotor != null
                 ? Time.unscaledTime - playerMotor.LastLandingTime
