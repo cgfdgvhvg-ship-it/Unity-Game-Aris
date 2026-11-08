@@ -25,6 +25,10 @@ namespace Aaris.MapReview.Editor
         private const string BootstrapErrors = Prefix + "editorBootstrapErrors";
         private const string ErrorKind = Prefix + "errorKind";
         private const string ErrorSource = Prefix + "errorSource";
+        private const string ErrorPhase = Prefix + "firstErrorPhase";
+        private const string ErrorLogType = Prefix + "firstErrorLogType";
+        private const string ErrorMessageTerms = Prefix + "firstErrorTerms";
+        private const string ErrorStackTerms = Prefix + "firstErrorStack";
         private const string ExitCode = Prefix + "exit";
         private static AarisBreakablePanel door, pane;
         private static Collider doorCollider, paneCollider;
@@ -41,6 +45,7 @@ namespace Aaris.MapReview.Editor
             public int terrainTiles, sites, modularHomes, panels, doors, windows;
             public int screenshotCount, runtimeErrors, editorBootstrapErrors;
             public string runtimeErrorKind, runtimeErrorSource;
+            public string firstErrorPhase, firstErrorLogType, firstErrorTerms, firstErrorStack;
             public float imageDeviationMin;
             public bool startsClosed, openedNearPlayer, clearDoorGap;
             public bool closesWhenUnoccupied, windowHitAndBroken, doorHitAndBroken;
@@ -52,6 +57,59 @@ namespace Aaris.MapReview.Editor
             EditorApplication.update += Tick;
             Application.logMessageReceived -= Log;
             Application.logMessageReceived += Log;
+        }
+
+        private static string SafeMessageTerms(string message)
+        {
+            if (string.IsNullOrEmpty(message)) return "EMPTY_MESSAGE";
+            string lower = message.ToLowerInvariant();
+            // Strict fixed vocabulary. Never serialize an untrusted log or path.
+            string[] keys = {
+                "input", "cursor", "mouse", "camera", "editor", "gui",
+                "gameobject", "transform", "object reference", "reference",
+                "null", "not found", "missing", "access", "permission",
+                "file", "directory", "path", "asset", "import", "load",
+                "prefab", "scene", "terrain", "render", "graphics", "gpu",
+                "shader", "material", "mesh", "collider", "physics", "rigidbody",
+                "animation", "animator", "avatar", "playable", "clip",
+                "destroy", "instantiate", "thread", "main thread", "time",
+                "invalid", "failed", "exception", "assert", "application",
+                "domain", "reload", "method", "component", "array", "index",
+                "system", "out of range", "disposed", "audio", "fmod", "native",
+                "network", "socket", "burst", "inputsystem", "execute", "script"
+            };
+            var terms = new System.Collections.Generic.List<string>(12);
+            foreach (string word in keys)
+            {
+                if (!lower.Contains(word)) continue;
+                terms.Add(word.Replace(' ', '_').ToUpperInvariant());
+                if (terms.Count >= 12) break;
+            }
+            return terms.Count == 0 ? "UNRECOGNIZED_MESSAGE" : string.Join("_", terms);
+        }
+
+        private static string SafeTraceTerms(string stack)
+        {
+            if (string.IsNullOrEmpty(stack)) return "EMPTY_STACK";
+            string[] classes = {
+                "AarisThirdPersonPlayer", "AarisBattleActions",
+                "AarisCharacterVisual", "AarisOfflineDrop",
+                "AarisVehicleWorld", "AarisVehicleMotor",
+                "AarisSettlementExpansion", "AarisBreakablePanel",
+                "AarisModularHouse", "AarisInteractiveHouseProbe",
+                "UnityEditor", "UnityEngine", "UnityEngine.Rendering",
+                "UnityEngine.InputSystem", "Unity.Collections", "Unity.Jobs",
+                "Unity.Burst", "System.IO", "System.NullReferenceException",
+                "TMPro", "UnityEngine.UI", "System.Reflection"
+            };
+            var terms = new System.Collections.Generic.List<string>(6);
+            foreach (string klass in classes)
+            {
+                if (!stack.Contains(klass)) continue;
+                terms.Add(klass.Replace('.', '_').ToUpperInvariant());
+                if (terms.Count >= 6) break;
+            }
+            return terms.Count == 0 ? "UNKNOWN_STACK" : string.Join("_", terms);
         }
 
         private static void Log(string message, string trace, LogType type)
@@ -101,6 +159,10 @@ namespace Aaris.MapReview.Editor
                     "UNKNOWN_SOURCE";
             SessionState.SetString(ErrorKind, kind);
             SessionState.SetString(ErrorSource, source);
+            SessionState.SetString(ErrorPhase, state);
+            SessionState.SetString(ErrorLogType, type.ToString());
+            SessionState.SetString(ErrorMessageTerms, SafeMessageTerms(message));
+            SessionState.SetString(ErrorStackTerms, SafeTraceTerms(trace));
         }
 
         [MenuItem("Aaris/CI/Real Interactive Doors and Windows")]
@@ -116,6 +178,10 @@ namespace Aaris.MapReview.Editor
             SessionState.SetInt(BootstrapErrors, 0);
             SessionState.SetString(ErrorKind, "NONE");
             SessionState.SetString(ErrorSource, "NONE");
+            SessionState.SetString(ErrorPhase, "NONE");
+            SessionState.SetString(ErrorLogType, "NONE");
+            SessionState.SetString(ErrorMessageTerms, "NONE");
+            SessionState.SetString(ErrorStackTerms, "NONE");
             screenshots = 0;
             minVariance = float.PositiveInfinity;
             try
@@ -339,6 +405,10 @@ namespace Aaris.MapReview.Editor
             result.editorBootstrapErrors = SessionState.GetInt(BootstrapErrors,0);
             result.runtimeErrorKind = SessionState.GetString(ErrorKind, "NONE");
             result.runtimeErrorSource = SessionState.GetString(ErrorSource, "NONE");
+            result.firstErrorPhase = SessionState.GetString(ErrorPhase, "NONE");
+            result.firstErrorLogType = SessionState.GetString(ErrorLogType, "NONE");
+            result.firstErrorTerms = SessionState.GetString(ErrorMessageTerms, "NONE");
+            result.firstErrorStack = SessionState.GetString(ErrorStackTerms, "NONE");
             result.screenshotCount = screenshots;
             result.imageDeviationMin = float.IsInfinity(minVariance) ? 0f : minVariance;
             result.status = Pass(result) ? "passed" : "failed";
