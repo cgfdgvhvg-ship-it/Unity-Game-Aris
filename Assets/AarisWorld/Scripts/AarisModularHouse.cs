@@ -64,7 +64,7 @@ namespace Aaris.MapReview
                 if (material == null || material.shader == null ||
                     material.shader.name != "Universal Render Pipeline/Lit") continue;
                 string label = material.name.ToLowerInvariant();
-                foreach (var term in keywords.Split('|'))
+                foreach (var term in keywords.Split(new[] { '|' }))
                     if (label.Contains(term)) return material;
             }
             return fallback;
