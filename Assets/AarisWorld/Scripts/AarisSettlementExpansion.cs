@@ -128,7 +128,7 @@ namespace Aaris.MapReview
                     skippedTerrain++;
                     continue;
                 }
-                if (TreesBlock(site, support))
+                if (TreesBlock(site, terrains))
                 {
                     skippedTrees++;
                     continue;
@@ -159,6 +159,9 @@ namespace Aaris.MapReview
                 float.IsNaN(site.yaw) || float.IsInfinity(site.yaw) ||
                 float.IsNaN(site.groundReferenceY) || float.IsInfinity(site.groundReferenceY) ||
                 Mathf.Abs(site.x) > 965f || Mathf.Abs(site.z) > 965f ||
+                float.IsNaN(site.width) || float.IsNaN(site.depth) || float.IsNaN(site.height) ||
+                float.IsInfinity(site.width) || float.IsInfinity(site.depth) ||
+                float.IsInfinity(site.height) ||
                 site.width < 2f || site.depth < 2f || site.height < 2f ||
                 site.width > 50f || site.depth > 50f || site.height > 50f);
         }
@@ -173,7 +176,10 @@ namespace Aaris.MapReview
                 if (x < origin.x || x > origin.x + size.x ||
                     z < origin.z || z > origin.z + size.z) continue;
                 terrain = t;
-                height = origin.y + t.SampleHeight(new Vector3(x, 0f, z));
+                // Terrain.SampleHeight returns a world-space Y. Adding origin.y
+                // a second time shifts every placement on translated terrain tiles
+                // and causes otherwise valid houses to be rejected.
+                height = t.SampleHeight(new Vector3(x, 0f, z));
                 return true;
             }
             terrain = null;
@@ -211,23 +217,34 @@ namespace Aaris.MapReview
             return true;
         }
 
-        private bool TreesBlock(AarisExpansionSite site, Terrain support)
+        private bool TreesBlock(AarisExpansionSite site, Terrain[] all)
         {
-            if (support == null || !treeCache.TryGetValue(support, out TreeInstance[] trees))
-                return false;
-            Vector3 basePoint = support.transform.position;
-            Vector3 tileSize = support.terrainData.size;
+            // A footprint on the seam between native tiles must check trees
+            // from BOTH tiles, not only the tile containing its centre.
             float hx = site.width * 0.5f + VegetationMargin;
             float hz = site.depth * 0.5f + VegetationMargin;
-            for (int i = 0; i < trees.Length; i++)
+            foreach (Terrain terrain in all)
             {
-                TreeInstance tree = trees[i];
-                float x = basePoint.x + tree.position.x * tileSize.x;
-                float z = basePoint.z + tree.position.z * tileSize.z;
-                float margin = Mathf.Min(3.8f, Mathf.Max(0.5f, tree.widthScale * 1.5f));
-                if (Mathf.Abs(x - site.x) < hx + margin &&
-                    Mathf.Abs(z - site.z) < hz + margin)
-                    return true;
+                if (terrain == null || terrain.terrainData == null ||
+                    !treeCache.TryGetValue(terrain, out TreeInstance[] trees))
+                    continue;
+                Vector3 basePoint = terrain.transform.position;
+                Vector3 tileSize = terrain.terrainData.size;
+                if (site.x + hx + 3.8f < basePoint.x ||
+                    site.x - hx - 3.8f > basePoint.x + tileSize.x ||
+                    site.z + hz + 3.8f < basePoint.z ||
+                    site.z - hz - 3.8f > basePoint.z + tileSize.z)
+                    continue;
+                for (int i = 0; i < trees.Length; i++)
+                {
+                    TreeInstance tree = trees[i];
+                    float x = basePoint.x + tree.position.x * tileSize.x;
+                    float z = basePoint.z + tree.position.z * tileSize.z;
+                    float margin = Mathf.Min(3.8f, Mathf.Max(0.5f, tree.widthScale * 1.5f));
+                    if (Mathf.Abs(x - site.x) < hx + margin &&
+                        Mathf.Abs(z - site.z) < hz + margin)
+                        return true;
+                }
             }
             return false;
         }
