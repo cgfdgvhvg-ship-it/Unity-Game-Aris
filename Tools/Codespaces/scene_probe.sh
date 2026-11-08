@@ -74,7 +74,8 @@ case "$MODE" in
   play) rm -f "$RUN/play-frame.png" "$RUN/play-report.json" ;;
   photo) rm -f "$RUN/photo-detail.png" "$RUN/photo-context.png" "$RUN/photo-report.json" ;;
   foliage) rm -f "$RUN/foliage-original.png" "$RUN/foliage-far-lod.png" \
-    "$RUN/foliage-ambient-test.png" "$RUN/foliage-report.json" ;;
+    "$RUN/foliage-ambient-test.png" "$RUN/foliage-ambient-only.png" \
+    "$RUN/foliage-shadows-only.png" "$RUN/foliage-report.json" ;;
 esac
 bash "$PROJECT/.devcontainer/start_screen.sh" >/dev/null 2>&1 || {
   echo AARIS_PROBE_XVFB_FAILED
@@ -192,6 +193,8 @@ if mode=="photo":
     images.append(image.parent/"photo-context.png")
 elif mode=="foliage":
     images.extend([image.parent/"foliage-far-lod.png",
+                   image.parent/"foliage-ambient-only.png",
+                   image.parent/"foliage-shadows-only.png",
                    image.parent/"foliage-ambient-test.png"])
 for candidate in images:
     if not candidate.is_file() or candidate.stat().st_size < 8192 or candidate.read_bytes()[:8] != b"\x89PNG\r\n\x1a\n":
@@ -206,6 +209,7 @@ if mode=="play":
         sys.exit(26)
 if mode=="foliage":
     if min(data.get("originalVariation",0),data.get("distantLodVariation",0),
+           data.get("ambientOnlyVariation",0),data.get("shadowsOnlyVariation",0),
            data.get("ambientVariation",0)) < 6:
         print("AARIS_PROBE_FLAT_FOLIAGE_FRAME_REJECTED")
         sys.exit(27)

@@ -392,6 +392,8 @@ namespace Aaris.MapReview.Editor
             public float originalVariation;
             public float distantLodVariation;
             public float ambientVariation;
+            public float ambientOnlyVariation;
+            public float shadowsOnlyVariation;
             public string[] images;
         }
 
@@ -462,7 +464,22 @@ namespace Aaris.MapReview.Editor
                 QualitySettings.lodBias = qualityBias;
                 for (int i = 0; i < terrains.Length; i++)
                     terrains[i].treeLODBiasMultiplier = originalBiases[i];
+                // Compare a fill-lit scene WITHOUT turning off real shadows.
+                RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+                RenderSettings.ambientLight = new Color(0.69f, 0.70f, 0.65f);
+                RenderSettings.ambientIntensity = 1.2f;
+                report.ambientOnlyVariation = Render(camera, 1280, 720,
+                    Path.Combine(Output, "foliage-ambient-only.png"));
+
+                // Compare shadow removal WITHOUT adding artificial fill.
+                RenderSettings.ambientMode = ambientMode;
+                RenderSettings.ambientLight = ambientColor;
+                RenderSettings.ambientIntensity = ambientIntensity;
                 QualitySettings.shadows = ShadowQuality.Disable;
+                report.shadowsOnlyVariation = Render(camera, 1280, 720,
+                    Path.Combine(Output, "foliage-shadows-only.png"));
+
+                // Retain the original proven bright reference, both changes.
                 RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
                 RenderSettings.ambientLight = new Color(0.69f, 0.70f, 0.65f);
                 RenderSettings.ambientIntensity = 1.2f;
@@ -470,7 +487,8 @@ namespace Aaris.MapReview.Editor
                     Path.Combine(Output, "foliage-ambient-test.png"));
 
                 report.images = new[] { "foliage-original.png",
-                    "foliage-far-lod.png", "foliage-ambient-test.png" };
+                    "foliage-far-lod.png", "foliage-ambient-only.png",
+                    "foliage-shadows-only.png", "foliage-ambient-test.png" };
                 report.status = "passed";
                 report.reason = "REAL_SPEEDTREE_LOD_AND_LIGHTING_COMPARISON";
                 Debug.Log("AARIS_NATIVE_FOLIAGE_DIAG_PASSED");
