@@ -211,6 +211,15 @@ assert 'Unity_auth_vault' not in remote
 controller=(r/'Tools/Codespaces/controller.sh').read_text()
 assert "'CS MACHINES')" in controller
 assert "'CS REBUILD')" in controller
+assert "'CS RECOVERY SYNC') OP=recovery_sync" in controller
+assert 'recovery_sync' in wf and 'recovery_sync' in response
+assert 'recovery_sync_not_approved_for_target' in controller
+recover=(r/'Tools/Codespaces/recovery_sync.sh').read_text()
+assert 'git merge --ff-only FETCH_HEAD' in recover
+assert 'GIT_LFS_SKIP_SMUDGE=1' in recover
+assert 'git diff --quiet -- .devcontainer' in recover
+assert 'git reset --hard' not in recover and 'git clean -' not in recover
+assert "python3 -" not in (r/'Tools/Codespaces/rebuild_preflight.sh').read_text()
 assert "'CS FULL REBUILD') OP=full_rebuild" in controller
 assert 'gh codespace rebuild -c "$CS" "${REBUILD_FLAGS[@]}"' in controller
 assert 'full_rebuild' in wf and 'full_rebuild' in response

@@ -35,6 +35,7 @@ if test -n "$ISSUE"; then
     'CS INFO') OP=info ;;
     'CS QUOTA') OP=quota ;;
     'CS SYNC') OP=sync ;;
+    'CS RECOVERY SYNC') OP=recovery_sync ;;
     'CS LFS') OP=lfs ;;
     'CS LFS REPORT') OP=lfs_report ;;
     'CS CHANGES') OP=changes ;;
@@ -77,7 +78,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|fresh|fresh_ssh|rebuild|full_rebuild|status|logs|sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
+  machines|info|quota|start|fresh|fresh_ssh|rebuild|full_rebuild|status|logs|sync|recovery_sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -195,6 +196,19 @@ if test -z "$CS"; then
   STATE="TARGET_UNAVAILABLE"; DETAIL="existing_target_not_unambiguously_selected"; exit 0
 fi
 [[ "$CS" =~ ^[A-Za-z0-9-]+$ ]] || { DETAIL="bad_codespace_name"; exit 9; }
+# A recovery container can lack Python, Xvfb, Unity and LFS; use a reviewed
+# Bash-only fast-forward, and only on the owner's newly approved worker Codespace.
+if test "$OP" = recovery_sync; then
+  if test "$CS" != "aaris-ai-unity-ssh-r7x67xqjg4qphgx6"; then
+    DETAIL="recovery_sync_not_approved_for_target"; exit 35
+  fi
+  if timeout 360 gh codespace ssh -c "$CS" -- "bash -s" < "$GITHUB_WORKSPACE/Tools/Codespaces/recovery_sync.sh" > "$OUT/terminal.txt" 2>/dev/null; then
+    if grep -qxF 'AARIS_RECOVERY_UBUNTU_CONFIG_READY' <(tail -n 1 "$OUT/terminal.txt"); then
+      STATE="SUCCESS"; DETAIL="recovery_safe_fast_forward_complete"; exit 0
+    fi
+  fi
+  DETAIL="recovery_sync_failed_without_reset"; exit 36
+fi
 # Read Codespace machine and state without SSH. Safe when the old container is unavailable.
 if test "$OP" = logs; then
   if timeout 110 python3 "$GITHUB_WORKSPACE/Tools/Codespaces/codespace_logs.py" "$CS" > "$OUT/terminal.txt" 2>/dev/null; then
