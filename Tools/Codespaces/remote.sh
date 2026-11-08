@@ -362,9 +362,20 @@ PY
       nohup setsid env DISPLAY=:99 TMPDIR="$RUN/UnityTemp" LIBGL_ALWAYS_SOFTWARE=1 "$EDITOR" -projectPath "$PROJECT" -logFile "$RUN/Editor.log" </dev/null >"$RUN/editor-launch-stdout.log" 2>"$RUN/editor-launch-stderr.log" &
       sleep 8
     fi
+    if ! pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then
+      echo 'EDITOR_LAUNCH_FAILED'
+      exit 12
+    fi
+    # Process existence after eight seconds is NOT a successful Editor launch.
+    # Large imports must remain running; catch delayed licensing/GL crashes
+    # before reporting a false-positive and requesting a screenshot.
+    sleep 12
     if pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then
       echo 'EDITOR_PROCESS_STARTED_LICENSE_NOT_VERIFIED'
-    else echo 'EDITOR_LAUNCH_FAILED'; exit 12; fi
+    else
+      echo 'EDITOR_EXITED_DURING_STARTUP'
+      exit 12
+    fi
     ;;
   license)
     # Unity CLI may be installed under UNITY_CLI_HOME/bin, not ~/.local/bin.

@@ -36,6 +36,11 @@ assert "github.event.issue.number == 77" in wf
 assert 'secrets.CODESPACE_PAT' in wf
 controller=(r/'Tools/Codespaces/controller.sh').read_text()
 response=(r/'Tools/Codespaces/issue_response.py').read_text()
+assert "'TARGET_UNAVAILABLE'" in response
+assert 'target_codespace' in response
+remote_source=(r/'Tools/Codespaces/remote.sh').read_text()
+assert 'EDITOR_EXITED_DURING_STARTUP' in remote_source
+assert "sleep 12" in remote_source
 billing=(r/'Tools/Codespaces/billing_quota.py').read_text()
 assert "'CS QUOTA') OP=quota" in controller
 assert 'billing_quota.py' in controller and 'CODESPACES_BILLING_REPORT=SUCCESS' in controller
@@ -196,6 +201,9 @@ assert "'CS LOGS')" in controller
 assert 'codespace_logs.py' in controller
 assert (r/'Tools/Codespaces/codespace_logs.py').read_text().startswith('#!/usr/bin/env python3')
 assert 'gh codespace rebuild -c "$CS"' in controller
+assert 'TARGET_CODESPACE="aaris-ai-unity-ssh-vp5g97jv4r4gfpjgq"' in controller
+assert 'never_create_or_select_another_codespace_implicitly' in controller
+assert '[.[] | select(.name == $target)][0].name' in controller
 assert 'rebuild_preflight.sh' in controller
 assert 'bash -s -- $OP' in controller
 assert "'CS INFO')" in controller
@@ -224,11 +232,16 @@ case "$1" in
     if [[ "$2" == */machines ]]; then
       if [[ "$3" == "--jq" ]]; then printf 'standardLinux32gb\\t4\\t16\\n'; else
         printf '{"machines":[{"name":"standardLinux32gb","cpus":4,"memory_in_bytes":17179869184}]}\\n'; fi
+    elif [[ "$2" == "-X" && "$3" == "POST" && "$4" == "/user/codespaces/aaris-ai-unity-ssh-vp5g97jv4r4gfpjgq/start" ]]; then
+      echo '{}'
     else exit 9; fi ;;
   codespace)
     case "$2" in
-      list) echo '[]' ;;
-      create) echo 'mock-codespace' ;;
+      list)
+        if [[ "${AARIS_MOCK_NO_CS:-0}" == 1 ]]; then echo '[]'; else
+          echo '[{"name":"unrelated-workspace","displayName":"aaris-ai-unity-ssh"},{"name":"aaris-ai-unity-ssh-vp5g97jv4r4gfpjgq","displayName":"aaris-ai-unity-ssh"}]'
+        fi ;;
+      create) exit 99 ;;
       *) exit 9 ;;
     esac ;;
   *) exit 9 ;;
@@ -254,7 +267,16 @@ esac
     run=subprocess.run(['bash',controller],env=env,capture_output=True,text=True)
     assert run.returncode==0,run.stderr
     result=json.loads((working/'codespace-results/result.json').read_text())
-    assert result['status']=='SUCCESS' and result['codespace']=='mock-codespace'
+    assert result['status']=='SUCCESS' and result['codespace']=='aaris-ai-unity-ssh-vp5g97jv4r4gfpjgq'
+    assert 'exact' not in result['detail']
+    # Missing target fails closed: no auto-create and no switching to an
+    # unrelated workspace that happens to share the display name.
+    env['AARIS_MOCK_NO_CS']='1'
+    run=subprocess.run(['bash',controller],env=env,capture_output=True,text=True)
+    assert run.returncode==0,run.stderr
+    result=json.loads((working/'codespace-results/result.json').read_text())
+    assert result['status']=='TARGET_UNAVAILABLE'
+    assert result['codespace']==''
 direct=(r/'Tools/Codespaces/termux_unity_allow.sh').read_text()
 assert 'termux-open-url' in direct
 assert 'GH_CONFIG_DIR' in direct
