@@ -172,6 +172,11 @@ namespace Aaris.MapReview.Editor
                 trace != null && trace.Contains("AarisBreakablePanel") ? "DOOR_WINDOW" :
                 trace != null && trace.Contains("AarisInteractiveHouseProbe") ? "PROBE" :
                     "UNKNOWN_SOURCE";
+            if (isolatedEditorOnlyException)
+            {
+                kind = "UNITYEDITOR_READY_INDEX";
+                source = "UNITYEDITOR_ONLY";
+            }
             SessionState.SetString(ErrorKind, kind);
             SessionState.SetString(ErrorSource, source);
             SessionState.SetString(ErrorPhase, state);
