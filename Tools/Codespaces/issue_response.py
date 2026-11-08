@@ -58,7 +58,7 @@ for line in lines:
     elif op == 'quota' and (
         re.fullmatch(r'CODESPACES_(BILLING_PERIOD)=[0-9]{4}-[0-9]{2}', line) or
         re.fullmatch(r'CODESPACES_(COMPUTE_LINES|STORAGE_LINES)=[0-9]{1,6}', line) or
-        re.fullmatch(r'CODESPACES_(USED_CORE_HOURS|REMAINING_CORE_HOURS|REMAINING_4CORE_HOURS|FREE_REMAINING_CORE_HOURS|PRO_REMAINING_CORE_HOURS)=[0-9]{1,9}(?:\\.[0-9]{1,4})?', line) or
+        re.fullmatch(r'CODESPACES_(USED_CORE_HOURS|REMAINING_CORE_HOURS|REMAINING_4CORE_HOURS|FREE_REMAINING_CORE_HOURS|PRO_REMAINING_CORE_HOURS)=[0-9]{1,9}(?:\.[0-9]{1,4})?', line) or
         re.fullmatch(r'CODESPACES_(PLAN|BILLING_REPORT|HOURS_STATUS)=[A-Z_]{2,42}', line) or
         re.fullmatch(r'CODESPACES_(INCLUDED_CORE_HOURS)=[0-9]{1,6}', line)):
         safe.append(line)
