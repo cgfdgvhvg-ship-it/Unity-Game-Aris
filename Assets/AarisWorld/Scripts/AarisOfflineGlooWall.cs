@@ -55,8 +55,8 @@ namespace Aaris.MapReview
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.V)) BeginAim();
-            if (Input.GetKeyUp(KeyCode.V)) ReleaseAndDeploy();
+            if (Input.GetKeyDown(KeyCode.B)) BeginAim();
+            if (Input.GetKeyUp(KeyCode.B)) ReleaseAndDeploy();
             if (!aiming) return;
             if (!CanUse) { CancelAim(); return; }
             UpdatePlacement();
@@ -213,7 +213,7 @@ namespace Aaris.MapReview
 
         public void ApplyDamage(float amount, GameObject attacker)
         {
-            if (!initialized || amount <= 0f) return;
+            if (!initialized || float.IsNaN(amount) || float.IsInfinity(amount) || amount <= 0f) return;
             health = Mathf.Max(0f, health - amount);
             AarisGlooWallVisuals.Tint(renderers,
                 Color.Lerp(new Color(0.84f, 0.25f, 0.36f), new Color(0.13f, 0.60f, 0.92f),
