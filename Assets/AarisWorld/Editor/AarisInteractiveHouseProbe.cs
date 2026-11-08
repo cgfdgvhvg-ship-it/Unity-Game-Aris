@@ -22,6 +22,7 @@ namespace Aaris.MapReview.Editor
         private const string Status = Prefix + "state";
         private const string Since = Prefix + "since";
         private const string Errors = Prefix + "errors";
+        private const string BootstrapErrors = Prefix + "editorBootstrapErrors";
         private const string ErrorKind = Prefix + "errorKind";
         private const string ErrorSource = Prefix + "errorSource";
         private const string ExitCode = Prefix + "exit";
@@ -38,7 +39,7 @@ namespace Aaris.MapReview.Editor
         {
             public string status, reason, scene, unityVersion;
             public int terrainTiles, sites, modularHomes, panels, doors, windows;
-            public int screenshotCount, runtimeErrors;
+            public int screenshotCount, runtimeErrors, editorBootstrapErrors;
             public string runtimeErrorKind, runtimeErrorSource;
             public float imageDeviationMin;
             public bool startsClosed, openedNearPlayer, clearDoorGap;
@@ -58,8 +59,13 @@ namespace Aaris.MapReview.Editor
             if (SessionState.GetString(Status, "") == "" ||
                 (type != LogType.Error && type != LogType.Assert &&
                  type != LogType.Exception)) return;
-            int previous = SessionState.GetInt(Errors, 0);
-            SessionState.SetInt(Errors, previous + 1);
+            // Classify exceptions during the Unity Editor play transition
+            // separately from errors after gameplay has actually started.
+            // Both counts remain visible; runtime errors may never be ignored.
+            string state = SessionState.GetString(Status, "");
+            string counter = state == "starting" ? BootstrapErrors : Errors;
+            int previous = SessionState.GetInt(counter, 0);
+            SessionState.SetInt(counter, previous + 1);
             if (previous > 0) return;
             // Only fixed, reviewed categories leave the private Unity Editor log.
             // Never publish error messages, paths, stack traces or license data.
@@ -107,6 +113,7 @@ namespace Aaris.MapReview.Editor
                 File.Delete(Path.Combine(Folder, file));
             SessionState.SetString(Status, "");
             SessionState.SetInt(Errors, 0);
+            SessionState.SetInt(BootstrapErrors, 0);
             SessionState.SetString(ErrorKind, "NONE");
             SessionState.SetString(ErrorSource, "NONE");
             screenshots = 0;
@@ -329,6 +336,7 @@ namespace Aaris.MapReview.Editor
                 door.IsBroken && !doorCollider.enabled && CanPassThreshold();
             Capture("door-broken.png");
             result.runtimeErrors = SessionState.GetInt(Errors,0);
+            result.editorBootstrapErrors = SessionState.GetInt(BootstrapErrors,0);
             result.runtimeErrorKind = SessionState.GetString(ErrorKind, "NONE");
             result.runtimeErrorSource = SessionState.GetString(ErrorSource, "NONE");
             result.screenshotCount = screenshots;
@@ -394,6 +402,7 @@ namespace Aaris.MapReview.Editor
             if(report==null)
                 report=new Result {status="failed",reason=reason,scene=Scene,
                     runtimeErrors=SessionState.GetInt(Errors,0),
+                    editorBootstrapErrors=SessionState.GetInt(BootstrapErrors,0),
                     screenshotCount=screenshots};
             Directory.CreateDirectory(Folder);
             File.WriteAllText(Path.Combine(Folder,"report.json"),
