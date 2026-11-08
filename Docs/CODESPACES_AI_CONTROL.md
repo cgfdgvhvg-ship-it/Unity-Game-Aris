@@ -118,3 +118,13 @@ The new owner-only Issue #77 commands are `CS SCENE RENDER` and `CS SCENE PLAY`.
 Unlike `CS SHOT`, the render operation calls the actual licensed Unity 6000.3.26f1 Editor in batch mode with Xvfb/Mesa **graphics enabled**, opens the canonical native scene and four TerrainData tiles, positions a disposable orthographic map camera at (0,1600,0) and writes a true 1600x1600 `map-overview.png`. The separate Play Mode operation opens the same scene, enters Play Mode, requires 60 or more frames, checks player/camera/vehicle manager/four tiles and zero recorded runtime errors, and writes `play-frame.png`. No saved scene or Git LFS asset is edited by either operation.
 
 Download actual PNG plus `render-report.json` / `play-report.json` from the respective `aaris-codespace-RUN_ID` Actions artifact. Do not interpret a green workflow, a nonblank Linux desktop, a zero-error static scan, or a license status without a native-render report as proof that the map works. The Unity batch Editor must have authorized licensing; the command reports failure instead of bypassing activation or producing simulated images. Raw Editor logs stay private in the Codespace. If an Editor is already running, the probe refuses the project lock rather than launching a second instance.
+
+
+### Take photos at any map coordinate
+
+Issue #77 owner command: `CS PHOTO X Z` or `CS PHOTO X Z YAW PITCH DISTANCE`.
+For example, `CS PHOTO -420 -210` (automatic elevation and useful viewing angle) or `CS PHOTO 350 220 90 35 85`. X and Z are 2km world metres, yaw is direction in degrees, pitch is angle above horizontal, distance in metres; coordinates must fall inside the saved [-1000,+1000] bounds.
+
+The command uses native Unity Editor `EditorSceneManager.OpenScene` and a transient URP camera. It finds the real TerrainData elevation, raises the camera over terrain along the line of sight, and saves `photo-detail.png` plus a wider `photo-context.png` alongside `photo-report.json` in the same owner GitHub Actions artifact. No noVNC input, Linux desktop capture or synthetic image is involved. Use another `CS PHOTO` with a different yaw or distance to inspect the object from the other side. Only the owner can issue the command; `photo_request.py` rejects invalid coordinates, NaN, shell injection and unauthorized parameter shapes.
+
+For a fresh or hung Codespace editor, first use `CS EDITOR PROCESS`, the protected graceful shutdown/recovery process, and `CS SYNC` before `CS PHOTO`. A photo does not validate vehicle collision or gameplay; `CS SCENE PLAY` is a separate smoke test. Do not claim this setup is verified until a real Unity camera PNG has been inspected and the JSON report marks passed.
