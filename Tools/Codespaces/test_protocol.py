@@ -107,6 +107,15 @@ assert "'CS SAFE MODE') OP=safe_mode" in (r/'Tools/Codespaces/controller.sh').re
 assert "'CS COMPILE REPORT') OP=compile_report" in (r/'Tools/Codespaces/controller.sh').read_text()
 assert 'enter_unity_safe_mode.sh' not in (r/'.devcontainer/prebuild.sh').read_text()
 assert 'safe_mode, compile_report' in wf
+assert "CS REFRESH" in (r/'Tools/Codespaces/controller.sh').read_text()
+assert 'refresh_unity.sh' in (r/'Tools/Codespaces/controller.sh').read_text()
+assert 'refresh' in (r/'.github/workflows/aaris-codespaces-control.yml').read_text()
+refresh=(r/'Tools/Codespaces/refresh_unity.sh').read_text()
+assert 'UNITY_ASSETS_REFRESH_REQUESTED' in refresh
+assert "ctrl+r" in refresh
+assert 'Unity-Game-Aris' in refresh
+assert 'refresh_unity.sh' not in (r/'.devcontainer/prebuild.sh').read_text()
+
 assert 'UNITY_COMPILER_ERROR_COUNT_' in (r/'Tools/Codespaces/compiler_report.sh').read_text()
 assert 'safe_mode compile_report' in (r/'Tools/Codespaces/issue_response.py').read_text()
 
