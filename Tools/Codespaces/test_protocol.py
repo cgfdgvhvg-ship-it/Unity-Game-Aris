@@ -51,6 +51,16 @@ remote=(r/'Tools/Codespaces/remote.sh').read_text()
 assert 'eval ' not in remote
 assert 'merge --ff-only' in remote
 assert 'SYNC_WORKTREE_VERIFIED_RAW_IDENTICAL' in remote
+# Sync must neither overwrite Unity's live ProjectSettings migration nor silently
+# drop it: preserve copies under /workspaces plus a scoped recoverable Git stash.
+assert "SYNC_SETTINGS_BACKUP_AND_STASH_SAVED" in remote
+assert ".aaris-recovery/project-settings/" in remote
+assert "git stash push -m 'Aaris Unity project settings before safe sync'" in remote
+assert "ProjectSettings/ProjectVersion.txt" in remote
+assert "ProjectSettings/ProjectSettings.asset" in remote
+assert "SYNC_BLOCKED_REAL_OR_UNEXPECTED_CHANGE" in remote
+assert "SYNC_BLOCKED_CHANGED_BYTES" in remote
+assert "git reset --hard" not in remote and "git clean -" not in remote
 assert 'scrot -o' in remote
 assert 'glibc=%s' in remote
 assert 'docker_ready=yes' in remote

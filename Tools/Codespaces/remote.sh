@@ -85,6 +85,13 @@ PY
     test "$(git branch --show-current)" = main || { echo 'SYNC_REQUIRES_MAIN_BRANCH'; exit 8; }
     python3 - <<'PY'
 import subprocess,sys
+# These 11 files have a known Git-LFS filter false positive, while two
+# ProjectSettings files may be genuinely changed by Unity's first import.
+# Never bypass the raw-blob integrity guard on any asset or unrelated file.
+settings={
+    'ProjectSettings/ProjectSettings.asset',
+    'ProjectSettings/ProjectVersion.txt',
+}
 allowed={
 'Assets/AarisWorld/Props/ClimbableTower/Geometry.asset',
 'Assets/AarisWorld/Props/ClimbableTower/Geometry_LOD1.asset',
@@ -102,16 +109,44 @@ entries=[e for e in data.split(b'\0') if e]
 for e in entries:
     status=e[:2].decode('ascii','replace')
     path=e[3:].decode('utf-8','replace')
-    if status not in {' M','M '} or path not in allowed:
+    if status not in {' M','M '} or path not in (allowed | settings):
         print('SYNC_BLOCKED_REAL_OR_UNEXPECTED_CHANGE')
         sys.exit(8)
-    index=subprocess.check_output(['git','ls-files','-s','--',path],text=True).split('\t')[0].split()[1]
-    raw=subprocess.check_output(['git','hash-object','--no-filters','--',path],text=True).strip()
-    if raw!=index:
-        print('SYNC_BLOCKED_CHANGED_BYTES')
-        sys.exit(8)
-print('SYNC_WORKTREE_VERIFIED_RAW_IDENTICAL='+str(len(entries)))
+    if path in allowed:
+        index=subprocess.check_output(['git','ls-files','-s','--',path],text=True).split('\t')[0].split()[1]
+        raw=subprocess.check_output(['git','hash-object','--no-filters','--',path],text=True).strip()
+        if raw!=index:
+            print('SYNC_BLOCKED_CHANGED_BYTES')
+            sys.exit(8)
+print('SYNC_WORKTREE_VERIFIED_RAW_IDENTICAL='+str(len(entries)-sum(e[3:].decode('utf-8','replace') in settings for e in entries)))
 PY
+    # Unity 6000.3 may write real local ProjectSettings migration changes as it
+    # imports the scene. Snapshot them in /workspaces, then stash ONLY these
+    # two explicitly reviewed files before the fast-forward. Never reset/clean.
+    if ! git diff --quiet -- ProjectSettings/ProjectSettings.asset ProjectSettings/ProjectVersion.txt ||
+       ! git diff --cached --quiet -- ProjectSettings/ProjectSettings.asset ProjectSettings/ProjectVersion.txt; then
+      umask 077
+      BACKUP="$PROJECT/.aaris-recovery/project-settings/$(date -u +%Y%m%dT%H%M%SZ)-$"
+      mkdir -p "$BACKUP"
+      cp -p ProjectSettings/ProjectSettings.asset "$BACKUP/ProjectSettings.asset"
+      cp -p ProjectSettings/ProjectVersion.txt "$BACKUP/ProjectVersion.txt"
+      # Stop rather than silently discard local ProjectSettings if Git cannot
+      # create a recoverable stash commit. The persistent copies remain in repo.
+      if ! GIT_AUTHOR_NAME='Aaris Codespace Recovery' \
+           GIT_AUTHOR_EMAIL='codespace-recovery@users.noreply.github.com' \
+           GIT_COMMITTER_NAME='Aaris Codespace Recovery' \
+           GIT_COMMITTER_EMAIL='codespace-recovery@users.noreply.github.com' \
+           git stash push -m 'Aaris Unity project settings before safe sync' -- \
+             ProjectSettings/ProjectSettings.asset ProjectSettings/ProjectVersion.txt >/dev/null; then
+        echo 'SYNC_SETTINGS_BACKUP_SAVED_STASH_FAILED'
+        exit 12
+      fi
+      if ! git diff --quiet -- ProjectSettings/ProjectSettings.asset ProjectSettings/ProjectVersion.txt; then
+        echo 'SYNC_SETTINGS_STILL_DIRTY'
+        exit 12
+      fi
+      echo 'SYNC_SETTINGS_BACKUP_AND_STASH_SAVED'
+    fi
     git fetch --quiet origin main
     # Suppress only the already-proven LFS clean-filter false positives.
     git -c filter.lfs.process= -c filter.lfs.clean=cat \

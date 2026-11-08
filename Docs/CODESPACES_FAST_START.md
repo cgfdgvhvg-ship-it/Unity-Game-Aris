@@ -65,3 +65,11 @@ Official docs: https://docs.github.com/en/codespaces/prebuilding-your-codespaces
 When the screenshot displays **Enter Safe Mode?**, the owner may issue `CS SAFE MODE`. The one-shot command checks the exact visible dialog and clicks **Enter Safe Mode**, not Ignore or Quit. This does not delete any assets or change C# source files.
 
 Then issue `CS COMPILE REPORT` to obtain bounded compiler errors from the current Codespace's Unity Editor log in the Actions artifact. It reports paths only under `Assets/`, `Packages/` or `Library/PackageCache/`, C# error codes, and sanitized messages. It does not publish the raw Unity log. Repair C# source in a reviewed PR, then recompile; never reset the LFS project to fix compiler errors.
+
+## Safely updating source while Unity has migrated ProjectSettings
+
+The old SSH Codespace can show exactly 11 known false-positive LFS tracked asset diffs and two genuine changes to `ProjectSettings/ProjectSettings.asset` and `ProjectSettings/ProjectVersion.txt` after first Unity Editor import. Do not run `git reset --hard`, `git clean`, or force a merge to discard them.
+
+The owner-only `CS SYNC` operation verifies that the ONLY tracked changes are those known 11 assets (each byte-for-byte identical to the Git index) and the two specific Unity ProjectSettings files. It saves private persistent copies of the ProjectSettings files under `/workspaces/Unity-Game-Aris/.aaris-recovery/project-settings/`, makes a scoped Git stash of ONLY those two files, and then performs a regular fast-forward to `origin/main` followed by `git lfs pull`. If any unexpected file is different, sync fails closed. It reports `SYNC_SETTINGS_BACKUP_AND_STASH_SAVED` and `SYNC_LFS_READY`, never raw settings.
+
+The saved ProjectSettings migration is deliberately **not reapplied automatically**. Review it separately after the Unity Editor loads the updated project, especially if Unity upgrades its project settings format. Original scene and map files are unchanged.
