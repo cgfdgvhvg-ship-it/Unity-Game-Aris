@@ -31,7 +31,8 @@ assert 'SCENE="Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity"' in sh
 assert 'scene-probe' in shell and 'map-overview.png' in shell and 'play-frame.png' in shell
 assert 'pgrep -f' in shell and 'AARIS_PROBE_EDITOR_ALREADY_OPEN' in shell
 assert '-batchmode' in shell and '-executeMethod' in shell and 'timeout --signal=TERM' in shell
-assert '-nographics' not in shell and 'scrot' not in shell and 'xdotool' not in shell
+active_shell='\n'.join(line.split('#', 1)[0] for line in shell.splitlines())
+assert '-nographics' not in active_shell and 'scrot' not in active_shell and 'xdotool' not in active_shell
 assert 'git reset' not in shell and 'git clean' not in shell
 assert 'pkill' not in shell and 'kill -9' not in shell and 'eval ' not in shell
 assert 'git branch --show-current' in shell and 'main' in shell
