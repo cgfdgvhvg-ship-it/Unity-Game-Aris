@@ -96,7 +96,7 @@ def main(archive: Path, report: Path):
     # final guard against leaking unrelated changes into the review commit.
     initial=subprocess.run(["git","status","--porcelain=v1","-z"],
                            check=True,capture_output=True).stdout
-    for entry in initial.decode("utf-8","surrogateescape").split("\\0"):
+    for entry in initial.decode("utf-8","surrogateescape").split("\0"):
         if not entry:continue
         if len(entry)<4 or entry[:2]=="??":
             fail("TREE_PUBLISH_RUNNER_UNTRACKED_FILE")
