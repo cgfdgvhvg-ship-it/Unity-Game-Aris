@@ -3,7 +3,7 @@
 # force-kill, credentials, scene saves, Git resets or public raw logs.
 set -Eeuo pipefail
 MODE="$1"
-case "$MODE" in render|play) ;; *) echo AARIS_PROBE_INVALID_MODE; exit 2 ;; esac
+case "$MODE" in render|play|photo) ;; *) echo AARIS_PROBE_INVALID_MODE; exit 2 ;; esac
 PROJECT="/workspaces/Unity-Game-Aris"
 RUN="/tmp/aaris-codespaces/scene-probe"
 EDITOR="$HOME/.local/share/aaris-unity-editors/6000.3.26f1/Editor/Unity"
@@ -32,7 +32,8 @@ if pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then
 fi
 mkdir -p "$RUN/UnityTemp"
 # Delete only the prior probe's own transient output; no native source assets.
-rm -f "$RUN/map-overview.png" "$RUN/render-report.json" "$RUN/play-frame.png" "$RUN/play-report.json"
+rm -f "$RUN/map-overview.png" "$RUN/render-report.json" "$RUN/play-frame.png" "$RUN/play-report.json" \
+  "$RUN/photo-detail.png" "$RUN/photo-context.png" "$RUN/photo-report.json"
 bash "$PROJECT/.devcontainer/start_screen.sh" >/dev/null 2>&1 || {
   echo AARIS_PROBE_XVFB_FAILED
   exit 17
@@ -45,6 +46,10 @@ if test "$MODE" = render; then
   METHOD="Aaris.MapReview.Editor.AarisCodespaceSceneProbe.Capture"
   REPORT="$RUN/render-report.json"
   IMAGE="$RUN/map-overview.png"
+elif test "$MODE" = photo; then
+  METHOD="Aaris.MapReview.Editor.AarisCodespaceSceneProbe.CaptureAt"
+  REPORT="$RUN/photo-report.json"
+  IMAGE="$RUN/photo-detail.png"
 else
   METHOD="Aaris.MapReview.Editor.AarisCodespaceSceneProbe.Play"
   REPORT="$RUN/play-report.json"
@@ -54,7 +59,24 @@ fi
 # Ubuntu's splash. Unity executes the method AFTER its C# import/compilation.
 # No -nographics: Mesa/Xvfb must expose a real graphics device to URP.
 set +e
-if test "$MODE" = render; then
+if test "$MODE" = photo; then
+  # The controller already validated and normalized these five finite
+  # decimal values; no user-controlled string can become a shell command.
+  test "$#" -eq 6 || { echo AARIS_PROBE_INVALID_COORDINATE_COUNT; exit 28; }
+  for coordinate in "$2" "$3" "$4" "$5" "$6"; do
+    [[ "$coordinate" =~ ^-?[0-9]{1,4}([.][0-9]{1,3})?$ ]] || {
+      echo AARIS_PROBE_INVALID_COORDINATES
+      exit 29
+    }
+  done
+  timeout --signal=TERM 1500 env DISPLAY=:99 TMPDIR="$RUN/UnityTemp" \
+    LIBGL_ALWAYS_SOFTWARE=1 "$EDITOR" -batchmode -quit -force-glcore \
+    -projectPath "$PROJECT" -executeMethod "$METHOD" \
+    "-aarisX=$2" "-aarisZ=$3" "-aarisYaw=$4" \
+    "-aarisPitch=$5" "-aarisDistance=$6" \
+    -logFile "$RUN/unity-probe-editor.log" >"$RUN/private-stdout.log" 2>"$RUN/private-stderr.log"
+  RC=$?
+elif test "$MODE" = render; then
   timeout --signal=TERM 1500 env DISPLAY=:99 TMPDIR="$RUN/UnityTemp" \
     LIBGL_ALWAYS_SOFTWARE=1 "$EDITOR" -batchmode -quit -force-glcore \
     -projectPath "$PROJECT" -executeMethod "$METHOD" \
@@ -97,9 +119,13 @@ except (ValueError,OSError):
 if data.get("mode")!=mode or data.get("status")!="passed" or data.get("terrainTiles")!=4:
     print("AARIS_PROBE_SCENE_OR_PLAY_ASSERTIONS_FAILED")
     sys.exit(23)
-if not image.is_file() or image.stat().st_size < 8192 or image.read_bytes()[:8] != b"\x89PNG\r\n\x1a\n":
-    print("AARIS_PROBE_REAL_PNG_MISSING")
-    sys.exit(24)
+images = [image]
+if mode=="photo":
+    images.append(image.parent/"photo-context.png")
+for candidate in images:
+    if not candidate.is_file() or candidate.stat().st_size < 8192 or candidate.read_bytes()[:8] != b"\x89PNG\r\n\x1a\n":
+        print("AARIS_PROBE_REAL_PNG_MISSING")
+        sys.exit(24)
 if mode=="play":
     if data.get("frames",0)<60 or not all(data.get(k) for k in ("playerPresent","cameraPresent","vehicleManagerPresent")):
         print("AARIS_PROBE_PLAY_ASSERTIONS_MISSING")
@@ -107,13 +133,22 @@ if mode=="play":
     if data.get("runtimeErrors")!=0:
         print("AARIS_PROBE_RUNTIME_ERRORS")
         sys.exit(26)
-if data.get("pixelStandardDeviation",0)<6:
-    print("AARIS_PROBE_FLAT_FRAME_REJECTED")
-    sys.exit(27)
+if mode=="photo":
+    if min(data.get("detailVariation",0),data.get("contextVariation",0)) < 6:
+        print("AARIS_PROBE_FLAT_FRAME_REJECTED")
+        sys.exit(27)
+    print("photo_target_x="+format(data.get("targetX",0),".1f"))
+    print("photo_target_z="+format(data.get("targetZ",0),".1f"))
+    print("photo_camera_y="+format(data.get("cameraY",0),".1f"))
+    print("image_bytes="+str(sum(p.stat().st_size for p in images)))
+else:
+    if data.get("pixelStandardDeviation",0)<6:
+        print("AARIS_PROBE_FLAT_FRAME_REJECTED")
+        sys.exit(27)
+    print("pixel_deviation="+format(data["pixelStandardDeviation"],".1f"))
+    print("image_bytes="+str(image.stat().st_size))
 print("AARIS_NATIVE_"+mode.upper()+"_PASSED")
 print("terrain_tiles=4")
-print("pixel_deviation="+format(data["pixelStandardDeviation"],".1f"))
-print("image_bytes="+str(image.stat().st_size))
 if mode=="play":
     print("play_frames="+str(data["frames"]))
     print("runtime_errors=0")
