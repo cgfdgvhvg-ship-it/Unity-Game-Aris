@@ -24,11 +24,13 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Pine_B_Bark
-  m_Shader: {fileID: -6465566751694194690, guid: 515f8966b1d702f4a8c97ca412a9a4e9, type: 3}
+  m_Shader: {fileID: 4800000, guid: 99134b1f0c27d54469a840832a28fadf, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
-  - BACKFACE_NORMAL_MODE_NONE
+  - EFFECT_BUMP
+  - EFFECT_HUE_VARIATION
+  - EFFECT_EXTRA_TEX
   m_InvalidKeywords: []
   m_LightmapFlags: 2
   m_EnableInstancingVariants: 1
@@ -76,6 +78,8 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _BillboardKwToggle: 0
+    - _TwoSided: 2
     - BACKFACE_NORMAL_MODE: 2
     - Diffusion_Profile: 3.5648174
     - EFFECT_BILLBOARD: 0
