@@ -83,8 +83,26 @@ if log.is_file():
         source=None
         if exception:
             matching.append((i,exception))
-        elif re.search(r"^\s*(?:Aaris (?:vehicles|world|map|player|terrain)|ERROR:|Error:)",line,re.I):
+        elif re.search(r"^\s*(?:Aaris(?:\s+(?:vehicles|world|map|player|terrain))?:|Saved player camera|ERROR:|Error:)",line,re.I):
             matching.append((i,"REPORTED_GAME_ERROR"))
+    # Exact known public errors reveal missing authored resources without
+    # leaking arbitrary exception text or credentials.
+    message_types={
+        "LOOT_SOURCE_MISSING":r"Aaris: no embedded offline authored loot locations",
+        "LOOT_INVALID_JSON":r"Aaris: invalid loot JSON",
+        "LOOT_WRONG_MAP":r"Aaris: loot candidates do not describe the 2km map",
+        "VEHICLE_SOURCE_MISSING":r"Aaris vehicles: authored offline candidates/catalog are missing",
+        "VEHICLE_INVALID_DATA":r"Aaris vehicles: malformed offline data",
+        "VEHICLE_WRONG_MAP":r"Aaris vehicles: source data does not match the 2km authored world",
+        "VEHICLE_MODELS_MISSING":r"Aaris vehicles: not all required local CC0",
+        "VEHICLE_SHADER_MISSING":r"Aaris vehicles: verified URP palette/shader missing",
+        "PLAYER_CAMERA_MISSING":r"Saved player camera is missing",
+        "ANIMATION_CLIPS_INVALID":r"Aaris: imported animation clips invalid",
+        "WEAPON_STATE_INVALID":r"Aaris: invalid weapon state configured",
+    }
+    for name,pattern in message_types.items():
+        if re.search(pattern,text,re.I):
+            print("AARIS_PLAY_MESSAGE_"+name)
     if matching:
         print("AARIS_PLAY_LOG_ERROR_CANDIDATES")
         for index,kind in matching[-4:]:
