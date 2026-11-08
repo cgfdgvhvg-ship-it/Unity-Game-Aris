@@ -90,4 +90,12 @@ assert 'runtime_error_source=' in shell
 assert 'if test "$MODE" = play && test -f "$RUN/play-report.json"; then' in shell
 assert 'case "$MODE" in' in shell
 assert 'rm -rf' not in shell and 'git reset' not in shell and 'git clean' not in shell
+# Regression: a restarted Codespace must verify its original authenticated
+# native objects locally before trying to redownload the 1.5GB map.
+restorer = (ROOT / 'Tools/Codespaces/restore_preserved_source_lfs.py').read_text()
+assert 'AARIS_PROBE_LOCAL_FIRST_793_LFS_VERIFIED' in shell
+assert shell.index('restore_preserved_source_lfs.py" "$PROJECT"') < shell.index('elif git lfs pull')
+assert 'AARIS_PRESERVED_LFS_SNAPSHOT_VERIFIED=793' in restorer
+assert 'AARIS_CODESPACE_ORIGINAL_TREE_ARCHIVE_HASH_VERIFIED=18' in restorer
+assert 'AARIS_PRESERVED_LFS_ORIGINAL_WORKSPACE_UNCHANGED=yes' in restorer
 print('AARIS_NATIVE_SCENE_PROBE_STATIC_PASS')

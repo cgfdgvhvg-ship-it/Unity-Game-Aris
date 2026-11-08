@@ -49,22 +49,24 @@ cd "$PROJECT"
 # Keep raw Git LFS diagnostics private in the existing Codespace.
 # Only emit bounded error classes + counts on the public owner issue.
 mkdir -p "$RUN"
-if ! git lfs pull > "$RUN/private-lfs-pull.log" 2>&1; then
-  # Some Codespace restarts lose /tmp LFS caches while the original
-  # /workspaces project still holds hydrated assets. Reuse ONLY original
-  # source bytes whose SHA256 and size match the new main commit's pointer.
-  # Missing OIDs are fetched individually; the dirty GUI source is read-only.
-  if test -s "$PROJECT/Tools/Codespaces/restore_preserved_source_lfs.py" &&
-     python3 "$PROJECT/Tools/Codespaces/restore_preserved_source_lfs.py" "$PROJECT"; then
-    echo AARIS_PROBE_PRESERVED_SOURCE_LFS_RECOVERED
-  elif test -s "$PROJECT/Tools/Codespaces/restore_local_tree_lfs.py" &&
-       python3 "$PROJECT/Tools/Codespaces/restore_local_tree_lfs.py" "$PROJECT"; then
-    # Older same-session fallback for the exact 18 native baked meshes.
-    echo AARIS_PROBE_NATIVE_TREE_LFS_RECOVERED_FROM_LOCAL_CODESPACE_BAKE
-  else
-    echo AARIS_PROBE_ISOLATED_LFS_PULL_FAILED
-    exit 15
-  fi
+# The original project already contains 775 hydrated LFS assets; rebuilding
+# the identical 1.5+GB snapshot through the remote first wastes bandwidth and
+# can hang on an account-specific Git LFS auth failure. SHA-verify LOCAL bytes
+# against immutable HEAD pointers before any network transfer. The authenticated
+# original 18-mesh archive is also verified by this same read-only helper.
+# If it cannot prove 793/793, attempt the normal Git LFS download as fallback.
+if test -s "$PROJECT/Tools/Codespaces/restore_preserved_source_lfs.py" &&
+   python3 "$PROJECT/Tools/Codespaces/restore_preserved_source_lfs.py" "$PROJECT"; then
+  echo AARIS_PROBE_LOCAL_FIRST_793_LFS_VERIFIED
+elif git lfs pull > "$RUN/private-lfs-pull.log" 2>&1; then
+  echo AARIS_PROBE_REMOTE_LFS_PULL_SUCCEEDED
+elif test -s "$PROJECT/Tools/Codespaces/restore_local_tree_lfs.py" &&
+     python3 "$PROJECT/Tools/Codespaces/restore_local_tree_lfs.py" "$PROJECT"; then
+  # Historic same-session recovery only; still requires 793-file proof.
+  echo AARIS_PROBE_NATIVE_TREE_LFS_RECOVERED_FROM_LOCAL_CODESPACE_BAKE
+else
+  echo AARIS_PROBE_ISOLATED_LFS_PULL_FAILED
+  exit 15
 fi
 SCENE="Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity"
 test -s "$SCENE" || { echo AARIS_PROBE_SCENE_MISSING; exit 16; }
