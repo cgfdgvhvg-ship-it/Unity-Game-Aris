@@ -58,6 +58,10 @@ installer=(r/'Tools/Codespaces/install_unity.sh').read_text()
 assert '--non-interactive --yes --accept-eula --format json' in installer
 assert 'UNITY_EDITOR_INSTALL_EXIT_CODE_' in installer
 assert 'UNITY_EDITOR_INSTALL_CATEGORY_' in installer
+assert "'CS CLI DIAG')" in (r/'Tools/Codespaces/controller.sh').read_text()
+assert 'cli_diag' in (r/'.github/workflows/aaris-codespaces-control.yml').read_text()
+assert 'UNITY_CLI_INSTALL_FLAGS_' in remote
+assert 'UNITY_CLI_INSTALL_LOG_CODE_' in remote
 assert 'machine-id' not in remote
 assert 'Unity_auth_vault' not in remote
 controller=(r/'Tools/Codespaces/controller.sh').read_text()
