@@ -9,7 +9,7 @@ try:
     data = json.loads((folder / 'result.json').read_text())
 except (OSError, ValueError):
     data = {}
-operations = set('machines info quota start fresh fresh_ssh rebuild status logs sync lfs lfs_report changes preserve_assets install deps cli_diag editor editor_diag license auth probe shot accept_terms safe_mode compile_report refresh close_editor editor_process editor_recover scene_render scene_play drop_video drop_frames map_verify photo play_diag foliage_diag test stop'.split())
+operations = set('machines info quota start fresh fresh_ssh rebuild status logs sync lfs lfs_report changes preserve_assets retry_assets install deps cli_diag editor editor_diag license auth probe shot accept_terms safe_mode compile_report refresh close_editor editor_process editor_recover scene_render scene_play drop_video drop_frames map_verify photo play_diag foliage_diag test stop'.split())
 statuses = {'SUCCESS', 'FAILED', 'NO_CODESPACE', 'UNKNOWN'}
 op = data.get('operation', 'unknown')
 state = data.get('status', 'FAILED')
@@ -43,6 +43,10 @@ for line in lines:
         safe.append(line)
     elif op in ('scene_render', 'scene_play', 'photo', 'foliage_diag') and re.fullmatch(
         r'(terrain_tiles|pixel_deviation|image_bytes|play_frames|runtime_errors|photo_target_x|photo_target_z|photo_camera_y)=[0-9.]{1,20}', line):
+        safe.append(line)
+    elif op == 'retry_assets' and re.fullmatch(r'(tracked_changed_count|lfs_changed_count|checkpoint_sha)=[A-Za-z0-9]{1,64}', line):
+        safe.append(line)
+    elif op == 'retry_assets' and re.fullmatch(r'checkpoint_branch=backup/codespace-local-changes-20261108', line):
         safe.append(line)
     elif op == 'preserve_assets' and re.fullmatch(r'(tracked_changed_count|untracked_review_count|lfs_changed_count|category_count|copied_file_count|staged_file_count|checkpoint_sha)=[A-Za-z0-9]{1,64}', line):
         safe.append(line)
