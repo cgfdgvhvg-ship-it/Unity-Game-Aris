@@ -44,6 +44,8 @@ if test -n "$ISSUE"; then
     'CS AUTH') OP=auth ;;
     'CS PROBE') OP=probe ;;
     'CS SHOT') OP=shot ;;
+    'CS SCENE RENDER') OP=scene_render ;;
+    'CS SCENE PLAY') OP=scene_play ;;
     'CS ACCEPT TERMS') OP=accept_terms ;;
     'CS SAFE MODE') OP=safe_mode ;;
     'CS COMPILE REPORT') OP=compile_report ;;
@@ -57,7 +59,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|test|stop) ;;
+  machines|info|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test -z "$GH_TOKEN"; then DETAIL="CODESPACE_PAT_missing"; exit 3; fi
@@ -235,6 +237,7 @@ case "$OP" in
   sync|lfs) REMOTE_TIMEOUT=1200 ;;
   test) REMOTE_TIMEOUT=500 ;;
   editor) REMOTE_TIMEOUT=350 ;;
+  scene_render|scene_play) REMOTE_TIMEOUT=1800 ;;
 esac
 if test "$OP" = auth; then
   # Intercept the remote Unity OAuth URL, keep it OFF all public logs/artifacts.
@@ -283,6 +286,14 @@ if test "$OP" = install; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/install_unity.sh"
   REMOTE_SHELL="bash -s"
 fi
+if test "$OP" = scene_render || test "$OP" = scene_play; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/scene_probe.sh"
+  if test "$OP" = scene_render; then
+    REMOTE_SHELL="bash -s -- render"
+  else
+    REMOTE_SHELL="bash -s -- play"
+  fi
+fi
 for attempt in 1 2; do
   if timeout "$REMOTE_TIMEOUT" gh codespace ssh -c "$CS" -- "$REMOTE_SHELL" \
       < "$SCRIPT_FILE" \
@@ -298,6 +309,31 @@ for attempt in 1 2; do
         fi
         DETAIL="screen_in_actions_artifact"
       else DETAIL="screen_transfer_failed"; safe_error_summary; exit 13; fi
+    elif test "$OP" = scene_render || test "$OP" = scene_play; then
+      # Transfer only the Unity-generated verified PNG and small JSON report,
+      # never an Xvfb desktop screen, a log, or a license dialog.
+      if test "$OP" = scene_render; then
+        IMAGE=map-overview.png
+        REPORT=render-report.json
+      else
+        IMAGE=play-frame.png
+        REPORT=play-report.json
+      fi
+      for BASENAME in "$IMAGE" "$REPORT"; do
+        if ! timeout 180 gh codespace ssh -c "$CS" -- "base64 /tmp/aaris-codespaces/scene-probe/$BASENAME" \
+             > "$OUT/$BASENAME.b64" 2>"$PRIVATE_ERRORS"; then
+          DETAIL="native_probe_artifact_transfer_failed"; safe_error_summary; exit 31
+        fi
+        if ! base64 --decode "$OUT/$BASENAME.b64" > "$OUT/$BASENAME"; then
+          DETAIL="native_probe_artifact_base64_invalid"; exit 32
+        fi
+        rm -f "$OUT/$BASENAME.b64"
+      done
+      if ! file "$OUT/$IMAGE" | grep -q 'PNG image data' ||
+         ! python3 -m json.tool "$OUT/$REPORT" >/dev/null; then
+        DETAIL="native_probe_artifact_integrity_failed"; exit 33
+      fi
+      DETAIL="native_probe_real_unity_verified"
     else DETAIL="remote_task_complete"; fi
     STATE="SUCCESS"; exit 0
   fi
