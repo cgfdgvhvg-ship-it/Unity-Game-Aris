@@ -262,6 +262,38 @@ PY
   install)
     bash "$PROJECT/Tools/Codespaces/install_unity.sh"
     ;;
+  editor_diag)
+    # A bounded, read-only scan of the local Editor launch log: no raw text,
+    # source paths, user IDs, license XML, OAuth URLs or credentials emitted.
+    python3 - <<'PY'
+from pathlib import Path
+import re
+log=Path("/tmp/aaris-codespaces/Editor.log")
+if not log.is_file():
+    print("AARIS_EDITOR_DIAG_LOG_MISSING")
+    raise SystemExit(0)
+s=log.read_text(errors="replace")[-200000:]
+print("AARIS_EDITOR_DIAG_LOG_FOUND")
+classes={
+    "LICENSING":r"no valid.*licen[sc]e|licen[sc]e.*(failed|expired|invalid|not found|required|not active)|failed to activate",
+    "GRAPHICS":r"failed.*(initialize|init).*(graphics|opengl|vulkan)|could not create.*(gl|graphics)|GfxDevice.*failed",
+    "DISPLAY":r"cannot open display|cannot connect to.*X server|X11.*error|no display",
+    "LIBRARY":r"error while loading shared libraries|cannot open shared object file|lib[A-Za-z0-9._+-]+\\.so[^\\n]*not found",
+    "CRASH":r"segmentation fault|SIGSEGV|signal 11|crash handler",
+    "OOM":r"out of memory|std::bad_alloc|failed to allocate",
+    "PROJECT_LOCK":r"project.*(already open|in use|lock)",
+    "IMPORT_ERROR":r"failed to import|asset database.*error|project.*corrupt",
+    "PACKAGE_ERROR":r"package manager.*error|failed.*(resolve|download).*package"
+}
+found=False
+for name,pattern in classes.items():
+    if re.search(pattern,s,re.I):
+        print("AARIS_EDITOR_DIAG_"+name)
+        found=True
+if not found:
+    print("AARIS_EDITOR_DIAG_UNCLASSIFIED")
+PY
+    ;;
   editor)
     if ! test -x "$EDITOR"; then
       echo 'EDITOR_ABSENT_INSTALLING_ON_TMP_DISK'
