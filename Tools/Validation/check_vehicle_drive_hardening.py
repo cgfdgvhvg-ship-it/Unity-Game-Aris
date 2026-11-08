@@ -29,6 +29,24 @@ def test():
     assert "car == null || !car.IsSafeToExit" in session
     assert "car.SpeedMetresPerSecond > 1.1f" not in session
 
+    # NaN is not clamped by Mathf.Clamp; public touch/drive APIs must
+    # sanitize every control axis BEFORE it can reach WheelCollider.
+    for source_text, names in ((motor, ("forwardAxis", "steerAxis")),
+                               (session, ("move", "steer"))):
+        for name in names:
+            assert f"float.IsNaN({name})" in source_text
+            assert f"float.IsInfinity({name})" in source_text
+    assert motor.index('float.IsNaN(forwardAxis)') < motor.index('forward = Mathf.Clamp(forwardAxis')
+    assert motor.index('float.IsNaN(steerAxis)') < motor.index('steering = Mathf.Clamp(steerAxis')
+    assert session.index('float.IsNaN(move)') < session.index('touchMove = Mathf.Clamp(move')
+    assert session.index('float.IsNaN(steer)') < session.index('touchSteer = Mathf.Clamp(steer')
+    def safe_axis(value):
+        return max(-1.0, min(1.0, value)) if math.isfinite(value) else 0.0
+    for value in (math.nan, math.inf, -math.inf):
+        assert safe_axis(value) == 0.0
+    for value,expected in ((-2,-1),(2,1),(-.35,-.35),(.75,.75),(0,0)):
+        assert safe_axis(value) == expected
+
     # Parking/reverse must use physical wheel brake torque instead of a
     # zero-speed velocity assignment or an instant sign flip.
     assert "ParkingBrakeTorque = 3600f" in motor
