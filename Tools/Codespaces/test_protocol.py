@@ -135,4 +135,16 @@ assert 'mobile_license.py' in direct
 assert 'gh codespace ssh' in direct
 assert 'workers.dev' not in direct
 assert 'APPROVALS' not in direct
+# Regression: phone Unity Allow must target the SSH-ready Codespace, not an old
+# 'Available' machine with a nonfunctional sshd, regardless of list order.
+selection_line=next(line for line in direct.splitlines() if line.startswith('CS="$(printf'))
+selector=selection_line.split("jq -r '",1)[1].split("'",1)[0]
+old={"displayName":"aaris-ai-unity","name":"old-unreachable"}
+ssh={"displayName":"aaris-ai-unity-ssh","name":"new-ssh-ready"}
+for candidates, expected in (([old,ssh],"new-ssh-ready"),
+                             ([ssh,old],"new-ssh-ready"),
+                             ([old],"old-unreachable")):
+    selected=subprocess.run(["jq","-r",selector],input=json.dumps(candidates),
+                            capture_output=True,text=True,check=True).stdout.strip()
+    assert selected==expected, (selected,expected)
 print('CODESPACE_CONTROLLER_MOCK_PASS')
