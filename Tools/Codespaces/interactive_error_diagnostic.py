@@ -147,3 +147,38 @@ for name,phrase in known_unity.items():
     if num:
         print("AARIS_NATIVE_GLOBAL_ENGINE_"+name+"="+str(min(num,999)))
 print("AARIS_NATIVE_GLOBAL_LOG_LINES="+str(min(len(lines),999999)))
+
+# Debugging outside a running Editor: expose fixed vocabulary only for the
+# first few non-boilerplate error headings, including those before startup.
+words=(
+ "unity","editor","runtime","render","rendertexture","graphics","pipeline",
+ "game","object","component","script","camera","physics","collider","terrain",
+ "animation","animator","avatar","model","texture","material","mesh","shader",
+ "prefab","scene","asset","import","load","reload","unload","null","reference",
+ "missing","invalid","exception","error","failed","cannot","disabled","unsupported",
+ "unassigned","code","compile","assembly","domain","play","mode","startup",
+ "warning","abort","destroy","instance","create","memory","stack","overflow",
+ "thread","main","access","denied","device","time","timeout","read","write",
+ "file","directory","path","permission","transform","renderer","lights",
+ "audio","fmod","input","camera","window","door","gui","assert","assertion",
+ "logging","internal","system","unknown","unsupported","not","found","is",
+ "notallowed","referenceexception","missingreferenceexception",
+)
+approved=set(words)
+heads=[]
+for i,line in enumerate(lines):
+    if "AARIS_EXPANSION_RESULT" in line or "AARIS_NATIVE_" in line:
+        continue
+    if re.search(r"(exception|(?:^|\s)error(?::|\s)|fatal|assertion)",line,re.I):
+        if len(heads)>=8:break
+        if i and "Exception: " in lines[i-1]:continue
+        heads.append((i,line))
+print("AARIS_NATIVE_DIAGNOSTIC_HEADINGS="+str(len(heads)))
+for ordinal,(idx,line) in enumerate(heads):
+    tokens=[w.lower() for w in re.findall(r"[A-Za-z]{2,35}",line)]
+    allowed=sorted(set(w for w in tokens if w in approved))
+    print("AARIS_NATIVE_HEADING_"+str(ordinal)+"_ROW="+str(idx))
+    print("AARIS_NATIVE_HEADING_"+str(ordinal)+"_LENGTH="+str(min(len(line),9999)))
+    print("AARIS_NATIVE_HEADING_"+str(ordinal)+"_WORDS="+("_".join(allowed[:16]) or "NONE"))
+    print("AARIS_NATIVE_HEADING_"+str(ordinal)+"_SHA10="+
+          hashlib.sha256(line.encode("utf-8")).hexdigest()[:10])
