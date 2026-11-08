@@ -4,7 +4,15 @@ import json
 from pathlib import Path
 r=Path(__file__).resolve().parents[2]
 d=json.loads((r/'.devcontainer/devcontainer.json').read_text())
-assert d['postCreateCommand']=='bash .devcontainer/bootstrap.sh'
+assert d['onCreateCommand']=='bash .devcontainer/prebuild.sh'
+assert d['postCreateCommand']=='bash .devcontainer/finalize.sh'
+assert 'bash .devcontainer/bootstrap.sh' in (r/'.devcontainer/prebuild.sh').read_text()
+assert 'bash Tools/Codespaces/install_unity.sh' in (r/'.devcontainer/prebuild.sh').read_text()
+assert 'git lfs pull' in (r/'.devcontainer/prebuild.sh').read_text()
+assert 'git lfs pull' in (r/'.devcontainer/finalize.sh').read_text()
+assert 'python3 Tools/Codespaces/verify_lfs.py' in (r/'.devcontainer/finalize.sh').read_text()
+assert 'UNITY_LICENSE' not in (r/'.devcontainer/prebuild.sh').read_text()
+assert 'UNITY_LICENSE' not in (r/'.devcontainer/finalize.sh').read_text()
 assert d['postStartCommand']=='bash .devcontainer/start_screen.sh'
 assert 'ghcr.io/devcontainers/features/sshd:1' in d['features']
 wf=(r/'.github/workflows/aaris-codespaces-control.yml').read_text()
@@ -51,6 +59,9 @@ assert 'unityhub --headless' not in (r/'Tools/Codespaces/install_unity.sh').read
 assert 'lfs.storage' in remote
 assert 'aaris-unity-editors' in remote
 assert 'project-cache' in remote
+assert 'UNITY_CLI_DISCOVERED' in remote
+assert '$AUTH_HOME/.local/share/aaris-unity-cli/bin/unity' in remote
+assert 'Codespaces' in (r/'Docs/CODESPACES_FAST_START.md').read_text()
 assert 'EDITOR_ROOT="$HOME/.local/share/aaris-unity-editors"' in (r/'Tools/Codespaces/install_unity.sh').read_text()
 assert '--download-directory "$EDITOR_ROOT"' in (r/'Tools/Codespaces/install_unity.sh').read_text()
 assert ' --resume --non-interactive' not in (r/'Tools/Codespaces/install_unity.sh').read_text()
