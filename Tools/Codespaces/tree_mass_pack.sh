@@ -53,19 +53,41 @@ allowed=set(sys.argv[1:])
 s=subprocess.run(["git","diff","--name-only","-z"],capture_output=True,check=True).stdout
 unexpected=[]
 ignored_imported=0
+known_autosaves = {
+    "Assets/AarisWorld/Props/Shared/rock_09.mat",
+    "Assets/AarisWorld/Props/Shared/rusty_metal_02.mat",
+    "Assets/AarisWorld/Surfaces/Asphalt.mat",
+    "Assets/AarisWorld/Surfaces/Concrete.mat",
+    "Assets/AarisWorld/Surfaces/RoadMark.mat",
+    "Assets/AarisWorld/Surfaces/Sand.mat",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Materials/Conifer_Bark.mat",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Conifer/Materials/Conifer_Cap.mat",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Materials/Cypress_Bark.mat",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Cypress/Materials/Cypress_Forest_Desktop_Billboard.mat",
+    "Assets/TerrainDemoScene_URP/Prefabs/Trees/Pines/Pine_B/Materials/Pine_B.mat",
+    "ProjectSettings/QualitySettings.asset",
+}
+known_count=0
 for path in s.decode("utf-8","surrogateescape").split("\0"):
     if not path or path in allowed:continue
     a=subprocess.run(["git","check-attr","filter","--",path],capture_output=True,text=True,check=True).stdout
     if a.strip().endswith(": filter: lfs"):
-        continue  # source LFS hydration; no raw asset is packed
-    # The real Unity import changes generated material values for unrelated
-    # model prefabs. Those remain untouched in the isolated worktree and are
-    # NEVER among the package's 44 explicitly allowlisted paths.
-    if re.fullmatch(r"Assets/AarisWorld/Models/[^/]+/Material_[0-9]{2}\.mat",path):
+        continue  # source LFS hydration; never packaged
+    # These 12 precise paths were observed in native Unity preview #42472591452.
+    # They are *not* part of the tree mesh geometry edit. Leave them unstaged.
+    if path in known_autosaves:
+        known_count+=1
+        continue
+    # Unity reserializes unrelated model materials on importing the scene.
+    # This does NOT authorize any other file type or path.
+    if re.fullmatch(r"Assets/AarisWorld/Models/[^/]+/Material_[0-9]{2}\\.mat",path):
         ignored_imported+=1
         continue
     unexpected.append(path)
 print("excluded_unrelated_unity_import_materials="+str(ignored_imported))
+print("excluded_known_native_autosaves="+str(known_count))
+if ignored_imported>200 or known_count>len(known_autosaves):
+    print("TREE_PUBLISH_IMPORT_COUNT_UNEXPECTED");sys.exit(17)
 if unexpected:
     print("TREE_PUBLISH_UNEXPECTED_EDITOR_FILE_CHANGED")
     for name in sorted(unexpected)[:40]:
