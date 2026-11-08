@@ -53,7 +53,7 @@ for line in lines:
         r'(tree_prototypes|foliage_materials|image_bytes|terrain_tiles)=[0-9]{1,9}', line):
         safe.append(line)
     elif op == 'scene_play' and re.fullmatch(
-        r'(runtime_errors)=[0-9]{1,5}|(runtime_error_kind|play_reason)=[A-Z_]{1,60}', line):
+        r'(runtime_errors)=[0-9]{1,5}|(runtime_error_kind|runtime_error_source|play_reason)=[A-Z_]{1,60}', line):
         safe.append(line)
     elif op == 'machines' and re.fullmatch(r'[A-Za-z0-9-]{3,55}\t\d{1,2}\t\d{1,3}', line):
         safe.append(line)

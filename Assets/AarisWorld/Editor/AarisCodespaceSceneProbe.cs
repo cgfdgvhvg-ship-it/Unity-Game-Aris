@@ -21,6 +21,7 @@ namespace Aaris.MapReview.Editor
         private const string Deadline = "aaris.codespace.probe.deadline";
         private const string Errors = "aaris.codespace.probe.errors";
         private const string ErrorKind = "aaris.codespace.probe.errorKind";
+        private const string ErrorSource = "aaris.codespace.probe.errorSource";
         private const string Began = "aaris.codespace.probe.began";
         private const string ExitCode = "aaris.codespace.probe.exit";
         private const int PlayFrames = 60;
@@ -38,6 +39,7 @@ namespace Aaris.MapReview.Editor
             public int frames;
             public int runtimeErrors;
             public string runtimeErrorKind;
+            public string runtimeErrorSource;
             public bool playerPresent;
             public bool cameraPresent;
             public bool vehicleManagerPresent;
@@ -60,7 +62,10 @@ namespace Aaris.MapReview.Editor
                 SessionState.SetInt(Errors, Math.Min(10000, SessionState.GetInt(Errors, 0) + 1));
                 // Classify without storing/publishing the raw message or stack.
                 if (SessionState.GetString(ErrorKind, "") == "")
+                {
                     SessionState.SetString(ErrorKind, CategorizePlayError(message, trace, type));
+                    SessionState.SetString(ErrorSource, CategorizeErrorSource(trace));
+                }
             }
         }
 
@@ -85,12 +90,47 @@ namespace Aaris.MapReview.Editor
             if (message.Contains("UnassignedReferenceException")) return "UNASSIGNED_REFERENCE";
             if (message.Contains("IndexOutOfRangeException")) return "ARRAY_INDEX";
             if (message.Contains("MissingComponentException")) return "MISSING_COMPONENT";
+            if (message.Contains("UnityException")) return "UNITY_EXCEPTION";
+            if (message.Contains("InvalidOperationException")) return "INVALID_OPERATION";
+            if (message.Contains("NotSupportedException")) return "NOT_SUPPORTED";
+            if (message.Contains("ArgumentOutOfRangeException")) return "ARRAY_INDEX";
+            if (message.Contains("ArgumentException")) return "INVALID_ARGUMENT";
+            if (message.Contains("IOException")) return "IO_EXCEPTION";
+            if (message.Contains("FileNotFoundException")) return "FILE_NOT_FOUND";
+            if (message.Contains("TypeLoadException")) return "TYPE_LOAD";
+            if (message.Contains("FormatException")) return "INVALID_FORMAT";
+            if (message.Contains("MissingMethodException")) return "MISSING_METHOD";
+            if (message.Contains("Exception")) return "OTHER_EXCEPTION";
             if (trace.Contains("AarisVehicleWorld")) return "VEHICLE_RUNTIME_EXCEPTION";
             if (trace.Contains("AarisWeaponLootWorld")) return "LOOT_RUNTIME_EXCEPTION";
             if (trace.Contains("AarisThirdPersonPlayer")) return "PLAYER_RUNTIME_EXCEPTION";
             if (trace.Contains("AarisVehicleMotor")) return "VEHICLE_MOTOR_EXCEPTION";
             return type == LogType.Assert ? "GAME_ASSERTION" :
                 type == LogType.Exception ? "UNCLASSIFIED_EXCEPTION" : "UNCLASSIFIED_ERROR";
+        }
+
+
+        // Strict allowlist: never store an arbitrary user path, raw exception
+        // message, file name, stack trace, OAuth URL or license material.
+        private static string CategorizeErrorSource(string trace)
+        {
+            if (trace == null) return "UNIDENTIFIED";
+            string[] known = {
+                "AarisWeaponLootWorld", "AarisVehicleWorld", "AarisWeaponCatalog",
+                "AarisVehicleSession", "AarisVehicleMotor", "AarisThirdPersonPlayer",
+                "AarisCharacterVisual", "AarisMobileRuntime", "AarisBattleActions",
+                "AarisNearbyColliders", "AarisEquippedGun", "AarisWeaponInventory",
+                "AarisHudButton", "AarisCICapture", "AarisCodespaceSceneProbe",
+                "AarisWeaponPickup", "AarisWeaponHUD", "AarisVehicleHUD",
+            };
+            foreach (string source in known)
+                if (trace.IndexOf(source, StringComparison.Ordinal) >= 0)
+                    return source.ToUpperInvariant();
+            if (trace.IndexOf("UnityEngine.", StringComparison.Ordinal) >= 0)
+                return "UNITY_ENGINE";
+            if (trace.IndexOf("UnityEditor.", StringComparison.Ordinal) >= 0)
+                return "UNITY_EDITOR";
+            return "UNIDENTIFIED";
         }
 
         private static Terrain[] LoadNativeScene()
@@ -523,6 +563,7 @@ namespace Aaris.MapReview.Editor
             SessionState.SetString(State, "");
             SessionState.SetInt(Errors, 0);
             SessionState.SetString(ErrorKind, "");
+            SessionState.SetString(ErrorSource, "");
             try
             {
                 var terrains = LoadNativeScene();
@@ -590,6 +631,7 @@ namespace Aaris.MapReview.Editor
                     frames = Time.frameCount, terrainTiles = terrains.Length,
                     runtimeErrors = SessionState.GetInt(Errors, 0),
                     runtimeErrorKind = SessionState.GetString(ErrorKind, ""),
+                    runtimeErrorSource = SessionState.GetString(ErrorSource, ""),
                     playerPresent = player != null,
                     cameraPresent = camera != null,
                     vehicleManagerPresent = manager != null
@@ -616,7 +658,8 @@ namespace Aaris.MapReview.Editor
             if (writeReport)
                 Save(new Result { mode = "play", status = "failed", scene = Scene,
                     reason = reason, runtimeErrors = SessionState.GetInt(Errors, 0),
-                    runtimeErrorKind = SessionState.GetString(ErrorKind, "") },
+                    runtimeErrorKind = SessionState.GetString(ErrorKind, ""),
+                    runtimeErrorSource = SessionState.GetString(ErrorSource, "") },
                     "play-report.json");
             SessionState.SetInt(ExitCode, passed ? 0 : 1);
             SessionState.SetString(State, "stopping");

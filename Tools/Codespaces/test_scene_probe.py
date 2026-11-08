@@ -85,6 +85,8 @@ assert "'CS FOLIAGE DIAG') OP=foliage_diag" in controller
 assert 'foliage_diag' in workflow and 'foliage_diag' in issue
 assert 'CS FOLIAGE DIAG' in agent
 assert 'runtimeErrorKind' in editor and 'CategorizePlayError' in editor
+assert 'runtimeErrorSource' in editor and 'CategorizeErrorSource' in editor
+assert 'runtime_error_source=' in shell
 assert 'if test "$MODE" = play && test -f "$RUN/play-report.json"; then' in shell
 assert 'case "$MODE" in' in shell
 assert 'rm -rf' not in shell and 'git reset' not in shell and 'git clean' not in shell
