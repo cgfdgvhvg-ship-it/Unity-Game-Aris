@@ -21,6 +21,7 @@ namespace Aaris.MapReview
         public string name;
         public string district;
         public string prefabKey;
+        public bool interactive;
         public float x, z, groundReferenceY, yaw;
         public float width, depth, height;
     }
@@ -108,6 +109,8 @@ namespace Aaris.MapReview
                     treeCache[t] = t.terrainData.treeInstances;
             }
 
+            var player = FindFirstObjectByType<AarisThirdPersonPlayer>();
+            Transform interactionTarget = player != null ? player.transform : null;
             var names = new HashSet<string>(StringComparer.Ordinal);
             foreach (var site in plan.sites)
             {
@@ -140,8 +143,19 @@ namespace Aaris.MapReview
                 }
 
                 Vector3 position = new Vector3(site.x, y - 0.025f, site.z);
-                GameObject instance = Instantiate(prefab, position,
-                    Quaternion.Euler(0f, site.yaw, 0f), transform);
+                Quaternion rotation = Quaternion.Euler(0f, site.yaw, 0f);
+                // Original vendor houses have ONE fused mesh/collider; an
+                // animated door pasted on top would stay physically blocked.
+                // Only marked, tested new sites use true modular wall holes.
+                GameObject instance = site.interactive
+                    ? AarisModularHouse.Create(position, rotation, site.width,
+                        site.depth, site.height, transform, interactionTarget)
+                    : Instantiate(prefab, position, rotation, transform);
+                if (instance == null)
+                {
+                    skippedResources++;
+                    continue;
+                }
                 instance.name = site.name;
                 placed.Add(instance);
             }
