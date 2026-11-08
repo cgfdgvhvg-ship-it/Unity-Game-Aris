@@ -68,6 +68,25 @@ class MapSafetyTests(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "vehicle_exits_connect_to_roads"):
             check(layout)
 
+    def test_rejects_drive_out_route_through_building(self):
+        layout = self.broken_layout()
+        spawn = max(layout["vehicle_spawns"],
+                    key=lambda s: ((s["exit_world_xz_m"][0]-s["position_m"][0])**2 +
+                                   (s["exit_world_xz_m"][1]-s["position_m"][2])**2))
+        sx, _, sz = spawn["position_m"]
+        ex, ez = spawn["exit_world_xz_m"]
+        cx, cz = (sx+ex)/2, (sz+ez)/2
+        # Move an existing building into the drive-out corridor. The road
+        # exit itself stays exactly on the original centreline.
+        building = layout["buildings"][0]
+        building["position_m"][0] = cx
+        building["position_m"][2] = cz
+        building["aabb_xz_m"] = [cx-1, cz-1, cx+1, cz+1]
+        with self.assertRaisesRegex(
+            AssertionError, "vehicle_exit_corridors_clear_of_buildings"
+        ):
+            check(layout)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
