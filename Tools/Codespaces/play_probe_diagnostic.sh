@@ -220,6 +220,44 @@ if log.is_file():
         for name,label in whitelist.items():
             if re.search(r"\b"+re.escape(name)+r"\b",stack_context):
                 print("AARIS_DROP_ERROR_SOURCE_"+label)
+    # Analyze the FIRST gameplay error in a bounded window after the explicit
+    # Play Mode start marker. The last "probe failed" message is a consequence,
+    # not necessarily the root cause. Do not output any raw line or stack text.
+    start_marker=content.rfind("AARIS_OFFLINE_DROP_VIDEO_PLAYMODE_REQUESTED")
+    finish_marker=content.find("AARIS_OFFLINE_DROP_VIDEO_PROBE_FAILED",start_marker) if start_marker>=0 else -1
+    section=content[start_marker:finish_marker if finish_marker>=0 else len(content)] if start_marker>=0 else content[-85000:]
+    error_lines=section.splitlines()
+    whitelist_types={
+        "System.NullReferenceException":"NULL_REFERENCE",
+        "NullReferenceException":"NULL_REFERENCE",
+        "MissingReferenceException":"MISSING_REFERENCE",
+        "MissingMethodException":"MISSING_METHOD",
+        "InvalidOperationException":"INVALID_OPERATION",
+        "UnityException":"UNITY_EXCEPTION",
+        "ArgumentException":"INVALID_ARGUMENT",
+        "ArgumentNullException":"NULL_ARGUMENT",
+        "TypeInitializationException":"STATIC_INITIALIZER",
+        "TypeLoadException":"TYPE_LOAD",
+        "NotSupportedException":"NOT_SUPPORTED",
+        "IndexOutOfRangeException":"INDEX_ERROR",
+        "IOException":"IO_EXCEPTION",
+        "FileNotFoundException":"FILE_NOT_FOUND",
+        "Exception":"OTHER_EXCEPTION",
+    }
+    for i,line in enumerate(error_lines):
+        if not re.search(r"Exception(?=[:\s]|$)|error CS\d{4}|Aaris.*ERROR|Aaris.*FAILED",line,re.I):
+            continue
+        window="\n".join(error_lines[i:min(len(error_lines),i+19)])
+        for literal,label in whitelist_types.items():
+            if re.search(r"\b"+re.escape(literal)+r"\b",line):
+                print("AARIS_DROP_FIRST_ERROR_KIND_"+label)
+                break
+        for name,label in whitelist.items():
+            if re.search(r"\b"+re.escape(name)+r"\b",window):
+                print("AARIS_DROP_FIRST_ERROR_SOURCE_"+label)
+        # Only inspect the first relevant error in the active gameplay window.
+        break
+
     # Recognize fixed, known runtime complaints without copying their text.
     signature={
        "MISSING_LOCAL_ASSET":r"Resources.Load.*null|Missing Prefab|model.*not found",
