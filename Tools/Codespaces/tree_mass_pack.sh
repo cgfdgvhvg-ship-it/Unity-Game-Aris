@@ -61,7 +61,7 @@ for path in s.decode("utf-8","surrogateescape").split("\0"):
     # The real Unity import changes generated material values for unrelated
     # model prefabs. Those remain untouched in the isolated worktree and are
     # NEVER among the package's 44 explicitly allowlisted paths.
-    if re.fullmatch(r"Assets/AarisWorld/Models/[^/]+/Material_[0-9]{2}\\.mat",path):
+    if re.fullmatch(r"Assets/AarisWorld/Models/[^/]+/Material_[0-9]{2}\.mat",path):
         ignored_imported+=1
         continue
     unexpected.append(path)
