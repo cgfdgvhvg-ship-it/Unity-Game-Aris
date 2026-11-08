@@ -222,6 +222,10 @@ assert 'codespace_logs.py' in controller
 assert (r/'Tools/Codespaces/codespace_logs.py').read_text().startswith('#!/usr/bin/env python3')
 assert 'gh codespace rebuild -c "$CS"' in controller
 assert 'TARGET_CODESPACE="aaris-ai-unity-ssh-vp5g97jv4r4gfpjgq"' in controller
+assert 'COUNT="$(jq' in controller and 'if test "$COUNT" -eq 1' in controller
+assert 'selected_account_codespace_missing_or_ambiguous' in controller
+assert 'if test -n "$MACHINE"; then' in controller
+assert 'never_create_or_select_another_codespace_implicitly' not in controller
 assert 'never_create_or_select_another_codespace_implicitly' in controller
 assert '[.[] | select(.name == $target)][0].name' in controller
 assert 'rebuild_preflight.sh' in controller
