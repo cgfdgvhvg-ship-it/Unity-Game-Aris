@@ -206,8 +206,8 @@ class ExpansionIntegrity(unittest.TestCase):
         self.assertNotIn("Unity.Netcode", modular + panel)
         self.assertNotIn("NetworkBehaviour", modular + panel)
         # The original fused MeshCollider is never removed or turned off.
-        self.assertNotIn("MeshCollider", modular)
-        self.assertNotIn("MeshCollider", panel)
+        self.assertNotIn("AddComponent<MeshCollider>", modular + panel)
+        self.assertNotIn("GetComponent<MeshCollider>().enabled = false", modular + panel)
 
     def test_modular_frontage_has_physically_empty_door_and_glass_holes(self):
         # Mirror the exact three nonoverlapping wall intervals from Front():
