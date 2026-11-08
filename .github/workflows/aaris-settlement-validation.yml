@@ -1,0 +1,30 @@
+name: Aaris additive settlement expansion validation
+on:
+  pull_request:
+    paths:
+      - 'Assets/AarisWorld/Scripts/AarisSettlementExpansion.cs'
+      - 'Assets/Resources/AarisExpansion/**'
+      - 'Tools/Validation/test_settlement_expansion.py'
+      - '.github/workflows/aaris-settlement-validation.yml'
+  push:
+    paths:
+      - 'Assets/AarisWorld/Scripts/AarisSettlementExpansion.cs'
+      - 'Assets/Resources/AarisExpansion/**'
+      - 'Tools/Validation/test_settlement_expansion.py'
+  workflow_dispatch:
+jobs:
+  static-map-integrity:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          persist-credentials: false
+      - name: Verify local models, safe building footprints, roads and vehicle bays
+        run: python3 Tools/Validation/test_settlement_expansion.py
+      - name: Explain evidence level
+        run: |
+          echo 'Offline geometry and asset references audited; native Unity render/Play Mode still required.'
+          echo 'No original TerrainData, .unity scene or Git LFS material is edited by this workflow.'
