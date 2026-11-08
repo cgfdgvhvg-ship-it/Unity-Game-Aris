@@ -235,8 +235,8 @@ New persistent backend: `Docs/CODESPACES_AI_CONTROL.md`, `.github/workflows/aari
 - The optional Codespace Editor installer now uses the official Unity CLI via `Tools/Codespaces/install_unity.sh`; Hub CLI headless commands are deprecated. `CS LFS REPORT` is a read-only diagnostic command with sanitized pointer counts and failure kind. Preserve original LFS pointer SHA-256 and asset bytes; do not replace missing assets with generated surrogates. Genuine Unity Personal authorization may still need a one-time phone approval in the *current* Codespace. Do not print the OAuth URL on the public GitHub issue.
 
 ## 2026-11-07 Fast Codespace Resume
-- One-time Editor install to persistent \`~/.local/share/aaris-unity-editors/6000.3.26f1\` using Unity CLI's supported portable \`--download-directory\` option; the Editor is reused on same Codespace stop/start.
-- On restart, \`CS START\` then \`CS EDITOR\`, followed by \`CS STATUS\` and \`CS SHOT\`. No reinstalls when persistent Editor is available. Unity Library/Temp cache remains on /tmp to avoid running out of persistent disk; import may take longer after ephemeral storage reset.
+- One-time Editor install to persistent `~/.local/share/aaris-unity-editors/6000.3.26f1` using Unity CLI's supported portable `--download-directory` option; the Editor is reused on same Codespace stop/start.
+- On restart, `CS START` then `CS EDITOR`, followed by `CS STATUS` and `CS SHOT`. No reinstalls when persistent Editor is available. Unity Library/Temp cache remains on /tmp to avoid running out of persistent disk; import may take longer after ephemeral storage reset.
 - New account/new Codespace has its own storage and may require the initial Editor download and official Unity Personal login. Never move authentication cookies, license state, or machine IDs between Codespaces.
 
 ## Unity Personal phone approval on existing Codespace
@@ -256,3 +256,36 @@ The owner's Termux can run Tools/Codespaces/termux_unity_allow.sh, which reuses 
 - The private key is not on GitHub, in the repository, or in Codespaces. Only decrypt privately with the matching key and deliver the genuine URL in private ChatGPT. The current key may be ephemeral; regenerate public/private pair together if the private key is unavailable next time.
 
 Unity CLI and the re-usable Editor now use the Codespace user's writable home directory, because the /workspaces root can reject writes. The original Unity project stays under /workspaces/Unity-Game-Aris. /tmp is only for transient caches and downloads.
+
+
+## 2026-11-08: Evidence-first native scene screenshot and Play Mode (no noVNC dependence)
+
+**Canon:** `Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity` is the saved Unity 6000.3.26f1 / URP native source; four 1km TerrainData tiles. The new `Assets/AarisWorld/Editor/AarisCodespaceSceneProbe.cs` and `Tools/Codespaces/scene_probe.sh` are a bounded *read-only* Editor pipeline, separate from `CS SHOT` (desktop screenshot). The Unity code opens this exact scene with `EditorSceneManager.OpenScene`, verifies four hydrated TerrainData references, and **renders an overhead camera directly to PNG using `Camera.Render` + `RenderTexture`**, independent of which Linux window is visible.
+
+### Owner-only commands and order
+Post only as `sundamunda289-art` to [Issue #77](https://github.com/sundamunda289-art/Unity-Game-Aris/issues/77), after the PR is merged and `CS SYNC` succeeds:
+
+1. `CS STATUS`, `CS LFS REPORT`, `CS CHANGES` to establish machine state, real LFS hydration and preserve local edits.
+2. `CS CLOSE EDITOR` requests a graceful close of any existing GUI Editor. If it reports a pending dialog, run `CS EDITOR PROCESS`; `CS EDITOR RECOVER` is permitted only when **zero Unity Editor windows are visible**, targets the exact project-owned process, and issues SIGTERM (never SIGKILL). Do not indiscriminately kill processes, clear Unity cache or reset files. When no editor process remains, proceed.
+3. `CS SYNC` fast-forwards to the tested main commit without overwriting real project edits. If blocked by genuine local changes, stop and review them first.
+4. `CS SCENE RENDER` launches a **separate Unity batch Editor with an actual Xvfb/Mesa graphics device, no `-nographics`**, imports/compiles scripts, opens the real native scene, sets a temporary orthographic camera at world (0,1600,0), renders the full 2×2km map into a 1600×1600 `map-overview.png`, then verifies the file's PNG header, size, pixel variation, magenta-failure proportion and native scene metadata. It does not save or modify the scene.
+5. Only after the real render passes, run `CS SCENE PLAY`. A fresh batch Editor loads the same native scene, enters Unity Play Mode, checks a minimum of 60 frames, four terrains, player, game camera, vehicle manager and zero reported runtime errors, then captures a real `play-frame.png`. It exits Play Mode and reports whether the smoke test passed. This is **not** an exhaustive physics/QA or device-fidelity test.
+
+The controller transfers only the verified files to a two-day GitHub Actions artifact `aaris-codespace-<run-id>`: `map-overview.png` / `render-report.json` or `play-frame.png` / `play-report.json`, with sanitized `result.json` and `terminal.txt`. The raw Unity log, license dialogs, OAuth URLs and credentials stay in the Codespace's private `/tmp/aaris-codespaces/scene-probe/`. GitHub Issue comments contain only allowlisted status codes and counts. This pipeline **does not need noVNC**; Xvfb is only an offscreen OpenGL display. A screenshot of the Ubuntu desktop is never evidence of a loaded Unity map.
+
+**Fail closed** when another Editor holds the project lock, a source scene is a Git LFS pointer, Unity licensing is not activated, four terrains or runtime components are absent, the Editor fails to import/compile, rendering is blank/magenta, a probe exceeds its deadline, or Play Mode logs an exception. Static Python regression checks do not prove the Editor rendered. Do not claim success without a passing Unity batch report **and inspecting the actual PNG visually**. If a user needs interactive GUI inspection, use the separate owner-approved noVNC pathway; never remove its access gate.
+
+**Source safety:** No Unity scene, TerrainData, mesh, material, prefabs or generated `Library/` assets are staged for these inspection operations. Only approved code changes go through review PRs. If Unity auto-migrates `ProjectSettings` during import, preserve and examine those changes separately; never silently push them. On unexpected failures, classify from `CS EDITOR DIAG` and `CS COMPILE REPORT` without publishing raw logs, and fix the genuine issue before re-running.
+
+
+### AI-controlled coordinate photographs: any point, any viewing direction
+
+The camera is no longer fixed to the four tile overviews. For **any saved world position within X/Z = -1000 to 1000 metres** the owner can request:
+- `CS PHOTO -420 -210` — automatically frames the point at its actual TerrainData elevation, using the default 35° yaw / 30° pitch / 85 m distance.
+- `CS PHOTO 350 220 90 35 85` — X, Z, **yaw in degrees**, **pitch above horizontal in degrees**, **camera distance in metres**. Valid ranges: yaw -360…360°, pitch 12…75°, distance 20…450 m. Camera X/Y/Z and the framed target X/Y/Z are written to the JSON report; Y is computed from saved terrain elevation.
+
+The controller accepts only these two exact numeric forms on Issue #77. An allowlisted Python parser (`Tools/Codespaces/photo_request.py`) rejects extra arguments, shell metacharacters, non-finite numbers and map-out-of-range coordinates. An AI can therefore ask for new camera vantage points repeatedly without editing source for each picture.
+
+`CS PHOTO` uses the same isolated Unity batch-mode Editor as the full overview capture (close existing Editor process first, `CS SYNC`). It loads the full native LFS scene, determines ground level from real TerrainData, optionally centers framing on a nearby building/tree renderer, raises the camera over terrain that would block line of sight, and renders **both** `photo-detail.png` and `photo-context.png` (wide surrounding landmarks). `photo-report.json` stores camera placement and render variance. All three outputs appear in the GitHub Actions `aaris-codespace-<run-id>` artifact. If either camera frame is blank/magenta, the real Unity Editor cannot run, or the report/PNG is invalid, the command must fail; do not replace these outputs with generated or stock imagery.
+
+For AI visual inspection, begin with a context frame to locate roads, houses, vegetation and terrain, inspect its detail frame, then change yaw/pitch/distance through another `CS PHOTO` command to examine hidden sides. A successful still photo proves rendering from that position, **not** collision correctness or Play Mode health; run `CS SCENE PLAY` separately. The scene is never saved by a photo operation.

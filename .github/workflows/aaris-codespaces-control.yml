@@ -8,6 +8,7 @@ on:
       - 'Docs/CODESPACES_AI_CONTROL.md'
       - 'Docs/CODESPACES_FAST_START.md'
       - 'AGENTS.md'
+      - 'Assets/AarisWorld/Editor/AarisCodespaceSceneProbe.cs'
   pull_request:
     branches: [main]
     paths:
@@ -17,6 +18,7 @@ on:
       - 'Docs/CODESPACES_AI_CONTROL.md'
       - 'Docs/CODESPACES_FAST_START.md'
       - 'AGENTS.md'
+      - 'Assets/AarisWorld/Editor/AarisCodespaceSceneProbe.cs'
   issue_comment:
     types: [created]
   workflow_dispatch:
@@ -26,7 +28,7 @@ on:
         type: choice
         required: true
         default: machines
-        options: [machines, info, start, fresh, fresh_ssh, rebuild, status, logs, sync, lfs, lfs_report, changes, install, deps, cli_diag, editor, editor_diag, license, auth, probe, shot, accept_terms, safe_mode, compile_report, refresh, close_editor, editor_process, editor_recover, test, stop]
+        options: [machines, info, start, fresh, fresh_ssh, rebuild, status, logs, sync, lfs, lfs_report, changes, install, deps, cli_diag, editor, editor_diag, license, auth, probe, shot, accept_terms, safe_mode, compile_report, refresh, close_editor, editor_process, editor_recover, scene_render, scene_play, photo, test, stop]
       machine:
         description: 'Optional exact machine name, from machines result'
         type: string
@@ -61,6 +63,8 @@ jobs:
           node --check Tools/CI/cloudflare_private_approval_worker.mjs
           python3 Tools/Codespaces/codespace_logs.py --selftest
           python3 Tools/Codespaces/test_protocol.py
+          python3 Tools/Codespaces/test_scene_probe.py
+          python3 Tools/Codespaces/photo_request.py --selftest
           echo "CODESPACE_STATIC_PASS"
   control:
     if: >-
