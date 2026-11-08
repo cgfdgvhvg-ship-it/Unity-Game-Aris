@@ -14,7 +14,7 @@ ASSETS = ROOT / "Assets" / "Resources"
 SCRIPTS = ROOT / "Assets" / "AarisWorld" / "Scripts"
 
 MODELS = {
-    "aircraft": (ASSETS / "AarisDrop" / "CargoPlane.obj", 25, 19, 0),
+    "aircraft": (ASSETS / "AarisDrop" / "CargoPlane.obj", 25, 5, 19),
     "parachute": (ASSETS / "AarisDrop" / "ElongatedParachute.obj", 8, 0, 0),
     "gloo": (ASSETS / "AarisCombat" / "GlooWall.obj", 3.6, 2.1, 0.2),
     "frag": (ASSETS / "AarisCombat" / "FragGrenade.obj", 0.18, 0.22, 0),
