@@ -83,6 +83,16 @@ assert 'accept_terms' in (r/'.github/workflows/aaris-codespaces-control.yml').re
 assert 'accept_terms' in (r/'Tools/Codespaces/issue_response.py').read_text()
 assert 'accept_unity_terms.sh' not in (r/'.devcontainer/prebuild.sh').read_text()
 assert 'accept_unity_terms.sh' not in (r/'.devcontainer/finalize.sh').read_text()
+safe=(r/'Tools/Codespaces/enter_unity_safe_mode.sh').read_text()
+assert "Enter Safe Mode?" in safe and "xdotool search --onlyvisible" in safe
+assert safe.count('xdotool mousemove --window "$wid"')==1
+assert "'CS SAFE MODE') OP=safe_mode" in (r/'Tools/Codespaces/controller.sh').read_text()
+assert "'CS COMPILE REPORT') OP=compile_report" in (r/'Tools/Codespaces/controller.sh').read_text()
+assert 'enter_unity_safe_mode.sh' not in (r/'.devcontainer/prebuild.sh').read_text()
+assert 'safe_mode, compile_report' in wf
+assert 'UNITY_COMPILER_ERROR_COUNT_' in (r/'Tools/Codespaces/compiler_report.sh').read_text()
+assert 'safe_mode compile_report' in (r/'Tools/Codespaces/issue_response.py').read_text()
+
 assert '$AUTH_HOME/.local/share/aaris-unity-cli/bin/unity' in remote
 assert 'Codespaces' in (r/'Docs/CODESPACES_FAST_START.md').read_text()
 assert 'EDITOR_ROOT="$HOME/.local/share/aaris-unity-editors"' in (r/'Tools/Codespaces/install_unity.sh').read_text()
