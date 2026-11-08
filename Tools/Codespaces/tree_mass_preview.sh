@@ -23,8 +23,26 @@ if test ! -d "$PROJECT"; then
 fi
 test "$(git -C "$PROJECT" rev-parse HEAD)" = "$REV" || { echo TREE_MASS_REV_MISMATCH; exit 16; }
 cd "$PROJECT"
-test -z "$(git status --porcelain)" || { echo TREE_MASS_PREVIEW_ALREADY_MODIFIED; exit 17; }
 git lfs pull >/dev/null 2>&1 || { echo TREE_MASS_LFS_FAILED; exit 18; }
+# A new Git worktree can report original malformed LFS pointer entries as
+# modified after hydration. These are not user edits; ONLY allow already
+# LFS-tracked paths. Everything else is a hard stop. Never clean/reset.
+python3 - <<'PYPREFLIGHT'
+import subprocess,sys
+p=subprocess.run(["git","status","--porcelain=v1","-z","--untracked-files=all"],
+                 capture_output=True,check=True)
+items=[x for x in p.stdout.decode("utf-8","surrogateescape").split("\0") if x]
+for item in items:
+    if len(item)<4 or item[:2]=="??" or "R" in item[:2]:
+        print("TREE_MASS_UNEXPECTED_WORKTREE_STATUS");sys.exit(17)
+    path=item[3:]
+    attr=subprocess.run(["git","check-attr","filter","--",path],
+                        text=True,capture_output=True,check=True).stdout.strip()
+    if not attr.endswith(": filter: lfs"):
+        print("TREE_MASS_NON_LFS_WORKTREE_MODIFIED");sys.exit(17)
+print("baseline_lfs_hydration_modified_count="+str(len(items)))
+PYPREFLIGHT
+test ! -e Assets/AarisWorld/Generated/TreeMass || { echo TREE_MASS_OUTPUT_ALREADY_EXISTS; exit 17; }
 test -s Assets/AarisWorld/Editor/AarisTreeMassSculpt.cs || { echo TREE_MASS_SOURCE_NOT_MERGED; exit 19; }
 if pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then
   echo TREE_MASS_EDITOR_BUSY
