@@ -76,6 +76,9 @@ assert 'CS PLAY DIAG' in agent
 assert 'public static void DiagnoseFoliage()' in editor
 assert 'foliage-original.png' in editor and 'foliage-far-lod.png' in editor
 assert 'foliage-ambient-test.png' in editor and 'foliage-report.json' in editor
+assert 'foliage-ambient-only.png' in editor and 'foliage-shadows-only.png' in editor
+assert 'FOURTH=foliage-ambient-only.png' in controller
+assert 'FIFTH=foliage-shadows-only.png' in controller
 assert 'treeLODBiasMultiplier' in editor and 'QualitySettings.lodBias = qualityBias' in editor
 assert 'QualitySettings.shadows = shadowQuality' in editor
 assert "'CS FOLIAGE DIAG') OP=foliage_diag" in controller
