@@ -73,6 +73,16 @@ assert 'editor-launch-stderr.log' in remote
 assert 'editor-launch-stdout.log' in remote
 assert 'AARIS_EDITOR_DIAG_LICENSING' not in remote or 'LICENSING' in remote
 assert 'editor_diag' in (r/'.github/workflows/aaris-codespaces-control.yml').read_text()
+terms=(r/'Tools/Codespaces/accept_unity_terms.sh').read_text()
+assert "Unity Editor Software Terms" in terms
+assert "xdotool search --onlyvisible" in terms
+assert terms.count('xdotool mousemove --window "$wid"') == 2
+assert "UNITY_TERMS_ACCEPT_AND_CONTINUE_CLICKED_DIALOG_CLOSED" in terms
+assert "'CS ACCEPT TERMS') OP=accept_terms" in controller if 'controller' in globals() else "'CS ACCEPT TERMS') OP=accept_terms" in (r/'Tools/Codespaces/controller.sh').read_text()
+assert 'accept_terms' in (r/'.github/workflows/aaris-codespaces-control.yml').read_text()
+assert 'accept_terms' in (r/'Tools/Codespaces/issue_response.py').read_text()
+assert 'accept_unity_terms.sh' not in (r/'.devcontainer/prebuild.sh').read_text()
+assert 'accept_unity_terms.sh' not in (r/'.devcontainer/finalize.sh').read_text()
 assert '$AUTH_HOME/.local/share/aaris-unity-cli/bin/unity' in remote
 assert 'Codespaces' in (r/'Docs/CODESPACES_FAST_START.md').read_text()
 assert 'EDITOR_ROOT="$HOME/.local/share/aaris-unity-editors"' in (r/'Tools/Codespaces/install_unity.sh').read_text()
