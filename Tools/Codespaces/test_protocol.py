@@ -34,6 +34,19 @@ wf=(r/'.github/workflows/aaris-codespaces-control.yml').read_text()
 assert "github.event.comment.user.login == 'sundamunda289-art'" in wf
 assert "github.event.issue.number == 77" in wf
 assert 'secrets.CODESPACE_PAT' in wf
+controller=(r/'Tools/Codespaces/controller.sh').read_text()
+response=(r/'Tools/Codespaces/issue_response.py').read_text()
+billing=(r/'Tools/Codespaces/billing_quota.py').read_text()
+assert "'CS QUOTA') OP=quota" in controller
+assert 'billing_quota.py' in controller and 'CODESPACES_BILLING_REPORT=SUCCESS' in controller
+assert 'CS STOP' in controller and 'gh codespace stop -c "$CS"' in controller
+assert 'quota' in response and 'CODESPACES_USED_CORE_HOURS' in response
+assert 'settings/billing/usage' in billing and 'CODESPACES_HOURS_STATUS=UNKNOWN' in billing
+assert 'subprocess.run' in billing and 'stderr=subprocess.DEVNULL' in billing
+assert 'billing_quota.py --selftest' in wf
+assert 'CS QUOTA' in (r/'Docs/CODESPACES_FAST_START.md').read_text()
+assert 'CS FRESH SSH' in (r/'Docs/CODESPACES_FAST_START.md').read_text()
+
 assert 'actions/upload-artifact@v4' in wf
 assert 'id-token: write' in wf
 assert 'AARIS_ISSUE_REPLY_TOKEN' in wf
