@@ -169,8 +169,15 @@ if log.is_file():
     size=log.stat().st_size
     # Scan bounded tail only; raw lines are NEVER emitted.
     with log.open("rb") as stream:
-        stream.seek(max(0,size-600000))
+        # A Unity 6 reimport can write many megabytes of asset messages AFTER
+        # the first gameplay exception. Keep a strictly bounded 32 MiB tail.
+        stream.seek(max(0,size-32*1024*1024))
         content=stream.read().decode("utf-8","replace")
+    print("AARIS_DROP_LOG_LARGE" if size > 600000 else "AARIS_DROP_LOG_SMALL")
+    if "AARIS_OFFLINE_DROP_VIDEO_PLAYMODE_REQUESTED" in content:
+        print("AARIS_DROP_PLAY_REQUEST_MARKER_FOUND")
+    else:
+        print("AARIS_DROP_PLAY_REQUEST_MARKER_NOT_IN_TAIL")
     signatures={
         "UNITY_COMPILE_ERROR":r"error CS\d{4}|Compilation failed|Script Compilation Error",
         "UNITY_BOOT_ERROR":r"Unity Editor.*failed|failed to load native|Editor initialization failed",
@@ -223,6 +230,8 @@ if log.is_file():
     # Analyze the FIRST gameplay error in a bounded window after the explicit
     # Play Mode start marker. The last "probe failed" message is a consequence,
     # not necessarily the root cause. Do not output any raw line or stack text.
+    # Exact command logs can include both a Unity CLI banner and the gameplay
+    # marker; the LAST marker isolates the most recent actual Play Mode.
     start_marker=content.rfind("AARIS_OFFLINE_DROP_VIDEO_PLAYMODE_REQUESTED")
     finish_marker=content.find("AARIS_OFFLINE_DROP_VIDEO_PROBE_FAILED",start_marker) if start_marker>=0 else -1
     section=content[start_marker:finish_marker if finish_marker>=0 else len(content)] if start_marker>=0 else content[-85000:]
