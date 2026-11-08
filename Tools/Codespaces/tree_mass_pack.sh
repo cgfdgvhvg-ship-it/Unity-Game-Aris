@@ -62,7 +62,7 @@ for path in s.decode("utf-8","surrogateescape").split("\0"):
     # A previous real Unity preview showed 147 unrelated model materials
     # reserialized on Editor import. They are not part of this foliage patch.
     # Allow *only* this narrow, observed material naming convention.
-    if re.fullmatch(r"Assets/AarisWorld/Models/[A-Za-z0-9_-]+/Material_[0-9]{2}\\.mat",path):
+    if re.fullmatch(r"Assets/AarisWorld/Models/[A-Za-z0-9_-]+/Material_[0-9]{2}\.mat",path):
         imported_materials.append(path)
     else:
         unexpected.append(path)
