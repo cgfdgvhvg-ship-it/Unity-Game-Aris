@@ -20,6 +20,7 @@ namespace Aaris.MapReview.Editor
         private const string State = "aaris.codespace.probe.state";
         private const string Deadline = "aaris.codespace.probe.deadline";
         private const string Errors = "aaris.codespace.probe.errors";
+        private const string ErrorKind = "aaris.codespace.probe.errorKind";
         private const string Began = "aaris.codespace.probe.began";
         private const string ExitCode = "aaris.codespace.probe.exit";
         private const int PlayFrames = 60;
@@ -36,6 +37,7 @@ namespace Aaris.MapReview.Editor
             public int terrainTiles;
             public int frames;
             public int runtimeErrors;
+            public string runtimeErrorKind;
             public bool playerPresent;
             public bool cameraPresent;
             public bool vehicleManagerPresent;
@@ -54,7 +56,41 @@ namespace Aaris.MapReview.Editor
         {
             if (SessionState.GetString(State, "") != "running") return;
             if (type == LogType.Exception || type == LogType.Error || type == LogType.Assert)
+            {
                 SessionState.SetInt(Errors, Math.Min(10000, SessionState.GetInt(Errors, 0) + 1));
+                // Classify without storing/publishing the raw message or stack.
+                if (SessionState.GetString(ErrorKind, "") == "")
+                    SessionState.SetString(ErrorKind, CategorizePlayError(message, trace, type));
+            }
+        }
+
+
+        private static string CategorizePlayError(string message, string trace, LogType type)
+        {
+            if (message == null) message = "";
+            if (trace == null) trace = "";
+            if (message.Contains("Aaris vehicles: authored offline candidates/catalog")) return "VEHICLE_SOURCE_MISSING";
+            if (message.Contains("Aaris vehicles: malformed offline data")) return "VEHICLE_CATALOG_INVALID";
+            if (message.Contains("Aaris vehicles: source data does not match")) return "VEHICLE_CATALOG_MAP_MISMATCH";
+            if (message.Contains("Aaris vehicles: not all required local")) return "VEHICLE_MODEL_MISSING";
+            if (message.Contains("Aaris vehicles: verified URP palette/shader")) return "VEHICLE_SHADER_MISSING";
+            if (message.Contains("Aaris: no embedded offline authored loot locations")) return "LOOT_SOURCE_MISSING";
+            if (message.Contains("Aaris: invalid loot JSON")) return "LOOT_DATA_INVALID";
+            if (message.Contains("Aaris: loot candidates do not describe")) return "LOOT_DATA_MAP_MISMATCH";
+            if (message.Contains("Saved player camera is missing")) return "PLAYER_CAMERA_MISSING";
+            if (message.Contains("Aaris: imported animation clips invalid")) return "PLAYER_ANIMATION_CLIPS_INVALID";
+            if (message.Contains("Aaris: invalid weapon state configured")) return "WEAPON_STATE_INVALID";
+            if (message.Contains("NullReferenceException")) return "NULL_REFERENCE";
+            if (message.Contains("MissingReferenceException")) return "MISSING_REFERENCE";
+            if (message.Contains("UnassignedReferenceException")) return "UNASSIGNED_REFERENCE";
+            if (message.Contains("IndexOutOfRangeException")) return "ARRAY_INDEX";
+            if (message.Contains("MissingComponentException")) return "MISSING_COMPONENT";
+            if (trace.Contains("AarisVehicleWorld")) return "VEHICLE_RUNTIME_EXCEPTION";
+            if (trace.Contains("AarisWeaponLootWorld")) return "LOOT_RUNTIME_EXCEPTION";
+            if (trace.Contains("AarisThirdPersonPlayer")) return "PLAYER_RUNTIME_EXCEPTION";
+            if (trace.Contains("AarisVehicleMotor")) return "VEHICLE_MOTOR_EXCEPTION";
+            return type == LogType.Assert ? "GAME_ASSERTION" :
+                type == LogType.Exception ? "UNCLASSIFIED_EXCEPTION" : "UNCLASSIFIED_ERROR";
         }
 
         private static Terrain[] LoadNativeScene()
@@ -346,6 +382,7 @@ namespace Aaris.MapReview.Editor
             Directory.CreateDirectory(Output);
             SessionState.SetString(State, "");
             SessionState.SetInt(Errors, 0);
+            SessionState.SetString(ErrorKind, "");
             try
             {
                 var terrains = LoadNativeScene();
@@ -412,6 +449,7 @@ namespace Aaris.MapReview.Editor
                     graphicsDevice = SystemInfo.graphicsDeviceType.ToString(),
                     frames = Time.frameCount, terrainTiles = terrains.Length,
                     runtimeErrors = SessionState.GetInt(Errors, 0),
+                    runtimeErrorKind = SessionState.GetString(ErrorKind, ""),
                     playerPresent = player != null,
                     cameraPresent = camera != null,
                     vehicleManagerPresent = manager != null
@@ -437,7 +475,8 @@ namespace Aaris.MapReview.Editor
         {
             if (writeReport)
                 Save(new Result { mode = "play", status = "failed", scene = Scene,
-                    reason = reason, runtimeErrors = SessionState.GetInt(Errors, 0) },
+                    reason = reason, runtimeErrors = SessionState.GetInt(Errors, 0),
+                    runtimeErrorKind = SessionState.GetString(ErrorKind, "") },
                     "play-report.json");
             SessionState.SetInt(ExitCode, passed ? 0 : 1);
             SessionState.SetString(State, "stopping");
