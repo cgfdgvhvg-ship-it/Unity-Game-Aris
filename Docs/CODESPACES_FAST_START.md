@@ -41,6 +41,8 @@ CS SAFE MODE
 CS COMPILE REPORT
 CS REFRESH
 CS CLOSE EDITOR
+CS EDITOR PROCESS
+CS EDITOR RECOVER
 ```
 
 `CS STATUS` must show `editor_installed=yes`. `CS LFS REPORT` must show `lfs_unhydrated_pointer_count=0`. `CS LICENSE` searches the effective SSH user's CLI home and reports whether the **license status command** succeeds. `CS EDITOR` can only prove that an Editor process started. `CS SHOT` is only a virtual-desktop capture and needs visual inspection; it is not proof that the map is rendered. If the Editor quits after launch because its Linux shared libraries are absent, run `CS DEPS` once; it only installs a fixed set of Ubuntu 22.04 GUI/OpenGL packages and never changes the Unity map or license. This same package step is included in new prebuilds. Then retry `CS EDITOR`. If the Editor still quits, run `CS EDITOR DIAG`: it classifies local launch failures without publishing raw Editor logs. A genuine Unity-rendered scene screenshot and successful scene load are separate acceptance tests.
@@ -83,3 +85,7 @@ After a source fast-forward and hydrated LFS, if Unity remains in Safe Mode, fir
 ## Restart Unity without deleting the Codespace
 
 If the Unity Safe Mode Console still shows a stale timestamped error after the corrected manifest is present and a forced `CS REFRESH`, the owner can run `CS CLOSE EDITOR`. This sends only an X11 **WM_DELETE_WINDOW** event to the exact running Unity-Game-Aris Editor, then waits for a clean exit. It never uses SIGKILL, deletes caches, resets scenes or stops the Codespace. If Unity shows an unsaved-changes dialog, the command stops and requires handling that dialog before restarting. Once `UNITY_EDITOR_GRACEFUL_EXIT_CONFIRMED` appears, run `CS EDITOR` to reopen the same Unity version and project and perform a fresh startup compilation. Inspect the new screenshot and logs.
+
+## Diagnose an orphan Unity Editor after its window closes
+
+`CS CLOSE EDITOR` deliberately uses WM_DELETE and can return pending if Unity still has an OS process after the GUI window is gone. `CS EDITOR PROCESS` counts only exact owner-owned `.../Editor/Unity -projectPath /workspaces/Unity-Game-Aris` Linux processes, including zombie/non-zombie states, plus matching visible Unity windows, without leaking PIDs or credentials. If the screenshot has no Unity window, `CS EDITOR RECOVER` refuses if **any** matching Unity window is visible; otherwise it sends **SIGTERM** to only the exact live Editor processes and waits for a clean exit. It never uses SIGKILL, touches the map or stops/deletes the Codespace. After confirmed termination, use `CS EDITOR` to restart the same Unity installation and obtain a genuinely new compilation result.
