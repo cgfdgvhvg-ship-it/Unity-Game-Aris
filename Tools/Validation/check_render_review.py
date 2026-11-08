@@ -9,10 +9,21 @@ def check():
     report=json.loads((ROOT/'Docs/RENDER_REVIEW_REPORT.json').read_text());audit=json.loads((ROOT/'Docs/RENDER_SOURCE_AUDIT.json').read_text())
     assert report['native_assets_materialized'] and report['materials_checked']==182
     assert audit['cull_mismatches']==audit['normal_scale_mismatches']==audit['occlusion_strength_mismatches']==0
+    mismatches = []
     for row in audit['materials']:
         d=material_record(documents(ROOT/row['path']));f=floats(d)
-        assert f['_Cull']==row['expected_cull'] and f['_BumpScale']==row['source_normal_scale']
-        assert f['_OcclusionStrength']==row['source_occlusion_strength'] and d['m_DoubleSidedGI']==int(row['source_double_sided'])
+        expected = (row['expected_cull'], row['source_normal_scale'],
+                    row['source_occlusion_strength'], int(row['source_double_sided']))
+        actual = (f['_Cull'], f['_BumpScale'], f['_OcclusionStrength'], d['m_DoubleSidedGI'])
+        if expected != actual:
+            mismatches.append((row['path'], expected, actual))
+    if mismatches:
+        # Repository paths and numeric material properties only: no private
+        # credentials or actual Unity Editor logs are printed.
+        for path, expected, actual in mismatches[:40]:
+            print('MATERIAL_DIFFERENCE', path, 'source=', expected, 'saved=', actual)
+        print('MATERIAL_DIFFERENCE_COUNT', len(mismatches))
+    assert not mismatches, 'Unity material properties differ from audited source'
     for relative,expected in report['native_pipeline_files'].items():
         raw=(ROOT/relative).read_bytes()
         if raw.startswith(b'version https://git-lfs'):assert ('oid sha256:'+expected['sha256']).encode()in raw
