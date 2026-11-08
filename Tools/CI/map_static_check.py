@@ -25,6 +25,31 @@ def road_distance(road, x, z):
     return min(distance_to_segment(x,z,a[0],a[2],b[0],b[2])
                for a,b in zip(points,points[1:]))
 
+def segment_intersects_building_footprint(sx, sz, ex, ez, bounds, margin=1.0):
+    """Conservative 2-D straight drive-out clearance (not a navmesh test).
+
+    Clip the spawn-to-road segment against a building's expanded AABB. A
+    1-metre margin represents basic vehicle body clearance; terrain slope,
+    kerbs and dynamic traffic still require a native Unity driving test.
+    """
+    left, bottom, right, top = bounds
+    lo, hi = 0.0, 1.0
+    for point, delta, minimum, maximum in (
+        (sx, ex-sx, left-margin, right+margin),
+        (sz, ez-sz, bottom-margin, top+margin)
+    ):
+        if abs(delta) <= 1e-12:
+            if point < minimum or point > maximum:
+                return False
+            continue
+        near, far = (minimum-point)/delta, (maximum-point)/delta
+        if near > far:
+            near, far = far, near
+        lo, hi = max(lo, near), min(hi, far)
+        if lo > hi:
+            return False
+    return True
+
 def inspect(layout, x, z):
     def dpos(item):
         a,b,c = item["position_m"]
@@ -129,6 +154,19 @@ def check(layout):
                      min(road_distance(road, *spawn["exit_world_xz_m"])
                          for road in roads) <= 1.0
                      for spawn in spawns),len(spawns))
+    # An exit point on asphalt is insufficient if the intervening drive-out
+    # crosses a building. Guard the entire authored centreline with a 1m buffer.
+    blocked_exits = []
+    for spawn in spawns:
+        sx, _, sz = spawn["position_m"]
+        ex, ez = spawn["exit_world_xz_m"]
+        for building in buildings:
+            if segment_intersects_building_footprint(
+                sx, sz, ex, ez, building["aabb_xz_m"]
+            ):
+                blocked_exits.append([spawn["name"], building["name"]])
+    assert_check("vehicle_exit_corridors_clear_of_buildings",
+                 not blocked_exits, blocked_exits[:10])
     overlap=[]
     for i,a in enumerate(buildings):
         q=a["aabb_xz_m"]
