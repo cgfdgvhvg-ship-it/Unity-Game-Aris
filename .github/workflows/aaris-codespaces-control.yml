@@ -28,7 +28,7 @@ on:
         type: choice
         required: true
         default: machines
-        options: [machines, info, quota, start, fresh, fresh_ssh, rebuild, status, logs, sync, lfs, lfs_report, changes, preserve_assets, retry_assets, install, deps, cli_diag, editor, editor_diag, license, auth, probe, shot, accept_terms, safe_mode, compile_report, refresh, close_editor, editor_process, editor_recover, scene_render, scene_play, drop_video, drop_frames, map_verify, photo, play_diag, foliage_diag, tree_audit, tree_preview, test, stop]
+        options: [machines, info, quota, start, fresh, fresh_ssh, rebuild, status, logs, sync, lfs, lfs_report, changes, preserve_assets, retry_assets, install, deps, cli_diag, editor, editor_diag, license, auth, probe, shot, accept_terms, safe_mode, compile_report, refresh, close_editor, editor_process, editor_recover, scene_render, scene_play, drop_video, drop_frames, map_verify, photo, play_diag, foliage_diag, tree_audit, tree_preview, tree_publish, tree_report, test, stop]
       machine:
         description: 'Optional exact machine name, from machines result'
         type: string
@@ -63,6 +63,7 @@ jobs:
           node --check Tools/CI/cloudflare_private_approval_worker.mjs
           python3 Tools/Codespaces/codespace_logs.py --selftest
           python3 Tools/Codespaces/billing_quota.py --selftest
+          python3 -m py_compile Tools/Codespaces/publish_tree_mass_from_actions.py
           python3 Tools/Codespaces/test_protocol.py
           python3 Tools/Codespaces/test_scene_probe.py
           python3 Tools/Validation/check_saved_ambient.py
