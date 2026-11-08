@@ -78,7 +78,7 @@ assert "Unity Editor Software Terms" in terms
 assert "xdotool search --onlyvisible" in terms
 assert terms.count('xdotool mousemove --window "$wid"') == 2
 assert "UNITY_TERMS_ACCEPT_AND_CONTINUE_CLICKED_DIALOG_CLOSED" in terms
-assert "'CS ACCEPT TERMS') OP=accept_terms" in controller if 'controller' in globals() else "'CS ACCEPT TERMS') OP=accept_terms" in (r/'Tools/Codespaces/controller.sh').read_text()
+assert "'CS ACCEPT TERMS') OP=accept_terms" in (r/'Tools/Codespaces/controller.sh').read_text()
 assert 'accept_terms' in (r/'.github/workflows/aaris-codespaces-control.yml').read_text()
 assert 'accept_terms' in (r/'Tools/Codespaces/issue_response.py').read_text()
 assert 'accept_unity_terms.sh' not in (r/'.devcontainer/prebuild.sh').read_text()
