@@ -218,6 +218,8 @@ recover=(r/'Tools/Codespaces/recovery_sync.sh').read_text()
 assert 'git merge --ff-only FETCH_HEAD' in recover
 assert 'GIT_LFS_SKIP_SMUDGE=1' in recover
 assert 'git diff --quiet -- .devcontainer' in recover
+assert "git stash push -u -m 'Aaris new Codespace devcontainer recovery 20261109' -- .devcontainer" in recover
+assert 'AARIS_RECOVERY_CONFIG_STASH_SAVED' in recover
 assert 'git reset --hard' not in recover and 'git clean -' not in recover
 assert "python3 -" not in (r/'Tools/Codespaces/rebuild_preflight.sh').read_text()
 assert "'CS FULL REBUILD') OP=full_rebuild" in controller
