@@ -46,11 +46,12 @@ fi
 if test -z "$CLI" || ! test -x "$CLI"; then echo "UNITY_CLI_BINARY_MISSING"; exit 5; fi
 echo "UNITY_CLI_READY"
 echo "UNITY_EDITOR_PERSISTENT_INSTALL_START"
-# Unity installer downloads to a portable Editor directory and can resume partial downloads.
+# First-time installation must not blindly request --resume when no paused download exists.
+# Let the CLI make a new verified download; keep the portable directory persistent.
 # Explicitly satisfy the CLI's required non-interactive confirmation and EULA
 # switches. Keep the full CLI response private; emit only an integer exit code
 # and fixed error category to the public Actions control channel.
-if "$CLI" install "$VERSION" --changeset "$CHANGESET" --download-directory "$EDITOR_ROOT" --resume --non-interactive --yes --accept-eula --format json >"$RUN/cli-editor-install.log" 2>&1; then
+if "$CLI" install "$VERSION" --changeset "$CHANGESET" --download-directory "$EDITOR_ROOT" --non-interactive --yes --accept-eula --format json >"$RUN/cli-editor-install.log" 2>&1; then
   :
 else
   INSTALL_EXIT=$?
