@@ -58,7 +58,7 @@ namespace Aaris.MapReview
                 (vehicle == null || !vehicle.IsDriving);
             if (canvas != null && canvas.enabled != onFoot) canvas.enabled = onFoot;
             if (!onFoot) { if (gloo.Aiming) gloo.CancelAim(); return; }
-            if (Input.GetKeyDown(KeyCode.G)) ThrowFrag();
+            if (Input.GetKeyDown(KeyCode.Q)) ThrowFrag();
             if (wallLabel != null) wallLabel.text = "WALL\nx" + gloo.Count;
             if (grenadeLabel != null) grenadeLabel.text = "FRAG\nx" + fragGrenades;
         }
