@@ -45,6 +45,7 @@ namespace Aaris.MapReview
         private Vector3 previousMouse;
         private DropPhase phase = DropPhase.InPlane;
         private readonly RaycastHit[] groundHits = new RaycastHit[72];
+        private readonly RaycastHit[] cameraHits = new RaycastHit[28];
         private readonly Terrain[] terrainBuffer = new Terrain[4];
 
         public DropPhase Phase => phase;
@@ -393,6 +394,27 @@ namespace Aaris.MapReview
                 if (initialPlayerRenderers[i] != null) initialPlayerRenderers[i].enabled = previousRendererStates[i];
         }
 
+        private Vector3 CameraSafePosition(Vector3 focus, Vector3 goal)
+        {
+            Vector3 delta = goal - focus;
+            float distance = delta.magnitude;
+            if (distance < 0.1f) return goal;
+            Vector3 direction = delta / distance;
+            int n = Physics.SphereCastNonAlloc(new Ray(focus, direction), 0.17f,
+                cameraHits, distance, Physics.DefaultRaycastLayers,
+                QueryTriggerInteraction.Ignore);
+            if (n >= cameraHits.Length) return focus + direction * 0.35f;
+            float allowed = distance;
+            for (int i = 0; i < n; i++)
+            {
+                var hit = cameraHits[i];
+                if (hit.collider == null || hit.collider.transform.IsChildOf(transform) ||
+                    (plane != null && hit.collider.transform.IsChildOf(plane.transform))) continue;
+                allowed = Mathf.Min(allowed, Mathf.Max(0.35f, hit.distance - 0.2f));
+            }
+            return focus + direction * allowed;
+        }
+
         private void LateUpdate()
         {
             if (view == null || phase == DropPhase.Landed) return;
@@ -409,6 +431,7 @@ namespace Aaris.MapReview
                     + Vector3.up * (phase == DropPhase.Freefall ? 3.2f : 4.6f);
                 focus = transform.position + Vector3.up * 2.8f;
             }
+            pos = CameraSafePosition(focus, pos);
             view.transform.position = Vector3.Lerp(view.transform.position,
                 pos, 1f - Mathf.Exp(-7f * Time.deltaTime));
             view.transform.rotation = Quaternion.Slerp(view.transform.rotation,
