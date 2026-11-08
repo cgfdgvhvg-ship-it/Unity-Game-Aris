@@ -29,9 +29,16 @@ namespace Aaris.MapReview
 
         public int Count => carriedWalls;
         public bool Aiming => aiming;
-        public bool CanUse => enabled && carriedWalls > 0 &&
-            (drop == null || drop.HasLanded) &&
-            GetComponent<AarisVehicleSession>()?.IsDriving != true;
+        public bool CanUse
+        {
+            get
+            {
+                if (drop == null) drop = GetComponent<AarisOfflineDrop>();
+                var vehicle = GetComponent<AarisVehicleSession>();
+                return enabled && carriedWalls > 0 && (drop == null || drop.HasLanded) &&
+                    (vehicle == null || !vehicle.IsDriving);
+            }
+        }
 
         private void Awake()
         {
@@ -249,12 +256,29 @@ namespace Aaris.MapReview
             var visual = new GameObject("VisualRoot");
             visual.transform.SetParent(root.transform, false);
             Material material = Material(ghost);
-            Segment(visual.transform, "Center", Vector3.zero, Quaternion.identity,
-                new Vector3(2.55f, 2.30f, 0.37f), material);
-            Segment(visual.transform, "LeftCurve", new Vector3(-1.46f, 0f, -0.25f),
-                Quaternion.Euler(0f, 24f, 0f), new Vector3(1.26f, 2.24f, 0.36f), material);
-            Segment(visual.transform, "RightCurve", new Vector3(1.46f, 0f, -0.25f),
-                Quaternion.Euler(0f, -24f, 0f), new Vector3(1.26f, 2.24f, 0.36f), material);
+            var authoredModel = Resources.Load<GameObject>("AarisCombat/GlooWall");
+            if (authoredModel != null)
+            {
+                var art = Object.Instantiate(authoredModel, visual.transform, false);
+                art.name = "LocalCurvedIceBarrier";
+                foreach (var c in art.GetComponentsInChildren<Collider>(true))
+                    Object.Destroy(c);
+                foreach (var renderer in art.GetComponentsInChildren<Renderer>(true))
+                {
+                    var slots = renderer.sharedMaterials;
+                    for (int i = 0; i < slots.Length; i++) slots[i] = material;
+                    renderer.sharedMaterials = slots;
+                }
+            }
+            else
+            {
+                Segment(visual.transform, "Center", Vector3.zero, Quaternion.identity,
+                    new Vector3(2.55f, 2.30f, 0.37f), material);
+                Segment(visual.transform, "LeftCurve", new Vector3(-1.46f, 0f, -0.25f),
+                    Quaternion.Euler(0f, 24f, 0f), new Vector3(1.26f, 2.24f, 0.36f), material);
+                Segment(visual.transform, "RightCurve", new Vector3(1.46f, 0f, -0.25f),
+                    Quaternion.Euler(0f, -24f, 0f), new Vector3(1.26f, 2.24f, 0.36f), material);
+            }
             if (!ghost)
             {
                 // Unlike the visual, this collider stays FULL HEIGHT from the first frame.
