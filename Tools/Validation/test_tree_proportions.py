@@ -73,7 +73,7 @@ class NaturalTreePrefabTests(unittest.TestCase):
                 self.assertIn(correct, source)
                 self.assertNotIn("d4fdc026464a42041be7fe785babd90e", source)
                 self.assertNotIn("515f8966b1d702f4a8c97ca412a9a4e9", source)
-                self.assertRegex(source, r"(?m)^    - _MainTex:\\n        m_Texture: \\{fileID: 2800000,")
+                self.assertRegex(source, r"(?m)^    - _MainTex:\n        m_Texture: \{fileID: 2800000,")
                 self.assertTrue(path.with_suffix(".mat.meta").is_file())
                 is_billboard = path.name.endswith("Billboard.mat")
                 keywords = source.split("m_ValidKeywords:", 1)[1].split("m_InvalidKeywords:", 1)[0]
