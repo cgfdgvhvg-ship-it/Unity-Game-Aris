@@ -56,6 +56,7 @@ if test -n "$ISSUE"; then
     'CS SURVEY') OP=survey ;;
     'CS PLAY DIAG') OP=play_diag ;;
     'CS FOLIAGE DIAG') OP=foliage_diag ;;
+    'CS TREE AUDIT') OP=tree_audit ;;
     'CS PHOTO '*) OP=photo ;;
     'CS ACCEPT TERMS') OP=accept_terms ;;
     'CS SAFE MODE') OP=safe_mode ;;
@@ -70,7 +71,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|test|stop) ;;
+  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -269,7 +270,7 @@ case "$OP" in
   retry_assets) REMOTE_TIMEOUT=900 ;;
   test) REMOTE_TIMEOUT=500 ;;
   editor) REMOTE_TIMEOUT=350 ;;
-  scene_render|scene_play|photo|foliage_diag|survey) REMOTE_TIMEOUT=1800 ;;
+  scene_render|scene_play|photo|foliage_diag|survey|tree_audit) REMOTE_TIMEOUT=1800 ;;
   drop_video) REMOTE_TIMEOUT=2100 ;;
   drop_frames) REMOTE_TIMEOUT=420 ;;
   map_verify) REMOTE_TIMEOUT=1800 ;;
@@ -354,6 +355,10 @@ if test "$OP" = install; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/install_unity.sh"
   REMOTE_SHELL="bash -s"
 fi
+if test "$OP" = tree_audit; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/tree_mass_audit.sh"
+  REMOTE_SHELL="bash -s"
+fi
 if test "$OP" = play_diag; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/play_probe_diagnostic.sh"
   REMOTE_SHELL="bash -s"
@@ -378,7 +383,31 @@ for attempt in 1 2; do
       < "$SCRIPT_FILE" \
       > "$OUT/terminal.txt" 2>"$PRIVATE_ERRORS"; then
     rm -f "$PRIVATE_ERRORS"
-    if test "$OP" = retry_assets; then
+    if test "$OP" = tree_audit; then
+      if ! timeout 120 gh codespace ssh -c "$CS" -- \
+          'base64 /tmp/aaris-codespaces/tree-mass/audit.json' \
+          > "$OUT/tree-mass-audit.b64" 2>"$PRIVATE_ERRORS"; then
+        DETAIL="native_tree_mesh_report_transfer_failed"; safe_error_summary; exit 61
+      fi
+      if ! base64 --decode "$OUT/tree-mass-audit.b64" > "$OUT/tree-mass-audit.json"; then
+        DETAIL="native_tree_mesh_report_decode_failed"; exit 62
+      fi
+      rm -f "$OUT/tree-mass-audit.b64"
+      if ! python3 - "$OUT/tree-mass-audit.json" <<'PYAUDIT'
+import json,sys
+try:
+  d=json.load(open(sys.argv[1]))
+  ok=d.get("status")=="passed" and d.get("speciesCount")==6
+  ok=ok and len(d.get("species",[]))==6
+  ok=ok and all(len(v["lods"])==4 and v["colliders"]>=1 for v in d["species"])
+except (ValueError,TypeError,OSError,KeyError):ok=False
+sys.exit(0 if ok else 1)
+PYAUDIT
+      then
+        DETAIL="native_tree_mesh_report_invalid"; exit 63
+      fi
+      DETAIL="six_native_speedtree_meshes_audited"
+    elif test "$OP" = retry_assets; then
       if ! timeout 120 gh codespace ssh -c "$CS" --            'base64 /tmp/aaris-codespaces/working-changes-checkpoint/manifest.json'            > "$OUT/changes-manifest.json.b64" 2>"$PRIVATE_ERRORS"; then
         DETAIL="checkpoint_manifest_transfer_failed"; safe_error_summary; exit 49
       fi
