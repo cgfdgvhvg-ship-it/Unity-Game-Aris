@@ -47,6 +47,7 @@ if test -n "$ISSUE"; then
     'CS SHOT') OP=shot ;;
     'CS SCENE RENDER') OP=scene_render ;;
     'CS SCENE PLAY') OP=scene_play ;;
+    'CS PLAY DIAG') OP=play_diag ;;
     'CS PHOTO '*) OP=photo ;;
     'CS ACCEPT TERMS') OP=accept_terms ;;
     'CS SAFE MODE') OP=safe_mode ;;
@@ -61,7 +62,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|photo|test|stop) ;;
+  machines|info|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|photo|play_diag|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -294,6 +295,10 @@ if test "$OP" = editor_process || test "$OP" = editor_recover; then
 fi
 if test "$OP" = install; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/install_unity.sh"
+  REMOTE_SHELL="bash -s"
+fi
+if test "$OP" = play_diag; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/play_probe_diagnostic.sh"
   REMOTE_SHELL="bash -s"
 fi
 if test "$OP" = scene_render || test "$OP" = scene_play || test "$OP" = photo; then
