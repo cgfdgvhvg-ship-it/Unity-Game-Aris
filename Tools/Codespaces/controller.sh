@@ -273,6 +273,19 @@ case "$OP" in
   drop_frames) REMOTE_TIMEOUT=420 ;;
   map_verify) REMOTE_TIMEOUT=1800 ;;
 esac
+if test "$OP" = retry_assets; then
+  # Authenticated GitHub Actions checkout handles only the exact saved 210
+  # project edits. Existing Codespace is accessed read-only; no new machine.
+  if timeout 1650 python3 "$GITHUB_WORKSPACE/Tools/Codespaces/publish_checkpoint_from_actions.py" "$CS" \
+      > "$OUT/terminal.txt" 2>"$PRIVATE_ERRORS"; then
+    STATE="SUCCESS"
+    DETAIL="original_210_unity_files_uploaded_to_review_branch"
+    exit 0
+  fi
+  safe_error_summary
+  DETAIL="authenticated_checkpoint_upload_failed"
+  exit 54
+fi
 if test "$OP" = auth; then
   # Intercept the remote Unity OAuth URL, keep it OFF all public logs/artifacts.
   if timeout 825 python3 "$GITHUB_WORKSPACE/Tools/Codespaces/auth_bridge.py" "$CS" > "$OUT/terminal.txt" 2>"$PRIVATE_ERRORS"; then
