@@ -44,6 +44,7 @@ if test -n "$ISSUE"; then
     'CS CLI DIAG') OP=cli_diag ;;
     'CS EDITOR') OP=editor ;;
     'CS EDITOR DIAG') OP=editor_diag ;;
+    'CS EDITOR ISOLATE') OP=editor_isolate ;;
     'CS LICENSE') OP=license ;;
     'CS AUTH') OP=auth ;;
     'CS PROBE') OP=probe ;;
@@ -74,7 +75,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
+  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|deps|cli_diag|editor|editor_diag|editor_isolate|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -267,6 +268,7 @@ case "$OP" in
   retry_assets) REMOTE_TIMEOUT=900 ;;
   test) REMOTE_TIMEOUT=500 ;;
   editor) REMOTE_TIMEOUT=350 ;;
+  editor_isolate) REMOTE_TIMEOUT=650 ;;
   scene_render|scene_play|photo|foliage_diag|survey|tree_audit|tree_preview|tree_publish) REMOTE_TIMEOUT=1800 ;;
   drop_video) REMOTE_TIMEOUT=2100 ;;
   drop_frames) REMOTE_TIMEOUT=420 ;;
@@ -363,6 +365,12 @@ if test "$OP" = map_verify; then
 fi
 if test "$OP" = deps; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/unity_gui_deps.sh"
+  REMOTE_SHELL="bash -s"
+fi
+if test "$OP" = editor_isolate; then
+  # Stream the reviewed script from this commit to the EXISTING dirty machine.
+  # Never sync/overwrite its saved scenes or rely on its old checkout version.
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/editor_isolation_probe.sh"
   REMOTE_SHELL="bash -s"
 fi
 if test "$OP" = accept_terms; then
