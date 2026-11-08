@@ -3,7 +3,12 @@
 # Uses ONLY a new disposable /tmp project, never /workspaces or Unity source.
 # Results contain fixed tokens/exit codes; all raw logs remain private locally.
 set -Eeuo pipefail
-EDITOR="${1:-}"
+EDITOR=""
+for candidate in "$HOME/.local/share/aaris-unity-editors/6000.3.26f1/Editor/Unity" \
+                 "/workspaces/.aaris-unity-editors/6000.3.26f1/Editor/Unity" \
+                 "/tmp/aaris-unity-runtime/editors/6000.3.26f1/Editor/Unity"; do
+  if [[ -x "$candidate" ]]; then EDITOR="$candidate"; break; fi
+done
 if [[ -z "$EDITOR" || ! -x "$EDITOR" ]]; then
   echo EDITOR_ISOLATE_BINARY_MISSING
   exit 21
