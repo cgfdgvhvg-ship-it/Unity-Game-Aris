@@ -176,10 +176,11 @@ namespace Aaris.MapReview
                 if (x < origin.x || x > origin.x + size.x ||
                     z < origin.z || z > origin.z + size.z) continue;
                 terrain = t;
-                // Terrain.SampleHeight returns a world-space Y. Adding origin.y
-                // a second time shifts every placement on translated terrain tiles
-                // and causes otherwise valid houses to be rejected.
-                height = t.SampleHeight(new Vector3(x, 0f, z));
+                // Terrain.SampleHeight uses world XZ coordinates but its origin
+                // treatment can be misread. Explicitly sample TerrainData in
+                // normalized tile coordinates and add its transform Y once.
+                height = origin.y + t.terrainData.GetInterpolatedHeight(
+                    (x - origin.x) / size.x, (z - origin.z) / size.z);
                 return true;
             }
             terrain = null;
