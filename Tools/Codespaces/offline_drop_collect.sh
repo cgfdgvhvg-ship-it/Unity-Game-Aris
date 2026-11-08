@@ -32,8 +32,8 @@ if report.is_file():
         pass
 total=0
 for f in selected:
-    if not f.is_file() or f.is_symlink() or f.resolve().parent not in
-        {root.resolve(),frames.resolve(),shots.resolve()}:
+    if (not f.is_file() or f.is_symlink() or
+            f.resolve().parent not in {root.resolve(),frames.resolve(),shots.resolve()}):
         print("AARIS_DROP_FRAMES_UNSAFE_PATH")
         raise SystemExit(33)
     size=f.stat().st_size
