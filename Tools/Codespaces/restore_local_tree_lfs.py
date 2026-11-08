@@ -86,8 +86,7 @@ def main(project: Path) -> None:
         p = project / rel
         if not p.is_file() or p.stat().st_size != size:
             raise RuntimeError("TREE_MESH_CHECKOUT_MISSING")
-        with p.open("rb") as stream:
-            actual = hashlib.file_digest(stream, "sha256").hexdigest()
+        actual = hashlib.sha256(p.read_bytes()).hexdigest()
         if actual != oid:
             raise RuntimeError("TREE_MESH_CHECKOUT_HASH_MISMATCH")
     # Require complete hydration of the *current native main snapshot*.
