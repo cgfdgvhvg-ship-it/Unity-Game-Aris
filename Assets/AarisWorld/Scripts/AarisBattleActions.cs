@@ -223,12 +223,12 @@ namespace Aaris.MapReview
                 var collider = nearHits[i];
                 if (collider == null || collider.transform.IsChildOf(transform)) continue;
                 Vector3 nearest = collider.ClosestPoint(origin);
-                Vector3 delta = nearest - origin;
-                if (delta.sqrMagnitude > punchReach * punchReach ||
-                    Vector3.Dot(transform.forward, delta) < 0.1f) continue;
-                if (delta.sqrMagnitude < distance)
+                Vector3 candidateOffset = nearest - origin;
+                if (candidateOffset.sqrMagnitude > punchReach * punchReach ||
+                    Vector3.Dot(transform.forward, candidateOffset) < 0.1f) continue;
+                if (candidateOffset.sqrMagnitude < distance)
                 {
-                    distance = delta.sqrMagnitude;
+                    distance = candidateOffset.sqrMagnitude;
                     best = i;
                 }
             }
