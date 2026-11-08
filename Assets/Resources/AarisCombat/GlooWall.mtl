@@ -1,0 +1,6 @@
+newmtl ArcticBlue
+Kd 0.14 0.62 0.84
+Ns 42
+newmtl FrostHighlight
+Kd 0.48 0.83 0.95
+Ns 38
