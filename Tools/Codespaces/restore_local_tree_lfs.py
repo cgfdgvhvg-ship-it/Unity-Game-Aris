@@ -3,8 +3,8 @@
 
 The previous successful Unity mesh bake kept its byte-identical files in a
 separate immutable worktree. If GitHub's LFS endpoint is unreachable from
-this Codespace, import those 18 bytes through the *official git-lfs clean
-filter* into the local LFS cache and checkout this commit's verified pointers.
+this Codespace, store those 18 SHA-verified bytes atomically in git-lfs LocalMediaDir
+and checkout this commit's verified pointers without redownloading.
 
 Nothing is copied from any dirty GUI workspace. Neither scene nor source
 SpeedTree models, TerrainData, original materials, .meta GUIDs, nor refs are
@@ -12,6 +12,8 @@ modified. All payloads must match the SHA256 and byte size recorded in HEAD.
 """
 from __future__ import annotations
 import hashlib
+import os
+import tempfile
 from pathlib import Path
 import re
 import subprocess
@@ -73,14 +75,52 @@ def main(project: Path) -> None:
             raise RuntimeError("CACHED_MESH_NOT_HYDRATED")
         payloads[rel] = data
     print("TREE_LFS_SOURCE_HASH_VERIFIED=18", flush=True)
+    # Resolve the git-lfs configured LocalMediaDir. It may be outside .git:
+    # this Codespace deliberately uses a shared LFS cache across worktrees.
+    env = git(project, "lfs", "env", timeout=30).decode(
+        "utf-8", "replace"
+    ).splitlines()
+    values = [line.split("=", 1)[1] for line in env
+              if line.startswith("LocalMediaDir=")]
+    if len(values) != 1:
+        raise RuntimeError("LFS_OBJECT_STORE_UNAVAILABLE")
+    store = Path(values[0])
+    if not store.is_absolute() or not store.name == "objects":
+        raise RuntimeError("LFS_OBJECT_STORE_UNEXPECTED_PATH")
+    store.mkdir(parents=True, exist_ok=True)
+    # LFS v1 content-addressed storage: objects/aa/bb/<sha256>.
+    # Write atomically, verify existing objects, never overwrite unrelated
+    # original project files, and never depend on another remote LFS pull.
+    added = 0
     for rel, raw in payloads.items():
-        actual = git(project, "lfs", "clean", rel, binary=raw, timeout=120)
-        m = PTR.fullmatch(actual)
-        if m is None or m.group(1).decode("ascii") != all_ptrs[rel][0] or (
-            int(m.group(2)) != all_ptrs[rel][1]
-        ):
-            raise RuntimeError("LFS_LOCAL_CACHE_IMPORT_MISMATCH")
-    print("TREE_LFS_LOCAL_CACHE_IMPORTED=18", flush=True)
+        oid, size = all_ptrs[rel]
+        subdir = store / oid[:2] / oid[2:4]
+        subdir.mkdir(parents=True, exist_ok=True)
+        target = subdir / oid
+        if target.is_file():
+            existing = target.read_bytes()
+            if len(existing) != size or hashlib.sha256(existing).hexdigest() != oid:
+                raise RuntimeError("LFS_EXISTING_OBJECT_HASH_MISMATCH")
+            continue
+        tmpname = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                    dir=subdir, prefix=".aaris-tree-", delete=False
+            ) as tmp:
+                tmpname = Path(tmp.name)
+                tmp.write(raw)
+                tmp.flush()
+                os.fsync(tmp.fileno())
+            if hashlib.sha256(tmpname.read_bytes()).hexdigest() != oid:
+                raise RuntimeError("LFS_STAGED_OBJECT_HASH_MISMATCH")
+            os.replace(str(tmpname), str(target))
+            added += 1
+        finally:
+            if tmpname is not None and tmpname.exists():
+                tmpname.unlink()
+    print("TREE_LFS_LOCAL_CACHE_IMPORTED=" + str(added), flush=True)
+    # Checkout only the 18 exact native tree assets. Their .meta, original
+    # 775 LFS assets, scene, project settings, and all git refs are untouched.
     git(project, "lfs", "checkout", *PATHS, timeout=180)
     for rel, (oid, size) in all_ptrs.items():
         p = project / rel
