@@ -48,6 +48,7 @@ if test -n "$ISSUE"; then
     'CS SCENE RENDER') OP=scene_render ;;
     'CS SCENE PLAY') OP=scene_play ;;
     'CS PLAY DIAG') OP=play_diag ;;
+    'CS FOLIAGE DIAG') OP=foliage_diag ;;
     'CS PHOTO '*) OP=photo ;;
     'CS ACCEPT TERMS') OP=accept_terms ;;
     'CS SAFE MODE') OP=safe_mode ;;
@@ -62,7 +63,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|photo|play_diag|test|stop) ;;
+  machines|info|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|photo|play_diag|foliage_diag|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -248,7 +249,7 @@ case "$OP" in
   sync|lfs) REMOTE_TIMEOUT=1200 ;;
   test) REMOTE_TIMEOUT=500 ;;
   editor) REMOTE_TIMEOUT=350 ;;
-  scene_render|scene_play|photo) REMOTE_TIMEOUT=1800 ;;
+  scene_render|scene_play|photo|foliage_diag) REMOTE_TIMEOUT=1800 ;;
 esac
 if test "$OP" = auth; then
   # Intercept the remote Unity OAuth URL, keep it OFF all public logs/artifacts.
@@ -301,10 +302,12 @@ if test "$OP" = play_diag; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/play_probe_diagnostic.sh"
   REMOTE_SHELL="bash -s"
 fi
-if test "$OP" = scene_render || test "$OP" = scene_play || test "$OP" = photo; then
+if test "$OP" = scene_render || test "$OP" = scene_play || test "$OP" = photo || test "$OP" = foliage_diag; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/scene_probe.sh"
   if test "$OP" = scene_render; then
     REMOTE_SHELL="bash -s -- render"
+  elif test "$OP" = foliage_diag; then
+    REMOTE_SHELL="bash -s -- foliage"
   elif test "$OP" = photo; then
     # The parser accepts only finite bounded ASCII decimals.
     REMOTE_SHELL="bash -s -- photo $PHOTO_VALUES"
@@ -327,12 +330,17 @@ for attempt in 1 2; do
         fi
         DETAIL="screen_in_actions_artifact"
       else DETAIL="screen_transfer_failed"; safe_error_summary; exit 13; fi
-    elif test "$OP" = scene_render || test "$OP" = scene_play || test "$OP" = photo; then
+    elif test "$OP" = scene_render || test "$OP" = scene_play || test "$OP" = photo || test "$OP" = foliage_diag; then
       # Transfer only the Unity-generated verified PNG and small JSON report,
       # never an Xvfb desktop screen, a log, or a license dialog.
       if test "$OP" = scene_render; then
         IMAGE=map-overview.png
         REPORT=render-report.json
+      elif test "$OP" = foliage_diag; then
+        IMAGE=foliage-original.png
+        CONTEXT=foliage-far-lod.png
+        THIRD=foliage-ambient-test.png
+        REPORT=foliage-report.json
       elif test "$OP" = photo; then
         IMAGE=photo-detail.png
         CONTEXT=photo-context.png
@@ -342,7 +350,8 @@ for attempt in 1 2; do
         REPORT=play-report.json
       fi
       FILES=("$IMAGE" "$REPORT")
-      if test "$OP" = photo; then FILES+=("$CONTEXT"); fi
+      if test "$OP" = photo || test "$OP" = foliage_diag; then FILES+=("$CONTEXT"); fi
+      if test "$OP" = foliage_diag; then FILES+=("$THIRD"); fi
       for BASENAME in "${FILES[@]}"; do
         if ! timeout 180 gh codespace ssh -c "$CS" -- "base64 /tmp/aaris-codespaces/scene-probe/$BASENAME" \
              > "$OUT/$BASENAME.b64" 2>"$PRIVATE_ERRORS"; then
@@ -355,7 +364,9 @@ for attempt in 1 2; do
       done
       if ! file "$OUT/$IMAGE" | grep -q 'PNG image data' ||
          ! python3 -m json.tool "$OUT/$REPORT" >/dev/null ||
-         { test "$OP" = photo && ! file "$OUT/$CONTEXT" | grep -q 'PNG image data'; }; then
+         { { test "$OP" = photo || test "$OP" = foliage_diag; } &&
+           ! file "$OUT/$CONTEXT" | grep -q 'PNG image data'; } ||
+         { test "$OP" = foliage_diag && ! file "$OUT/$THIRD" | grep -q 'PNG image data'; }; then
         DETAIL="native_probe_artifact_integrity_failed"; exit 33
       fi
       DETAIL="native_probe_real_unity_verified"

@@ -73,4 +73,16 @@ assert 'AARIS_PLAY_LOG_COMPILE' not in diag or '"COMPILE":' in diag
 assert "'CS PLAY DIAG') OP=play_diag" in controller
 assert 'play_diag' in workflow and 'play_diag' in issue
 assert 'CS PLAY DIAG' in agent
+assert 'public static void DiagnoseFoliage()' in editor
+assert 'foliage-original.png' in editor and 'foliage-far-lod.png' in editor
+assert 'foliage-ambient-test.png' in editor and 'foliage-report.json' in editor
+assert 'treeLODBiasMultiplier' in editor and 'QualitySettings.lodBias = qualityBias' in editor
+assert 'QualitySettings.shadows = shadowQuality' in editor
+assert "'CS FOLIAGE DIAG') OP=foliage_diag" in controller
+assert 'foliage_diag' in workflow and 'foliage_diag' in issue
+assert 'CS FOLIAGE DIAG' in agent
+assert 'runtimeErrorKind' in editor and 'CategorizePlayError' in editor
+assert 'if test "$MODE" = play && test -f "$RUN/play-report.json"; then' in shell
+assert 'case "$MODE" in' in shell
+assert 'rm -rf' not in shell and 'git reset' not in shell and 'git clean' not in shell
 print('AARIS_NATIVE_SCENE_PROBE_STATIC_PASS')

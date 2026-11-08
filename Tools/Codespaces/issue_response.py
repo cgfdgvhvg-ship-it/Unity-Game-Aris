@@ -9,7 +9,7 @@ try:
     data = json.loads((folder / 'result.json').read_text())
 except (OSError, ValueError):
     data = {}
-operations = set('machines info start fresh fresh_ssh rebuild status logs sync lfs lfs_report changes install deps cli_diag editor editor_diag license auth probe shot accept_terms safe_mode compile_report refresh close_editor editor_process editor_recover scene_render scene_play photo play_diag test stop'.split())
+operations = set('machines info start fresh fresh_ssh rebuild status logs sync lfs lfs_report changes install deps cli_diag editor editor_diag license auth probe shot accept_terms safe_mode compile_report refresh close_editor editor_process editor_recover scene_render scene_play photo play_diag foliage_diag test stop'.split())
 statuses = {'SUCCESS', 'FAILED', 'NO_CODESPACE', 'UNKNOWN'}
 op = data.get('operation', 'unknown')
 state = data.get('status', 'FAILED')
@@ -41,13 +41,19 @@ for line in lines:
     elif op == 'cli_diag' and re.fullmatch(
         r'UNITY_CLI_INSTALL_HELP_EXIT_[0-9]{1,3}', line):
         safe.append(line)
-    elif op in ('scene_render', 'scene_play', 'photo') and re.fullmatch(
+    elif op in ('scene_render', 'scene_play', 'photo', 'foliage_diag') and re.fullmatch(
         r'(terrain_tiles|pixel_deviation|image_bytes|play_frames|runtime_errors|photo_target_x|photo_target_z|photo_camera_y)=[0-9.]{1,20}', line):
         safe.append(line)
     elif op == 'play_diag' and (
         re.fullmatch(r'(play_status|play_reason)=[A-Z_a-z0-9]{1,60}', line) or
         re.fullmatch(r'(frames|terrainTiles|runtimeErrors)=[0-9]{1,6}', line) or
         re.fullmatch(r'(playerPresent|cameraPresent|vehicleManagerPresent)=(yes|no)', line)):
+        safe.append(line)
+    elif op == 'foliage_diag' and re.fullmatch(
+        r'(tree_prototypes|foliage_materials|image_bytes|terrain_tiles)=[0-9]{1,9}', line):
+        safe.append(line)
+    elif op == 'scene_play' and re.fullmatch(
+        r'(runtime_errors)=[0-9]{1,5}|(runtime_error_kind|play_reason)=[A-Z_]{1,60}', line):
         safe.append(line)
     elif op == 'machines' and re.fullmatch(r'[A-Za-z0-9-]{3,55}\t\d{1,2}\t\d{1,3}', line):
         safe.append(line)

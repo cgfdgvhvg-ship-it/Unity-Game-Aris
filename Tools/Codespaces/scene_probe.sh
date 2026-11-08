@@ -3,7 +3,7 @@
 # force-kill, credentials, scene saves, Git resets or public raw logs.
 set -Eeuo pipefail
 MODE="$1"
-case "$MODE" in render|play|photo) ;; *) echo AARIS_PROBE_INVALID_MODE; exit 2 ;; esac
+case "$MODE" in render|play|photo|foliage) ;; *) echo AARIS_PROBE_INVALID_MODE; exit 2 ;; esac
 SOURCE="/workspaces/Unity-Game-Aris"
 RUN="/tmp/aaris-codespaces/scene-probe"
 ISOLATED_ROOT="/tmp/aaris-native-photo-worktrees"
@@ -69,8 +69,13 @@ if pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then
 fi
 mkdir -p "$RUN/UnityTemp"
 # Delete only the prior probe's own transient output; no native source assets.
-rm -f "$RUN/map-overview.png" "$RUN/render-report.json" "$RUN/play-frame.png" "$RUN/play-report.json" \
-  "$RUN/photo-detail.png" "$RUN/photo-context.png" "$RUN/photo-report.json"
+case "$MODE" in
+  render) rm -f "$RUN/map-overview.png" "$RUN/render-report.json" ;;
+  play) rm -f "$RUN/play-frame.png" "$RUN/play-report.json" ;;
+  photo) rm -f "$RUN/photo-detail.png" "$RUN/photo-context.png" "$RUN/photo-report.json" ;;
+  foliage) rm -f "$RUN/foliage-original.png" "$RUN/foliage-far-lod.png" \
+    "$RUN/foliage-ambient-test.png" "$RUN/foliage-report.json" ;;
+esac
 bash "$PROJECT/.devcontainer/start_screen.sh" >/dev/null 2>&1 || {
   echo AARIS_PROBE_XVFB_FAILED
   exit 17
@@ -83,6 +88,10 @@ if test "$MODE" = render; then
   METHOD="Aaris.MapReview.Editor.AarisCodespaceSceneProbe.Capture"
   REPORT="$RUN/render-report.json"
   IMAGE="$RUN/map-overview.png"
+elif test "$MODE" = foliage; then
+  METHOD="Aaris.MapReview.Editor.AarisCodespaceSceneProbe.DiagnoseFoliage"
+  REPORT="$RUN/foliage-report.json"
+  IMAGE="$RUN/foliage-original.png"
 elif test "$MODE" = photo; then
   METHOD="Aaris.MapReview.Editor.AarisCodespaceSceneProbe.CaptureAt"
   REPORT="$RUN/photo-report.json"
@@ -113,7 +122,7 @@ if test "$MODE" = photo; then
     "-aarisPitch=$5" "-aarisDistance=$6" \
     -logFile "$RUN/unity-probe-editor.log" >"$RUN/private-stdout.log" 2>"$RUN/private-stderr.log"
   RC=$?
-elif test "$MODE" = render; then
+elif test "$MODE" = render || test "$MODE" = foliage; then
   timeout --signal=TERM 1500 env DISPLAY=:99 TMPDIR="$RUN/UnityTemp" \
     LIBGL_ALWAYS_SOFTWARE=1 "$EDITOR" -batchmode -quit -force-glcore \
     -projectPath "$PROJECT" -executeMethod "$METHOD" \
@@ -130,6 +139,28 @@ fi
 set -e
 if test "$RC" -ne 0; then
   echo AARIS_PROBE_EDITOR_EXIT_NONZERO
+  if test "$MODE" = play && test -f "$RUN/play-report.json"; then
+    python3 - "$RUN/play-report.json" <<'PYREPORT'
+import json,sys
+try:
+    d=json.load(open(sys.argv[1]))
+    allowed={"VEHICLE_SOURCE_MISSING","VEHICLE_CATALOG_INVALID","VEHICLE_CATALOG_MAP_MISMATCH",
+       "VEHICLE_MODEL_MISSING","VEHICLE_SHADER_MISSING","LOOT_SOURCE_MISSING",
+       "LOOT_DATA_INVALID","LOOT_DATA_MAP_MISMATCH","PLAYER_CAMERA_MISSING",
+       "PLAYER_ANIMATION_CLIPS_INVALID","WEAPON_STATE_INVALID","NULL_REFERENCE",
+       "MISSING_REFERENCE","UNASSIGNED_REFERENCE","ARRAY_INDEX","MISSING_COMPONENT",
+       "VEHICLE_RUNTIME_EXCEPTION","LOOT_RUNTIME_EXCEPTION","PLAYER_RUNTIME_EXCEPTION",
+       "VEHICLE_MOTOR_EXCEPTION","GAME_ASSERTION","UNCLASSIFIED_EXCEPTION","UNCLASSIFIED_ERROR"}
+    k=d.get("runtimeErrorKind","")
+    if k in allowed: print("runtime_error_kind="+k)
+    n=d.get("runtimeErrors",-1)
+    if type(n)==int and 0<=n<=10000:print("runtime_errors="+str(n))
+    reason=d.get("reason","")
+    if reason in {"PLAY_PREFLIGHT_FAILED","PLAY_MODE_TIMED_OUT","PLAY_RUNTIME_ASSERTIONS_FAILED"}:
+        print("play_reason="+reason)
+except (OSError,ValueError,TypeError):pass
+PYREPORT
+  fi
   # No raw Unity log in public issues/artifacts. Report a diagnostic class.
   if grep -Eqi 'licen[sc]e.*(invalid|missing|failed|expired)|no valid.*licen[sc]e' "$RUN/unity-probe-editor.log" 2>/dev/null; then
     echo AARIS_PROBE_LICENSE_NOT_ACTIVE
@@ -159,6 +190,9 @@ if data.get("mode")!=mode or data.get("status")!="passed" or data.get("terrainTi
 images = [image]
 if mode=="photo":
     images.append(image.parent/"photo-context.png")
+elif mode=="foliage":
+    images.extend([image.parent/"foliage-far-lod.png",
+                   image.parent/"foliage-ambient-test.png"])
 for candidate in images:
     if not candidate.is_file() or candidate.stat().st_size < 8192 or candidate.read_bytes()[:8] != b"\x89PNG\r\n\x1a\n":
         print("AARIS_PROBE_REAL_PNG_MISSING")
@@ -170,7 +204,15 @@ if mode=="play":
     if data.get("runtimeErrors")!=0:
         print("AARIS_PROBE_RUNTIME_ERRORS")
         sys.exit(26)
-if mode=="photo":
+if mode=="foliage":
+    if min(data.get("originalVariation",0),data.get("distantLodVariation",0),
+           data.get("ambientVariation",0)) < 6:
+        print("AARIS_PROBE_FLAT_FOLIAGE_FRAME_REJECTED")
+        sys.exit(27)
+    print("tree_prototypes="+str(data.get("treePrototypes",0)))
+    print("foliage_materials="+str(data.get("customFoliageMaterials",0)))
+    print("image_bytes="+str(sum(p.stat().st_size for p in images)))
+elif mode=="photo":
     if min(data.get("detailVariation",0),data.get("contextVariation",0)) < 6:
         print("AARIS_PROBE_FLAT_FRAME_REJECTED")
         sys.exit(27)
