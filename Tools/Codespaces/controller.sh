@@ -36,6 +36,7 @@ if test -n "$ISSUE"; then
     'CS LFS REPORT') OP=lfs_report ;;
     'CS CHANGES') OP=changes ;;
     'CS INSTALL') OP=install ;;
+    'CS CLI DIAG') OP=cli_diag ;;
     'CS EDITOR') OP=editor ;;
     'CS LICENSE') OP=license ;;
     'CS AUTH') OP=auth ;;
@@ -47,7 +48,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|editor|license|auth|probe|shot|test|stop) ;;
+  machines|info|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|cli_diag|editor|license|auth|probe|shot|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test -z "$GH_TOKEN"; then DETAIL="CODESPACE_PAT_missing"; exit 3; fi
