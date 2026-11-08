@@ -37,6 +37,8 @@ CS EDITOR
 CS EDITOR DIAG
 CS SHOT
 CS ACCEPT TERMS
+CS SAFE MODE
+CS COMPILE REPORT
 ```
 
 `CS STATUS` must show `editor_installed=yes`. `CS LFS REPORT` must show `lfs_unhydrated_pointer_count=0`. `CS LICENSE` searches the effective SSH user's CLI home and reports whether the **license status command** succeeds. `CS EDITOR` can only prove that an Editor process started. `CS SHOT` is only a virtual-desktop capture and needs visual inspection; it is not proof that the map is rendered. If the Editor quits after launch because its Linux shared libraries are absent, run `CS DEPS` once; it only installs a fixed set of Ubuntu 22.04 GUI/OpenGL packages and never changes the Unity map or license. This same package step is included in new prebuilds. Then retry `CS EDITOR`. If the Editor still quits, run `CS EDITOR DIAG`: it classifies local launch failures without publishing raw Editor logs. A genuine Unity-rendered scene screenshot and successful scene load are separate acceptance tests.
@@ -57,3 +59,9 @@ Run the existing reviewed `Tools/Codespaces/termux_unity_allow.sh` in Android Te
 - License inactive: use approved phone login on the **same Codespace** and verify again. A new machine must not inherit a different machine's license or OAuth tokens.
 
 Official docs: https://docs.github.com/en/codespaces/prebuilding-your-codespaces/configuring-prebuilds
+
+## Recovery when Unity reports compilation errors
+
+When the screenshot displays **Enter Safe Mode?**, the owner may issue `CS SAFE MODE`. The one-shot command checks the exact visible dialog and clicks **Enter Safe Mode**, not Ignore or Quit. This does not delete any assets or change C# source files.
+
+Then issue `CS COMPILE REPORT` to obtain bounded compiler errors from the current Codespace's Unity Editor log in the Actions artifact. It reports paths only under `Assets/`, `Packages/` or `Library/PackageCache/`, C# error codes, and sanitized messages. It does not publish the raw Unity log. Repair C# source in a reviewed PR, then recompile; never reset the LFS project to fix compiler errors.
