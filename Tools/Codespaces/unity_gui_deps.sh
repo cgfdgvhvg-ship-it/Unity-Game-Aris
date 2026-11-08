@@ -20,7 +20,7 @@ if ! sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
   libx11-6 libxext6 libxrender1 libxrandr2 libxcursor1 \
   libxi6 libxinerama1 libxss1 libxtst6 libxkbcommon0 \
   libfontconfig1 libfreetype6 libatk1.0-0 libdbus-1-3 \
-  libgdk-pixbuf-2.0-0 libxml2 mesa-utils >>"$LOG" 2>&1; then
+  libgdk-pixbuf-2.0-0 libxml2 mesa-utils xdotool >>"$LOG" 2>&1; then
   echo UNITY_GUI_DEPS_APT_INSTALL_FAILED
   exit 14
 fi
