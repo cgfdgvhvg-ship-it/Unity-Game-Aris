@@ -6,11 +6,12 @@
   "containerEnv": {
     "DISPLAY": ":99"
   },
-  "postCreateCommand": "bash .devcontainer/bootstrap.sh",
+  "postCreateCommand": "bash .devcontainer/finalize.sh",
   "postStartCommand": "bash .devcontainer/start_screen.sh",
   "features": {
     "ghcr.io/devcontainers/features/sshd:1": {
       "version": "latest"
     }
-  }
+  },
+  "onCreateCommand": "bash .devcontainer/prebuild.sh"
 }

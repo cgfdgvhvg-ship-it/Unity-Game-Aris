@@ -262,6 +262,38 @@ PY
   install)
     bash "$PROJECT/Tools/Codespaces/install_unity.sh"
     ;;
+  editor_diag)
+    # A bounded, read-only scan of the local Editor launch log: no raw text,
+    # source paths, user IDs, license XML, OAuth URLs or credentials emitted.
+    python3 - <<'PY'
+from pathlib import Path
+import re
+log=Path("/tmp/aaris-codespaces/Editor.log")
+if not log.is_file():
+    print("AARIS_EDITOR_DIAG_LOG_MISSING")
+    raise SystemExit(0)
+s=log.read_text(errors="replace")[-200000:]
+print("AARIS_EDITOR_DIAG_LOG_FOUND")
+classes={
+    "LICENSING":r"no valid.*licen[sc]e|licen[sc]e.*(failed|expired|invalid|not found|required|not active)|failed to activate",
+    "GRAPHICS":r"failed.*(initialize|init).*(graphics|opengl|vulkan)|could not create.*(gl|graphics)|GfxDevice.*failed",
+    "DISPLAY":r"cannot open display|cannot connect to.*X server|X11.*error|no display",
+    "LIBRARY":r"error while loading shared libraries|cannot open shared object file|lib[A-Za-z0-9._+-]+\\.so[^\\n]*not found",
+    "CRASH":r"segmentation fault|SIGSEGV|signal 11|crash handler",
+    "OOM":r"out of memory|std::bad_alloc|failed to allocate",
+    "PROJECT_LOCK":r"project.*(already open|in use|lock)",
+    "IMPORT_ERROR":r"failed to import|asset database.*error|project.*corrupt",
+    "PACKAGE_ERROR":r"package manager.*error|failed.*(resolve|download).*package"
+}
+found=False
+for name,pattern in classes.items():
+    if re.search(pattern,s,re.I):
+        print("AARIS_EDITOR_DIAG_"+name)
+        found=True
+if not found:
+    print("AARIS_EDITOR_DIAG_UNCLASSIFIED")
+PY
+    ;;
   editor)
     if ! test -x "$EDITOR"; then
       echo 'EDITOR_ABSENT_INSTALLING_ON_TMP_DISK'
@@ -296,14 +328,29 @@ PY
     else echo 'EDITOR_LAUNCH_FAILED'; exit 12; fi
     ;;
   license)
-    CLI="$HOME/.local/bin/unity"
-    if ! test -x "$CLI"; then CLI="$HOME/.unity/bin/unity"; fi
-    if ! test -x "$CLI"; then CLI="/tmp/aaris-unity-runtime/cli/bin/unity"; fi
-    if test -x "$CLI"; then
-      if env UNITY_CLI_HOME="$HOME/.local/share/aaris-unity-cli" "$CLI" license status --format json --non-interactive >/dev/null 2>&1; then
+    # Unity CLI may be installed under UNITY_CLI_HOME/bin, not ~/.local/bin.
+    # Use the effective SSH user's real home when inherited HOME is misleading.
+    AUTH_HOME="$(getent passwd "$(id -u)" | cut -d: -f6)"
+    if ! test -d "$AUTH_HOME"; then AUTH_HOME="$HOME"; fi
+    CLI=""
+    for candidate in "$AUTH_HOME/.local/share/aaris-unity-cli/bin/unity" \
+                     "$AUTH_HOME/.local/bin/unity" "$AUTH_HOME/.unity/bin/unity" \
+                     "$HOME/.local/share/aaris-unity-cli/bin/unity" "$HOME/.local/bin/unity" \
+                     "/home/vscode/.local/share/aaris-unity-cli/bin/unity" \
+                     "/home/vscode/.local/bin/unity" "/tmp/aaris-unity-runtime/cli/bin/unity"; do
+      if test -x "$candidate"; then CLI="$candidate"; break; fi
+    done
+    if test -z "$CLI"; then
+      echo 'UNITY_CLI_NOT_INSTALLED'
+    else
+      echo 'UNITY_CLI_DISCOVERED'
+      if env UNITY_CLI_HOME="$AUTH_HOME/.local/share/aaris-unity-cli" \
+          "$CLI" license status --format json --non-interactive >/dev/null 2>&1; then
         echo 'UNITY_PERSONAL_OR_SUBSCRIPTION_LICENSE_ACTIVE'
-      else echo 'UNITY_LICENSE_NOT_VERIFIED'; fi
-    else echo 'UNITY_CLI_NOT_INSTALLED'; fi
+      else
+        echo 'UNITY_LICENSE_NOT_VERIFIED'
+      fi
+    fi
     ;;
   shot)
     pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null || { echo 'SHOT_BLOCKED_EDITOR_NOT_RUNNING'; exit 14; }
