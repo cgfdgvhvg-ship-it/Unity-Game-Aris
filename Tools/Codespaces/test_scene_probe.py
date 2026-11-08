@@ -74,6 +74,10 @@ assert 'latest_marker=text.rfind("AARIS_NATIVE_PLAY_REQUESTED")' in diag
 assert 'AARIS_PLAY_EXCEPTION_FIRST_FRAME_FAMILY_' in diag
 assert 'AARIS_PLAY_EXCEPTION_SUBSYSTEM_' in diag
 assert 'AARIS_PLAY_EXCEPTION_STACK_FRAMES=' in diag
+assert 'SAFE_PLAY_FINGERPRINT' in shell
+assert 'play_probe_diagnostic.sh' in shell
+assert 'AARIS_PLAY_EXCEPTION_(FIRST_FRAME_FAMILY_' in shell
+assert shell.index('SAFE_PLAY_FINGERPRINT') < shell.index('AARIS_PROBE_EXECUTION_FAILED')
 assert 'UnityEditor.UIElements' in diag and 'UnityEditor.GameView' in diag
 assert 'print("AARIS_PLAY_EXCEPTION_SUBSYSTEM_"+label)' in diag
 assert 'NullReferenceException' in diag and 'AarisVehicleWorld' in diag
