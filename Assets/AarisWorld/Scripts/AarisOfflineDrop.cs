@@ -404,7 +404,7 @@ namespace Aaris.MapReview
             }
             else
             {
-                Vector3 behind = Quaternion.Euler(0f, yaw, 0f) * Vector3.back;
+                Vector3 behind = Quaternion.Euler(-pitch, yaw, 0f) * Vector3.back;
                 pos = transform.position + behind * (phase == DropPhase.Freefall ? 9.5f : 8.5f)
                     + Vector3.up * (phase == DropPhase.Freefall ? 3.2f : 4.6f);
                 focus = transform.position + Vector3.up * 2.8f;
