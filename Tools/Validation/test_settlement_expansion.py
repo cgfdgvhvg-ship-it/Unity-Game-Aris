@@ -84,6 +84,22 @@ class ExpansionIntegrity(unittest.TestCase):
         self.assertNotIn("http://", self.catalog)
         self.assertNotIn("https://", self.catalog)
 
+    def test_mobile_lod_and_solid_colliders_for_each_reused_model(self):
+        total_lod0 = 0
+        for site in self.plan["sites"]:
+            model = MODELS[site["prefabKey"]]
+            total_lod0 += self.world["models"][model]["triangles"]
+        # New buildings are rendered with their ORIGINAL THREE-LEVEL LOD,
+        # not 15 freshly duplicated high-poly mesh assets.
+        self.assertLess(total_lod0, 200_000)
+        for model in set(MODELS.values()):
+            path = ROOT / "Assets" / "AarisWorld" / "Models" / model / f"{model}.prefab"
+            text = path.read_text(encoding="utf-8")
+            self.assertEqual(text.count("LODGroup:"), 1, model)
+            self.assertGreaterEqual(text.count("MeshRenderer:"), 3, model)
+            self.assertGreaterEqual(text.count("MeshFilter:"), 3, model)
+            self.assertGreaterEqual(text.count("MeshCollider:"), 1, model)
+
     def test_ground_anchors_and_bounds(self):
         districts = {d["name"]: d for d in self.world["districts"]}
         for s in self.plan["sites"]:
