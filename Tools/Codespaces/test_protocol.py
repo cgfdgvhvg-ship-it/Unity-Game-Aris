@@ -120,6 +120,17 @@ assert "SIGKILL" not in close or "do not send SIGKILL" in close
 assert "'CS CLOSE EDITOR') OP=close_editor" in (r/'Tools/Codespaces/controller.sh').read_text()
 assert 'close_editor' in (r/'.github/workflows/aaris-codespaces-control.yml').read_text()
 assert 'close_editor' in (r/'Tools/Codespaces/issue_response.py').read_text()
+recovery=(r/'Tools/Codespaces/editor_process_recovery.sh').read_text()
+assert 'UNITY_EDITOR_PROCESS_DIAG_READY' in recovery
+assert 'UNITY_EDITOR_RECOVER_TERM_CONFIRMED' in recovery
+assert 'UNITY_EDITOR_RECOVER_BLOCKED_VISIBLE_WINDOW' in recovery
+assert 'signal.SIGTERM' in recovery
+assert 'signal.SIGKILL' not in recovery
+assert 'cmd[0].endswith(b"/Editor/Unity")' in recovery
+assert "'CS EDITOR PROCESS') OP=editor_process" in (r/'Tools/Codespaces/controller.sh').read_text()
+assert "'CS EDITOR RECOVER') OP=editor_recover" in (r/'Tools/Codespaces/controller.sh').read_text()
+assert 'editor_process, editor_recover' in wf
+assert 'editor_process editor_recover' in (r/'Tools/Codespaces/issue_response.py').read_text()
 assert 'close_unity_editor.sh' not in (r/'.devcontainer/prebuild.sh').read_text()
 assert "touch -c \"$MOTOR\" \"$MANIFEST\"" in refresh
 assert "com.unity.modules.vehicles" in refresh
