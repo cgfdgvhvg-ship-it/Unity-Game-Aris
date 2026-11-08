@@ -36,7 +36,7 @@ namespace Aaris.MapReview
 
         public void RestoreHealth(float amount)
         {
-            if (dead || amount <= 0f || float.IsNaN(amount)) return;
+            if (dead || amount <= 0f || float.IsNaN(amount) || float.IsInfinity(amount)) return;
             current = Mathf.Min(maximumHealth, current + amount);
             HealthChanged?.Invoke(this);
         }
