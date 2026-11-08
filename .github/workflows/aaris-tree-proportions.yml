@@ -1,0 +1,29 @@
+name: Original SpeedTree proportions and road clearance
+on:
+  pull_request:
+    paths:
+      - 'Assets/TerrainDemoScene_URP/Prefabs/Trees/**'
+      - 'Docs/FOREST_PLANTING_PLAN.json'
+      - 'Tools/Validation/test_tree_proportions.py'
+      - '.github/workflows/aaris-tree-proportions.yml'
+  push:
+    paths:
+      - 'Assets/TerrainDemoScene_URP/Prefabs/Trees/**'
+      - 'Tools/Validation/test_tree_proportions.py'
+  workflow_dispatch:
+jobs:
+  tree-prefab-safety:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          persist-credentials: false
+      - name: Validate original models, colliders, LODs and forest road clearance
+        run: python3 Tools/Validation/test_tree_proportions.py
+      - name: Evidence classification
+        run: |
+          echo 'Static verification only: prefabs, collision and 1100 authored tree positions.'
+          echo 'Real Unity Editor before/after render remains mandatory before merge.'
