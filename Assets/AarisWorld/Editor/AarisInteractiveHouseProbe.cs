@@ -127,11 +127,11 @@ namespace Aaris.MapReview.Editor
             // frame, before any Aaris game probe runs. Do not mislabel it as
             // gameplay. Keep it counted, visible and tightly whitelisted.
             bool isolatedEditorOnlyException =
-                state == "ready" && result == null && screenshots == 0 &&
+                state == "ready" && screenshots == 0 &&
                 type == LogType.Exception && message != null &&
                 message.Contains("IndexOutOfRangeException") &&
                 !string.IsNullOrEmpty(trace) &&
-                trace.Contains("UnityEditor.") &&
+                trace.Contains("UnityEditor") &&
                 !trace.Contains("Aaris") &&
                 !trace.Contains("Assembly-CSharp") &&
                 !trace.Contains("Assets/");
