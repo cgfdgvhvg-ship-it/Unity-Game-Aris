@@ -256,6 +256,7 @@ namespace Aaris.MapReview.Editor
         // Owner-approved map coordinates and azimuth. Terrain elevation is
         // sampled from the real LFS TerrainData, not guessed from a blueprint.
         private static readonly Dictionary<string, float> SurveyOverrides = new Dictionary<string, float>();
+        private static Terrain[] SurveyTerrains;
 
         private static float PhotoOption(string key, float fallback, float low, float high)
         {
@@ -340,6 +341,11 @@ namespace Aaris.MapReview.Editor
             };
             try
             {
+                // Loading this 2x2km LFS-backed scene once is crucial. Each
+                // OpenScene on every position can take minutes and previously
+                // exceeded the bounded runner's 30-minute job budget.
+                SurveyTerrains = LoadNativeScene();
+                report.terrainTiles = SurveyTerrains.Length;
                 foreach (var site in sites)
                 {
                     SurveyOverrides.Clear();
@@ -369,6 +375,7 @@ namespace Aaris.MapReview.Editor
                 }
                 if (report.locationCount != 12 || report.frameCount != 24)
                     throw new InvalidOperationException("SURVEY_INCOMPLETE");
+                CreateSurveySheets(sites);
                 report.status = "passed";
                 report.reason = "TWENTY_FOUR_REAL_UNITY_CAMERA_FRAMES";
                 Debug.Log("AARIS_NATIVE_SURVEY_PASSED");
@@ -382,8 +389,65 @@ namespace Aaris.MapReview.Editor
             finally
             {
                 SurveyOverrides.Clear();
+                SurveyTerrains = null;
                 File.WriteAllText(Path.Combine(Output, "survey-report.json"),
                     JsonUtility.ToJson(report, true));
+            }
+        }
+
+
+        // Compose six genuine Camera.Render/ReadPixels outputs per PNG inside
+        // Unity itself. No external ImageMagick/Pillow/ffmpeg dependency, no
+        // re-rendering or fabricated pixels. Three sites per 3x2 sheet.
+        private static void CreateSurveySheets(SurveyEntry[] sites)
+        {
+            const int tileW = 640, tileH = 360, columns = 3, rows = 2;
+            int sheetW = tileW * columns, sheetH = tileH * rows;
+            for (int sheetIndex = 0; sheetIndex < 4; sheetIndex++)
+            {
+                var pixels = new Color32[sheetW * sheetH];
+                for (int cell = 0; cell < 6; cell++)
+                {
+                    SurveyEntry site = sites[sheetIndex * 3 + cell / 2];
+                    string file = (cell % 2 == 0) ? site.detail : site.context;
+                    string inputPath = Path.Combine(Output, file);
+                    if (!File.Exists(inputPath))
+                        throw new InvalidOperationException("SURVEY_SOURCE_FRAME_MISSING");
+                    Texture2D source = new Texture2D(2, 2, TextureFormat.RGB24, false);
+                    try
+                    {
+                        if (!ImageConversion.LoadImage(source, File.ReadAllBytes(inputPath), false) ||
+                            source.width < tileW || source.height < tileH)
+                            throw new InvalidOperationException("SURVEY_SOURCE_FRAME_INVALID");
+                        Color32[] src = source.GetPixels32();
+                        int cellX = (cell % columns) * tileW;
+                        int cellY = (rows - 1 - cell / columns) * tileH;
+                        for (int y = 0; y < tileH; y++)
+                        {
+                            int sy = y * source.height / tileH;
+                            int sourceRow = sy * source.width;
+                            int targetRow = (cellY + y) * sheetW + cellX;
+                            for (int x = 0; x < tileW; x++)
+                            {
+                                int sx = x * source.width / tileW;
+                                pixels[targetRow + x] = src[sourceRow + sx];
+                            }
+                        }
+                    }
+                    finally { UnityEngine.Object.DestroyImmediate(source); }
+                }
+                Texture2D sheet = new Texture2D(sheetW, sheetH, TextureFormat.RGB24, false);
+                try
+                {
+                    sheet.SetPixels32(pixels);
+                    sheet.Apply(false);
+                    byte[] bytes = sheet.EncodeToPNG();
+                    if (bytes == null || bytes.Length < 8192)
+                        throw new InvalidOperationException("SURVEY_SHEET_INVALID");
+                    File.WriteAllBytes(Path.Combine(Output,
+                        "survey-sheet-" + (sheetIndex + 1).ToString() + ".png"), bytes);
+                }
+                finally { UnityEngine.Object.DestroyImmediate(sheet); }
             }
         }
 
@@ -424,7 +488,7 @@ namespace Aaris.MapReview.Editor
                 float yaw = PhotoOption("Yaw", 35f, -360f, 360f);
                 float pitch = PhotoOption("Pitch", 30f, 12f, 75f);
                 float distance = PhotoOption("Distance", 85f, 20f, 450f);
-                Terrain[] terrains = LoadNativeScene();
+                Terrain[] terrains = SurveyTerrains ?? LoadNativeScene();
                 result.terrainTiles = terrains.Length;
                 float ground = Elevation(terrains, x, z, float.NaN);
                 if (float.IsNaN(ground)) throw new InvalidOperationException("TARGET_NOT_ON_NATIVE_TERRAIN");
