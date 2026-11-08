@@ -27,11 +27,15 @@ namespace Aaris.MapReview
             grenade.transform.position = origin;
             var sphere = grenade.AddComponent<SphereCollider>();
             sphere.radius = 0.13f;
-            var visual = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            GameObject imported = Resources.Load<GameObject>("AarisCombat/FragGrenade");
+            GameObject visual = imported != null
+                ? Instantiate(imported, grenade.transform, false)
+                : GameObject.CreatePrimitive(PrimitiveType.Sphere);
             visual.name = "LocalGrenadeModel";
             visual.transform.SetParent(grenade.transform, false);
-            visual.transform.localScale = Vector3.one * 0.25f;
-            Destroy(visual.GetComponent<Collider>());
+            if (imported == null) visual.transform.localScale = Vector3.one * 0.25f;
+            foreach (var collider in visual.GetComponentsInChildren<Collider>(true))
+                Destroy(collider);
             if (grenadeMaterial == null)
             {
                 Shader shader = Shader.Find("Universal Render Pipeline/Lit");
@@ -39,7 +43,12 @@ namespace Aaris.MapReview
                 grenadeMaterial = new Material(shader);
                 grenadeMaterial.color = new Color(0.16f, 0.25f, 0.17f);
             }
-            visual.GetComponent<Renderer>().sharedMaterial = grenadeMaterial;
+            foreach (var renderer in visual.GetComponentsInChildren<Renderer>(true))
+            {
+                var slots = renderer.sharedMaterials;
+                for (int i = 0; i < slots.Length; i++) slots[i] = grenadeMaterial;
+                renderer.sharedMaterials = slots;
+            }
             var rigidbody = grenade.AddComponent<Rigidbody>();
             rigidbody.mass = 0.38f;
             rigidbody.linearDamping = 0.1f;
