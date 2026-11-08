@@ -53,7 +53,8 @@ assert 'aaris-unity-editors' in remote
 assert 'project-cache' in remote
 assert 'EDITOR_ROOT="$HOME/.local/share/aaris-unity-editors"' in (r/'Tools/Codespaces/install_unity.sh').read_text()
 assert '--download-directory "$EDITOR_ROOT"' in (r/'Tools/Codespaces/install_unity.sh').read_text()
-assert '--resume' in (r/'Tools/Codespaces/install_unity.sh').read_text()
+assert ' --resume --non-interactive' not in (r/'Tools/Codespaces/install_unity.sh').read_text()
+assert ' --non-interactive --yes --accept-eula --format json' in (r/'Tools/Codespaces/install_unity.sh').read_text()
 installer=(r/'Tools/Codespaces/install_unity.sh').read_text()
 assert '--non-interactive --yes --accept-eula --format json' in installer
 assert 'UNITY_EDITOR_INSTALL_EXIT_CODE_' in installer
