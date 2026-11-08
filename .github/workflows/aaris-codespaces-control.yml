@@ -38,9 +38,6 @@ permissions:
   contents: read
   issues: write
   id-token: write
-concurrency:
-  group: aaris-codespace-control
-  cancel-in-progress: false
 jobs:
   static-check:
     if: github.event_name == 'push' || github.event_name == 'pull_request'
@@ -69,6 +66,17 @@ jobs:
           python3 Tools/Codespaces/restore_preserved_source_lfs.py --selftest
           python3 -m py_compile Tools/Codespaces/recover_verified_tree_lfs.py
           python3 Tools/Codespaces/test_protocol.py
+          # Regression: long-lived Codespace commands must never block PR CI.
+          python3 - <<'PYCONCURRENCY'
+          from pathlib import Path
+          workflow = Path('.github/workflows/aaris-codespaces-control.yml').read_text()
+          assert '\nconcurrency:\n  group: aaris-codespace-control' not in workflow
+          assert ('  control:\n    # Serialize only remote machine operations; do not block PR static CI.\n'
+                  '    concurrency:\n      group: aaris-codespace-control\n'
+                  '      cancel-in-progress: false') in workflow
+          assert '  static-check:\n' in workflow and '  control:\n' in workflow
+          print('AARIS_CODESPACE_JOB_SCOPED_CONCURRENCY_PASS')
+          PYCONCURRENCY
           python3 Tools/Codespaces/test_scene_probe.py
           python3 Tools/Validation/check_saved_ambient.py
           python3 Tools/Codespaces/photo_request.py --selftest
@@ -86,6 +94,10 @@ jobs:
           python3 Tools/Codespaces/recover_verified_tree_lfs.py --verify \
             "$RUNNER_TEMP/aaris-verified-bake/mass-package.tar.gz"
   control:
+    # Serialize only remote machine operations; do not block PR static CI.
+    concurrency:
+      group: aaris-codespace-control
+      cancel-in-progress: false
     permissions:
       contents: write
       issues: write
