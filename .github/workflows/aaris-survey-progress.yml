@@ -1,0 +1,60 @@
+name: Aaris survey progress (read-only)
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: aaris-survey-readonly-monitor
+  cancel-in-progress: false
+jobs:
+  survey-progress:
+    if: >-
+      github.event.issue.number == 77 &&
+      github.event.comment.user.login == 'sundamunda289-art' &&
+      github.event.comment.body == 'SURVEY PULSE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect existing Codespace without stopping Unity
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          set -euo pipefail
+          mkdir -p survey-progress
+          if test -z "${GH_TOKEN:-}"; then
+            echo 'CODESPACE_PAT_NOT_CONFIGURED' > survey-progress/status.txt
+            exit 1
+          fi
+          CODESPACE="$(gh codespace list -R "$GITHUB_REPOSITORY" --json name,displayName,state --limit 30 | jq -r '[.[] | select(.displayName=="aaris-ai-unity-ssh")][0].name // ""')"
+          [[ "$CODESPACE" =~ ^[a-zA-Z0-9-]+$ ]] || {
+            echo 'PRESERVED_CODESPACE_NOT_FOUND' > survey-progress/status.txt
+            exit 1
+          }
+          if ! timeout 100 gh codespace ssh -c "$CODESPACE" -- 'bash -s' < Tools/Codespaces/survey_readonly_status.sh > survey-progress/status.txt 2>/dev/null; then
+            echo 'SURVEY_DIAG_SSH_FAILED' > survey-progress/status.txt
+            exit 1
+          fi
+          grep -q '^AARIS_SURVEY_READ_ONLY_DIAG$' survey-progress/status.txt
+      - name: Upload sanitized survey progress
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-survey-progress-${{ github.run_id }}
+          path: survey-progress/status.txt
+          retention-days: 2
+      - name: Reply with diagnostic to owner issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo '**AARIS SURVEY READ-ONLY DIAGNOSTIC**'
+            echo '~~~text'
+            if test -f survey-progress/status.txt; then cat survey-progress/status.txt; else echo 'STATUS_UNAVAILABLE'; fi
+            echo '~~~'
+            printf '[Survey monitor run](https://github.com/%s/actions/runs/%s)\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID"
+          } > /tmp/survey-issue-response.md
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" -F /tmp/survey-issue-response.md
