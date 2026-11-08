@@ -16,7 +16,12 @@ namespace Aaris.MapReview
         {
             if (cached != null) return cached;
             Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+            if (shader == null) shader = Shader.Find("Universal Render Pipeline/Simple Lit");
             if (shader == null) shader = Shader.Find("Standard");
+            if (shader == null) shader = Shader.Find("Sprites/Default");
+            if (shader == null) shader = Shader.Find("Hidden/InternalErrorShader");
+            if (shader == null)
+                throw new InvalidOperationException("AARIS_OFFLINE_URP_SHADER_UNAVAILABLE");
             cached = new Material(shader);
             cached.name = "AarisDrop_Original_" + ColorUtility.ToHtmlStringRGB(color);
             if (cached.HasProperty("_BaseColor")) cached.SetColor("_BaseColor", color);
