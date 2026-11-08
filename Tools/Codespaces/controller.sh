@@ -49,13 +49,15 @@ if test -n "$ISSUE"; then
     'CS COMPILE REPORT') OP=compile_report ;;
     'CS REFRESH') OP=refresh ;;
     'CS CLOSE EDITOR') OP=close_editor ;;
+    'CS EDITOR PROCESS') OP=editor_process ;;
+    'CS EDITOR RECOVER') OP=editor_recover ;;
     'CS TEST') OP=test ;;
     'CS STOP') OP=stop ;;
     *) DETAIL="unsupported_issue_command"; exit 2 ;;
   esac
 fi
 case "$OP" in
-  machines|info|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|test|stop) ;;
+  machines|info|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test -z "$GH_TOKEN"; then DETAIL="CODESPACE_PAT_missing"; exit 3; fi
@@ -268,6 +270,14 @@ fi
 if test "$OP" = close_editor; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/close_unity_editor.sh"
   REMOTE_SHELL="bash -s"
+fi
+if test "$OP" = editor_process || test "$OP" = editor_recover; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/editor_process_recovery.sh"
+  if test "$OP" = editor_process; then
+    REMOTE_SHELL="bash -s -- diag"
+  else
+    REMOTE_SHELL="bash -s -- recover"
+  fi
 fi
 if test "$OP" = install; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/install_unity.sh"
