@@ -53,6 +53,7 @@ if test -n "$ISSUE"; then
     'CS DROP VIDEO') OP=drop_video ;;
     'CS DROP FRAMES') OP=drop_frames ;;
     'CS MAP VERIFY') OP=map_verify ;;
+    'CS SURVEY') OP=survey ;;
     'CS PLAY DIAG') OP=play_diag ;;
     'CS FOLIAGE DIAG') OP=foliage_diag ;;
     'CS PHOTO '*) OP=photo ;;
@@ -69,7 +70,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|play_diag|foliage_diag|test|stop) ;;
+  machines|info|quota|start|fresh|fresh_ssh|rebuild|status|logs|sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|deps|cli_diag|editor|editor_diag|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -268,7 +269,7 @@ case "$OP" in
   retry_assets) REMOTE_TIMEOUT=900 ;;
   test) REMOTE_TIMEOUT=500 ;;
   editor) REMOTE_TIMEOUT=350 ;;
-  scene_render|scene_play|photo|foliage_diag) REMOTE_TIMEOUT=1800 ;;
+  scene_render|scene_play|photo|foliage_diag|survey) REMOTE_TIMEOUT=1800 ;;
   drop_video) REMOTE_TIMEOUT=2100 ;;
   drop_frames) REMOTE_TIMEOUT=420 ;;
   map_verify) REMOTE_TIMEOUT=1800 ;;
@@ -357,12 +358,14 @@ if test "$OP" = play_diag; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/play_probe_diagnostic.sh"
   REMOTE_SHELL="bash -s"
 fi
-if test "$OP" = scene_render || test "$OP" = scene_play || test "$OP" = photo || test "$OP" = foliage_diag; then
+if test "$OP" = scene_render || test "$OP" = scene_play || test "$OP" = photo || test "$OP" = foliage_diag || test "$OP" = survey; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/scene_probe.sh"
   if test "$OP" = scene_render; then
     REMOTE_SHELL="bash -s -- render"
   elif test "$OP" = foliage_diag; then
     REMOTE_SHELL="bash -s -- foliage"
+  elif test "$OP" = survey; then
+    REMOTE_SHELL="bash -s -- survey"
   elif test "$OP" = photo; then
     # The parser accepts only finite bounded ASCII decimals.
     REMOTE_SHELL="bash -s -- photo $PHOTO_VALUES"
@@ -452,6 +455,42 @@ PYCHECK
         DETAIL="drop_frame_archive_invalid"; exit 44
       fi
       DETAIL="real_unity_frames_archived"
+    elif test "$OP" = survey; then
+      # Four 3x2 contact sheets containing all 24 genuine Unity camera views.
+      # Sources were validated in the isolated native Editor worktree.
+      SURVEY_FILES=(survey-report.json survey-sheet-1.png survey-sheet-2.png survey-sheet-3.png survey-sheet-4.png)
+      for BASENAME in "${SURVEY_FILES[@]}"; do
+        if ! timeout 200 gh codespace ssh -c "$CS" -- \
+          "base64 /tmp/aaris-codespaces/scene-probe/$BASENAME" \
+          > "$OUT/$BASENAME.b64" 2>"$PRIVATE_ERRORS"; then
+          DETAIL="survey_artifact_transfer_failed"; safe_error_summary; exit 52
+        fi
+        if ! base64 --decode "$OUT/$BASENAME.b64" > "$OUT/$BASENAME"; then
+          DETAIL="survey_artifact_base64_invalid"; exit 53
+        fi
+        rm -f "$OUT/$BASENAME.b64"
+      done
+      if ! python3 - "$OUT" <<'PYSURVEY'
+import json,sys,pathlib
+p=pathlib.Path(sys.argv[1])
+try:
+    d=json.loads((p/"survey-report.json").read_text())
+    good=d.get("status")=="passed" and d.get("mode")=="survey"
+    good=good and d.get("terrainTiles")==4 and d.get("frameCount")==24
+    good=good and d.get("locationCount")==12 and len(d.get("locations",[]))==12
+    good=good and all(min(v.get("detailVariation",0),v.get("contextVariation",0))>=6 for v in d["locations"])
+    for i in (1,2,3,4):
+        file=p/f"survey-sheet-{i}.png"
+        good=good and file.is_file() and file.stat().st_size>8192
+        good=good and file.read_bytes()[:8]==bytes([137,80,78,71,13,10,26,10])
+except (ValueError,OSError,TypeError,KeyError):
+    good=False
+sys.exit(0 if good else 1)
+PYSURVEY
+      then
+        DETAIL="survey_native_unity_frames_invalid"; exit 54
+      fi
+      DETAIL="twelve_regions_twentyfour_native_frames_four_contact_sheets_verified"
     elif test "$OP" = map_verify; then
       # Read only JSON and fixed-name genuine Unity camera PNGs. Never publish
       # raw Editor logs, original dirty Assets or private license material.
