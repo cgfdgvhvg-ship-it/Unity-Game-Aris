@@ -50,22 +50,21 @@ cd "$PROJECT"
 # Only emit bounded error classes + counts on the public owner issue.
 mkdir -p "$RUN"
 if ! git lfs pull > "$RUN/private-lfs-pull.log" 2>&1; then
-  # GitHub has the new LFS pointers, but this Codespace already contains
-  # the verified original meshes created by the previous native Unity bake.
-  # Recover ONLY if every generated asset's SHA256 and size match HEAD.
-  # This avoids any new network transfer and leaves the GUI source untouched.
-  if test -s "$PROJECT/Tools/Codespaces/restore_local_tree_lfs.py"; then
-    if python3 "$PROJECT/Tools/Codespaces/restore_local_tree_lfs.py" "$PROJECT"; then
-      echo AARIS_PROBE_NATIVE_TREE_LFS_RECOVERED_FROM_LOCAL_CODESPACE_BAKE
-    else
-      echo AARIS_PROBE_ISOLATED_LFS_PULL_FAILED
-      exit 15
-    fi
+  # Some Codespace restarts lose /tmp LFS caches while the original
+  # /workspaces project still holds hydrated assets. Reuse ONLY original
+  # source bytes whose SHA256 and size match the new main commit's pointer.
+  # Missing OIDs are fetched individually; the dirty GUI source is read-only.
+  if test -s "$PROJECT/Tools/Codespaces/restore_preserved_source_lfs.py" &&
+     python3 "$PROJECT/Tools/Codespaces/restore_preserved_source_lfs.py" "$PROJECT"; then
+    echo AARIS_PROBE_PRESERVED_SOURCE_LFS_RECOVERED
+  elif test -s "$PROJECT/Tools/Codespaces/restore_local_tree_lfs.py" &&
+       python3 "$PROJECT/Tools/Codespaces/restore_local_tree_lfs.py" "$PROJECT"; then
+    # Older same-session fallback for the exact 18 native baked meshes.
+    echo AARIS_PROBE_NATIVE_TREE_LFS_RECOVERED_FROM_LOCAL_CODESPACE_BAKE
   else
     echo AARIS_PROBE_ISOLATED_LFS_PULL_FAILED
     exit 15
   fi
-
 fi
 SCENE="Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity"
 test -s "$SCENE" || { echo AARIS_PROBE_SCENE_MISSING; exit 16; }
