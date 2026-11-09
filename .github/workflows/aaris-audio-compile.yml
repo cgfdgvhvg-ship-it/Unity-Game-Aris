@@ -8,6 +8,7 @@ on:
       - Tools/Audio/codespace_compile_review.sh
       - Tools/Audio/remote_error_summary.py
       - Assets/AarisWorld/Scripts/AarisAudioDirector.cs
+      - Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs
       - Assets/AarisWorld/Scripts/AarisEquippedGun.cs
       - Assets/AarisWorld/Scripts/AarisBattleActions.cs
       - Assets/AarisWorld/Scripts/AarisOfflineTacticalHUD.cs
