@@ -52,7 +52,7 @@ jobs:
               mismatch=[]
               for rel in paths:
                 expected=git("show","HEAD:"+rel)
-                m=re.fullmatch(rb"version https://git-lfs.github.com/spec/v1\\noid sha256:([0-9a-f]{64})\\nsize ([0-9]+)\\n?",expected)
+                m=re.fullmatch(rb"version https://git-lfs.github.com/spec/v1\noid sha256:([0-9a-f]{64})\nsize ([0-9]+)\n?",expected)
                 if not m:
                   mismatch.append(("head_not_pointer",rel));continue
                 expected_oid=m.group(1).decode(); expected_size=int(m.group(2))
