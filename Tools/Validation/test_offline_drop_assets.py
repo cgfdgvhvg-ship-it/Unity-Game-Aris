@@ -157,6 +157,13 @@ class OfflineCombatAssetChecks(unittest.TestCase):
         self.assertLess(damage.index("HealthChanged?.Invoke(this);"),
                         damage.index("Died?.Invoke(this);"))
 
+    def test_grenade_imported_visual_never_collides_before_deferred_destroy(self):
+        grenade = (SCRIPTS / "AarisOfflineFragGrenade.cs").read_text("utf-8")
+        visual = grenade.split("foreach (var collider in visual.GetComponentsInChildren<Collider>(true))", 1)[1]
+        before_destroy = visual.split("Destroy(collider);", 1)[0]
+        self.assertIn("collider.enabled = false;", before_destroy)
+        self.assertNotIn("Physics.IgnoreLayerCollision", grenade)
+
     def test_frag_blast_obstacles_not_filtered_as_damage_targets(self):
         frag = (SCRIPTS / "AarisOfflineFragGrenade.cs").read_text("utf-8")
         # Candidate filtering is intentional; collision occlusion needs world geometry.
