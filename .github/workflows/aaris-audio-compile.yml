@@ -4,14 +4,15 @@ on:
     branches:
       - review/offline-mobile-audio-20261109
     paths:
-      - '.github/workflows/aaris-audio-compile.yml'
-      - 'Tools/Audio/codespace_compile_review.sh'
-      - 'Assets/AarisWorld/Scripts/AarisAudioDirector.cs'
-      - 'Assets/AarisWorld/Scripts/AarisEquippedGun.cs'
-      - 'Assets/AarisWorld/Scripts/AarisBattleActions.cs'
-      - 'Assets/AarisWorld/Scripts/AarisOfflineTacticalHUD.cs'
-      - 'Assets/AarisWorld/Scripts/AarisOfflineFragGrenade.cs'
-      - 'Assets/AarisWorld/Scripts/AarisVehicleMotor.cs'
+      - .github/workflows/aaris-audio-compile.yml
+      - Tools/Audio/codespace_compile_review.sh
+      - Tools/Audio/remote_error_summary.py
+      - Assets/AarisWorld/Scripts/AarisAudioDirector.cs
+      - Assets/AarisWorld/Scripts/AarisEquippedGun.cs
+      - Assets/AarisWorld/Scripts/AarisBattleActions.cs
+      - Assets/AarisWorld/Scripts/AarisOfflineTacticalHUD.cs
+      - Assets/AarisWorld/Scripts/AarisOfflineFragGrenade.cs
+      - Assets/AarisWorld/Scripts/AarisVehicleMotor.cs
   workflow_dispatch:
 
 permissions:
@@ -19,7 +20,6 @@ permissions:
 
 jobs:
   compile-audio:
-    # The same machine must never run two Unity imports at once.
     concurrency:
       group: aaris-codespace-control
       cancel-in-progress: false
@@ -29,23 +29,22 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: false
-      - name: Validate source and offline SFX without Unity
+      - name: Check script safety and embedded audio
         run: |
           set -euo pipefail
           bash -n Tools/Audio/codespace_compile_review.sh
+          python3 Tools/Audio/remote_error_summary.py --selftest
           python3 Tools/Audio/generate_sfx.py --check
-      - name: Compile reviewed branch in existing licensed Ubuntu Codespace
+          python3 Tools/Audio/import_cc0_kenney.py --check
+      - name: Compile audio branch on licensed Ubuntu Codespace
         env:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
         run: |
           set -uo pipefail
           if test -z "${GH_TOKEN:-}"; then
-            echo "AARIS_AUDIO_CODESPACE_SECRET_NOT_AVAILABLE"
+            echo AARIS_AUDIO_CODESPACE_SECRET_NOT_AVAILABLE
             exit 19
           fi
-          # Keep private SSH/auth messages and full Unity diagnostics out of logs.
-          # GitHub runs this step under bash -e; disable errexit explicitly
-          # so a failed SSH transport cannot suppress our bounded diagnosis.
           set +e
           timeout --signal=TERM 1800 gh codespace ssh \
             -c aaris-ai-ubuntu-minimal-jrg7rgvx5rr435wpp -- "bash -s" \
@@ -54,35 +53,11 @@ jobs:
             2> "$RUNNER_TEMP/aaris-audio-private.txt"
           rc=$?
           set -e
-          grep -E '^AARIS_AUDIO_[A-Z0-9_]+
-          grep -qx 'AARIS_AUDIO_NATIVE_COMPILE_EXIT_ZERO_NO_CS_ERRORS' \
-            "$RUNNER_TEMP/aaris-audio-safe.txt" || exit 28
-          echo "AARIS_AUDIO_NATIVE_CSHARP_VERIFIED"
- "$RUNNER_TEMP/aaris-audio-safe.txt" || true
+          grep -E '^AARIS_AUDIO_[A-Z0-9_]+$' "$RUNNER_TEMP/aaris-audio-safe.txt" || true
           if test "$rc" -ne 0; then
-            # Never leak raw SSH messages, URLs or authentication state.
-            python3 - <<'PY'
-          from pathlib import Path
-          import re
-          path = Path(__import__('os').environ['RUNNER_TEMP']) / 'aaris-audio-private.txt'
-          raw = path.read_text(errors='replace') if path.exists() else ''
-          if re.search(r'403|forbidden|unauthoriz|permission denied|authentication failed', raw, re.I):
-              kind='AUTHORIZATION'
-          elif re.search(r'unknown command|invalid argument|unknown flag|usage:', raw, re.I):
-              kind='GH_CLI_SYNTAX'
-          elif re.search(r'no such file|not found|missing', raw, re.I):
-              kind='REMOTE_MISSING_BINARY'
-          elif re.search(r'connection|network|ssh|timed out|timeout', raw, re.I):
-              kind='SSH_TRANSPORT'
-          elif not raw.strip():
-              kind='REMOTE_EXIT_WITHOUT_STDERR'
-          else:
-              kind='UNCLASSIFIED_REMOTE_ERROR'
-          print('AARIS_AUDIO_REMOTE_DIAGNOSTIC_'+kind)
-          PY
-            echo "AARIS_AUDIO_EDITOR_VERIFICATION_INCOMPLETE"
+            python3 Tools/Audio/remote_error_summary.py --github-actions
+            echo AARIS_AUDIO_EDITOR_VERIFICATION_INCOMPLETE
             exit "$rc"
           fi
-          grep -qx 'AARIS_AUDIO_NATIVE_COMPILE_EXIT_ZERO_NO_CS_ERRORS' \
-            "$RUNNER_TEMP/aaris-audio-safe.txt" || exit 28
-          echo "AARIS_AUDIO_NATIVE_CSHARP_VERIFIED"
+          grep -qx AARIS_AUDIO_NATIVE_COMPILE_EXIT_ZERO_NO_CS_ERRORS "$RUNNER_TEMP/aaris-audio-safe.txt"
+          echo AARIS_AUDIO_NATIVE_CSHARP_VERIFIED
