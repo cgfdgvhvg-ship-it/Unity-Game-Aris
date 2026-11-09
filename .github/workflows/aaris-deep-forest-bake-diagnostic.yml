@@ -71,6 +71,24 @@ jobs:
                     mismatch.append(("wrong_hash",rel))
               print("hydrated_audit_total="+str(len(paths)))
               print("hydrated_audit_bad_count="+str(len(mismatch)))
+              from collections import Counter
+              counts=Counter((kind, pathlib.Path(rel).suffix.lower()) for kind,rel in mismatch)
+              for (kind,suffix),count in sorted(counts.items()):
+                print("hydrated_bad_group="+kind+":"+suffix+":"+str(count))
+              for kind,rel in mismatch[:3]:
+                if kind=="wrong_size":
+                  entry=snapshot/rel
+                  pointer=git("show","HEAD:"+rel)
+                  mm=re.search(rb"(?m)^size ([0-9]+)$",pointer)
+                  print("hydrated_bad_size_actual="+str(entry.stat().st_size))
+                  if mm:print("hydrated_bad_size_expected="+mm.group(1).decode())
+                  prefix=entry.open("rb").read(4)
+                  if prefix in (b"II*\\x00",b"MM\\x00*"):
+                    print("hydrated_bad_data_type=tiff")
+                  elif prefix==b"vers":
+                    print("hydrated_bad_data_type=pointer")
+                  else:
+                    print("hydrated_bad_data_type=other")
               for k,v in mismatch[:8]:
                 print("hydrated_bad_kind="+k)
                 print("hydrated_bad_filename="+pathlib.Path(v).name[:92])
