@@ -14,6 +14,14 @@ namespace Aaris.MapReview
     public sealed class AarisAudioDirector : MonoBehaviour
     {
         private const int VoiceCount = 12;
+        // Fixed-size timed cue queue: zero allocations when automatic guns fire.
+        private struct TimedCue
+        {
+            public string Key;
+            public Vector3 Position;
+            public float At, Volume;
+        }
+        private readonly TimedCue[] scheduled = new TimedCue[16];
         private static AarisAudioDirector instance;
         private static readonly string[] Keys =
         {
@@ -103,6 +111,36 @@ namespace Aaris.MapReview
             voice.PlayOneShot(clip, Mathf.Clamp01(volume));
         }
 
+        private void Schedule(string key, Vector3 point, float seconds, float volume)
+        {
+            int empty = -1;
+            for (int i = 0; i < scheduled.Length; i++)
+                if (scheduled[i].Key == null) { empty = i; break; }
+            // At high rates, drop only the oldest noncritical tail cue.
+            if (empty < 0)
+            {
+                empty = 0;
+                for (int i = 1; i < scheduled.Length; i++)
+                    if (scheduled[i].At < scheduled[empty].At) empty = i;
+            }
+            scheduled[empty] = new TimedCue
+            {
+                Key = key, Position = point, At = Time.time + seconds,
+                Volume = volume
+            };
+        }
+
+        private void PlayScheduled()
+        {
+            for (int i = 0; i < scheduled.Length; i++)
+            {
+                if (scheduled[i].Key == null || Time.time < scheduled[i].At) continue;
+                TimedCue cue = scheduled[i];
+                scheduled[i].Key = null;
+                OneShot(cue.Key, cue.Position, cue.Volume);
+            }
+        }
+
         /// <summary>Only successful weapon shots call this, never a held Fire button.</summary>
         public static void GunShot(string category, string id, Vector3 position)
         {
@@ -112,6 +150,9 @@ namespace Aaris.MapReview
                 category == "Shotgun" ? "shotgun_shot" :
                 id == "BattleRifle" ? "battle_rifle_shot" : "ar_shot";
             instance.OneShot(sound, position, 0.85f, UnityEngine.Random.Range(0.97f, 1.035f));
+            instance.Schedule("shell_drop", position, 0.14f, 0.16f);
+            if (category == "Sniper" || category == "Shotgun")
+                instance.Schedule("bolt_reload", position, 0.36f, 0.44f);
         }
 
         public static void BulletImpact(Vector3 position)
@@ -174,6 +215,7 @@ namespace Aaris.MapReview
             float fallSpeed = dt > 0.001f
                 ? Mathf.Clamp((previousY - pos.y) / dt, 0f, 65f) : 0f;
             previousY = pos.y;
+            PlayScheduled();
             if (drop == null) drop = GetComponent<AarisOfflineDrop>();
             bool airborneDrop = drop != null && drop.enabled && !drop.HasLanded;
             bool driving = vehicle != null && vehicle.IsDriving;
