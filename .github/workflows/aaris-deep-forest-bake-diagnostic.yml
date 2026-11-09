@@ -25,6 +25,19 @@ jobs:
           python3 - <<'PY'
           import json,pathlib,re
           folder=pathlib.Path("/tmp/aaris-codespaces/deep-forest-bake")
+          lfs_log=folder/"private-lfs.log"
+          if lfs_log.is_file():
+            log=lfs_log.read_text(errors="replace")
+            for label,pattern in (
+              ("recovery_failed",r"AARIS_PRESERVED_LFS_RECOVERY_FAILED=([A-Z0-9_]+)"),
+              ("local_assets",r"AARIS_PRESERVED_OR_CACHED_LFS_HASH_VERIFIED=([0-9]+)"),
+              ("remote_oids",r"AARIS_REMOTE_LFS_OIDS_NEEDED=([0-9]+)"),
+              ("snapshot_verified",r"AARIS_PRESERVED_LFS_SNAPSHOT_VERIFIED=([0-9]+)"),
+              ("original_archive_verified",r"AARIS_CODESPACE_ORIGINAL_TREE_ARCHIVE_HASH_VERIFIED=([0-9]+)")):
+              v=re.search(pattern,log)
+              if v: print("lfs_"+label+"="+v.group(1))
+            print("lfs_log_bytes="+str(lfs_log.stat().st_size))
+          else:print("lfs_log_missing")
           report=pathlib.Path("/tmp/aaris-codespaces/deep-forest-bake-report.json")
           if report.is_file():
             try:
