@@ -33,6 +33,20 @@ REV="$(git -C "$SOURCE" rev-parse --verify 'origin/main^{commit}')" || {
 mkdir -p "$ISOLATED_ROOT"
 PROJECT="$ISOLATED_ROOT/$REV"
 if test ! -d "$PROJECT"; then
+  # An official Codespace stop/start can recycle /tmp while preserving the
+  # source Git database. Repair ONLY this exact already-missing temporary
+  # photo worktree registration; never prune unrelated worktrees or delete
+  # any existing project directory, tracked edit, or asset.
+  if test ! -e "$PROJECT" &&
+     git -C "$SOURCE" worktree list --porcelain |
+       grep -Fx -- "worktree $PROJECT" >/dev/null; then
+    if git -C "$SOURCE" worktree remove --force "$PROJECT" >/dev/null 2>&1; then
+      echo AARIS_PROBE_STALE_WORKTREE_REGISTRATION_REPAIRED
+    else
+      echo AARIS_PROBE_STALE_WORKTREE_REGISTRATION_REPAIR_FAILED
+      exit 13
+    fi
+  fi
   umask 077
   if ! GIT_LFS_SKIP_SMUDGE=1 git -C "$SOURCE" \
       -c filter.lfs.process= -c filter.lfs.smudge=cat \
