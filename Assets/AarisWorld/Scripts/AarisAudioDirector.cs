@@ -246,6 +246,8 @@ namespace Aaris.MapReview
             previousY = pos.y;
             PlayScheduled();
             if (drop == null) drop = GetComponent<AarisOfflineDrop>();
+            if (vehicle == null) vehicle = GetComponent<AarisVehicleSession>();
+            if (combat == null) combat = GetComponent<AarisBattleActions>();
             bool airborneDrop = drop != null && drop.enabled && !drop.HasLanded;
             bool driving = vehicle != null && vehicle.IsDriving;
 
