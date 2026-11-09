@@ -1,0 +1,43 @@
+name: Verify native Android v7 build identity
+on:
+  pull_request:
+    paths:
+      - 'Assets/AarisWorld/Editor/AarisCodespaceAndroidBuild.cs'
+      - 'Tools/Codespaces/android_apk.sh'
+      - '.github/workflows/aaris-verify-native-v7.yml'
+permissions:
+  contents: read
+jobs:
+  verify-native-v7:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Static validation of native v7 build and fail-closed APK gate
+        run: |
+          set -Eeuo pipefail
+          bash -n Tools/Codespaces/android_apk.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          c=Path("Assets/AarisWorld/Editor/AarisCodespaceAndroidBuild.cs").read_text()
+          b=Path("Tools/Codespaces/android_apk.sh").read_text()
+          s=Path("ProjectSettings/ProjectSettings.asset").read_text()
+          required=[
+            'PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android,',
+            '"com.aaris.game"', 'PlayerSettings.Android.bundleVersionCode = 7;',
+            'PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;',
+            'PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel33;',
+            'ANDROID_V7_SETTINGS_NOT_APPLIED', 'BuildPipeline.BuildPlayer(request)',
+          ]
+          for x in required: assert x in c,x
+          assert c.index('PlayerSettings.SetApplicationIdentifier(')<c.index('BuildPipeline.BuildPlayer(request)')
+          assert c.index('PlayerSettings.Android.targetSdkVersion =')<c.index('BuildPipeline.BuildPlayer(request)')
+          for x in ('apk_target_sdk=33', "com[.]aaris[.]game", "versionCode='7'",
+                    'APK_INSTALLABILITY_SIGNATURE_MANIFEST_API33_VERIFIED',
+                    'APK_V2_SIGNATURE_MISSING', 'APK_ZIPALIGN_VERIFICATION_FAILED'):
+              assert x in b,x
+          for x in ('Android: com.aaris.game','AndroidBundleVersionCode: 7','AndroidTargetSdkVersion: 33'):
+              assert x in s,x
+          print("AARIS_NATIVE_ANDROID_V7_STATIC_GATE_PASS")
+          PY

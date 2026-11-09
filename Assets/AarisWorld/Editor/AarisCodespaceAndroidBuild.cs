@@ -76,6 +76,21 @@ namespace Aaris.MapReview.Editor
                 // Do not overwrite a production keystore or change product ID.
                 EditorUserBuildSettings.buildAppBundle = false;
                 EditorUserBuildSettings.exportAsGoogleAndroidProject = false;
+                // Unity's imported PlayerSettings may retain stale values from a
+                // previous isolated Library import. Explicitly enforce the
+                // reviewed native v7 Android identity before BuildPipeline.
+                // This is an isolated worktree only, never the owner's GUI project.
+                PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android,
+                                                        "com.aaris.game");
+                PlayerSettings.bundleVersion = "0.3.1";
+                PlayerSettings.Android.bundleVersionCode = 7;
+                PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
+                PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel33;
+                if (PlayerSettings.GetApplicationIdentifier(NamedBuildTarget.Android) !=
+                        "com.aaris.game" ||
+                    PlayerSettings.Android.bundleVersionCode != 7 ||
+                    PlayerSettings.Android.targetSdkVersion != AndroidSdkVersions.AndroidApiLevel33)
+                    throw new InvalidOperationException("ANDROID_V7_SETTINGS_NOT_APPLIED");
                 PlayerSettings.Android.useCustomKeystore = false;
                 PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
                 PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android,
