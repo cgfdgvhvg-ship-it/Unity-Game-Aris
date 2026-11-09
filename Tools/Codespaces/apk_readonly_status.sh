@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import time
 import zipfile
 
 root=Path("/tmp/aaris-codespaces/android-apk")
@@ -27,7 +28,15 @@ def tail(p):
             return f.read().decode("utf-8","replace")
     except OSError:return ""
 def classify():
-    data="\n".join(tail(p) for p in private_logs.values())
+    # Report only failures in the ACTIVE stage. A recovered CLI 403 during
+    # module install is not a failed native Unity build hours later.
+    if build == "yes":
+        relevant = ("editor",)
+    elif install == "yes":
+        relevant = ("module", "install")
+    else:
+        relevant = ("editor", "install", "module")
+    data="\n".join(tail(private_logs[name]) for name in relevant)
     checks=[
         ("OUT_OF_SPACE",r"no space left|disk full|not enough disk"),
         ("ACCESS_DENIED",r"403|forbidden|access denied"),
@@ -41,6 +50,12 @@ def classify():
     for label,pattern in checks:
         if re.search(pattern,data,re.I):return label
     return "NO_CLASSIFIED_ERROR" if data else "NO_PRIVATE_LOG_YET"
+
+def log_age_seconds(p):
+    try:
+        return max(0, int(time.time() - p.stat().st_mtime))
+    except OSError:
+        return 0
 
 def process_info():
     try:
@@ -105,6 +120,7 @@ print("apk_unity_android_build_running="+build)
 print("apk_module_log_bytes="+str(size(private_logs["module"])))
 print("apk_install_log_bytes="+str(size(private_logs["install"])))
 print("apk_editor_log_bytes="+str(size(private_logs["editor"])))
+print("apk_editor_log_age_s="+str(log_age_seconds(private_logs["editor"])))
 print("apk_build_report="+status)
 print("apk_apk_bytes="+str(apk_bytes))
 print("apk_apk_zip="+apk_zip)
