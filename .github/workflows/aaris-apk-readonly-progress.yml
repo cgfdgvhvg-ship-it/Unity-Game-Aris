@@ -25,7 +25,7 @@ jobs:
           python3 - <<'PYSTATIC'
           from pathlib import Path
           script=Path('Tools/Codespaces/apk_readonly_status.sh').read_text()
-          source=script.split("python3 - <<'PY'\\n",1)[1].rsplit('\\nPY',1)[0]
+          source=script.split("python3 - <<'PY'\n",1)[1].rsplit('\nPY',1)[0]
           compile(source,'apk_readonly_status.py','exec')
           assert 'license status' not in script and 'gh release' not in script
           assert 'APK_READONLY_PROGRESS' in script
