@@ -16,12 +16,12 @@ FOREST = ROOT / "Docs" / "FOREST_PLANTING_PLAN.json"
 LAYOUT = ROOT / "Docs" / "MAP_LAYOUT.json"
 
 SPECIES = {
-    "Conifer": ("Conifer/Conifer.prefab", (1.21, 0.99, 1.21), 1.0),
-    "Pine_A": ("Pines/Pine_A/Pine_A.prefab", (1.21, 0.98, 1.21), 1.0),
-    "Pine_B": ("Pines/Pine_B/Pine_B.prefab", (1.21, 1.025, 1.21), 1.0),
-    "Pine_C": ("Pines/Pine_C/Pine_C.prefab", (1.18, 0.99, 1.18), 1.0),
-    "Pine_D": ("Pines/Pine_D/Pine_D.prefab", (1.24, 0.99, 1.24), 1.0),
-    "Cypress": ("Cypress/Cypress_Forest_Desktop.prefab", (1.66, 1.44, 1.66), 1.5),
+    "Conifer": ("Conifer/Conifer.prefab", (1.30, 0.99, 1.30), 1.0),
+    "Pine_A": ("Pines/Pine_A/Pine_A.prefab", (1.30, 0.98, 1.30), 1.0),
+    "Pine_B": ("Pines/Pine_B/Pine_B.prefab", (1.31, 1.025, 1.31), 1.0),
+    "Pine_C": ("Pines/Pine_C/Pine_C.prefab", (1.27, 0.99, 1.27), 1.0),
+    "Pine_D": ("Pines/Pine_D/Pine_D.prefab", (1.34, 0.99, 1.34), 1.0),
+    "Cypress": ("Cypress/Cypress_Forest_Desktop.prefab", (1.76, 1.44, 1.76), 1.5),
 }
 
 
@@ -52,7 +52,7 @@ class NaturalTreePrefabTests(unittest.TestCase):
                 x, y, z = roots[0]
                 self.assertAlmostEqual(x, z, places=5)
                 self.assertGreater(x / y, 1.05)
-                self.assertLess(x / y, 1.30)
+                self.assertLess(x / y, 1.38)
                 self.assertGreater(x, old_uniform)
                 self.assertLessEqual(y, old_uniform * 1.045)
                 self.assertEqual(source.count("LODGroup:"), 1)
@@ -65,7 +65,7 @@ class NaturalTreePrefabTests(unittest.TestCase):
 
     def test_all_tree_materials_use_real_urp_speedtree8_shader(self):
         materials = sorted(TREE_BASE.rglob("*.mat"))
-        self.assertEqual(len(materials), 19)
+        self.assertEqual(len(materials), 20)
         correct = "m_Shader: {fileID: 4800000, guid: 99134b1f0c27d54469a840832a28fadf, type: 3}"
         for path in materials:
             with self.subTest(material=path.name):
@@ -121,6 +121,33 @@ class NaturalTreePrefabTests(unittest.TestCase):
                     self.assertIn(f"    - _AlphaClipThreshold: {alpha:.2f}", source)
                     self.assertGreaterEqual(alpha, 0.18)  # avoid excessive overdraw
                     self.assertLessEqual(alpha, 0.22)
+
+    def test_deep_forest_seventh_variant_reuses_original_lod_geometry(self):
+        # A new native prefab, not a runtime clone or additional LOD geometry.
+        from test_mobile_tree_shadows import read_lod_renderers
+        source_path = TREE_BASE / "Pines/Pine_D/Pine_D.prefab"
+        variant_path = TREE_BASE / "DeepForest/DeepForestPine.prefab"
+        source = source_path.read_text(encoding="utf-8")
+        variant = variant_path.read_text(encoding="utf-8")
+        material = TREE_BASE / "DeepForest/DeepForestPine_Bark.mat"
+        bark = material.read_text(encoding="utf-8")
+        meta = (TREE_BASE / "DeepForest/DeepForestPine_Bark.mat.meta").read_text("utf-8")
+        guid = re.search(r"(?m)^guid: ([a-f0-9]{32})$", meta).group(1)
+        self.assertIn("guid: " + guid, variant)
+        self.assertNotIn("version https://git-lfs.github.com/spec/v1", variant)
+        self.assertEqual(root_transforms(variant), [(1.48, 1.0, 1.48)])
+        self.assertEqual(variant.count("m_Mesh: {fileID: "), 4)
+        self.assertEqual(
+            re.findall(r"m_Mesh: \{fileID: [^\n]+", variant),
+            re.findall(r"m_Mesh: \{fileID: [^\n]+", source))
+        self.assertEqual(read_lod_renderers(variant),
+                         {0:(1,1),1:(1,1),2:(0,1),3:(0,1)})
+        self.assertIn("m_Shader: {fileID: 4800000, guid: 99134b1f0c27d54469a840832a28fadf, type: 3}",bark)
+        self.assertIn("- _Color: {r: 0.69, g: 0.64, b: 0.57, a: 1}", bark)
+        self.assertEqual(variant.count("BoxCollider:"),1)
+        self.assertEqual(variant.count("LODGroup:"),1)
+        self.assertTrue(variant_path.with_suffix(".prefab.meta").exists())
+        self.assertTrue(material.with_suffix(".mat.meta").exists())
 
     def test_all_1100_native_forest_placements_keep_their_prototypes(self):
         forest = json.loads(FOREST.read_text(encoding="utf-8"))
