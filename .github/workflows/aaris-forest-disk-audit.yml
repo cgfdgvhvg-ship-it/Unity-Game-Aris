@@ -23,7 +23,7 @@ jobs:
           set -Eeuo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import os,subprocess
+          import os,subprocess,pathlib
           for p in ("/tmp","/workspaces","/tmp/aaris-codespaces","/tmp/aaris-native-photo-worktrees","/tmp/aaris-preserved-lfs-cache"):
               try:
                   d=os.statvfs(p)
@@ -40,8 +40,13 @@ jobs:
                   result=subprocess.run(["git","-C",str(z),"status","--porcelain","-uno"],
                         capture_output=True,text=True,timeout=35)
                   modified=len([k for k in result.stdout.splitlines() if k.strip()])
+                  untracked=subprocess.run(["git","-C",str(z),"ls-files","--others","--exclude-standard"],capture_output=True,text=True,timeout=45)
+                  u=[s for s in untracked.stdout.splitlines() if s.strip()]
+                  from collections import Counter
+                  ext=Counter(pathlib.Path(k).suffix or "(none)" for k in u)
                   print("WORKTREE",z.name[:10],"size_mib",mib,
-                        "status_known",result.returncode==0,"tracked_changes",modified)
+                        "status_known",result.returncode==0,"tracked_changes",modified,
+                        "untracked_count",len(u),"untracked_suffixes",dict(ext.most_common(6)))
           for p in ("/tmp/aaris-codespaces/scene-probe/UnityTemp",
                     "/tmp/aaris-codespaces/deep-forest-bake/UnityTemp",
                     "/tmp/aaris-codespaces/tree-mass/UnityTemp"):
