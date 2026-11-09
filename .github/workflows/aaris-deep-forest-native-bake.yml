@@ -134,7 +134,7 @@ jobs:
             test "$(git check-attr filter -- "$asset" | awk '{print $3}')" = lfs
             git add -- "$asset"
             pointer="$(git show ":$asset")"
-            [[ "$pointer" == "version https://git-lfs.github.com/spec/v1"
+            [[ "$pointer" == "version https://git-lfs.github.com/spec/v1"* ]] || {
               echo FOREST_NATIVE_NOT_LFS_STAGED
               exit 22
             }
