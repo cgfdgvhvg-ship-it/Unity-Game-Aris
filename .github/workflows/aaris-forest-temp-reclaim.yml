@@ -1,3 +1,4 @@
+# Diagnostic-only rerun 2026-11-09: reclaim exclusively preverified ignored scratch Library caches.
 name: Reclaim verified Unity temporary review worktree
 on:
   push:
