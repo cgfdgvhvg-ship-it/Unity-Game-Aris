@@ -67,37 +67,89 @@ echo "apk_tmp_free_gb=$(df -BG /tmp | awk 'END {gsub(/G/,"",$4);print $4}')"
 echo APK_PREFLIGHT_RECORDED
 if test "$MODE" = preflight; then exit 0; fi
 
-# Use only Unity's supported Android modules, never an arbitrary Android SDK.
+# Official Unity CLI/Hub installations are the only supported source of
+# Android SDK/NDK/JDK modules. If the original Unity Editor was installed
+# manually, install the exact *same version* to isolated /tmp. Never touch the
+# original Editor binary, its cache, the original GUI project or license files.
 if test "$APK_MODULE" != present || test "$SDK" != present ||
    test "$NDK" != present || test "$JDK" != present; then
   if test -z "$CLI"; then echo APK_MODULE_INSTALL_CLI_MISSING; exit 16; fi
   echo APK_MODULE_INSTALL_START
-  # Unity CLI can manage Editors installed via Hub/CLI. Keep download output private.
-  if ! timeout 5700 env HOME="$AUTH_HOME" \
+  MODULE_OK=no
+  if timeout 1200 env HOME="$AUTH_HOME" \
        UNITY_CLI_HOME="$AUTH_HOME/.local/share/aaris-unity-cli" \
        "$CLI" install-modules -e "$VERSION" -m android --cm \
        >"$BASE/private-module-install.log" 2>&1; then
-    echo APK_MODULE_INSTALL_FAILED_NEEDS_HUB_MANAGED_EDITOR
-    exit 17
+    MODULE_OK=yes
+    echo APK_EXISTING_CLI_MANAGED_EDITOR_MODULES_INSTALLED
+  else
+    echo APK_EDITOR_NOT_CLI_MANAGED_USING_ISOLATED_INSTALL
   fi
-  # The CLI can install its own managed copy; re-detect exact version, never use
-  # a different Unity version and never overwrite original Editor.
-  for candidate in "$EDITOR" "$AUTH_HOME/.local/share/unity3d/Hub/Editor/$VERSION/Editor/Unity" \
-    "$AUTH_HOME/Unity/Hub/Editor/$VERSION/Editor/Unity" \
-    "$AUTH_HOME/.local/share/aaris-unity-editors/$VERSION/Editor/Unity"; do
-    if test -x "$candidate" && test -d "$(dirname "$candidate")/Data/PlaybackEngines/AndroidPlayer/Variations"; then
-      EDITOR="$candidate"; break
+  if test "$MODULE_OK" = no; then
+    test "$(df -BG /tmp | awk 'END {gsub(/G/,"",$4);print $4}')" -ge 25 || {
+      echo APK_ISOLATED_INSTALL_INSUFFICIENT_TMP_DISK; exit 17;
+    }
+    MANAGED="$BASE/managed-editors"
+    mkdir -p "$MANAGED"
+    # The CLI install-path preference is user-local configuration. Save and
+    # restore it on exit; do NOT reconfigure or move original Unity installs.
+    PREV_INSTALL_PATH="$(env HOME="$AUTH_HOME" \
+       UNITY_CLI_HOME="$AUTH_HOME/.local/share/aaris-unity-cli" \
+       "$CLI" install-path --get 2>/dev/null | tail -n1 || true)"
+    restore_install_path() {
+      if test -n "$PREV_INSTALL_PATH" && test -d "$PREV_INSTALL_PATH"; then
+        env HOME="$AUTH_HOME" \
+           UNITY_CLI_HOME="$AUTH_HOME/.local/share/aaris-unity-cli" \
+           "$CLI" install-path --set "$PREV_INSTALL_PATH" \
+           >"$BASE/private-install-path-restore.log" 2>&1 || true
+      fi
+    }
+    trap restore_install_path EXIT
+    if ! env HOME="$AUTH_HOME" \
+       UNITY_CLI_HOME="$AUTH_HOME/.local/share/aaris-unity-cli" \
+       "$CLI" install-path --set "$MANAGED" \
+       >"$BASE/private-install-path-setup.log" 2>&1; then
+      echo APK_UNITY_CLI_TEMP_INSTALL_PATH_FAILED
+      exit 18
+    fi
+    echo APK_ISOLATED_MANAGED_EDITOR_DOWNLOAD_STARTED
+    if ! timeout 10500 env HOME="$AUTH_HOME" \
+       UNITY_CLI_HOME="$AUTH_HOME/.local/share/aaris-unity-cli" \
+       "$CLI" install "$VERSION" -c de8167e7440c -m android --cm --yes --accept-eula \
+       >"$BASE/private-isolated-install.log" 2>&1; then
+      echo APK_MANAGED_EDITOR_INSTALL_FAILED
+      exit 19
+    fi
+    restore_install_path
+    trap - EXIT
+    echo APK_ISOLATED_MANAGED_EDITOR_INSTALLED
+  fi
+  # A CLI-managed copy might be in its own versioned parent directory.
+  # Never silently build with an incompatible Unity version.
+  LOOKUP=("$EDITOR"
+    "$BASE/managed-editors/$VERSION/Editor/Unity"
+    "$AUTH_HOME/Unity/Hub/Editor/$VERSION/Editor/Unity"
+    "$AUTH_HOME/.local/share/unity3d/Hub/Editor/$VERSION/Editor/Unity")
+  if test -d "$BASE/managed-editors"; then
+    while IFS= read -r candidate; do LOOKUP+=("$candidate"); done < <(
+      find "$BASE/managed-editors" -maxdepth 7 -path '*/Editor/Unity' -print
+    )
+  fi
+  MATCH=""
+  for candidate in "${LOOKUP[@]}"; do
+    mod="$(dirname "$candidate")/Data/PlaybackEngines/AndroidPlayer"
+    if test -x "$candidate" && test -d "$mod/Variations" &&
+       test -d "$mod/SDK/platform-tools" && test -d "$mod/SDK/build-tools" &&
+       test -d "$mod/NDK/toolchains" && test -x "$mod/OpenJDK/bin/java"; then
+      MATCH="$candidate"
+      break
     fi
   done
-  E_ROOT="$(dirname "$EDITOR")"
-  ANDROID="$E_ROOT/Data/PlaybackEngines/AndroidPlayer"
-  if ! test -d "$ANDROID/Variations" ||
-     ! test -d "$ANDROID/SDK/build-tools" ||
-     ! test -d "$ANDROID/NDK/toolchains" ||
-     ! test -x "$ANDROID/OpenJDK/bin/java"; then
-    echo APK_MODULE_INSTALL_INCOMPLETE; exit 18
+  if test -z "$MATCH"; then
+    echo APK_ANDROID_MODULES_NOT_DISCOVERED; exit 20
   fi
-  echo APK_ANDROID_MODULES_INSTALLED
+  EDITOR="$MATCH"
+  echo APK_ANDROID_MODULES_INSTALLED_AND_VERIFIED
 fi
 if pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then
   echo APK_EXISTING_EDITOR_BUSY_NO_FORCE_KILL; exit 19
