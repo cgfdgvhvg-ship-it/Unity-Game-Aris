@@ -141,7 +141,7 @@ namespace Aaris.MapReview.Editor
                     {
                         // New silhouette and darker bark, but same original
                         // native four LOD mesh references and tree count.
-                        next[old.Length]=new TreePrototype{prefab=variant,bendFactor=0f};
+                        next[old.Length]=new TreePrototype{prefab=variant,bendFactor=old[targetIndices.Min()].bendFactor};
                     }
                     var tile=new TileReport{
                         asset=path,terrainName=terrain.name,
