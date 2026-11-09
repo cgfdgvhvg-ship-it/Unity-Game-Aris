@@ -125,6 +125,7 @@ jobs:
               exit 20
             }
           grep -qxF 'APK_UPLOAD_READY' apk-evidence/build-status.txt
+          grep -qxF 'APK_INSTALLABILITY_SIGNATURE_MANIFEST_API33_VERIFIED' apk-evidence/build-status.txt
           grep -E '^APK_[A-Z_]+$|^apk_bytes=[0-9]+$|^apk_commit=[0-9a-f]{40}$' \
             apk-evidence/build-status.txt > apk-evidence/build-status-safe.txt
           cat apk-evidence/build-status-safe.txt
@@ -134,9 +135,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          timeout 1100 gh codespace cp -c "$CODESPACE" \
+          # Legacy GH CLI SCP rejected an existing absolute remote APK path.
+          # -e uses actual remote-path expansion; SSH binary stream is a
+          # checksum-validated fallback, not another Unity build.
+          if ! timeout 1100 gh codespace cp -e -c "$CODESPACE" \
             'remote:/tmp/aaris-codespaces/android-apk/Build/AarisGame.apk' \
-            dist/AarisGame.apk
+            dist/AarisGame.apk; then
+            rm -f dist/AarisGame.apk
+            timeout 1100 gh codespace ssh -c "$CODESPACE" -- \
+              'cat /tmp/aaris-codespaces/android-apk/Build/AarisGame.apk' \
+              > dist/AarisGame.apk
+          fi
           timeout 120 gh codespace ssh -c "$CODESPACE" -- \
             'cat /tmp/aaris-codespaces/android-apk/apk-sha256.txt' \
             > dist/AarisGame.sha256
