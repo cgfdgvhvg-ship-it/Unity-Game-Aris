@@ -387,8 +387,8 @@ namespace Aaris.MapReview.Editor
         {
             string temp = destination + ".writing";
             File.WriteAllText(temp, content);
-            if (File.Exists(destination)) File.Delete(destination);
-            File.Move(temp, destination);
+            if (File.Exists(destination)) File.Replace(temp, destination, null);
+            else File.Move(temp, destination);
         }
         private static void Cleanup()
         {

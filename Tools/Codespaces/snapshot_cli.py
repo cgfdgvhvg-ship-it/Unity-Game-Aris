@@ -156,8 +156,8 @@ def submit(shots, wait, timeout, out=None, out_dir=None):
                     for s in shots:
                         copy_photo(data, s["id"], Path(out_dir) / (s["id"] + ".png"))
                 return 0 if data["state"] == "passed" else 3
-        if not health()["fresh"]:
-            raise RuntimeError("Editor heartbeat lost: inspect request " + request_id)
+        if not health()["fresh"] and not (QUEUE / (request_id + ".json.processing")).exists():
+            raise RuntimeError("Editor heartbeat lost before processing: inspect request " + request_id)
         time.sleep(0.3)
     raise RuntimeError("Capture timed out, not verified: " + request_id)
 
