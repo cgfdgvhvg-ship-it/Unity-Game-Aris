@@ -72,9 +72,194 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p dist
-          timeout 480 gh codespace ssh -c "$CODESPACE" -- 'bash -s' \
+          if ! timeout 480 gh codespace ssh -c "$CODESPACE" -- 'bash -s' \
             < Tools/Codespaces/apk_existing_installfix_verify.sh \
-            > "$RUNNER_TEMP/apk-v7-verified.txt"
+            > "$RUNNER_TEMP/apk-v7-verified.txt"; then
+            grep -E '^(APK_INSTALLFIX_[A-Z_]+|apk_actual_package=[a-zA-Z0-9_.]+|apk_actual_version_code=[0-9]+)
+          grep -qxF APK_INSTALLFIX_READY_FOR_RELEASE "$RUNNER_TEMP/apk-v7-verified.txt"
+          grep -qxF APK_INSTALLFIX_NEW_GAME_V7_SIGNED_API36_VERIFIED "$RUNNER_TEMP/apk-v7-verified.txt"
+          grep -qxF apk_bytes=362307306 "$RUNNER_TEMP/apk-v7-verified.txt"
+          echo APK_EXISTING_AARIS_GAME_V7_CRYPTO_VERIFIED
+      - name: Transfer existing APK and verify its SHA256 without rebuilding Unity
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          set -Eeuo pipefail
+          if ! timeout 2400 gh codespace cp -e -c "$CODESPACE" \
+             'remote:/tmp/aaris-codespaces/android-apk/Build/AarisGame.apk' \
+             dist/AarisGame.apk; then
+            rm -f dist/AarisGame.apk
+            timeout 2400 gh codespace ssh -c "$CODESPACE" -- \
+              'cat /tmp/aaris-codespaces/android-apk/Build/AarisGame.apk' > dist/AarisGame.apk
+          fi
+          timeout 180 gh codespace ssh -c "$CODESPACE" -- \
+            'cat /tmp/aaris-codespaces/android-apk/apk-sha256.txt' \
+            > dist/AarisGame.sha256
+          cd dist
+          sha256sum -c AarisGame.sha256
+          python3 - <<'PY'
+          import os,zipfile
+          path="AarisGame.apk"
+          assert os.stat(path).st_size==362307306
+          with zipfile.ZipFile(path) as z:
+              items=set(z.namelist())
+              assert "AndroidManifest.xml" in items
+              assert any(x.endswith(".dex") for x in items)
+              assert any(x.startswith("lib/arm64-v8a/") and x.endswith(".so") for x in items)
+          print("APK_INSTALLFIX_TRANSFER_HASH_AND_ARM64_VERIFIED")
+          PY
+      - name: Publish Android test APK with source revision and compatibility caveat
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          TAG=apk-installfix-v7-20261109
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo APK_INSTALLFIX_RELEASE_ALREADY_EXISTS
+            exit 41
+          fi
+          cat > "$RUNNER_TEMP/aaris-v7-notes.md" <<'EOF'
+          Aaris Game Android ARM64 test APK (v0.3.1, versionCode 7).
+          Source: 93ee9c452785741aff302d425ef315f664b13f5f
+          Package: com.aaris.game (different from old com.aaris.mapexplorer).
+          Unity 6000.3.26f1 IL2CPP; four native terrain tiles.
+          Android min API 26; actual built target API 36 (Unity did not honor
+          the intended API 33 saved setting). Android 13 can run applications
+          with a later target SDK; this does not guarantee on-device install.
+          Official Android apksigner v2, zipalign, AAPT identity, SHA-256 and
+          AndroidManifest + ARM64 contents were validated before uploading.
+          This is a debug-signed test APK, not a Play Store release. Download
+          AarisGame.apk and verify against AarisGame.sha256.
+          Please report the phone's exact installation result.
+          EOF
+          gh release create "$TAG" dist/AarisGame.apk dist/AarisGame.sha256 \
+            -R "$GITHUB_REPOSITORY" \
+            --target 93ee9c452785741aff302d425ef315f664b13f5f \
+            --title "Aaris Game Android install-fix test v0.3.1" \
+            --notes-file "$RUNNER_TEMP/aaris-v7-notes.md" --prerelease
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json assets \
+            --jq '[.assets[].name] | sort | join(",")' | \
+            grep -qx 'AarisGame.apk,AarisGame.sha256'
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json url --jq .url \
+            > "$RUNNER_TEMP/v7-release-url.txt"
+          echo APK_INSTALLFIX_GITHUB_RELEASE_PUBLISHED
+      - name: Post success with real link, or failure without private build logs
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ job.status }}
+        run: |
+          set -Eeuo pipefail
+          {
+            echo '**AARIS GAME V7 INSTALL-FIX APK RELEASE**'
+            echo "Result: $RESULT"
+            if test -s "$RUNNER_TEMP/v7-release-url.txt"; then
+              echo 'Validated new APK:'
+              cat "$RUNNER_TEMP/v7-release-url.txt"
+            fi
+            if test -s "$RUNNER_TEMP/apk-v7-verified.txt"; then
+              echo 'Sanitized actual Android package evidence:'
+              grep -E '^apk_actual_(package|version_code)=[A-Za-z0-9_.]+
+          } > "$RUNNER_TEMP/v7-owner-result.md"
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" -F "$RUNNER_TEMP/v7-owner-result.md"
+ \
+              "$RUNNER_TEMP/apk-v7-verified.txt" || true
+            exit 33
+          fi
+          grep -qxF APK_INSTALLFIX_READY_FOR_RELEASE "$RUNNER_TEMP/apk-v7-verified.txt"
+          grep -qxF APK_INSTALLFIX_NEW_GAME_V7_SIGNED_API36_VERIFIED "$RUNNER_TEMP/apk-v7-verified.txt"
+          grep -qxF apk_bytes=362307306 "$RUNNER_TEMP/apk-v7-verified.txt"
+          echo APK_EXISTING_AARIS_GAME_V7_CRYPTO_VERIFIED
+      - name: Transfer existing APK and verify its SHA256 without rebuilding Unity
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          set -Eeuo pipefail
+          if ! timeout 2400 gh codespace cp -e -c "$CODESPACE" \
+             'remote:/tmp/aaris-codespaces/android-apk/Build/AarisGame.apk' \
+             dist/AarisGame.apk; then
+            rm -f dist/AarisGame.apk
+            timeout 2400 gh codespace ssh -c "$CODESPACE" -- \
+              'cat /tmp/aaris-codespaces/android-apk/Build/AarisGame.apk' > dist/AarisGame.apk
+          fi
+          timeout 180 gh codespace ssh -c "$CODESPACE" -- \
+            'cat /tmp/aaris-codespaces/android-apk/apk-sha256.txt' \
+            > dist/AarisGame.sha256
+          cd dist
+          sha256sum -c AarisGame.sha256
+          python3 - <<'PY'
+          import os,zipfile
+          path="AarisGame.apk"
+          assert os.stat(path).st_size==362307306
+          with zipfile.ZipFile(path) as z:
+              items=set(z.namelist())
+              assert "AndroidManifest.xml" in items
+              assert any(x.endswith(".dex") for x in items)
+              assert any(x.startswith("lib/arm64-v8a/") and x.endswith(".so") for x in items)
+          print("APK_INSTALLFIX_TRANSFER_HASH_AND_ARM64_VERIFIED")
+          PY
+      - name: Publish Android test APK with source revision and compatibility caveat
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          TAG=apk-installfix-v7-20261109
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo APK_INSTALLFIX_RELEASE_ALREADY_EXISTS
+            exit 41
+          fi
+          cat > "$RUNNER_TEMP/aaris-v7-notes.md" <<'EOF'
+          Aaris Game Android ARM64 test APK (v0.3.1, versionCode 7).
+          Source: 93ee9c452785741aff302d425ef315f664b13f5f
+          Package: com.aaris.game (different from old com.aaris.mapexplorer).
+          Unity 6000.3.26f1 IL2CPP; four native terrain tiles.
+          Android min API 26; actual built target API 36 (Unity did not honor
+          the intended API 33 saved setting). Android 13 can run applications
+          with a later target SDK; this does not guarantee on-device install.
+          Official Android apksigner v2, zipalign, AAPT identity, SHA-256 and
+          AndroidManifest + ARM64 contents were validated before uploading.
+          This is a debug-signed test APK, not a Play Store release. Download
+          AarisGame.apk and verify against AarisGame.sha256.
+          Please report the phone's exact installation result.
+          EOF
+          gh release create "$TAG" dist/AarisGame.apk dist/AarisGame.sha256 \
+            -R "$GITHUB_REPOSITORY" \
+            --target 93ee9c452785741aff302d425ef315f664b13f5f \
+            --title "Aaris Game Android install-fix test v0.3.1" \
+            --notes-file "$RUNNER_TEMP/aaris-v7-notes.md" --prerelease
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json assets \
+            --jq '[.assets[].name] | sort | join(",")' | \
+            grep -qx 'AarisGame.apk,AarisGame.sha256'
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json url --jq .url \
+            > "$RUNNER_TEMP/v7-release-url.txt"
+          echo APK_INSTALLFIX_GITHUB_RELEASE_PUBLISHED
+      - name: Post success with real link, or failure without private build logs
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ job.status }}
+        run: |
+          set -Eeuo pipefail
+          {
+            echo '**AARIS GAME V7 INSTALL-FIX APK RELEASE**'
+            echo "Result: $RESULT"
+            if test -s "$RUNNER_TEMP/v7-release-url.txt"; then
+              echo 'Validated new APK:'
+              cat "$RUNNER_TEMP/v7-release-url.txt"
+            fi
+            echo "Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/v7-owner-result.md"
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" -F "$RUNNER_TEMP/v7-owner-result.md"
+ \
+                "$RUNNER_TEMP/apk-v7-verified.txt" || true
+            fi
+            echo "Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/v7-owner-result.md"
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" -F "$RUNNER_TEMP/v7-owner-result.md"
+ \
+              "$RUNNER_TEMP/apk-v7-verified.txt" || true
+            exit 33
+          fi
           grep -qxF APK_INSTALLFIX_READY_FOR_RELEASE "$RUNNER_TEMP/apk-v7-verified.txt"
           grep -qxF APK_INSTALLFIX_NEW_GAME_V7_SIGNED_API36_VERIFIED "$RUNNER_TEMP/apk-v7-verified.txt"
           grep -qxF apk_bytes=362307306 "$RUNNER_TEMP/apk-v7-verified.txt"
