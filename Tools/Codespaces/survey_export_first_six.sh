@@ -5,15 +5,6 @@ set -euo pipefail
 python3 - <<'PY'
 import base64,pathlib,shutil,subprocess,sys
 root=pathlib.Path('/tmp/aaris-codespaces/scene-probe')
-files=[root/f'survey-{i:02}-{kind}.png' for i in range(1,4) for kind in ('detail','context')]
-for path in files:
-    if not path.is_file() or not 8192<path.stat().st_size<8*1024*1024:
-        raise SystemExit(31)
-    with path.open('rb') as f:
-        if f.read(8)!=b'\x89PNG\r\n\x1a\n':raise SystemExit(32)
-# Prefer the SIX-FRAME contact sheet that Unity itself already assembled.
-# A completed survey has verified all 24 source frames and 4 native sheets:
-# no ffmpeg, ImageMagick or Pillow is needed in the lightweight Codespace.
 import json,struct
 native=root/'survey-sheet-1.png'
 report=root/'survey-report.json'
@@ -33,6 +24,15 @@ if native.is_file() and report.is_file():
     except (OSError,ValueError,TypeError,struct.error):
         pass
 # Early partial surveys can still use ffmpeg when present.
+files=[root/f'survey-{i:02}-{kind}.png' for i in range(1,4) for kind in ('detail','context')]
+for path in files:
+    if not path.is_file() or not 8192<path.stat().st_size<8*1024*1024:
+        raise SystemExit(31)
+    with path.open('rb') as f:
+        if f.read(8)!=b'\x89PNG\r\n\x1a\n':raise SystemExit(32)
+# Prefer the SIX-FRAME contact sheet that Unity itself already assembled.
+# A completed survey has verified all 24 source frames and 4 native sheets:
+# no ffmpeg, ImageMagick or Pillow is needed in the lightweight Codespace.
 exe=shutil.which('ffmpeg')
 if not exe:raise SystemExit(33)
 out=root/'survey-first-six-preview.png'
