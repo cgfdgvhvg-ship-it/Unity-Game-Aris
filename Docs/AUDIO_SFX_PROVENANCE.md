@@ -25,6 +25,12 @@ The controlled importer `Tools/Audio/import_cc0_kenney.py` pins that full commit
 ## 2 GB Android performance target
 The samples are embedded in the APK. Short events use `DecompressOnLoad` + ADPCM; 1.6-second airplane/wind/car loops use `CompressedInMemory` + Vorbis as specified in committed AudioImporter metadata. Unity transcodes at import/build; verify actual Android import settings, memory, DSP CPU, and voices in Unity Profiler. The cap is 12 concurrent event sources plus 3 loop sources; there is no AudioSource spawn per shot. Consider voice priority/attenuation after measurements, not guesses.
 
+## Latest native Unity 6000.3.26f1 evidence
+
+On GitHub Actions [run 42552997584](https://github.com/sundamunda289-art/Unity-Game-Aris/actions/runs/42552997584), the licensed Unity Editor imported all **42 AudioClip assets** (27 original WAV and 15 recorded CC0 OGG) with the exact marker `AARIS_AUDIO_NATIVE_42_CLIPS_IMPORTED`. The same isolated-worktree run independently verified **793** native Git LFS objects and returned `AARIS_AUDIO_NATIVE_COMPILE_EXIT_ZERO_NO_CS_ERRORS`. The source workspace and its unsaved edits were not reset or overwritten.
+
+This verifies actual Unity importer compatibility and C# compilation, **not** playback in Play Mode, stereo directional positioning on a phone, or Android decoded memory/DSP budget. The independent main-scene 60-frame Play Mode probe currently fails with one **UnityEditor lifecycle ARRAY_INDEX** exception; do not call the game fully Play-verified or hide this failure.
+
 ## Verification gate
 The generator workflow validates WAV format and deterministic hashes, **not C# compilation or genuine Unity audio playback**. Require on the exact review branch: successful Unity 6000.3.26f1 Editor import with zero C# compile errors; genuine native-map scene render and Play Mode, then phone headphone-direction/volume review and low-memory Android profiling. Keep native scene/TerrainData/prefab/mesh/`.meta` edits isolated and manually review before merging. A stale/blocked Editor process is not evidence of a visual fix.
 
