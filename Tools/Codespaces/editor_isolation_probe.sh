@@ -93,6 +93,8 @@ public static class AarisEmptyPlayTransitionProbe
 {
     private const string State = "aaris.empty.play.state";
     private const string Errors = "aaris.empty.play.errors";
+    private const string ErrorFamily = "aaris.empty.play.first.family";
+    private const string ErrorSource = "aaris.empty.play.first.source";
     private const string Deadline = "aaris.empty.play.deadline";
     private static bool exiting;
 
@@ -105,6 +107,8 @@ public static class AarisEmptyPlayTransitionProbe
     public static void Begin()
     {
         SessionState.SetInt(Errors, 0);
+        SessionState.SetString(ErrorFamily, "NONE");
+        SessionState.SetString(ErrorSource, "NONE");
         SessionState.SetFloat(Deadline,
             (float)EditorApplication.timeSinceStartup + 75f);
         SessionState.SetString(State, "starting");
@@ -116,7 +120,27 @@ public static class AarisEmptyPlayTransitionProbe
     {
         if (SessionState.GetString(State, "") == "") return;
         if (kind == LogType.Error || kind == LogType.Exception || kind == LogType.Assert)
-            SessionState.SetInt(Errors, SessionState.GetInt(Errors, 0) + 1);
+        {
+            int count = SessionState.GetInt(Errors, 0);
+            if (count == 0)
+            {
+                string family = message.Contains("IndexOutOfRangeException") ||
+                                message.Contains("ArgumentOutOfRangeException") ? "ARRAY_INDEX" :
+                    message.Contains("NullReferenceException") ? "NULL_REFERENCE" :
+                    message.Contains("MissingReferenceException") ? "MISSING_REFERENCE" :
+                    message.Contains("InvalidOperationException") ? "INVALID_OPERATION" :
+                    message.Contains("ArgumentException") ? "INVALID_ARGUMENT" :
+                    message.Contains("UnityException") ? "UNITY_EXCEPTION" :
+                    kind == LogType.Assert ? "ASSERTION" : "UNCLASSIFIED";
+                string source = trace.Contains("UnityEditor.EditorApplication") ? "EDITOR_LIFECYCLE" :
+                    trace.Contains("UnityEditor.") ? "UNITY_EDITOR" :
+                    trace.Contains("Aaris.") ? "GAME_SCRIPT" :
+                    trace.Contains("UnityEngine.") ? "UNITY_ENGINE" : "UNCLASSIFIED";
+                SessionState.SetString(ErrorFamily, family);
+                SessionState.SetString(ErrorSource, source);
+            }
+            SessionState.SetInt(Errors, count + 1);
+        }
     }
 
     private static void Tick()
@@ -146,7 +170,14 @@ public static class AarisEmptyPlayTransitionProbe
             exiting = true;
             int errors = SessionState.GetInt(Errors, 0);
             if (errors == 0) Debug.Log("AARIS_EMPTY_PLAY_60_FRAMES_PASS");
-            else Debug.Log("AARIS_EMPTY_PLAY_60_FRAMES_ERRORS");
+            else
+            {
+                Debug.Log("AARIS_EMPTY_PLAY_60_FRAMES_ERRORS");
+                Debug.Log("AARIS_EMPTY_PLAY_FIRST_ERROR_FAMILY_" +
+                    SessionState.GetString(ErrorFamily, "UNCLASSIFIED"));
+                Debug.Log("AARIS_EMPTY_PLAY_FIRST_ERROR_SOURCE_" +
+                    SessionState.GetString(ErrorSource, "UNCLASSIFIED"));
+            }
             SessionState.SetString(State, "");
             EditorApplication.Exit(errors == 0 ? 0 : 2);
         }
@@ -161,6 +192,23 @@ timeout --kill-after=10s 115s env DISPLAY=:99 TMPDIR="$WORK/UnityTemp" LIBGL_ALW
   -logFile "$WORK/empty-play.log.private" \
   >"$WORK/empty-play.stdout.private" 2>"$WORK/empty-play.stderr.private" || rc=$?
 report EMPTY_PLAY "$rc"
+# Emit only C#-generated allowlisted diagnostic enums; never publish raw
+# Unity logs, messages, stack traces or machine-specific paths.
+if grep -Fq AARIS_EMPTY_PLAY_60_FRAMES_ERRORS "$WORK/empty-play.log.private" 2>/dev/null; then
+  echo EDITOR_ISOLATE_EMPTY_PLAY_60_FRAMES_REACHED_WITH_ERRORS
+  for kind in ARRAY_INDEX NULL_REFERENCE MISSING_REFERENCE INVALID_OPERATION INVALID_ARGUMENT UNITY_EXCEPTION ASSERTION UNCLASSIFIED; do
+    if grep -Fq "AARIS_EMPTY_PLAY_FIRST_ERROR_FAMILY_$kind" "$WORK/empty-play.log.private"; then
+      echo "EDITOR_ISOLATE_EMPTY_PLAY_FIRST_ERROR_FAMILY_$kind"
+      break
+    fi
+  done
+  for origin in EDITOR_LIFECYCLE UNITY_EDITOR GAME_SCRIPT UNITY_ENGINE UNCLASSIFIED; do
+    if grep -Fq "AARIS_EMPTY_PLAY_FIRST_ERROR_SOURCE_$origin" "$WORK/empty-play.log.private"; then
+      echo "EDITOR_ISOLATE_EMPTY_PLAY_FIRST_ERROR_SOURCE_$origin"
+      break
+    fi
+  done
+fi
 if grep -Fq 'IndexOutOfRangeException' "$WORK/empty-play.log.private" 2>/dev/null; then
   echo EDITOR_ISOLATE_EMPTY_PLAY_ARRAY_INDEX_EXCEPTION
 fi
