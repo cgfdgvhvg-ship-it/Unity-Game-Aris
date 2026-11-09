@@ -16,12 +16,12 @@ FOREST = ROOT / "Docs" / "FOREST_PLANTING_PLAN.json"
 LAYOUT = ROOT / "Docs" / "MAP_LAYOUT.json"
 
 SPECIES = {
-    "Conifer": ("Conifer/Conifer.prefab", (1.30, 0.99, 1.30)$3
-    "Pine_A": ("Pines/Pine_A/Pine_A.prefab", (1.30, 0.98, 1.30)$3
-    "Pine_B": ("Pines/Pine_B/Pine_B.prefab", (1.31, 1.025, 1.31)$3
-    "Pine_C": ("Pines/Pine_C/Pine_C.prefab", (1.27, 0.99, 1.27)$3
-    "Pine_D": ("Pines/Pine_D/Pine_D.prefab", (1.34, 0.99, 1.34)$3
-    "Cypress": ("Cypress/Cypress_Forest_Desktop.prefab", (1.76, 1.44, 1.76)$3
+    "Conifer": ("Conifer/Conifer.prefab", (1.30, 0.99, 1.30), 1.0),
+    "Pine_A": ("Pines/Pine_A/Pine_A.prefab", (1.30, 0.98, 1.30), 1.0),
+    "Pine_B": ("Pines/Pine_B/Pine_B.prefab", (1.31, 1.025, 1.31), 1.0),
+    "Pine_C": ("Pines/Pine_C/Pine_C.prefab", (1.27, 0.99, 1.27), 1.0),
+    "Pine_D": ("Pines/Pine_D/Pine_D.prefab", (1.34, 0.99, 1.34), 1.0),
+    "Cypress": ("Cypress/Cypress_Forest_Desktop.prefab", (1.76, 1.44, 1.76), 1.5),
 }
 
 
