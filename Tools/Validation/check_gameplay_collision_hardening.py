@@ -29,6 +29,7 @@ def test():
     colliders = script("AarisNearbyColliders")
     motor = script("AarisVehicleMotor")
     inventory = script("AarisWeaponInventory")
+    gun = script("AarisEquippedGun")
     session = script("AarisVehicleSession")
 
     # SphereCollider is scaled by Unity's largest world-scale axis, not
@@ -65,6 +66,17 @@ def test():
     assert "combined.Encapsulate(renderers[i].bounds);" in inventory
     assert "Mathf.Max(combined.size.x," in inventory
     assert "visible.GetComponentInChildren<Renderer>(true)" not in inventory
+
+    # Camera and physical muzzle ray may hit two different sibling colliders
+    # on the same damageable bot. This is not a license to shoot through a
+    # wall merely because it shares the same broad scene root.
+    assert "private static IAarisDamageable DamageReceiver(Collider collider)" in gun
+    assert "recipient != null && ReferenceEquals(recipient, DamageReceiver(b))" in gun
+    assert "a.transform.IsChildOf(b.transform)" in gun
+    assert "DamageReceiver(collider)" in gun
+    assert "a.transform.root == b.transform.root" not in gun
+    assert "muzzleHitFound &&" in gun
+    assert "!SameTarget(target.collider, muzzleHit.collider)" in gun
 
     rng = random.Random(20261109)
     for _ in range(2000):
