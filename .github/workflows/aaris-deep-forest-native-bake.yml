@@ -56,6 +56,13 @@ jobs:
               echo NATIVE_FOREST_CODESPACE_NOT_AVAILABLE
               exit 14
             }
+          FREE_MIB="$(timeout 70 gh codespace ssh -c "$CS" -- \
+            'python3 -c "import os; x=os.statvfs(\047/tmp\047); print(x.f_bavail*x.f_frsize//1048576)"' | tr -d '\r\n')"
+          if [[ ! "$FREE_MIB" =~ ^[0-9]+$ ]] || (( FREE_MIB < 5000 )); then
+            echo NATIVE_FOREST_INSUFFICIENT_CODESPACE_SCRATCH_SPACE
+            exit 15
+          fi
+          echo "NATIVE_FOREST_TMP_FREE_MIB=$FREE_MIB"
           GH_TOKEN="$RUNNER_GITHUB_TOKEN" gh run download 42472771253 \
             -R "$REPO" --name aaris-codespace-42472771253 \
             -D "$RUNNER_TEMP/original-lfs-tree-bake" >/dev/null
@@ -126,7 +133,28 @@ jobs:
           while IFS= read -r asset; do
             test "$(git check-attr filter -- "$asset" | awk '{print $3}')" = lfs
             git add -- "$asset"
-            git show ":$asset" | head -c 45 | grep -q '^version https://git-lfs.github.com/spec/v1' || {
+            pointer="$(git show ":$asset")"
+            [[ "$pointer" == "version https://git-lfs.github.com/spec/v1"
+              echo FOREST_NATIVE_NOT_LFS_STAGED
+              exit 22
+            }
+          done < forest-bake-review/asset-paths.txt
+          diff -u <(git diff --cached --name-only | sort) <(sort forest-bake-review/asset-paths.txt)
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Serialize reviewed deep-forest variant into native Unity TerrainData (Git LFS)'
+          git push origin HEAD:refs/heads/review/deep-forest-terrain-bake-20261109
+          git lfs push origin review/deep-forest-terrain-bake-20261109
+          echo FOREST_NATIVE_TERRAINDATA_GIT_LFS_PUBLISHED
+      - name: Upload before merge actual Unity evidence and bounded manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-deep-forest-native-${{ github.run_id }}
+          path: forest-bake-review/
+          if-no-files-found: warn
+          retention-days: 3
+\n'* ]] || {
               echo FOREST_NATIVE_NOT_LFS_STAGED
               exit 22
             }
