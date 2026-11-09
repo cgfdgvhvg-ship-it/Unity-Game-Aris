@@ -93,7 +93,7 @@ function probe() {
     *) echo "AARIS_AB_${label}_FAIL_OTHER" ;;
   esac
   classify_log "$label" "$WORK/private-$label-editor.log"
-  printf '%s' "$code"
+  printf '%s\n' "$code"
 }
 make_project settings
 cp -a "$ORIGINAL/ProjectSettings/." "$WORK/settings/ProjectSettings/"
