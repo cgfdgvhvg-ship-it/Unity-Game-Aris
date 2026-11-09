@@ -38,6 +38,24 @@ class RoadAndGarageClearance(unittest.TestCase):
         self.assertTrue(segment_intersects_aabb_xz(
             [0, 0, -9], [0, 0, 9], house, 1))
 
+    def test_rejects_artificial_cliff_segment(self):
+        import copy
+        layout = json.loads((ROOT / "Docs/MAP_LAYOUT.json").read_text())
+        broken = copy.deepcopy(layout)
+        # 8 m horizontal spacing plus a 9 m vertical discontinuity.
+        broken["roads"][0]["points"][1][1] += 9.0
+        with self.assertRaisesRegex(AssertionError,
+                                    "road_segments_below_14_percent_grade"):
+            check(broken)
+
+    def test_every_original_vehicle_exit_reaches_authored_road(self):
+        from map_static_check import road_distance
+        layout = json.loads((ROOT / "Docs/MAP_LAYOUT.json").read_text())
+        for spawn in layout["vehicle_spawns"]:
+            x, z = spawn["exit_world_xz_m"]
+            distance = min(road_distance(r,x,z) for r in layout["roads"])
+            self.assertLessEqual(distance, 3.0, spawn["name"])
+
     def test_saved_59_house_39_road_45_spawn_layout(self):
         layout = json.loads((ROOT / "Docs/MAP_LAYOUT.json").read_text())
         result = check(layout)
