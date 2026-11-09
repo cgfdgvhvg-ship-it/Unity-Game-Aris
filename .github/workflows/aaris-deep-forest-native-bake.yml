@@ -154,23 +154,3 @@ jobs:
           path: forest-bake-review/
           if-no-files-found: warn
           retention-days: 3
-\n'* ]] || {
-              echo FOREST_NATIVE_NOT_LFS_STAGED
-              exit 22
-            }
-          done < forest-bake-review/asset-paths.txt
-          diff -u <(git diff --cached --name-only | sort) <(sort forest-bake-review/asset-paths.txt)
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'Serialize reviewed deep-forest variant into native Unity TerrainData (Git LFS)'
-          git push origin HEAD:refs/heads/review/deep-forest-terrain-bake-20261109
-          git lfs push origin review/deep-forest-terrain-bake-20261109
-          echo FOREST_NATIVE_TERRAINDATA_GIT_LFS_PUBLISHED
-      - name: Upload before merge actual Unity evidence and bounded manifest
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: aaris-deep-forest-native-${{ github.run_id }}
-          path: forest-bake-review/
-          if-no-files-found: warn
-          retention-days: 3
