@@ -1,0 +1,100 @@
+name: One-time genuine Unity fog A-B comparison
+on:
+  push:
+    branches: [fix/clear-daylight-no-fog]
+    paths:
+      - 'Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity'
+      - 'Assets/AarisWorld/Editor/AarisDaylightFogReview.cs'
+      - 'Tools/MapBuild/world_review.py'
+      - 'Tools/Validation/isolated_fog_preview.sh'
+      - '.github/workflows/aaris-fog-review.yml'
+  workflow_dispatch:
+jobs:
+  unity-native-fog-review:
+    if: github.repository == 'sundamunda289-art/Unity-Game-Aris'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Serialize with existing owner-only Codespace actions: one licensed Unity Editor at a time.
+    concurrency:
+      group: aaris-codespace-control
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Announce exact native A-B run to owner for live verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" --body "AARIS_FOG_REVIEW_RUNNING run_id=$GITHUB_RUN_ID commit=$GITHUB_SHA"
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Validate review intent and shell syntax
+        run: |
+          set -Eeuo pipefail
+          python3 Tools/Validation/check_saved_ambient.py
+          bash -n Tools/Validation/isolated_fog_preview.sh
+          grep -qx '  m_Fog: 0' <(grep '  m_Fog:' Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity)
+      - name: Render authentic fog-on vs fog-off Unity photos in immutable Codespace worktree
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$GH_TOKEN" || { echo 'REVIEW_CODESPACE_PAT_MISSING'; exit 21; }
+          timeout 1800 gh codespace ssh \
+            -c aaris-ai-ubuntu-minimal-jrg7rgvx5rr435wpp \
+            -- "bash -s -- $GITHUB_SHA" \
+            < Tools/Validation/isolated_fog_preview.sh
+      - name: Transfer verified Unity PNGs without raw logs or credentials
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p fog-review-results
+          timeout 250 gh codespace ssh \
+            -c aaris-ai-ubuntu-minimal-jrg7rgvx5rr435wpp \
+            -- 'base64 /tmp/aaris-codespaces/daylight-preview/daylight-bundle.tar.gz' \
+            > "$RUNNER_TEMP/fog-review.b64"
+          base64 -d "$RUNNER_TEMP/fog-review.b64" > "$RUNNER_TEMP/fog-review.tar.gz"
+          tar -xzf "$RUNNER_TEMP/fog-review.tar.gz" -C fog-review-results
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('fog-review-results')
+          report=json.loads((p/'daylight-report.json').read_text())
+          assert report['status']=='passed'
+          assert report['terrainTiles']==4 and report['nativeFogDisabled']
+          for n in ('forest','clocktower'):
+            for suffix in ('fog-on','fog-off'):
+              f=p/(n+'-'+suffix+'.png')
+              assert f.is_file() and f.stat().st_size>8192
+              assert f.read_bytes()[:8]==b'\x89PNG\r\n\x1a\n'
+          print('AARIS_TRUE_UNITY_DAYLIGHT_FOUR_PNGS_RECEIVED')
+          PY
+      - name: Upload four authentic comparison photos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-unity-fog-review-${{ github.run_id }}
+          path: fog-review-results/
+          if-no-files-found: warn
+          retention-days: 2
+      - name: Report actual Unity A-B evidence, never raw logs
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEW_OUTCOME: ${{ job.status }}
+        run: |
+          set -Eeuo pipefail
+          if test -s fog-review-results/daylight-report.json; then
+            echo "AARIS_FOG_REVIEW native_run=$GITHUB_RUN_ID outcome=$REVIEW_OUTCOME verified_unity_images=4 artifact=aaris-unity-fog-review-$GITHUB_RUN_ID" \
+              > /tmp/aaris-fog-status.txt
+          else
+            echo "AARIS_FOG_REVIEW native_run=$GITHUB_RUN_ID outcome=$REVIEW_OUTCOME verified_unity_images=0" \
+              > /tmp/aaris-fog-status.txt
+          fi
+          printf 'Report: https://github.com/%s/actions/runs/%s\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" \
+            >> /tmp/aaris-fog-status.txt
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" -F /tmp/aaris-fog-status.txt
