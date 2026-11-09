@@ -24,8 +24,8 @@ git -C "$SOURCE" fetch --quiet origin refs/heads/fix/clear-daylight-no-fog || {
 }
 FETCHED="$(git -C "$SOURCE" rev-parse --verify FETCH_HEAD)"
 test "$FETCHED" = "$SHA" || { echo REVIEW_SHA_CHANGED_OR_INVALID; exit 15; }
-PROJECT="/tmp/aaris-daylight-worktrees/$SHA"
-mkdir -p /tmp/aaris-daylight-worktrees
+PROJECT="/tmp/aaris-native-photo-worktrees/$SHA"
+mkdir -p /tmp/aaris-native-photo-worktrees
 if test ! -d "$PROJECT"; then
   GIT_LFS_SKIP_SMUDGE=1 git -C "$SOURCE" \
     -c filter.lfs.process= -c filter.lfs.smudge=cat -c filter.lfs.required=false \
@@ -37,35 +37,19 @@ test "$(git -C "$PROJECT" rev-parse HEAD)" = "$SHA" || {
   echo REVIEW_WORKTREE_REV_MISMATCH; exit 17;
 }
 cd "$PROJECT"
-# Local LFS objects first; never download unnecessarily or overwrite real edits.
-git lfs checkout >/dev/null 2>&1 || true
-if ! python3 Tools/Codespaces/verify_lfs.py >/dev/null 2>&1; then
-  python3 - "$SOURCE" "$PROJECT" <<'PY'
-from pathlib import Path
-import hashlib,shutil,subprocess,sys
-source=Path(sys.argv[1]);project=Path(sys.argv[2])
-proc=subprocess.run(["git","lfs","ls-files","--long"],cwd=project,
-                    capture_output=True,text=True,check=True)
-restored=0
-for line in proc.stdout.splitlines():
-    head,separator,path=line.partition(" ")
-    if not separator or len(head)!=64 or not all(c in '0123456789abcdef' for c in head):
-        continue
-    relative=path.lstrip("*- ").strip()
-    if not relative or relative.startswith("/") or ".." in Path(relative).parts:
-        continue
-    a=project/relative;b=source/relative
-    if not b.is_file() or not a.is_file():continue
-    if not a.read_bytes()[:80].startswith(b"version https://git-lfs.github.com/spec/v1"):continue
-    if hashlib.sha256(b.read_bytes()).hexdigest()!=head:continue
-    shutil.copyfile(b,a)
-    restored+=1
-print("REVIEW_VERIFIED_LFS_COPIES_"+str(restored))
-PY
+# Restore SHA-verified native LFS through the same read-only owner-source,
+# authenticated original tree archive and isolated object-cache process as
+# genuine native photo probes. This requires /tmp/aaris-native-photo-worktrees.
+# Never mutate the original owner GUI tree or replace actual .unity assets.
+if ! python3 Tools/Codespaces/restore_preserved_source_lfs.py "$PROJECT" \
+    >"$OUT/private-preserved-lfs.log" 2>&1; then
+  echo REVIEW_VERIFIED_LFS_RECOVERY_FAILED
+  exit 18
 fi
-python3 Tools/Codespaces/verify_lfs.py >/dev/null || {
+python3 Tools/Codespaces/verify_lfs.py >"$OUT/private-lfs-audit.log" 2>&1 || {
   echo REVIEW_ALL_LFS_NOT_HYDRATED; exit 18;
 }
+echo REVIEW_793_AUTHENTIC_LFS_ASSETS_VERIFIED
 test -s Assets/AarisWorld/Editor/AarisDaylightFogReview.cs || {
   echo REVIEW_CSHARP_TEST_MISSING; exit 19;
 }
