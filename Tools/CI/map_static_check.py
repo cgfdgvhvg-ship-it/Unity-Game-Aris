@@ -25,6 +25,37 @@ def road_distance(road, x, z):
     return min(distance_to_segment(x,z,a[0],a[2],b[0],b[2])
                for a,b in zip(points,points[1:]))
 
+def road_segment_hits_expanded_building(a, b, box, padding):
+    """Liang–Barsky segment/rectangle intersection in XZ; no sampled gaps.
+
+    The building AABB is expanded by half the road width and a 1 m margin.
+    A segment passing between sampled road vertices is still detected.
+    This checks the saved blueprint only, not true Unity colliders.
+    """
+    left, bottom, right, top = box
+    left -= padding
+    bottom -= padding
+    right += padding
+    top += padding
+    x, z = a[0], a[2]
+    dx, dz = b[0] - x, b[2] - z
+    enter, leave = 0.0, 1.0
+    for p, q in ((-dx, x-left), (dx, right-x),
+                 (-dz, z-bottom), (dz, top-z)):
+        if abs(p) < 1e-12:
+            if q < 0.0:
+                return False
+        else:
+            t = q/p
+            if p < 0:
+                enter = max(enter, t)
+            else:
+                leave = min(leave, t)
+            if enter > leave:
+                return False
+    return enter <= leave
+
+
 def inspect(layout, x, z):
     def dpos(item):
         a,b,c = item["position_m"]
@@ -105,6 +136,23 @@ def check(layout):
                 colliding_spawns.append([s["name"],b["name"]])
     assert_check("vehicle_spawns_clear_from_buildings",
                  not colliding_spawns,colliding_spawns[:10])
+    # Validate entire road polyline segments, not just vertices. Roads
+    # are 8 m wide in many districts; a 1 m apron protects entrances.
+    # Do not move Unity assets based on this license-free blueprint alone.
+    road_building_intersections=[]
+    for road in roads:
+        width=road.get("width",8.0)
+        assert_check("road_width_"+road["name"], math.isfinite(width) and
+                     1.0 <= width <= 32.0, width)
+        points=road["points"]
+        for building in buildings:
+            expanded=width/2.0+1.0
+            if any(road_segment_hits_expanded_building(a,b,
+                   building["aabb_xz_m"],expanded)
+                   for a,b in zip(points,points[1:])):
+                road_building_intersections.append([road["name"],building["name"]])
+    assert_check("roads_clear_from_building_bounding_boxes_with_1m_apron",
+                 not road_building_intersections,road_building_intersections[:12])
     return {"result":"passed","source":"Docs/MAP_LAYOUT.json",
             "checks":checks,"measures":{"districts":len(districts),
             "buildings":len(buildings),"roads":len(roads),
