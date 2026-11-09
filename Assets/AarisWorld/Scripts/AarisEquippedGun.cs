@@ -162,6 +162,7 @@ namespace Aaris.MapReview
                 owner.transform.forward * 0.24f;
             AarisAudioDirector.GunShot(spec.category, spec.id, muzzle);
 
+            bool impactSoundEmitted = false;
             for (int pellet = 0; pellet < spec.pellets; pellet++)
             {
                 Vector2 spread = new Vector2(AarisWeaponRandom.Next01(ref spreadSeed) * 2f - 1f,
@@ -188,7 +189,14 @@ namespace Aaris.MapReview
                 }
                 if (targetFound)
                 {
-                    if (pellet == 0) AarisAudioDirector.BulletImpact(target.point);
+                    // A shotgun's first pellet can miss while a later one
+                    // hits. Emit one impact cue for the first genuine hit,
+                    // not only if pellet zero happens to connect.
+                    if (!impactSoundEmitted)
+                    {
+                        AarisAudioDirector.BulletImpact(target.point);
+                        impactSoundEmitted = true;
+                    }
                     ApplyDamage(target.collider, spec.damage, owner);
                 }
             }
