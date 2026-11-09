@@ -106,6 +106,7 @@ namespace Aaris.MapReview
                 return false;
             reloadUntil = Time.time + spec.reloadSeconds;
             reloading = true;
+            AarisAudioDirector.ReloadStarted(transform.position);
             return true;
         }
 
