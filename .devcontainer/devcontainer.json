@@ -7,7 +7,7 @@
     "DISPLAY": ":99"
   },
   "postCreateCommand": "bash .devcontainer/finalize.sh",
-  "postStartCommand": "bash .devcontainer/start_screen.sh; bash Tools/Codespaces/graphics_preflight.sh || echo AARIS_SNAPSHOT_GL_PREFLIGHT_DEFERRED",
+  "postStartCommand": "bash .devcontainer/start_screen.sh",
   "features": {
     "ghcr.io/devcontainers/features/sshd:1": {
       "version": "latest"
