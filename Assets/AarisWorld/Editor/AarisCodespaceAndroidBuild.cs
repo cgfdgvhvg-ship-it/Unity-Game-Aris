@@ -18,6 +18,9 @@ namespace Aaris.MapReview.Editor
     {
         private const string MainScene =
             "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity";
+        private const string ExpectedAppId = "com.aaris.game";
+        private const string ExpectedVersion = "0.3.1";
+        private const int ExpectedVersionCode = 7;
         private const string Output = "/tmp/aaris-codespaces/android-apk";
         private const string Apk = "/tmp/aaris-codespaces/android-apk/Build/AarisGame.apk";
 
@@ -28,6 +31,9 @@ namespace Aaris.MapReview.Editor
             public string unityVersion;
             public string buildTarget = "Android";
             public string applicationId;
+            public string applicationVersion;
+            public int applicationVersionCode;
+            public int targetSdk;
             public string scriptingBackend;
             public int sceneCount;
             public int terrainTiles;
@@ -79,6 +85,16 @@ namespace Aaris.MapReview.Editor
                     NamedBuildTarget.Android);
                 if (String.IsNullOrEmpty(evidence.applicationId))
                     throw new InvalidOperationException("ANDROID_APPLICATION_ID_MISSING");
+                // Validate BEFORE BuildPipeline and again AFTER all preprocessors.
+                // AarisExplorerBuild implements IPreprocessBuildWithReport; its
+                // Configure() previously overwrote the v7 manifest with the
+                // legacy v6 map explorer ID during BuildPipeline.BuildPlayer.
+                if (evidence.applicationId != ExpectedAppId ||
+                    PlayerSettings.bundleVersion != ExpectedVersion ||
+                    PlayerSettings.Android.bundleVersionCode != ExpectedVersionCode ||
+                    PlayerSettings.Android.targetSdkVersion != AndroidSdkVersions.AndroidApiLevel33)
+                    throw new InvalidOperationException("ANDROID_GAME_IDENTITY_PREBUILD_MISMATCH");
+
 
                 var request = new BuildPlayerOptions {
                     scenes = enabled,
@@ -95,6 +111,16 @@ namespace Aaris.MapReview.Editor
                 }
                 evidence.errors = report.summary.totalErrors;
                 evidence.warnings = report.summary.totalWarnings;
+                evidence.applicationId = PlayerSettings.GetApplicationIdentifier(
+                    NamedBuildTarget.Android);
+                evidence.applicationVersion = PlayerSettings.bundleVersion;
+                evidence.applicationVersionCode = PlayerSettings.Android.bundleVersionCode;
+                evidence.targetSdk = (int)PlayerSettings.Android.targetSdkVersion;
+                if (evidence.applicationId != ExpectedAppId ||
+                    evidence.applicationVersion != ExpectedVersion ||
+                    evidence.applicationVersionCode != ExpectedVersionCode ||
+                    PlayerSettings.Android.targetSdkVersion != AndroidSdkVersions.AndroidApiLevel33)
+                    throw new InvalidOperationException("ANDROID_GAME_IDENTITY_POSTBUILD_MISMATCH");
                 FileInfo apk = new FileInfo(Apk);
                 if (!apk.Exists || apk.Length < 100000)
                     throw new InvalidOperationException("ANDROID_APK_FILE_INVALID");

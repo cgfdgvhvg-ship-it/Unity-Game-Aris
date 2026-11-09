@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'ProjectSettings/ProjectSettings.asset'
+      - 'Assets/AarisWorld/Editor/AarisExplorerBuild.cs'
+      - 'Assets/AarisWorld/Editor/AarisCodespaceAndroidBuild.cs'
       - 'Tools/Codespaces/android_apk.sh'
       - '.github/workflows/aaris-codespace-android-apk.yml'
       - '.github/workflows/aaris-android-install-compat-ci.yml'
@@ -51,6 +53,31 @@ jobs:
           assert "grep -qxF 'APK_INSTALLABILITY_SIGNATURE_MANIFEST_API33_VERIFIED'" in workflow
           assert "sha256sum -c AarisGame.sha256" in workflow
           assert 'AarisGame.apk' in workflow
+          # Actual root cause: prebuild Unity callback reset modern APK
+          # identity to old map explorer v6 immediately before Gradle export.
+          explorer=Path('Assets/AarisWorld/Editor/AarisExplorerBuild.cs').read_text()
+          assert 'IPreprocessBuildWithReport' in explorer
+          assert 'OnPreprocessBuild(BuildReport report) { Configure();' in explorer
+          for statement in (
+              'PlayerSettings.productName = "Aaris Game";',
+              'PlayerSettings.bundleVersion = "0.3.1";',
+              'PlayerSettings.Android.bundleVersionCode = 7;',
+              'PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android, "com.aaris.game");',
+              'PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel33;',
+              'Builds/Android/AarisGame.apk',
+          ):
+              assert statement in explorer, statement
+          assert 'com.aaris.mapexplorer' not in explorer
+          assert 'AndroidApiLevelAuto' not in explorer
+          builder=Path('Assets/AarisWorld/Editor/AarisCodespaceAndroidBuild.cs').read_text()
+          for marker in (
+              'ANDROID_GAME_IDENTITY_PREBUILD_MISMATCH',
+              'ANDROID_GAME_IDENTITY_POSTBUILD_MISMATCH',
+              'ExpectedAppId = "com.aaris.game"',
+              'ExpectedVersionCode = 7',
+              'AndroidSdkVersions.AndroidApiLevel33',
+          ):
+              assert marker in builder, marker
           print('APK_ANDROID_INSTALL_COMPAT_STATIC_PASSED')
           PY
           bash -n Tools/Codespaces/android_apk.sh

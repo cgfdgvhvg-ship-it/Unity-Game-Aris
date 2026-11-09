@@ -17,13 +17,13 @@ namespace Aaris.MapReview.Editor
 
         public void OnPreprocessBuild(BuildReport report) { Configure(); ValidateSavedScene(); }
 
-        [MenuItem("Aaris/Build Android Ground Review APK")]
+        [MenuItem("Aaris/Build Android Aaris Game APK")]
         public static void BuildAndroid()
         {
             Configure();
             EditorUserBuildSettings.buildAppBundle = false;
             EditorUserBuildSettings.androidBuildSubtarget = MobileTextureSubtarget.ETC2;
-            Build("Builds/Android/AarisMapExplorer.apk", BuildTarget.Android);
+            Build("Builds/Android/AarisGame.apk", BuildTarget.Android);
         }
 
         [MenuItem("Aaris/Build Web Map Explorer")]
@@ -32,19 +32,19 @@ namespace Aaris.MapReview.Editor
         public static void Configure()
         {
             PlayerSettings.companyName = "Aaris";
-            PlayerSettings.productName = "Aaris Ground Review";
-            PlayerSettings.bundleVersion = "0.3.0";
-            PlayerSettings.Android.bundleVersionCode = 6;
+            PlayerSettings.productName = "Aaris Game";
+            PlayerSettings.bundleVersion = "0.3.1";
+            PlayerSettings.Android.bundleVersionCode = 7;
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
             PlayerSettings.allowedAutorotateToLandscapeLeft = true;
             PlayerSettings.allowedAutorotateToLandscapeRight = true;
             PlayerSettings.allowedAutorotateToPortrait = false;
             PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
-            PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android, "com.aaris.mapexplorer");
+            PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android, "com.aaris.game");
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
-            PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
+            PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel33;
             // A reproducible GLES3 renderer/ETC2 pair avoids silently selecting a different
             // mobile graphics driver on each phone. HDR and render scale remain unchanged.
             PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.Android, false);
