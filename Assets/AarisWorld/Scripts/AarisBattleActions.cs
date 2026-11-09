@@ -210,6 +210,7 @@ namespace Aaris.MapReview
         {
             Vector3 origin = transform.position + Vector3.up *
                 (stance == PlayerStance.Prone ? 0.4f : stance == PlayerStance.Crouching ? 0.73f : 1.15f);
+            AarisAudioDirector.Punch(origin);
             Vector3 center = origin + transform.forward * (punchReach * 0.58f);
             // Include other players even if they share the saved player's layer;
             // skip ONLY colliders belonging to this player in the hit loop.
