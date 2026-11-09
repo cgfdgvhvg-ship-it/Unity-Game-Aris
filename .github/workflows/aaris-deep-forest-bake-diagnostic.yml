@@ -60,5 +60,50 @@ jobs:
               print("editor_error_family_"+name+"="+("yes" if m else "no"))
               if name=="unity_exception" and m:print("editor_first_bake_reason="+m.group(1)[:96])
             print("editor_log_bytes="+str(p.stat().st_size))
+            extra={
+             "project_locked":r"another (instance|process).*using.*project|project.*already (open|in use|locked)",
+             "unity_exiting":r"Exiting batchmode|Exiting without crash|Quitting Unity",
+             "early_assembly":r"Assembly-CSharp-Editor|ScriptAssembly|assembly[- ]csharp",
+             "player_compilation":r"compilation.*(failed|errors)|scripts have compiler errors|Compiler errors",
+             "reload_failure":r"(domain reload|ReloadAssembly).*(failed|error)",
+             "editor_method":r"AarisDeepForestNativeBake|Bake bounded native deep forest|ExecuteMethod",
+             "editor_baker_class":r"AarisDeepForestNativeBake\\.Apply",
+             "install_launch_error":r"(Failed to launch|Fatal Error|Error initializing|Error while loading)",
+             "asset_import":r"AssetDatabase.*(import|refresh)|AssetImportWorker",
+             "editor_batch_error":r"Error building Player|Aborting batchmode|ExecuteMethod class",
+             "license_activation":r"(Licensing|License|Entitlement).*?(success|failed|error)",
+             "missing_symbol":r"error CS[0-9]{4}|error [A-Z]{2}[0-9]{4}",
+             "lfs_pointer":r"git-lfs.github.com/spec/v1",
+             "graphics_failed":r"(Graphics Device|GfxDevice|GLCore|OpenGL).*(failed|error|abort)",
+             "disk_failed":r"No space left|Disk full|out of disk"
+            }
+            for name,pattern in extra.items():
+                print("editor_marker_"+name+"="+("yes" if re.search(pattern,s,re.I) else "no"))
+            for source_name in ("private-bake-stderr.log","private-bake-stdout.log"):
+                q=folder/source_name
+                if not q.is_file():
+                    print(source_name.replace(".log","")+"_missing")
+                else:
+                    raw=q.read_text(errors="replace")
+                    print(source_name.replace(".log","")+"_bytes="+str(len(raw)))
+                    for name,pattern in extra.items():
+                        if re.search(pattern,raw,re.I):
+                            print(source_name.replace(".log","")+"_marker_"+name+"=yes")
+            # Last 14 meaningful lifecycle events, only predefined classes:
+            ordered=[]
+            lifecycle={
+               "editor_begin":r"Initialize engine|Initialize Asset Database|Begin MonoManager",
+               "project_import":r"AssetDatabase|AssetImportWorker|Import worker|Refresh:|Importing",
+               "compilation":r"Compiling Assembly|script compilation|Compilation finished|Bee\\\\",
+               "domain":r"Domain Reload|ReloadAssembly|ScriptAssemblies",
+               "bake_call":r"AarisDeepForestNativeBake|AARIS_NATIVE_DEEP_FOREST_BAKE",
+               "editor_failure":r"^\\s*(error|fatal|exception)|Script.*error|Aborting batchmode",
+               "editor_exit":r"Exiting|Quitting|BatchMode|Shutdown",
+            }
+            for line in s.splitlines()[-140:]:
+                for label,expr in lifecycle.items():
+                    if re.search(expr,line,re.I):
+                        ordered.append(label);break
+            print("editor_tail_lifecycle="+",".join(ordered[-14:]))
           PY
           SH
