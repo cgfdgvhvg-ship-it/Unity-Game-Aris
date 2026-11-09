@@ -160,14 +160,9 @@ class OfflineCombatAssetChecks(unittest.TestCase):
         )[0]
         self.assertIn("float tallest = float.NegativeInfinity;", flight)
         self.assertIn("terrain.SampleHeight(new Vector3(x, 0f, z))", flight)
-        self.assertNotRegex(
-            flight,
-            r"terrain\\.SampleHeight\\(new Vector3\\(x, 0f, z\\)\\)\\s*\\+\\s*p\\.y",
+        self.assertNotIn(
+            "terrain.SampleHeight(new Vector3(x, 0f, z)) + p.y", flight
         )
-        # Numeric reference for a 420m flight above any elevated/negative tile.
-        for tile_y in (-160, -35, 0, 125):
-            terrain_world_y = tile_y + 45
-            self.assertEqual(terrain_world_y + 420 - terrain_world_y, 420)
 
     def test_stationary_map_collider_poll_avoids_global_physics_sync(self):
         colliders = (SCRIPTS / "AarisNearbyColliders.cs").read_text("utf-8")
