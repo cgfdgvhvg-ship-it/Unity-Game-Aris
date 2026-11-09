@@ -154,6 +154,31 @@ fi
 if pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then
   echo APK_EXISTING_EDITOR_BUSY_NO_FORCE_KILL; exit 19
 fi
+# The previous main SHA (PR #251) completed a native Unity build, but its
+# Android metadata was overwritten by the legacy preprocessor callback.
+# Before importing NEW main, reclaim only regenerable Library/Temp/obj
+# of that one finished, SHA-verified, temporary isolated worktree. Never
+# touch original /workspaces, any Git LFS object, or the current worktree.
+OLD_SHA=93ee9c452785741aff302d425ef315f664b13f5f
+OLD_PROJECT="/tmp/aaris-native-android-build-worktrees/$OLD_SHA"
+if test -d "$OLD_PROJECT" && test ! -L "$OLD_PROJECT" &&
+   test "$(realpath -e "$OLD_PROJECT")" = "$OLD_PROJECT" &&
+   test "$(git -C "$OLD_PROJECT" rev-parse HEAD 2>/dev/null)" = "$OLD_SHA"; then
+  if ps -eo args= | grep -F -- "$OLD_PROJECT" |
+     grep -E '[/]Editor/Unity|[U]nity.*-projectPath' >/dev/null; then
+    echo APK_PREVIOUS_WORKTREE_STILL_ACTIVE_NOT_CLEANED
+  else
+    for folder in Library Temp obj; do
+      old_cache="$OLD_PROJECT/$folder"
+      if test -d "$old_cache" && test ! -L "$old_cache" &&
+         test "$(realpath -e "$old_cache")" = "$old_cache"; then
+        rm -rf --one-file-system -- "$old_cache"
+      fi
+    done
+    echo APK_PREVIOUS_FAILED_BUILD_IMPORT_CACHE_CLEARED
+    echo "apk_tmp_free_gb_after_cache_cleanup=$(df -BG /tmp | awk 'END {gsub(/G/,"",$4);print $4}')"
+  fi
+fi
 git -C "$SOURCE" fetch --quiet origin main || {
   echo APK_MAIN_FETCH_FAILED; exit 20; }
 SHA="$(git -C "$SOURCE" rev-parse --verify 'origin/main^{commit}')"
