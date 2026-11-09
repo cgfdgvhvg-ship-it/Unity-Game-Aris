@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # ONE-TIME native Unity fog A/B evidence on an isolated review-commit worktree.
+# Revalidate the existing saved-scene daylight comparison after APK publishing; no source asset changes.
 # NEVER clean, stash, reset or change the dirty original Codespace project.
 set -Eeuo pipefail
 SHA="$1"
