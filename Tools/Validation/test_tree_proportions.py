@@ -126,7 +126,7 @@ class NaturalTreePrefabTests(unittest.TestCase):
         foliage = {
             "Conifer/Materials/Conifer_Branches.mat": None,
             "Cypress/Materials/Cypress_Forest_Desktop.mat": None,
-            "Pines/Pine_A/Materials/Pine_A.mat": 0.22,
+            "Pines/Pine_A/Materials/Pine_A.mat": 0.20,
             "Pines/Pine_B/Materials/Pine_B.mat": None,
             "Pines/Pine_C/Materials/Pine_C.mat": 0.20,
             "Pines/Pine_D/Materials/Pine_D.mat": 0.20,
