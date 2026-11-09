@@ -1,0 +1,45 @@
+name: Read-only road and vehicle exit clearance regression
+on:
+  pull_request:
+    paths:
+      - Tools/CI/map_static_check.py
+      - Tools/CI/test_map_road_clearance.py
+      - .github/workflows/aaris-road-clearance-qa.yml
+  push:
+    branches:
+      - qa/road-and-garage-clearance-20261109
+    paths:
+      - Tools/CI/map_static_check.py
+      - Tools/CI/test_map_road_clearance.py
+      - .github/workflows/aaris-road-clearance-qa.yml
+
+permissions:
+  contents: read
+
+jobs:
+  blueprint-clearance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          fetch-depth: 1
+      - name: Validate geometry and all saved map road/exits
+        run: |
+          set -euo pipefail
+          python3 -m py_compile Tools/CI/map_static_check.py Tools/CI/test_map_road_clearance.py
+          python3 Tools/CI/test_map_road_clearance.py
+          python3 Tools/CI/map_static_check.py audit --out "$RUNNER_TEMP/road-clearance-audit.json"
+          python3 - "$RUNNER_TEMP/road-clearance-audit.json" <<'PY'
+          import json,sys
+          report=json.load(open(sys.argv[1]))
+          checks=report['checks']
+          for k in ('roads_clear_of_buildings_with_one_metre_edge_guard',
+                    'garage_vehicle_exit_routes_clear_of_buildings'):
+              assert checks[k]['passed'], k
+          assert report['measures']['roads']==39
+          assert report['measures']['buildings']==59
+          assert report['measures']['vehicle_spawns']==45
+          print('AARIS_BLUEPRINT_ROAD_AND_GARAGE_CLEARANCE_PASS')
+          PY
