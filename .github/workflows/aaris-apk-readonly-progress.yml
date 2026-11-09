@@ -1,0 +1,105 @@
+name: Aaris Android APK progress (read-only)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/aaris-apk-readonly-progress.yml'
+      - 'Tools/Codespaces/apk_readonly_status.sh'
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: aaris-apk-readonly-progress
+  cancel-in-progress: false
+jobs:
+  static-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax and safety of read-only APK progress
+        run: |
+          set -euo pipefail
+          bash -n Tools/Codespaces/apk_readonly_status.sh
+          python3 - <<'PYSTATIC'
+          from pathlib import Path
+          script=Path('Tools/Codespaces/apk_readonly_status.sh').read_text()
+          source=script.split("python3 - <<'PY'\n",1)[1].rsplit('\nPY',1)[0]
+          compile(source,'apk_readonly_status.py','exec')
+          assert 'license status' not in script and 'gh release' not in script
+          assert 'APK_READONLY_PROGRESS' in script
+          print('APK_MONITOR_STATIC_CHECK_PASSED')
+          PYSTATIC
+  progress:
+
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.number == 77 &&
+      github.event.comment.user.login == 'sundamunda289-art' &&
+      github.event.comment.body == 'APK PULSE'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          lfs: false
+          persist-credentials: false
+      - name: Inspect Codespace APK toolchain without interrupting Unity
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          set -euo pipefail
+          mkdir -p apk-progress
+          test -n "${GH_TOKEN:-}" || {
+            echo APK_MONITOR_TOKEN_MISSING > apk-progress/status.txt
+            exit 1
+          }
+          CS="$(gh codespace list -R "$GITHUB_REPOSITORY" --json name,displayName,state --limit 30 |
+            jq -er '
+              (map(select(.name == "aaris-ai-unity-ssh-vp5g97jv4r4gfpjgq"))) as $pinned |
+              (map(select(.displayName == "aaris-ai-ubuntu-minimal"))) as $minimal |
+              (map(select(.displayName == "aaris-ai-unity-ssh"))) as $ssh |
+              if ($pinned | length) == 1 then $pinned[0].name
+              elif ($minimal | length) == 1 then $minimal[0].name
+              elif ($minimal | length) > 1 then empty
+              elif ($ssh | length) == 1 then $ssh[0].name
+              else empty end
+            ')" || {
+            echo APK_MONITOR_CODESPACE_UNAVAILABLE > apk-progress/status.txt
+            exit 1
+          }
+          [[ "$CS" =~ ^[A-Za-z0-9-]{3,110}$ ]] || exit 12
+          if ! timeout 155 gh codespace ssh -c "$CS" -- 'bash -s' \
+                < Tools/Codespaces/apk_readonly_status.sh \
+                > apk-progress/status.txt 2> "$RUNNER_TEMP/private-apk-monitor-ssh.log"; then
+            echo APK_MONITOR_SSH_FAILED > apk-progress/status.txt
+            exit 2
+          fi
+          grep -qxF APK_READONLY_PROGRESS apk-progress/status.txt
+          grep -E '^APK_READONLY_PROGRESS$|^apk_[a-z_]+=(yes|no|unknown|ready|pending|not_created|failed|passed|invalid|unavailable|valid|[0-9]+|[A-Z_]+|[a-z_]+)$' apk-progress/status.txt
+      - name: Upload limited progress classification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-apk-progress-${{ github.run_id }}
+          path: apk-progress/status.txt
+          retention-days: 2
+      - name: Reply to authenticated owner Issue 77
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo '**AARIS APK READ-ONLY PROGRESS**'
+            echo '~~~text'
+            if test -s apk-progress/status.txt; then
+              cat apk-progress/status.txt
+            else
+              echo APK_MONITOR_REPORT_NOT_READY
+            fi
+            echo '~~~'
+            printf '[APK monitor](https://github.com/%s/actions/runs/%s)\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID"
+          } > apk-progress/owner-reply.md
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" -F apk-progress/owner-reply.md
