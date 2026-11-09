@@ -57,7 +57,7 @@ jobs:
               exit 14
             }
           FREE_MIB="$(timeout 70 gh codespace ssh -c "$CS" -- \
-            'python3 -c "import os; x=os.statvfs(\047/tmp\047); print(x.f_bavail*x.f_frsize//1048576)"' | tr -d '\r\n')"
+            "python3 -c 'import os; x=os.statvfs(\"/tmp\"); print(x.f_bavail*x.f_frsize//1048576)'" | tr -d '\r\n')"
           if [[ ! "$FREE_MIB" =~ ^[0-9]+$ ]] || (( FREE_MIB < 5000 )); then
             echo NATIVE_FOREST_INSUFFICIENT_CODESPACE_SCRATCH_SPACE
             exit 15
