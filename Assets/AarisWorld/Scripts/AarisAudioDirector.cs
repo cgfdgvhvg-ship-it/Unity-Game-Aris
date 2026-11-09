@@ -35,6 +35,10 @@ namespace Aaris.MapReview
         };
         private readonly Dictionary<string, AudioClip> clips = new Dictionary<string, AudioClip>(32);
         private readonly AudioSource[] voices = new AudioSource[VoiceCount];
+        private readonly AudioClip[] grassFoley = new AudioClip[5];
+        private readonly AudioClip[] concreteFoley = new AudioClip[5];
+        private readonly AudioClip[] punchFoley = new AudioClip[3];
+        private AudioClip softLandingFoley, metalImpactFoley;
         private GameObject audioRoot;
         private AarisThirdPersonPlayer player;
         private AarisBattleActions combat;
@@ -83,6 +87,19 @@ namespace Aaris.MapReview
             capsule = GetComponent<CharacterController>();
             foreach (string key in Keys)
                 clips[key] = Resources.Load<AudioClip>("SFX/" + key);
+            // Kenney Impact Sounds (publisher CC0); eagerly load once,
+            // then choose real varied footfalls without per-step allocations.
+            for (int i = 0; i < grassFoley.Length; i++)
+            {
+                string number = i.ToString("000");
+                grassFoley[i] = Resources.Load<AudioClip>("SFX/CC0/footstep_grass_" + number);
+                concreteFoley[i] = Resources.Load<AudioClip>("SFX/CC0/footstep_concrete_" + number);
+            }
+            for (int i = 0; i < punchFoley.Length; i++)
+                punchFoley[i] = Resources.Load<AudioClip>(
+                    "SFX/CC0/impactPunch_medium_" + i.ToString("000"));
+            softLandingFoley = Resources.Load<AudioClip>("SFX/CC0/impactSoft_heavy_000");
+            metalImpactFoley = Resources.Load<AudioClip>("SFX/CC0/impactMetal_light_000");
             audioRoot = new GameObject("Aaris Audio Voices (12 pooled)");
             for (int i = 0; i < voices.Length; i++)
                 voices[i] = MakeSource(audioRoot.transform, "Aaris SFX Voice " + i);
@@ -96,6 +113,18 @@ namespace Aaris.MapReview
 
         private AudioClip GetClip(string name)
         {
+            AudioClip[] variants = name == "step_dirt" ? grassFoley :
+                name == "step_road" ? concreteFoley :
+                name == "punch_hit" ? punchFoley : null;
+            if (variants != null)
+            {
+                AudioClip selected = variants[UnityEngine.Random.Range(0, variants.Length)];
+                if (selected != null) return selected;
+            }
+            if (name == "land_thud" && softLandingFoley != null)
+                return softLandingFoley;
+            if (name == "grenade_bounce" && metalImpactFoley != null)
+                return metalImpactFoley;
             return clips.TryGetValue(name, out AudioClip value) ? value : null;
         }
 
@@ -169,7 +198,7 @@ namespace Aaris.MapReview
         {
             if (instance == null) return;
             instance.OneShot("grenade_pin", position, 0.5f);
-            instance.OneShot("grenade_throw", position, 0.65f);
+            instance.Schedule("grenade_throw", position, 0.14f, 0.65f);
         }
 
         public static void GrenadeBounce(Vector3 position, float speed)
@@ -256,7 +285,10 @@ namespace Aaris.MapReview
                 lastDropPhase = phase;
                 hasDropPhase = true;
             }
-            planeLoop.transform.position = pos;
+            // The aircraft fades at the departure point instead of following
+            // the falling player: distance/panning convey separation.
+            if (phase == AarisOfflineDrop.DropPhase.InPlane)
+                planeLoop.transform.position = pos;
             windLoop.transform.position = pos;
             float planeVol = phase == AarisOfflineDrop.DropPhase.InPlane ? 0.65f : 0f;
             float windVol = phase == AarisOfflineDrop.DropPhase.Freefall
