@@ -6,7 +6,7 @@ python3 - <<'PY'
 import os,pathlib,re,shutil,subprocess,sys
 ROOT=pathlib.Path("/tmp/aaris-native-photo-worktrees")
 SOURCE=pathlib.Path("/workspaces/Unity-Game-Aris")
-OLD_PREFIXES=("8bb6a4be31",)
+OLD_PREFIXES=("26b1d26dd6","2ce5369a7b")
 def fail(reason):
     print("FOREST_SCRATCH_LIBRARY_REFUSED_"+reason)
     raise SystemExit(1)
@@ -48,6 +48,6 @@ after=os.statvfs("/tmp")
 free_after=after.f_bavail*after.f_frsize//1048576
 print("FOREST_SCRATCH_FREE_MIB_BEFORE="+str(free_before))
 print("FOREST_SCRATCH_FREE_MIB_AFTER="+str(free_after))
-if free_after<7500:fail("STILL_BELOW_SAFE_UNITY_DISK_BUDGET")
+if free_after<14000:fail("STILL_BELOW_SAFE_UNITY_DISK_BUDGET")
 print("FOREST_SCRATCH_READONLY_SOURCE_PRESERVED=yes")
 PY
