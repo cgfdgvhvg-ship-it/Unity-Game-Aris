@@ -273,7 +273,13 @@ namespace Aaris.MapReview
             if (!activeDrop)
             {
                 if (hasDropPhase && drop != null && drop.HasLanded)
+                {
                     OneShot("parachute_land", pos, 0.85f);
+                    // ResumeFromAerialDrop intentionally sets LastLandingTime.
+                    // The parachute touchdown already has its own cue:
+                    // prevent a second generic walking landing in this frame.
+                    if (player != null) previousLand = player.LastLandingTime;
+                }
                 AdjustLoop(planeLoop, 0f, 1f, dt);
                 AdjustLoop(windLoop, 0f, 1f, dt);
                 hasDropPhase = false;
