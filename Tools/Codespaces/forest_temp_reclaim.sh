@@ -6,7 +6,7 @@ python3 - <<'PY'
 import os,pathlib,re,shutil,subprocess,sys
 ROOT=pathlib.Path("/tmp/aaris-native-photo-worktrees")
 SOURCE=pathlib.Path("/workspaces/Unity-Game-Aris")
-OLD_PREFIX="02bed58cac"
+OLD_PREFIX="06dca6ce3a"
 def fail(msg):
   print("FOREST_TEMP_LIBRARY_REFUSED_"+msg)
   raise SystemExit(1)
@@ -41,6 +41,6 @@ after=os.statvfs("/tmp");free_after=after.f_bavail*after.f_frsize//1048576
 print("FOREST_TEMP_OLD_REVIEW_HEAD="+target.name[:10])
 print("FOREST_TEMP_LIBRARY_FREE_MIB_BEFORE="+str(free_before))
 print("FOREST_TEMP_LIBRARY_FREE_MIB_AFTER="+str(free_after))
-if free_after<2500:fail("INSUFFICIENT_FREE_AFTER_CLEAN")
+if free_after<5500:fail("INSUFFICIENT_FREE_AFTER_CLEAN")
 print("FOREST_TEMP_IGNORED_LIBRARY_RECLAIM_PASSED")
 PY
