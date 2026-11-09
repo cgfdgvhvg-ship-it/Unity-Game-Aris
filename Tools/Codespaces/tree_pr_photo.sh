@@ -102,11 +102,11 @@ for label,x,z in ((1,418,-350),(2,65,870)):
         raise SystemExit("AARIS_PR_PHOTO_REPORT_INVALID")
     for kind in ("detail","context"):
         photo=folder/f"pr-photo-forest-{label}-{kind}.png"
-        if photo.stat().st_size<8192 or photo.read_bytes()[:8]!=b"\\x89PNG\\r\\n\\x1a\\n":
+        if photo.stat().st_size<8192 or photo.read_bytes()[:8]!=bytes([137,80,78,71,13,10,26,10]):
             raise SystemExit("AARIS_PR_PHOTO_BYTES_INVALID")
     reports.append(dict(targetX=x,targetZ=z,detailVariation=d["detailVariation"],
                         contextVariation=d["contextVariation"],tiles=4))
 (folder/"pr-report.json").write_text(json.dumps(dict(status="passed",headSha=head,
-   mode="PR_HEAD_TWO_FOREST_VIEWS",cameraFrames=4,sites=reports),indent=2)+"\\n")
+   mode="PR_HEAD_TWO_FOREST_VIEWS",cameraFrames=4,sites=reports),indent=2)+chr(10))
 PY
 echo AARIS_PR_HEAD_FOUR_REAL_UNITY_FRAMES_PASSED
