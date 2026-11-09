@@ -17,6 +17,9 @@ umask 077
 mkdir -p "$BASE"
 rm -f "$BASE/bundle.tar.gz" "$BASE/result.json"
 mkdir -p "$BASE/images"
+# Delete only stale generated PNGs in this fixed temporary output folder.
+# Never allow old runs to mix with the current verified archive.
+find "$BASE/images" -maxdepth 1 -type f -name '*.png' -delete
 python3 - "$TOKEN" "$BASE/request.json" <<'PY'
 import base64,json,sys
 from pathlib import Path
