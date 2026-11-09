@@ -18,6 +18,36 @@ def distance_to_segment(px, pz, ax, az, bx, bz):
                         (dx*dx + dz*dz))) if dx*dx + dz*dz > 1e-12 else 0.0
     return math.hypot(px - ax - t*dx, pz - az - t*dz)
 
+def segment_intersects_aabb_xz(a, b, box, margin=0.0):
+    """Conservative 2D swept-segment/AABB clearance for map blueprint QA.
+
+    The road polyline is padded by half its authored width + 1 m.
+    A positive result is a review blocker; it does not prove 3D collision.
+    """
+    x0, z0, x1, z1 = box
+    x0 -= margin
+    z0 -= margin
+    x1 += margin
+    z1 += margin
+    ax, az = a[0], a[2]
+    dx, dz = b[0]-ax, b[2]-az
+    enter, leave = 0.0, 1.0
+    for p, q in ((-dx, ax-x0), (dx, x1-ax),
+                 (-dz, az-z0), (dz, z1-az)):
+        if abs(p) <= 1e-12:
+            if q < 0.0:
+                return False
+            continue
+        bound = q/p
+        if p < 0.0:
+            enter = max(enter, bound)
+        else:
+            leave = min(leave, bound)
+        if enter > leave:
+            return False
+    return True
+
+
 def road_distance(road, x, z):
     points = road["points"]
     if len(points) == 1:
@@ -105,6 +135,37 @@ def check(layout):
                 colliding_spawns.append([s["name"],b["name"]])
     assert_check("vehicle_spawns_clear_from_buildings",
                  not colliding_spawns,colliding_spawns[:10])
+    # Do not let an expanded house block an authored road. The 1 m guard
+    # is intentionally conservative around the road's rendered half-width.
+    # This checks blueprint XY projections only, not native physics colliders.
+    road_conflicts=[]
+    for road in roads:
+        points=road["points"]
+        width=road["width"]
+        if not (isinstance(width,(int,float)) and math.isfinite(width)
+                and 1.0 <= width <= 24.0 and len(points) >= 2):
+            road_conflicts.append([road["name"],"INVALID_ROAD"])
+            continue
+        padding=width*0.5+1.0
+        for building in buildings:
+            if any(segment_intersects_aabb_xz(a,b,building["aabb_xz_m"],padding)
+                   for a,b in zip(points,points[1:])):
+                road_conflicts.append([road["name"],building["name"]])
+    assert_check("roads_clear_of_buildings_with_one_metre_edge_guard",
+                 not road_conflicts,road_conflicts[:12])
+
+    # A garage/vehicle marker's reserved exit must not cross a building.
+    # Collision after spawning cannot be solved by moving its icon alone.
+    exit_conflicts=[]
+    for spawn in spawns:
+        start=spawn["position_m"]
+        end=[spawn["exit_world_xz_m"][0], start[1],
+             spawn["exit_world_xz_m"][1]]
+        for building in buildings:
+            if segment_intersects_aabb_xz(start,end,building["aabb_xz_m"],1.0):
+                exit_conflicts.append([spawn["name"],building["name"]])
+    assert_check("garage_vehicle_exit_routes_clear_of_buildings",
+                 not exit_conflicts,exit_conflicts[:12])
     return {"result":"passed","source":"Docs/MAP_LAYOUT.json",
             "checks":checks,"measures":{"districts":len(districts),
             "buildings":len(buildings),"roads":len(roads),
