@@ -11,6 +11,28 @@ for path in files:
         raise SystemExit(31)
     with path.open('rb') as f:
         if f.read(8)!=b'\x89PNG\r\n\x1a\n':raise SystemExit(32)
+# Prefer the SIX-FRAME contact sheet that Unity itself already assembled.
+# A completed survey has verified all 24 source frames and 4 native sheets:
+# no ffmpeg, ImageMagick or Pillow is needed in the lightweight Codespace.
+import json,struct
+native=root/'survey-sheet-1.png'
+report=root/'survey-report.json'
+if native.is_file() and report.is_file():
+    try:
+        d=json.loads(report.read_text())
+        raw=native.read_bytes()
+        correct=(d.get('status')=='passed' and d.get('frameCount')==24
+                 and d.get('terrainTiles')==4 and d.get('locationCount')==12
+                 and 8192<len(raw)<8*1024*1024
+                 and raw[:8]==bytes([137,80,78,71,13,10,26,10])
+                 and raw[12:16]==b'IHDR'
+                 and struct.unpack('>II',raw[16:24])==(1920,720))
+        if correct:
+            print(base64.b64encode(raw).decode('ascii'))
+            raise SystemExit(0)
+    except (OSError,ValueError,TypeError,struct.error):
+        pass
+# Early partial surveys can still use ffmpeg when present.
 exe=shutil.which('ffmpeg')
 if not exe:raise SystemExit(33)
 out=root/'survey-first-six-preview.png'
