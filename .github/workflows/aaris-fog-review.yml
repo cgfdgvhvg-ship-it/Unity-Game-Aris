@@ -26,8 +26,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue comment 77 -R "$GITHUB_REPOSITORY" \\
-            --body "AARIS_FOG_REVIEW_RUNNING run_id=$GITHUB_RUN_ID commit=$GITHUB_SHA"
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" --body "AARIS_FOG_REVIEW_RUNNING run_id=$GITHUB_RUN_ID commit=$GITHUB_SHA"
       - uses: actions/checkout@v4
         with:
           lfs: false
