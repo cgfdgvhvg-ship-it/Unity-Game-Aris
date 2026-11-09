@@ -1,0 +1,107 @@
+name: PR-only native Unity tree-cover photo verification
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'Assets/TerrainDemoScene_URP/Prefabs/Trees/**'
+      - 'Tools/Codespaces/tree_pr_photo.sh'
+      - 'Tools/Validation/test_tree_proportions.py'
+      - '.github/workflows/aaris-tree-pr-native-photo.yml'
+permissions:
+  contents: read
+jobs:
+  native-tree-cover-proof:
+    # Only the repository owner's exact native test branch can reach the
+    # Codespace secret; no arbitrary fork PR checkout or arbitrary remote shell.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'upgrade/selective-pine-core-cover-20261109'
+    runs-on: ubuntu-latest
+    timeout-minutes: 58
+    concurrency:
+      group: aaris-codespace-control
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          persist-credentials: false
+      - name: Native PR source and review script static gate
+        run: |
+          set -euo pipefail
+          bash -n Tools/Codespaces/tree_pr_photo.sh
+          python3 Tools/Validation/test_tree_proportions.py
+          python3 Tools/Validation/test_mobile_tree_shadows.py
+      - name: Select exact same running Codespace account machine
+        run: |
+          set -euo pipefail
+          test -n "${GH_TOKEN:-}" || { echo 'CODESPACE_PAT_MISSING'; exit 30; }
+          CS="$(gh codespace list -R "$GITHUB_REPOSITORY" --json name,displayName,state --limit 30 |
+            jq -er '
+              (map(select(.name == "aaris-ai-unity-ssh-vp5g97jv4r4gfpjgq"))) as $pinned |
+              (map(select(.displayName == "aaris-ai-ubuntu-minimal"))) as $minimal |
+              (map(select(.displayName == "aaris-ai-unity-ssh"))) as $ssh |
+              if ($pinned | length) == 1 then $pinned[0].name
+              elif ($minimal | length) == 1 then $minimal[0].name
+              elif ($minimal | length) > 1 then empty
+              elif ($ssh | length) == 1 then $ssh[0].name
+              else empty end
+            ')" || { echo 'CODESPACE_NOT_UNIQUELY_SELECTED'; exit 31; }
+          [[ "$CS" =~ ^[a-zA-Z0-9-]{3,110}$ ]] || exit 32
+          echo "SELECTED_CODESPACE=$CS" >> "$GITHUB_ENV"
+      - name: Capture 4 genuine Unity camera PNGs on immutable PR-head worktree
+        timeout-minutes: 48
+        run: |
+          set -euo pipefail
+          mkdir -p pr-photo
+          [[ "$PR_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 40
+          if ! timeout 2800 gh codespace ssh -c "$SELECTED_CODESPACE" -- "bash -s -- $PR_HEAD_SHA" \
+               < Tools/Codespaces/tree_pr_photo.sh > pr-photo/status.txt 2> "$RUNNER_TEMP/aaris-private-ssh.txt"; then
+            echo 'PR_HEAD_REAL_UNITY_RENDER_FAILED'
+            exit 41
+          fi
+          grep -qxF 'AARIS_PR_HEAD_FOUR_REAL_UNITY_FRAMES_PASSED' pr-photo/status.txt
+      - name: Transfer only fixed-name validated real Unity photos
+        run: |
+          set -euo pipefail
+          for name in pr-photo-forest-1-detail.png pr-photo-forest-1-context.png \
+            pr-photo-forest-2-detail.png pr-photo-forest-2-context.png pr-report.json; do
+            timeout 190 gh codespace ssh -c "$SELECTED_CODESPACE" -- \
+              "base64 /tmp/aaris-codespaces/tree-pr-photo/$name" > "pr-photo/$name.b64"
+            base64 --decode "pr-photo/$name.b64" > "pr-photo/$name"
+            rm -f "pr-photo/$name.b64"
+          done
+          python3 - "$PR_HEAD_SHA" <<'PY'
+          import sys,json,pathlib
+          p=pathlib.Path("pr-photo")
+          info=json.loads((p/"pr-report.json").read_text())
+          assert info.get("headSha")==sys.argv[1] and info.get("status")=="passed"
+          assert info.get("cameraFrames")==4 and len(info.get("sites",[]))==2
+          for name in ("pr-photo-forest-1-detail.png","pr-photo-forest-1-context.png",
+                       "pr-photo-forest-2-detail.png","pr-photo-forest-2-context.png"):
+              q=p/name
+              assert q.stat().st_size>8192
+              assert q.read_bytes()[:8] == bytes([137,80,78,71,13,10,26,10])
+          print("AARIS_PR_FOUR_REAL_UNITY_PNGS_TRANSFER_VERIFIED")
+          PY
+      - name: Save PR-specific screenshots and redacted evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-pr-tree-real-unity-${{ github.run_id }}
+          path: |
+            pr-photo/*.png
+            pr-photo/pr-report.json
+            pr-photo/status.txt
+          if-no-files-found: warn
+          retention-days: 2
+      - name: Evidence note
+        if: always()
+        run: |
+          echo "### PR-specific Unity forest camera proof" >> "$GITHUB_STEP_SUMMARY"
+          echo "PR commit: $PR_HEAD_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "Photo task outcome: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Only a native PNG plus visual review can approve the actual change; static checks are not enough." >> "$GITHUB_STEP_SUMMARY"
