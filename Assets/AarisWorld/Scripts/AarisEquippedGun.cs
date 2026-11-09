@@ -159,6 +159,7 @@ namespace Aaris.MapReview
                 ? Mathf.Max(0.28f, actions.CameraEyeHeight - 0.15f) : 1.3f;
             Vector3 muzzle = owner.transform.position + Vector3.up * muzzleHeight +
                 owner.transform.forward * 0.24f;
+            AarisAudioDirector.GunShot(spec.category, spec.id, muzzle);
 
             for (int pellet = 0; pellet < spec.pellets; pellet++)
             {
@@ -184,7 +185,11 @@ namespace Aaris.MapReview
                         (!targetFound || !SameTarget(target.collider, muzzleHit.collider)))
                         continue;
                 }
-                if (targetFound) ApplyDamage(target.collider, spec.damage, owner);
+                if (targetFound)
+                {
+                    if (pellet == 0) AarisAudioDirector.BulletImpact(target.point);
+                    ApplyDamage(target.collider, spec.damage, owner);
+                }
             }
             var motor = owner.GetComponent<AarisThirdPersonPlayer>();
             if (motor != null) motor.ApplyWeaponRecoil(spec.recoilPitchDegrees,
