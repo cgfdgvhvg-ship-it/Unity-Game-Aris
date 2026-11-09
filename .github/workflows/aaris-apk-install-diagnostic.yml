@@ -1,0 +1,75 @@
+name: Aaris Android APK installability and certificate audit
+on:
+  pull_request:
+    paths:
+      - 'Tools/Codespaces/apk_install_diagnostic.sh'
+      - '.github/workflows/aaris-apk-install-diagnostic.yml'
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+  issues: read
+jobs:
+  static:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate read-only certificate audit
+        run: |
+          set -euo pipefail
+          bash -n Tools/Codespaces/apk_install_diagnostic.sh
+          grep -Fq '"$APKSIGNER" verify' Tools/Codespaces/apk_install_diagnostic.sh
+          grep -q 'apk_signature_v2=' Tools/Codespaces/apk_install_diagnostic.sh || \
+            grep -q 'apk_signature_' Tools/Codespaces/apk_install_diagnostic.sh
+          echo APK_DIAGNOSTIC_STATIC_OK
+  diagnostic:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.number == 77 &&
+      github.event.comment.user.login == 'sundamunda289-art' &&
+      github.event.comment.body == 'APK INSTALL DIAG'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: aaris-codespace-control
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          lfs: false
+      - name: Audit existing release APK using official Android SDK apksigner
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$GH_TOKEN"
+          CS=aaris-ai-ubuntu-minimal-jrg7rgvx5rr435wpp
+          gh codespace list -R "$GITHUB_REPOSITORY" --json name --limit 30 |
+            jq -e --arg n "$CS" '[.[] | select(.name == $n)] | length == 1' >/dev/null
+          timeout 600 gh codespace ssh -c "$CS" -- 'bash -s' \
+            < Tools/Codespaces/apk_install_diagnostic.sh > "$RUNNER_TEMP/apk-install-safe.txt"
+          grep -qx 'APK_INSTALL_DIAG_COMPLETE' "$RUNNER_TEMP/apk-install-safe.txt"
+          grep -E '^(APK_INSTALL_DIAG_[A-Z_]+|apk_[a-z0-9_]+=[A-Za-z0-9]+)$' \
+            "$RUNNER_TEMP/apk-install-safe.txt" > "$RUNNER_TEMP/apk-public.txt"
+          cat "$RUNNER_TEMP/apk-public.txt"
+      - name: Post redacted signature and install diagnosis to issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ job.status }}
+        run: |
+          set -Eeuo pipefail
+          {
+            echo '**AARIS APK ANDROID INSTALL AUDIT**'
+            echo "Result: $RESULT"
+            echo '~~~'
+            if test -s "$RUNNER_TEMP/apk-public.txt"; then cat "$RUNNER_TEMP/apk-public.txt"; fi
+            echo '~~~'
+            echo "https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/apk-install-comment.md"
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" -F "$RUNNER_TEMP/apk-install-comment.md"
