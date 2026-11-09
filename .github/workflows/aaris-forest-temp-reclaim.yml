@@ -8,6 +8,7 @@ on:
       - '.github/workflows/aaris-forest-temp-reclaim.yml'
 permissions:
   contents: read
+  issues: write
 jobs:
   temp-reclaim:
     runs-on: ubuntu-latest
@@ -15,7 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {lfs: false}
-      - name: Verify and reclaim only one immutable old scratch worktree
+      - name: Verify and reclaim only immutable old scratch Libraries
+        id: reclaim
         env:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
         run: |
@@ -24,3 +26,15 @@ jobs:
           test -n "${GH_TOKEN:-}"
           timeout 780 gh codespace ssh -c aaris-ai-ubuntu-minimal-jrg7rgvx5rr435wpp -- 'bash -s' \
             < Tools/Codespaces/forest_temp_reclaim.sh
+      - name: Report bounded cache cleanup result for follow-up
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RECLAIM_OUTCOME: ${{ steps.reclaim.outcome }}
+        run: |
+          set -euo pipefail
+          case "${RECLAIM_OUTCOME:-}" in
+            success) RESULT="SUCCESS";;
+            *) RESULT="FAILED_OR_INCONCLUSIVE";;
+          esac
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" -b "FOREST SCRATCH CACHE RECLAIM: $RESULT. Only exact preverified Git-ignored review-worktree Library directories are eligible; no source/LFS files deleted. [Actions run](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)"
