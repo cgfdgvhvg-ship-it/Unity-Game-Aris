@@ -98,7 +98,8 @@ namespace Aaris.MapReview.Editor
                         item.z >= a.transform.position.z &&
                         item.z <= a.transform.position.z + a.terrainData.size.z);
                     if (t == null) throw new InvalidOperationException("TARGET_TERRAIN_MISSING");
-                    float groundY = t.SampleHeight(new Vector3(item.x, 0f, item.z)) + t.transform.position.y;
+                    // Terrain.SampleHeight returns world-space elevation (Y already included).
+                    float groundY = t.SampleHeight(new Vector3(item.x, 0f, item.z));
                     camera.transform.position = new Vector3(item.x + 28f, groundY + 58f, item.z - 95f);
                     camera.transform.LookAt(new Vector3(item.x, groundY + 9f, item.z + 250f), Vector3.up);
                     var shot = new ShotReport { name = item.name, x = item.x,
