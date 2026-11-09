@@ -39,6 +39,44 @@ jobs:
             print("lfs_log_bytes="+str(lfs_log.stat().st_size))
           else:print("lfs_log_missing")
           report=pathlib.Path("/tmp/aaris-codespaces/deep-forest-bake-report.json")
+          # Classify only the missing normalized snapshot assets. Do not print
+          # private filesystem contents or modify any workspace file.
+          import hashlib,subprocess
+          snapshot=pathlib.Path("/tmp/aaris-native-photo-worktrees/95705477adc6b81b4d76c76af99b458a73ddae55")
+          if snapshot.is_dir():
+            def git(*args):
+              return subprocess.run(["git","-C",str(snapshot),*args],
+                                    capture_output=True,timeout=120,check=True).stdout
+            try:
+              paths=git("lfs","ls-files","--name-only").decode().splitlines()
+              mismatch=[]
+              for rel in paths:
+                expected=git("show","HEAD:"+rel)
+                m=re.fullmatch(rb"version https://git-lfs.github.com/spec/v1\\noid sha256:([0-9a-f]{64})\\nsize ([0-9]+)\\n?",expected)
+                if not m:
+                  mismatch.append(("head_not_pointer",rel));continue
+                expected_oid=m.group(1).decode(); expected_size=int(m.group(2))
+                file=snapshot/rel
+                if not file.is_file():
+                  mismatch.append(("missing",rel));continue
+                size=file.stat().st_size
+                if size!=expected_size:
+                  prefix=file.open("rb").read(100)
+                  mismatch.append(("still_pointer" if prefix.startswith(b"version https://git-lfs.github.com") else "wrong_size",rel))
+                else:
+                  h=hashlib.sha256()
+                  with file.open("rb") as fp:
+                    for part in iter(lambda:fp.read(1024*1024),b""):h.update(part)
+                  if h.hexdigest()!=expected_oid:
+                    mismatch.append(("wrong_hash",rel))
+              print("hydrated_audit_total="+str(len(paths)))
+              print("hydrated_audit_bad_count="+str(len(mismatch)))
+              for k,v in mismatch[:8]:
+                print("hydrated_bad_kind="+k)
+                print("hydrated_bad_filename="+pathlib.Path(v).name[:92])
+            except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired,ValueError):
+              print("hydrated_snapshot_audit_unavailable")
+          else:print("hydrated_failed_snapshot_not_found")
           if report.is_file():
             try:
               d=json.loads(report.read_text())
