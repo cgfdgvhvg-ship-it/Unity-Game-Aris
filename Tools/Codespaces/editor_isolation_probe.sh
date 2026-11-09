@@ -218,3 +218,34 @@ if grep -Fq 'AARIS_EMPTY_PLAY_60_FRAMES_PASS' "$WORK/empty-play.log.private" 2>/
 else
   echo EDITOR_ISOLATE_EMPTY_PLAY_NOT_VERIFIED
 fi
+
+# A/B isolation: run THE SAME temporary 60-frame Play probe without a graphics
+# device. If both modes raise the same Editor lifecycle exception, source-game
+# C# and URP are not prerequisites for this failure. This is diagnosis ONLY.
+rc=0
+timeout --kill-after=10s 115s env TMPDIR="$WORK/UnityTemp" \
+  "$EDITOR" -batchmode -nographics -projectPath "$PROJECT" \
+  -executeMethod AarisEmptyPlayTransitionProbe.Begin \
+  -logFile "$WORK/headless-play.log.private" \
+  >"$WORK/headless-play.stdout.private" 2>"$WORK/headless-play.stderr.private" || rc=$?
+report HEADLESS_PLAY "$rc"
+if grep -Fq 'AARIS_EMPTY_PLAY_60_FRAMES_PASS' "$WORK/headless-play.log.private" 2>/dev/null &&
+   ((rc == 0)); then
+  echo EDITOR_ISOLATE_HEADLESS_PLAY_60_FRAMES_VERIFIED
+elif grep -Fq 'AARIS_EMPTY_PLAY_60_FRAMES_ERRORS' "$WORK/headless-play.log.private" 2>/dev/null; then
+  echo EDITOR_ISOLATE_HEADLESS_PLAY_60_FRAMES_REACHED_WITH_ERRORS
+  for kind in ARRAY_INDEX NULL_REFERENCE MISSING_REFERENCE INVALID_OPERATION INVALID_ARGUMENT UNITY_EXCEPTION ASSERTION UNCLASSIFIED; do
+    if grep -Fq "AARIS_EMPTY_PLAY_FIRST_ERROR_FAMILY_$kind" "$WORK/headless-play.log.private"; then
+      echo "EDITOR_ISOLATE_HEADLESS_PLAY_FIRST_ERROR_FAMILY_$kind"
+      break
+    fi
+  done
+  for origin in EDITOR_LIFECYCLE UNITY_EDITOR GAME_SCRIPT UNITY_ENGINE UNCLASSIFIED; do
+    if grep -Fq "AARIS_EMPTY_PLAY_FIRST_ERROR_SOURCE_$origin" "$WORK/headless-play.log.private"; then
+      echo "EDITOR_ISOLATE_HEADLESS_PLAY_FIRST_ERROR_SOURCE_$origin"
+      break
+    fi
+  done
+else
+  echo EDITOR_ISOLATE_HEADLESS_PLAY_NOT_VERIFIED
+fi
