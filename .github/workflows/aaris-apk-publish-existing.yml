@@ -1,0 +1,161 @@
+name: Aaris publish existing verified Android APK
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/aaris-apk-publish-existing.yml'
+      - 'Tools/Codespaces/apk_existing_release_verify.sh'
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+  issues: read
+jobs:
+  static-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate safe recovery verification script
+        run: |
+          set -euo pipefail
+          bash -n Tools/Codespaces/apk_existing_release_verify.sh
+          grep -q APK_EXISTING_NATIVE_ARCHIVE_VERIFIED Tools/Codespaces/apk_existing_release_verify.sh
+          grep -q 'terrainTiles' Tools/Codespaces/apk_existing_release_verify.sh
+          grep -q 'sha256sum -c' Tools/Codespaces/apk_existing_release_verify.sh
+          echo APK_RECOVERY_STATIC_CHECK_PASSED
+
+  publish-existing:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.number == 77 &&
+      github.event.comment.user.login == 'sundamunda289-art' &&
+      github.event.comment.body == 'APK PUBLISH'
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    concurrency:
+      group: aaris-codespace-control
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      actions: read
+      issues: write
+    steps:
+      - name: Checkout reviewed recovery scripts from main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          lfs: false
+          persist-credentials: false
+      - name: Recover immutable successful native-build evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p recovery-evidence dist
+          gh run download 42610862090 -R "$GITHUB_REPOSITORY" \
+            --name aaris-codespace-apk-report-42610862090 -D recovery-evidence
+          FILE=recovery-evidence/build-status-safe.txt
+          grep -qxF APK_BUILD_SUCCESS_VALID_ZIP "$FILE"
+          grep -qxF APK_UPLOAD_READY "$FILE"
+          SHA="$(sed -n 's/^apk_commit=//p' "$FILE")"
+          BYTES="$(sed -n 's/^apk_bytes=//p' "$FILE")"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$BYTES" =~ ^[0-9]{6,10}$ ]]
+          test "$BYTES" = 363596508
+          echo "APK_SHA=$SHA" >> "$GITHUB_ENV"
+          echo "APK_BYTES=$BYTES" >> "$GITHUB_ENV"
+          echo APK_PREVIOUS_NATIVE_BUILD_EVIDENCE_CONFIRMED
+      - name: Select exact authorized source Codespace
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$GH_TOKEN"
+          CS=aaris-ai-ubuntu-minimal-jrg7rgvx5rr435wpp
+          gh codespace list -R "$GITHUB_REPOSITORY" --json name --limit 30 |
+            jq -e --arg n "$CS" '[.[] | select(.name==$n)] | length == 1' >/dev/null
+          echo "CODESPACE=$CS" >> "$GITHUB_ENV"
+          echo APK_EXACT_CODESPACE_SELECTED
+      - name: Verify native APK, hash and immutable scene commit on Codespace
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          set -Eeuo pipefail
+          timeout 240 gh codespace ssh -c "$CODESPACE" -- \
+            "bash -s -- $APK_SHA $APK_BYTES" \
+            < Tools/Codespaces/apk_existing_release_verify.sh \
+            > recovery-evidence/remote-verified.txt
+          grep -qxF APK_EXISTING_NATIVE_ARCHIVE_VERIFIED recovery-evidence/remote-verified.txt
+          echo APK_RECOVERY_SOURCE_PASSED
+      - name: Copy real APK, using SCP remote expansion and safe SSH fallback
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          set -Eeuo pipefail
+          if ! timeout 1800 gh codespace cp -e -c "$CODESPACE" \
+            'remote:/tmp/aaris-codespaces/android-apk/Build/AarisGame.apk' \
+            dist/AarisGame.apk; then
+            rm -f dist/AarisGame.apk
+            timeout 1800 gh codespace ssh -c "$CODESPACE" -- \
+              'cat /tmp/aaris-codespaces/android-apk/Build/AarisGame.apk' \
+              > dist/AarisGame.apk
+          fi
+          timeout 180 gh codespace ssh -c "$CODESPACE" -- \
+            'cat /tmp/aaris-codespaces/android-apk/apk-sha256.txt' \
+            > dist/AarisGame.sha256
+          cd dist
+          sha256sum -c AarisGame.sha256
+          python3 - <<'PY'
+          import os,zipfile
+          p='AarisGame.apk'
+          assert os.path.getsize(p)==int(os.environ['APK_BYTES'])
+          with zipfile.ZipFile(p) as z:
+              names=set(z.namelist())
+              assert 'AndroidManifest.xml' in names
+              assert any(name.endswith('.dex') for name in names)
+          print('APK_RECOVERY_BYTES_AND_ZIP_VERIFIED')
+          PY
+      - name: Publish verified file as stable prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          TAG=apk-test-42610862090
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo APK_RELEASE_TAG_ALREADY_EXISTS
+            exit 31
+          fi
+          cat > recovery-evidence/notes.md <<EOF
+          Offline single-player Android ARM64 test APK, signed using Unity debug signing.
+          Built by Unity 6000.3.26f1, from source commit $APK_SHA.
+          Original 2 km x 2 km TerrainDemoScene.unity, four native terrain tiles, IL2CPP.
+          Download AarisGame.apk and verify AarisGame.sha256 before installing.
+          This is not a store-ready release; phone FPS and real gameplay remain unverified.
+          EOF
+          gh release create "$TAG" dist/AarisGame.apk dist/AarisGame.sha256 \
+            -R "$GITHUB_REPOSITORY" --target "$APK_SHA" \
+            --title "Aaris Android Test APK - recovered native build" \
+            --notes-file recovery-evidence/notes.md --prerelease
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json url --jq .url \
+            > recovery-evidence/release-url.txt
+          echo APK_GITHUB_RELEASE_PUBLISHED
+      - name: Report the verified download or exact failed stage to owner
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TASK_RESULT: ${{ job.status }}
+        run: |
+          set -Eeuo pipefail
+          {
+            echo '**AARIS EXISTING NATIVE APK PUBLISH**'
+            echo "Status: $TASK_RESULT"
+            if test -s recovery-evidence/remote-verified.txt; then
+              echo APK_EXISTING_NATIVE_ARCHIVE_VERIFIED
+            fi
+            if test -s recovery-evidence/release-url.txt; then
+              echo 'Validated Android APK GitHub Release:'
+              cat recovery-evidence/release-url.txt
+            fi
+            echo "Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > /tmp/aaris-apk-publish-owner.txt
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" -F /tmp/aaris-apk-publish-owner.txt
