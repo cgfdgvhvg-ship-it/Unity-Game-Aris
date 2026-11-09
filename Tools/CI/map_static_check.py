@@ -166,6 +166,32 @@ def check(layout):
                 exit_conflicts.append([spawn["name"],building["name"]])
     assert_check("garage_vehicle_exit_routes_clear_of_buildings",
                  not exit_conflicts,exit_conflicts[:12])
+    # Guard the vertical road grade the car physics will face. This is
+    # measured from authored road centreline elevations and cannot replace
+    # real wheel contact, bridge geometry or terrain-collider Play testing.
+    steep_segments=[]
+    for road in roads:
+        for a,b in zip(road["points"],road["points"][1:]):
+            distance=math.hypot(b[0]-a[0], b[2]-a[2])
+            if distance < 0.01:
+                steep_segments.append([road["name"],"ZERO_LENGTH"])
+                continue
+            grade=abs(b[1]-a[1])/distance
+            if not math.isfinite(grade) or grade > 0.14:
+                steep_segments.append([road["name"],round(grade,4)])
+    assert_check("road_segments_below_14_percent_grade",
+                 not steep_segments,steep_segments[:12])
+
+    # Each spawn exit is meant to join a driveable authored corridor,
+    # not terminate in open terrain many metres from every road.
+    orphaned_exits=[]
+    for spawn in spawns:
+        ex,ez=spawn["exit_world_xz_m"]
+        nearest=min(road_distance(road,ex,ez) for road in roads)
+        if nearest>3.0:
+            orphaned_exits.append([spawn["name"],round(nearest,2)])
+    assert_check("vehicle_exit_connects_within_3m_of_road",
+                 not orphaned_exits,orphaned_exits[:12])
     return {"result":"passed","source":"Docs/MAP_LAYOUT.json",
             "checks":checks,"measures":{"districts":len(districts),
             "buildings":len(buildings),"roads":len(roads),
