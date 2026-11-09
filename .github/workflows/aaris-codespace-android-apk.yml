@@ -1,0 +1,218 @@
+name: Aaris Android APK on existing Codespace to GitHub Release
+on:
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Read-only APK preflight or build and publish debug test APK'
+        required: true
+        type: choice
+        options: [preflight, build]
+        default: preflight
+permissions:
+  contents: read
+  issues: read
+jobs:
+  codespace-android-apk:
+    if: >-
+      (github.event_name == 'workflow_dispatch' &&
+       github.actor == 'sundamunda289-art') ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.number == 77 &&
+       github.event.comment.user.login == 'sundamunda289-art' &&
+       (github.event.comment.body == 'APK PREFLIGHT' ||
+        github.event.comment.body == 'APK BUILD'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    concurrency:
+      # Read-only preflight does not hold the long native Editor build queue.
+      # Actual APK builds remain serialized with every other Unity command.
+      group: ${{ ((github.event_name == 'issue_comment' && github.event.comment.body == 'APK PREFLIGHT') || (github.event_name == 'workflow_dispatch' && inputs.operation == 'preflight')) && 'aaris-apk-preflight' || 'aaris-codespace-control' }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      actions: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+      OPERATION: ${{ github.event_name == 'workflow_dispatch' && inputs.operation || (github.event.comment.body == 'APK BUILD' && 'build' || 'preflight') }}
+    steps:
+      - name: Checkout exact latest main controller and APK builder
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          lfs: false
+          persist-credentials: false
+      - name: Validate reviewer-controlled APK scripts and scene settings
+        run: |
+          set -euo pipefail
+          bash -n Tools/Codespaces/android_apk.sh
+          test -s Assets/AarisWorld/Editor/AarisCodespaceAndroidBuild.cs
+          test -s Assets/AarisWorld/Editor/AarisCodespaceAndroidBuild.cs.meta
+          grep -q 'm_EditorVersion: 6000.3.26f1' ProjectSettings/ProjectVersion.txt
+          grep -q 'path: Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity' ProjectSettings/EditorBuildSettings.asset
+          mkdir -p apk-evidence
+          echo "APK_STATIC_SCENE_AND_BUILDER_VALID"
+      - name: Select the same exact authorized Codespace, fail on ambiguity
+        run: |
+          set -euo pipefail
+          test -n "${GH_TOKEN:-}" || { echo 'APK_CODESPACE_PAT_MISSING'; exit 10; }
+          CS="$(gh codespace list -R "$GITHUB_REPOSITORY" --json name,displayName,state --limit 30 |
+            jq -er '
+              (map(select(.name == "aaris-ai-unity-ssh-vp5g97jv4r4gfpjgq"))) as $pinned |
+              (map(select(.displayName == "aaris-ai-ubuntu-minimal"))) as $minimal |
+              (map(select(.displayName == "aaris-ai-unity-ssh"))) as $ssh |
+              if ($pinned | length) == 1 then $pinned[0].name
+              elif ($minimal | length) == 1 then $minimal[0].name
+              elif ($minimal | length) > 1 then empty
+              elif ($ssh | length) == 1 then $ssh[0].name
+              else empty end
+            ')" || { echo 'APK_CODESPACE_MISSING_OR_AMBIGUOUS'; exit 11; }
+          [[ "$CS" =~ ^[A-Za-z0-9-]{3,110}$ ]] || exit 12
+          echo "CODESPACE=$CS" >> "$GITHUB_ENV"
+          echo "APK_CODESPACE_SELECTED"
+      - name: Perform live Unity license and Android tools preflight
+        timeout-minutes: 6
+        run: |
+          set -euo pipefail
+          timeout 290 gh codespace ssh -c "$CODESPACE" -- 'bash -s -- preflight' \
+            < Tools/Codespaces/android_apk.sh > apk-evidence/preflight.txt \
+            2> "$RUNNER_TEMP/private-codespace-errors.log" || {
+              echo 'APK_PREFLIGHT_REMOTE_FAILED'
+              exit 13
+            }
+          grep -qxF 'APK_PREFLIGHT_RECORDED' apk-evidence/preflight.txt
+          # Redacted checked-in shell outputs only fixed classifications.
+          grep -E '^APK_[A-Z_]+$|^apk_(android_module|android_sdk|android_ndk|android_jdk|tmp_free_gb)=[A-Za-z0-9.]+$' \
+              apk-evidence/preflight.txt > apk-evidence/preflight-safe.txt
+          cat apk-evidence/preflight-safe.txt
+      - name: Supply immutable original SpeedTree LFS archive when building
+        if: env.OPERATION == 'build'
+        timeout-minutes: 10
+        env:
+          RELEASE_GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/original-tree-bake"
+          GH_TOKEN="$RELEASE_GH_TOKEN" gh run download 42472771253 -R "$GITHUB_REPOSITORY" \
+            --name aaris-codespace-42472771253 \
+            -D "$RUNNER_TEMP/original-tree-bake"
+          ARCHIVE="$RUNNER_TEMP/original-tree-bake/mass-package.tar.gz"
+          test "$(stat -c %s "$ARCHIVE")" = 4757727
+          test "$(sha256sum "$ARCHIVE" | cut -d ' ' -f1)" = \
+            234024b842e8cc5e1253607ce41b5a6aebec6a7abd3c9fd81837bc960a24197d
+          timeout 180 gh codespace ssh -c "$CODESPACE" -- \
+            'bash -c "umask 077; mkdir -p /tmp/aaris-codespaces/scene-probe; cat > /tmp/aaris-codespaces/scene-probe/verified-tree-mass-package.tar.gz"' \
+            < "$ARCHIVE" > /dev/null
+          REMOTE_SHA="$(timeout 90 gh codespace ssh -c "$CODESPACE" -- \
+            'sha256sum /tmp/aaris-codespaces/scene-probe/verified-tree-mass-package.tar.gz' |
+            awk '{print $1}')"
+          test "$REMOTE_SHA" = 234024b842e8cc5e1253607ce41b5a6aebec6a7abd3c9fd81837bc960a24197d
+          echo APK_ORIGINAL_AUTHENTIC_LFS_ARCHIVE_VERIFIED
+      - name: Install official Unity Android modules and build APK on Codespace
+        if: env.OPERATION == 'build'
+        timeout-minutes: 290
+        run: |
+          set -euo pipefail
+          # Only reviewed fixed command; no interpolation of issue-comment shell content.
+          timeout 16900 gh codespace ssh -c "$CODESPACE" -- 'bash -s -- build' \
+            < Tools/Codespaces/android_apk.sh > apk-evidence/build-status.txt \
+            2> "$RUNNER_TEMP/private-apk-build-ssh-errors.log" || {
+              echo 'APK_NATIVE_CODESPACE_BUILD_FAILED'
+              grep -E '^APK_[A-Z_]+$|^apk_(android_module|android_sdk|android_ndk|android_jdk)=[A-Za-z0-9.]+$' \
+                apk-evidence/build-status.txt || true
+              exit 20
+            }
+          grep -qxF 'APK_UPLOAD_READY' apk-evidence/build-status.txt
+          grep -E '^APK_[A-Z_]+$|^apk_bytes=[0-9]+$|^apk_commit=[0-9a-f]{40}$' \
+            apk-evidence/build-status.txt > apk-evidence/build-status-safe.txt
+          cat apk-evidence/build-status-safe.txt
+      - name: Copy and SHA-256 verify actual APK from Codespace
+        if: env.OPERATION == 'build'
+        timeout-minutes: 25
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          timeout 1100 gh codespace cp -c "$CODESPACE" \
+            'remote:/tmp/aaris-codespaces/android-apk/Build/AarisGame.apk' \
+            dist/AarisGame.apk
+          timeout 120 gh codespace ssh -c "$CODESPACE" -- \
+            'cat /tmp/aaris-codespaces/android-apk/apk-sha256.txt' \
+            > dist/AarisGame.sha256
+          cd dist
+          sha256sum -c AarisGame.sha256
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          p=Path("AarisGame.apk")
+          assert 100000<p.stat().st_size<2_000_000_000
+          with zipfile.ZipFile(p) as z:
+              names=set(z.namelist())
+              assert "AndroidManifest.xml" in names
+              assert any(n.endswith(".dex") for n in names)
+          print("APK_RELEASE_BYTES_VERIFIED")
+          PY
+      - name: Publish validated installable APK as GitHub Release asset
+        if: env.OPERATION == 'build'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="apk-test-$GITHUB_RUN_ID"
+          SHA="$(grep '^apk_commit=' apk-evidence/build-status-safe.txt | head -n1 | cut -d= -f2)"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || exit 31
+          cat > apk-evidence/release-notes.md <<EOF
+          Temporary offline single-player Android ARM64 test APK, signed with the Unity debug key.
+          Original Unity main snapshot: $SHA.
+          Native 2 km x 2 km scene: Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity (four terrain tiles).
+          Download AarisGame.apk from Assets; verify with AarisGame.sha256 before installing.
+          This is a test build, not a Google Play production release. Android device FPS, crashes,
+          touch controls and real collision behavior must still be tested on a phone.
+          EOF
+          gh release create "$TAG" dist/AarisGame.apk dist/AarisGame.sha256 \
+            -R "$GITHUB_REPOSITORY" --target "$SHA" \
+            --title "Aaris Android Test APK - $GITHUB_RUN_ID" \
+            --notes-file apk-evidence/release-notes.md --prerelease
+          printf 'release_tag=%s\n' "$TAG" > apk-evidence/release-result.txt
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json url \
+            --jq .url >> apk-evidence/release-result.txt
+          echo APK_GITHUB_RELEASE_PUBLISHED
+      - name: Upload bounded classifications only; never source, license or private logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-codespace-apk-report-${{ github.run_id }}
+          path: |
+            apk-evidence/preflight-safe.txt
+            apk-evidence/build-status-safe.txt
+            apk-evidence/release-result.txt
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Tell owner build or preflight result on Issue 77
+        if: always() && github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECK_RESULT: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          {
+            echo '**AARIS CODESPACE ANDROID APK**'
+            echo "Mode: \`$OPERATION\` | Workflow outcome: \`$CHECK_RESULT\`"
+            echo '~~~text'
+            if test -s apk-evidence/preflight-safe.txt; then
+              cat apk-evidence/preflight-safe.txt
+            else
+              echo 'APK_PREFLIGHT_NO_REPORT'
+            fi
+            if test -s apk-evidence/build-status-safe.txt; then
+              cat apk-evidence/build-status-safe.txt
+            fi
+            if test -s apk-evidence/release-result.txt; then
+              cat apk-evidence/release-result.txt
+            fi
+            echo '~~~'
+            printf '[Build or diagnostic run](https://github.com/%s/actions/runs/%s)\n' \
+              "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID"
+          } > apk-evidence/owner-reply.md
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" -F apk-evidence/owner-reply.md
