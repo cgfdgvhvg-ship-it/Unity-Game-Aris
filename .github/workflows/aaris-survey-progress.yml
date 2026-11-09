@@ -28,9 +28,26 @@ jobs:
             echo 'CODESPACE_PAT_NOT_CONFIGURED' > survey-progress/status.txt
             exit 1
           fi
-          CODESPACE="$(gh codespace list -R "$GITHUB_REPOSITORY" --json name,displayName,state --limit 30 | jq -r '[.[] | select(.displayName=="aaris-ai-unity-ssh")][0].name // ""')"
+          # Match Tools/Codespaces/controller.sh: pinned host, then one unique
+          # minimal Ubuntu machine, then one unique legacy SSH machine.
+          # Never infer "0 frames" from a different account/host.
+          CODESPACE="$(gh codespace list -R "$GITHUB_REPOSITORY" --json name,displayName,state --limit 30 |
+            jq -er '
+              (map(select(.name == "aaris-ai-unity-ssh-vp5g97jv4r4gfpjgq"))) as $pinned |
+              (map(select(.displayName == "aaris-ai-ubuntu-minimal"))) as $minimal |
+              (map(select(.displayName == "aaris-ai-unity-ssh"))) as $ssh |
+              if ($pinned | length) == 1 then $pinned[0].name
+              elif ($minimal | length) == 1 then $minimal[0].name
+              elif ($minimal | length) > 1 then empty
+              elif ($ssh | length) == 1 then $ssh[0].name
+              else empty end
+            ')" || {
+            echo 'SELECTED_ACCOUNT_CODESPACE_MISSING_OR_AMBIGUOUS' > survey-progress/status.txt
+            exit 1
+          }
+          echo "AARIS_MONITOR_CODESPACE=$CODESPACE" >> "$GITHUB_ENV"
           [[ "$CODESPACE" =~ ^[a-zA-Z0-9-]+$ ]] || {
-            echo 'PRESERVED_CODESPACE_NOT_FOUND' > survey-progress/status.txt
+            echo 'SELECTED_ACCOUNT_CODESPACE_MISSING_OR_AMBIGUOUS' > survey-progress/status.txt
             exit 1
           }
           if ! timeout 100 gh codespace ssh -c "$CODESPACE" -- 'bash -s' < Tools/Codespaces/survey_readonly_status.sh > survey-progress/status.txt 2>/dev/null; then
@@ -44,7 +61,7 @@ jobs:
         run: |
           set -euo pipefail
           if grep -qx 'first_six_ready=yes' survey-progress/status.txt; then
-            CS="$(gh codespace list -R "$GITHUB_REPOSITORY" --json name,displayName --limit 30 | jq -r '[.[] | select(.displayName=="aaris-ai-unity-ssh")][0].name // ""')"
+            CS="${AARIS_MONITOR_CODESPACE:?Selected Codespace from inspection required}"
             [[ "$CS" =~ ^[a-zA-Z0-9-]+$ ]] || exit 31
             if ! timeout 200 gh codespace ssh -c "$CS" -- 'bash -s' < Tools/Codespaces/survey_export_first_six.sh > /tmp/aaris-first-six.b64 2>/dev/null; then
               echo 'PREVIEW_TRANSFER_FAILED' >> survey-progress/status.txt
