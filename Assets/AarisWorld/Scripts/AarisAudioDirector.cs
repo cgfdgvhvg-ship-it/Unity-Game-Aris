@@ -189,6 +189,13 @@ namespace Aaris.MapReview
             if (instance != null) instance.OneShot("bullet_impact", position, 0.36f);
         }
 
+        /// <summary>Called only after the actual weapon accepts a reload.</summary>
+        public static void ReloadStarted(Vector3 position)
+        {
+            if (instance != null)
+                instance.OneShot("bolt_reload", position, 0.46f);
+        }
+
         public static void Punch(Vector3 position)
         {
             if (instance != null) instance.OneShot("punch_hit", position, 0.65f);
