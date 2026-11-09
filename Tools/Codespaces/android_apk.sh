@@ -115,7 +115,7 @@ if test "$APK_MODULE" != present || test "$SDK" != present ||
     echo APK_ISOLATED_MANAGED_EDITOR_DOWNLOAD_STARTED
     if ! timeout 10500 env HOME="$AUTH_HOME" \
        UNITY_CLI_HOME="$AUTH_HOME/.local/share/aaris-unity-cli" \
-       "$CLI" install "$VERSION" -c de8167e7440c -m android --cm \
+       "$CLI" install "$VERSION" -c de8167e7440c -m android --cm --yes --accept-eula \
        >"$BASE/private-isolated-install.log" 2>&1; then
       echo APK_MANAGED_EDITOR_INSTALL_FAILED
       exit 19
