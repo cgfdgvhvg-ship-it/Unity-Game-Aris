@@ -30,7 +30,7 @@ FILES = {
 
 def check_blob(name, data):
     # GitHub's Git blob SHA matches Git's canonical "blob <len>\\0" + bytes.
-    header = b"blob " + str(len(data)).encode("ascii") + b"\\x00"
+    header = b"blob " + str(len(data)).encode("ascii") + b"\x00"
     actual = hashlib.sha1(header + data).hexdigest()
     expected = FILES[name]
     if actual != expected or len(data) > 500_000 or not data.startswith(b"OggS"):
