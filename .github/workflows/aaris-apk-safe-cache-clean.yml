@@ -1,0 +1,88 @@
+name: Aaris safe isolated Unity import cache cleanup
+on:
+  pull_request:
+    paths:
+      - 'Tools/Codespaces/apk_cache_cleanup.sh'
+      - '.github/workflows/aaris-apk-safe-cache-clean.yml'
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+  issues: read
+jobs:
+  static:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate exact old worktrees and cache-only deletion
+        run: |
+          set -Eeuo pipefail
+          bash -n Tools/Codespaces/apk_cache_cleanup.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('Tools/Codespaces/apk_cache_cleanup.sh').read_text()
+          assert 'CURRENT=93ee9c452785741aff302d425ef315f664b13f5f' in s
+          assert '42d06ff89c30d41d5f0213cd8df9911b4ee00bbd' in s
+          assert 'd749cff3593d3da4842dd642c1ff779e884dfaa9' in s
+          assert 'for folder in Library Temp obj' in s
+          assert 'rm -rf --one-file-system -- "$path"' in s
+          assert 'rm -rf "$ROOT_ANDROID"' not in s
+          assert 'rm -rf /workspaces' not in s
+          print('APK_CACHE_CLEANUP_STATIC_SAFE')
+          PY
+  cleanup:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.number == 77 &&
+      github.event.comment.user.login == 'sundamunda289-art' &&
+      github.event.comment.body == 'APK CACHE CLEAN'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Deliberately independent: cleanup is only old isolated caches, and
+    # must not wait for the current Android Unity build to complete.
+    concurrency:
+      group: aaris-apk-cache-clean
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          lfs: false
+      - name: Recover safe temporary disk space without affecting live APK Unity
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$GH_TOKEN"
+          CS=aaris-ai-ubuntu-minimal-jrg7rgvx5rr435wpp
+          gh codespace list -R "$GITHUB_REPOSITORY" --json name --limit 30 |
+            jq -e --arg n "$CS" '[.[] | select(.name==$n)] | length==1' >/dev/null
+          timeout 950 gh codespace ssh -c "$CS" -- 'bash -s' \
+            < Tools/Codespaces/apk_cache_cleanup.sh \
+            > "$RUNNER_TEMP/clean-safe.txt"
+          grep -qxF APK_CACHE_OLD_ISOLATED_CACHES_SAFE_CLEAN_COMPLETE \
+            "$RUNNER_TEMP/clean-safe.txt"
+          grep -E '^APK_CACHE_[A-Z_]+$|^apk_cache_tmp_free_gb_(before|after)=[0-9]+$' \
+            "$RUNNER_TEMP/clean-safe.txt" > "$RUNNER_TEMP/clean-public.txt"
+      - name: Report bounded disk results to owner
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATUS: ${{ job.status }}
+        run: |
+          set -Eeuo pipefail
+          {
+            echo '**AARIS APK ISOLATED CACHE CLEANUP**'
+            echo "Status: $STATUS"
+            if test -s "$RUNNER_TEMP/clean-public.txt"; then
+              echo '~~~'
+              cat "$RUNNER_TEMP/clean-public.txt"
+              echo '~~~'
+            fi
+            echo "Run https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/clean-report.md"
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" -F "$RUNNER_TEMP/clean-report.md"
