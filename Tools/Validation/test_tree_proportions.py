@@ -17,9 +17,9 @@ LAYOUT = ROOT / "Docs" / "MAP_LAYOUT.json"
 
 SPECIES = {
     "Conifer": ("Conifer/Conifer.prefab", (1.30, 0.99, 1.30), 1.0),
-    "Pine_A": ("Pines/Pine_A/Pine_A.prefab", (1.30, 0.98, 1.30), 1.0),
-    "Pine_B": ("Pines/Pine_B/Pine_B.prefab", (1.31, 1.025, 1.31), 1.0),
-    "Pine_C": ("Pines/Pine_C/Pine_C.prefab", (1.27, 0.99, 1.27), 1.0),
+    "Pine_A": ("Pines/Pine_A/Pine_A.prefab", (1.43, 0.98, 1.43), 1.0),
+    "Pine_B": ("Pines/Pine_B/Pine_B.prefab", (1.45, 1.025, 1.45), 1.0),
+    "Pine_C": ("Pines/Pine_C/Pine_C.prefab", (1.40, 0.99, 1.40), 1.0),
     "Pine_D": ("Pines/Pine_D/Pine_D.prefab", (1.34, 0.99, 1.34), 1.0),
     "Cypress": ("Cypress/Cypress_Forest_Desktop.prefab", (1.76, 1.44, 1.76), 1.5),
 }
@@ -52,7 +52,7 @@ class NaturalTreePrefabTests(unittest.TestCase):
                 x, y, z = roots[0]
                 self.assertAlmostEqual(x, z, places=5)
                 self.assertGreater(x / y, 1.05)
-                self.assertLess(x / y, 1.38)
+                self.assertLess(x / y, 1.55)
                 self.assertGreater(x, old_uniform)
                 self.assertLessEqual(y, old_uniform * 1.045)
                 self.assertEqual(source.count("LODGroup:"), 1)
@@ -62,6 +62,28 @@ class NaturalTreePrefabTests(unittest.TestCase):
                 self.assertGreaterEqual(source.count("\nTree:"), 4)
                 self.assertTrue(prefab.with_suffix(".prefab.meta").is_file())
                 self.assertFalse(source.startswith("version https://git-lfs.github.com/spec/v1"))
+
+    def test_selected_cover_trunks_keep_one_matching_native_collider(self):
+        """Root X/Z edits widen trunk and root collider together, no physics scripts."""
+        for name in ("Pine_A", "Pine_B", "Pine_C"):
+            with self.subTest(species=name):
+                relative, (x, y, z), _ = SPECIES[name]
+                source = (TREE_BASE / relative).read_text(encoding="utf-8")
+                section = source.split("BoxCollider:", 1)[1].split("--- !u!", 1)[0]
+                self.assertIn("m_IsTrigger: 0", section)
+                match = re.search(
+                    r"m_Size: \{x: ([0-9.]+), y: ([0-9.]+), z: ([0-9.]+)\}",
+                    section,
+                )
+                self.assertIsNotNone(match)
+                sx, sy, sz = (float(value) for value in match.groups())
+                # Approximate horizontal authored collider diameter in metres.
+                self.assertGreaterEqual(sx * x, 1.5)
+                self.assertLessEqual(sx * x, 2.25)
+                self.assertLessEqual(sz * z, 3.0)
+                self.assertGreater(sy * y, 4.0)
+                self.assertEqual(source.count("BoxCollider:"), 1)
+                self.assertEqual(source.count("LODGroup:"), 1)
 
     def test_all_tree_materials_use_real_urp_speedtree8_shader(self):
         materials = sorted(TREE_BASE.rglob("*.mat"))
@@ -104,7 +126,7 @@ class NaturalTreePrefabTests(unittest.TestCase):
         foliage = {
             "Conifer/Materials/Conifer_Branches.mat": None,
             "Cypress/Materials/Cypress_Forest_Desktop.mat": None,
-            "Pines/Pine_A/Materials/Pine_A.mat": 0.22,
+            "Pines/Pine_A/Materials/Pine_A.mat": 0.20,
             "Pines/Pine_B/Materials/Pine_B.mat": None,
             "Pines/Pine_C/Materials/Pine_C.mat": 0.20,
             "Pines/Pine_D/Materials/Pine_D.mat": 0.20,
@@ -189,6 +211,90 @@ class NaturalTreePrefabTests(unittest.TestCase):
         # Previous authored clearance is around 13 m, leaving plenty of room
         # for the modest additional 6-16% horizontal tree silhouette.
         self.assertGreater(minimum, 10)
+
+    def test_full_forest_crowns_and_trunks_clear_buildings_and_car_spawns(self):
+        """Conservative rotated crown circles based on audited source mesh LOD0.
+
+        Includes all 1100 authored tree placement scales; checks whole crowns
+        and physical trunks against 59 native building AABBs and 45 reserved
+        vehicle spawn/exit areas. This is authored blueprint clearance, not
+        a substitute for physics/raycast/Android Play Mode certification.
+        """
+        # Measured from licensed Unity native 6-mesh audit 42601984339.
+        lod0_bounds = {
+            "Conifer": (14.182714, 13.198767),
+            "Cypress": (4.791615, 4.415520),
+            "Pine_A": (5.616778, 6.300930),
+            "Pine_B": (4.969004, 5.543690),
+            "Pine_C": (3.665469, 6.018562),
+            "Pine_D": (7.013611, 6.584105),
+        }
+        trunk_boxes = {
+            "Conifer": (1.182, 1.182),
+            "Cypress": (0.59369546, 0.6630537),
+            "Pine_A": (1.126, 1.126),
+            "Pine_B": (1.14, 1.14),
+            "Pine_C": (1.084, 1.7728426),
+            "Pine_D": (1.4722793, 1.8397834),
+        }
+        forest = json.loads(FOREST.read_text(encoding="utf-8"))
+        layout = json.loads(LAYOUT.read_text(encoding="utf-8"))
+        self.assertEqual(len(forest["placements"]), 1100)
+        self.assertEqual(len(layout["buildings"]), 59)
+        self.assertEqual(len(layout["vehicle_spawns"]), 45)
+        prefab_names = {
+            str(TREE_BASE / rel).replace(str(ROOT) + "/", ""): species
+            for species, (rel, _, _) in SPECIES.items()
+        }
+        scales = {
+            species: root_transforms((TREE_BASE / relative).read_text())[0]
+            for species, (relative, _, _) in SPECIES.items()
+        }
+        minimum = {"crown_building": float("inf"),
+                   "trunk_building": float("inf"),
+                   "crown_spawn": float("inf"),
+                   "trunk_spawn": float("inf"),
+                   "crown_exit": float("inf"),
+                   "trunk_exit": float("inf")}
+        for tree in forest["placements"]:
+            species = prefab_names[tree["path"]]
+            scale_x, _, scale_z = scales[species]
+            x, z = tree["position_xz_m"]
+            width = tree["width_scale"]
+            self.assertGreater(width, 0)
+            radii = {
+                "crown": 0.5 * math.hypot(
+                    lod0_bounds[species][0] * scale_x,
+                    lod0_bounds[species][1] * scale_z) * width,
+                "trunk": 0.5 * math.hypot(
+                    trunk_boxes[species][0] * scale_x,
+                    trunk_boxes[species][1] * scale_z) * width
+            }
+            for building in layout["buildings"]:
+                xlo, zlo, xhi, zhi = building["aabb_xz_m"]
+                dx = x - max(xlo, min(x, xhi))
+                dz = z - max(zlo, min(z, zhi))
+                d = math.hypot(dx, dz)
+                for label, radius in radii.items():
+                    k = label + "_building"
+                    minimum[k] = min(minimum[k], d - radius)
+            for spawn in layout["vehicle_spawns"]:
+                px, _, pz = spawn["position_m"]
+                reserved = spawn["reserved_size_m"]
+                # A circumscribed circle encloses the possibly yaw-rotated
+                # rectangular parking apron, not just its centre point.
+                parking_radius = math.hypot(reserved[0]/2, reserved[1]/2)
+                spawn_distance = math.hypot(x-px, z-pz) - parking_radius
+                ex, ez = spawn["exit_world_xz_m"]
+                exit_distance = math.hypot(x-ex, z-ez) - 2.5
+                for label, radius in radii.items():
+                    minimum[label + "_spawn"] = min(
+                        minimum[label + "_spawn"], spawn_distance - radius)
+                    minimum[label + "_exit"] = min(
+                        minimum[label + "_exit"], exit_distance - radius)
+        for category, gap in minimum.items():
+            with self.subTest(clearance=category):
+                self.assertGreater(gap, 10.0)
 
     def test_native_scene_and_lfs_unmodified_by_tree_prefab_patch(self):
         scene = ROOT / "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity"

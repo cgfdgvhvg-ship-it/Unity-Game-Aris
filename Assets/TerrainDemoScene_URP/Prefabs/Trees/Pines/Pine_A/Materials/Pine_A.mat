@@ -88,7 +88,7 @@ Material:
     - EFFECT_EXTRA_TEX: 1
     - _AddPrecomputedVelocity: 0
     - _AlphaClip: 1
-    - _AlphaClipThreshold: 0.22
+    - _AlphaClipThreshold: 0.20
     - _AlphaCutoffEnable: 1
     - _AlphaDstBlend: 0
     - _AlphaSrcBlend: 1
