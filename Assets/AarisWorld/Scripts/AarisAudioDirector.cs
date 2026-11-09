@@ -27,6 +27,7 @@ namespace Aaris.MapReview
         };
         private readonly Dictionary<string, AudioClip> clips = new Dictionary<string, AudioClip>(32);
         private readonly AudioSource[] voices = new AudioSource[VoiceCount];
+        private GameObject audioRoot;
         private AarisThirdPersonPlayer player;
         private AarisBattleActions combat;
         private AarisVehicleSession vehicle;
@@ -74,11 +75,12 @@ namespace Aaris.MapReview
             capsule = GetComponent<CharacterController>();
             foreach (string key in Keys)
                 clips[key] = Resources.Load<AudioClip>("SFX/" + key);
+            audioRoot = new GameObject("Aaris Audio Voices (12 pooled)");
             for (int i = 0; i < voices.Length; i++)
-                voices[i] = MakeSource(transform, "Aaris SFX Voice " + i);
-            planeLoop = MakeSource(transform, "Plane Engine Loop");
-            windLoop = MakeSource(transform, "Drop Wind Loop");
-            engineLoop = MakeSource(transform, "Vehicle Engine Loop");
+                voices[i] = MakeSource(audioRoot.transform, "Aaris SFX Voice " + i);
+            planeLoop = MakeSource(audioRoot.transform, "Plane Engine Loop");
+            windLoop = MakeSource(audioRoot.transform, "Drop Wind Loop");
+            engineLoop = MakeSource(audioRoot.transform, "Vehicle Engine Loop");
             planeLoop.loop = windLoop.loop = engineLoop.loop = true;
             previousY = transform.position.y;
             previousPosition = transform.position;
@@ -190,6 +192,8 @@ namespace Aaris.MapReview
         {
             if (!activeDrop)
             {
+                if (hasDropPhase && drop != null && drop.HasLanded)
+                    OneShot("parachute_land", pos, 0.85f);
                 AdjustLoop(planeLoop, 0f, 1f, dt);
                 AdjustLoop(windLoop, 0f, 1f, dt);
                 hasDropPhase = false;
@@ -260,13 +264,13 @@ namespace Aaris.MapReview
         {
             if (capsule == null || !capsule.enabled) return;
             if (player.LastJumpStartedTime > previousJump &&
-                Time.time - player.LastJumpStartedTime < 0.3f)
+                Time.unscaledTime - player.LastJumpStartedTime < 0.3f)
             {
                 previousJump = player.LastJumpStartedTime;
                 OneShot("jump_start", pos, 0.58f);
             }
             if (player.LastLandingTime > previousLand &&
-                Time.time - player.LastLandingTime < 0.3f)
+                Time.unscaledTime - player.LastLandingTime < 0.3f)
             {
                 previousLand = player.LastLandingTime;
                 OneShot("land_thud", pos, 0.72f);
@@ -304,6 +308,7 @@ namespace Aaris.MapReview
         private void OnDestroy()
         {
             if (instance == this) instance = null;
+            if (audioRoot != null) Destroy(audioRoot);
         }
     }
 }
