@@ -70,3 +70,20 @@ VFX Graph 17.3.0 and Fog.vfx remain untouched. A passing disposable
 project without VFX Graph does not prove VFX is the game crash root cause;
 reproduce the problem through isolated A/B testing before removing it.
 Never overwrite unsaved scenes, native .unity, .prefab, .mat or .meta files.
+
+## Owner-only ChatGPT intents through GitHub Issue #77
+
+After this review branch is tested and merged (not before), the existing
+owner-only Issue #77 workflow can relay strict commands to a **running**
+Codespace whose checked-out Editor bridge contains the new snapshot system.
+Only comments from `sundamunda289-art` are accepted; the GitHub Action
+streams a fixed reviewed script, not user-provided shell commands:
+
+    CS SNAP {"shots":[{"id":"forest-01","pos":[120,18,340],"lookAt":[150,12,400]}]}
+    CS SNAP {"recapture":"forest-01"}
+
+The bridge returns a bounded verified PNG artifact (or an explicit error)
+through the existing Actions run. The issue reply links the artifact; no
+private Unity authorization URLs, assets or licence state are published.
+The Codespace still needs a live licensed Editor and verified new scripts.
+The PR itself does **not** prove a live photo or activate owner issue commands.

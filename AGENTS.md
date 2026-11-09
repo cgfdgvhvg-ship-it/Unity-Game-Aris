@@ -403,3 +403,5 @@ Use real run evidence, not a GitHub green badge alone. On the selected `tomaaari
 - --persist stores named camera recipes in tracked Tools/Snapshots/presets.json; committing that small file is how the identical viewpoints migrate to another Codespace. Do not check in actual photos, caches or credentials.
 - See Docs/HOT_SNAPSHOT_BRIDGE.md. Python/shell contract tests are under Tools/Validation/test_snapshots.py; only a live, licensed, native Unity Editor render can certify actual camera output.
 - Existing VFX Graph 17.3.0 and Fog.vfx are kept for controlled A/B diagnostics, not silently removed. Never reset a dirty Codespace or touch native source map assets solely for screenshot setup.
+
+- Owner-only remote photo protocol (after review/merge): authenticated `CS SNAP {"shots":[{"id":"forest-01","pos":[120,18,340],"lookAt":[150,12,400]}]}` or `CS SNAP {"recapture":"forest-01"}` on GitHub Issue #77. The existing allowlisted controller must validate bounded fields and archive each actual PNG through Actions artifacts. Do not execute issue text as arbitrary shell, do not expose private files, and never claim a stopped/nonlicensed Editor delivered real photos.
