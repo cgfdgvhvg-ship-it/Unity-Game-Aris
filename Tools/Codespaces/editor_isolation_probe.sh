@@ -72,7 +72,12 @@ timeout --kill-after=10s 150s env DISPLAY=:99 TMPDIR="$WORK/UnityTemp" LIBGL_ALW
   >"$WORK/graphics.stdout.private" 2>"$WORK/graphics.stderr.private" || rc=$?
 report GRAPHICS "$rc"
 if ((rc==139)); then echo EDITOR_ISOLATE_SOFTWARE_GL_CRASH_CANDIDATE; fi
-if ((rc==0)); then echo EDITOR_ISOLATE_EMPTY_PROJECT_SUCCEEDED; fi
+if ((rc==0)); then
+  echo EDITOR_ISOLATE_EMPTY_PROJECT_SUCCEEDED
+else
+  echo EDITOR_ISOLATE_EMPTY_PLAY_SKIPPED_GRAPHICS_NOT_READY
+  exit 0
+fi
 
 # Reproduce the Unity Editor play-mode transition WITHOUT project gameplay.
 # This is an independent, temporary-project diagnostic. A passing result does
