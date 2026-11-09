@@ -184,7 +184,7 @@ try:
         names=set(z.namelist())
         assert "AndroidManifest.xml" in names
         assert any(s.endswith(".dex") for s in names)
-    sha=hashlib.file_digest(p.open('rb'),'sha256').hexdigest()
+    sha=hashlib.sha256(p.read_bytes()).hexdigest()
     (root/"apk-sha256.txt").write_text(sha+"  AarisGame.apk\n")
 except Exception:
     raise SystemExit("APK_ARCHIVE_OR_NATIVE_REPORT_INVALID")
