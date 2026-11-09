@@ -603,6 +603,9 @@ namespace Aaris.MapReview.Editor
             public int treePrototypes;
             public int foliageRenderers;
             public int customFoliageMaterials;
+            public string savedSceneAmbientMode;
+            public string savedSceneShadows;
+            public float savedSceneAmbientIntensity;
             public float originalVariation;
             public float distantLodVariation;
             public float ambientVariation;
@@ -636,6 +639,18 @@ namespace Aaris.MapReview.Editor
             try
             {
                 terrains = LoadNativeScene();
+                // A native scene load replaces RenderSettings. The old
+                // pre-load snapshots came from the Editor's previous scene
+                // and made the "shadows-only" arm a confounded comparison.
+                // Capture the real saved baseline only AFTER scene load.
+                qualityBias = QualitySettings.lodBias;
+                shadowQuality = QualitySettings.shadows;
+                ambientMode = RenderSettings.ambientMode;
+                ambientColor = RenderSettings.ambientLight;
+                ambientIntensity = RenderSettings.ambientIntensity;
+                report.savedSceneAmbientMode = ambientMode.ToString();
+                report.savedSceneShadows = shadowQuality.ToString();
+                report.savedSceneAmbientIntensity = ambientIntensity;
                 report.terrainTiles = terrains.Length;
                 originalBiases = terrains.Select(t => t.treeLODBiasMultiplier).ToArray();
                 var prototypes = terrains.SelectMany(t => t.terrainData.treePrototypes)
@@ -685,7 +700,8 @@ namespace Aaris.MapReview.Editor
                 report.ambientOnlyVariation = Render(camera, 1280, 720,
                     Path.Combine(Output, "foliage-ambient-only.png"));
 
-                // Compare shadow removal WITHOUT adding artificial fill.
+                // Compare shadow removal with the exact saved-scene ambient.
+                // Do not restore the Editor's pre-scene RenderSettings here.
                 RenderSettings.ambientMode = ambientMode;
                 RenderSettings.ambientLight = ambientColor;
                 RenderSettings.ambientIntensity = ambientIntensity;

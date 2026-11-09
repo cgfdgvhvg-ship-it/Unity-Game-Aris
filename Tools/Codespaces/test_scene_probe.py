@@ -132,4 +132,19 @@ assert shell.index('restore_preserved_source_lfs.py" "$PROJECT"') < shell.index(
 assert 'AARIS_PRESERVED_LFS_SNAPSHOT_VERIFIED=793' in restorer
 assert 'AARIS_CODESPACE_ORIGINAL_TREE_ARCHIVE_HASH_VERIFIED=18' in restorer
 assert 'AARIS_PRESERVED_LFS_ORIGINAL_WORKSPACE_UNCHANGED=yes' in restorer
+# Foliage baselines must be captured after loading the native saved scene.
+# Otherwise the Editor's previous scene contaminates the shadows-only arm.
+foliage_method = editor.split('public static void DiagnoseFoliage()', 1)[1].split(
+    '[MenuItem("Aaris/CI/Native Play Mode smoke test")]', 1)[0]
+scene_load_index = foliage_method.index('terrains = LoadNativeScene();')
+for setting in ('qualityBias = QualitySettings.lodBias;',
+                'shadowQuality = QualitySettings.shadows;',
+                'ambientMode = RenderSettings.ambientMode;',
+                'ambientColor = RenderSettings.ambientLight;',
+                'ambientIntensity = RenderSettings.ambientIntensity;'):
+    assert foliage_method.index(setting, scene_load_index) > scene_load_index, setting
+assert 'report.savedSceneAmbientMode = ambientMode.ToString();' in foliage_method
+assert 'report.savedSceneShadows = shadowQuality.ToString();' in foliage_method
+assert 'report.savedSceneAmbientIntensity = ambientIntensity;' in foliage_method
+print('AARIS_FOLIAGE_SAVED_SCENE_BASELINE_ORDER_PASS')
 print('AARIS_NATIVE_SCENE_PROBE_STATIC_PASS')
