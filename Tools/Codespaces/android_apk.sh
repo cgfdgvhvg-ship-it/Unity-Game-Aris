@@ -243,5 +243,41 @@ except Exception:
 print("APK_BUILD_SUCCESS_VALID_ZIP")
 print("apk_bytes="+str(p.stat().st_size))
 PY
+# Validate actual Android installation metadata before exposing an APK.
+# The prior build was a valid ZIP, but did not check signing/API compatibility.
+bash Tools/Codespaces/apk_install_diagnostic.sh \
+  > "$BASE/private-native-installability-report.log" 2>&1 || {
+    echo APK_INSTALLABILITY_TOOLS_FAILED; exit 32;
+  }
+CHECK="$BASE/private-native-installability-report.log"
+grep -qxF APK_INSTALL_DIAG_APKSIGNER_VERIFY_PASS "$CHECK" || {
+  echo APK_SIGNER_VERIFICATION_FAILED; exit 33;
+}
+grep -qxF APK_INSTALL_DIAG_ZIPALIGN_PASS "$CHECK" || {
+  echo APK_ZIPALIGN_VERIFICATION_FAILED; exit 34;
+}
+grep -qxF apk_signature_v2=true "$CHECK" || {
+  echo APK_V2_SIGNATURE_MISSING; exit 35;
+}
+grep -qxF apk_signer_count=1 "$CHECK" || {
+  echo APK_SIGNER_COUNT_INVALID; exit 36;
+}
+grep -qxF apk_android_manifest=yes "$CHECK"
+grep -qxF apk_classes_dex=yes "$CHECK"
+grep -qxF apk_arm64_unity_lib=yes "$CHECK"
+grep -qxF apk_min_sdk=26 "$CHECK"
+grep -qxF apk_target_sdk=33 "$CHECK" || {
+  echo APK_ANDROID_API_TARGET_UNEXPECTED; exit 37;
+}
+# New standalone Aaris Game package must not conflict with mapexplorer.
+AAPT="$(find "$BASE/managed-editors" -type f -name aapt -print -quit 2>/dev/null || true)"
+if ! test -x "$AAPT"; then echo APK_AAPT_MISSING; exit 38; fi
+timeout 120 "$AAPT" dump badging "$BASE/Build/AarisGame.apk" \
+  > "$BASE/private-package-id-report.log" 2>&1 || exit 39
+grep -Eq "^package: name='com[.]aaris[.]game' versionCode='7'" \
+  "$BASE/private-package-id-report.log" || {
+    echo APK_PACKAGE_ID_OR_VERSION_INVALID; exit 40;
+  }
+echo APK_INSTALLABILITY_SIGNATURE_MANIFEST_API33_VERIFIED
 echo "apk_commit=$SHA"
 echo APK_UPLOAD_READY

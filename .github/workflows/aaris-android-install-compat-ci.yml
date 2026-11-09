@@ -1,0 +1,58 @@
+name: Aaris Android installation compatibility regression
+on:
+  pull_request:
+    paths:
+      - 'ProjectSettings/ProjectSettings.asset'
+      - 'Tools/Codespaces/android_apk.sh'
+      - '.github/workflows/aaris-codespace-android-apk.yml'
+      - '.github/workflows/aaris-android-install-compat-ci.yml'
+jobs:
+  android-install-static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Verify native project Android package and no unsafe deployment changes
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          data=Path('ProjectSettings/ProjectSettings.asset').read_text()
+          for line in (
+              '  productName: Aaris Game',
+              '  bundleVersion: 0.3.1',
+              '    Android: com.aaris.game',
+              '  AndroidBundleVersionCode: 7',
+              '  AndroidTargetSdkVersion: 33',
+              '  AndroidMinSdkVersion: 26',
+              '  AndroidTargetArchitectures: 2',
+              '  AndroidPreferredInstallLocation: 0',
+          ):
+              assert line in data, line
+          assert '    Android: com.aaris.mapexplorer' not in data
+          assert '  AndroidUseCustomKeystore: 1' not in data
+          script=Path('Tools/Codespaces/android_apk.sh').read_text()
+          assert 'bash Tools/Codespaces/apk_install_diagnostic.sh' in script
+          for check in (
+              'APK_INSTALL_DIAG_APKSIGNER_VERIFY_PASS',
+              'APK_INSTALL_DIAG_ZIPALIGN_PASS',
+              'apk_signature_v2=true',
+              'apk_arm64_unity_lib=yes',
+              'apk_min_sdk=26',
+              'apk_target_sdk=33',
+              'APK_INSTALLABILITY_SIGNATURE_MANIFEST_API33_VERIFIED',
+              'com[.]aaris[.]game',
+          ):
+              assert check in script, check
+          workflow=Path('.github/workflows/aaris-codespace-android-apk.yml').read_text()
+          assert "gh codespace cp -e -c" in workflow
+          assert "grep -qxF 'APK_INSTALLABILITY_SIGNATURE_MANIFEST_API33_VERIFIED'" in workflow
+          assert "sha256sum -c AarisGame.sha256" in workflow
+          assert 'AarisGame.apk' in workflow
+          print('APK_ANDROID_INSTALL_COMPAT_STATIC_PASSED')
+          PY
+          bash -n Tools/Codespaces/android_apk.sh
+          bash -n Tools/Codespaces/apk_install_diagnostic.sh
+          echo APK_ANDROID_INSTALL_BASH_VALID

@@ -74,7 +74,13 @@ def check(native=False):
     assert 'GetTotalMemory(false)'in source and 'Application.lowMemory +='in source
     assert 'GC.Collect'not in source and 'GC.Collect'not in (ROOT/'Assets/AarisWorld/Scripts/AarisNearbyColliders.cs').read_text()
     player=(ROOT/'Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs').read_text();assert 'nearbyColliders.RefreshNow()'in player and 'GUIUtility.systemCopyBuffer'in player
-    settings=documents(ROOT/'ProjectSettings/ProjectSettings.asset')[0][3];assert settings['bundleVersion']=='0.3.0' and settings['AndroidBundleVersionCode']==6
+    settings=documents(ROOT/'ProjectSettings/ProjectSettings.asset')[0][3]
+    assert settings['bundleVersion']=='0.3.1' and settings['AndroidBundleVersionCode']==7
+    assert settings['productName']=='Aaris Game'
+    assert settings['applicationIdentifier']['Android']=='com.aaris.game'
+    assert settings['AndroidMinSdkVersion']==26 and settings['AndroidTargetSdkVersion']==33
+    assert settings['AndroidTargetArchitectures']==2
+    assert settings['AndroidPreferredInstallLocation']==0
     # Unity stores this as a byte string; generic YAML interprets its 0b prefix as binary zero.
     apis=settings['m_BuildTargetGraphicsAPIs'];assert apis==[{'m_BuildTarget':'AndroidPlayer','m_APIs':0,'m_Automatic':0}]
     assert 'm_APIs: 0b000000' in (ROOT/'ProjectSettings/ProjectSettings.asset').read_text()
