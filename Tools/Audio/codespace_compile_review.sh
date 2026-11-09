@@ -4,7 +4,9 @@
 set -Eeuo pipefail
 SOURCE=/workspaces/Unity-Game-Aris
 BRANCH=refs/heads/review/offline-mobile-audio-20261109
-ROOT=/tmp/aaris-audio-branch-compile
+# The native 793-LFS verifier strictly requires this isolated worktree root.
+# A review-branch SHA gets its own directory, separate from main's photo snapshot.
+ROOT=/tmp/aaris-native-photo-worktrees
 EDITOR="$HOME/.local/share/aaris-unity-editors/6000.3.26f1/Editor/Unity"
 test -x "$EDITOR" || { echo AARIS_AUDIO_EDITOR_NOT_INSTALLED; exit 11; }
 test -d "$SOURCE/.git" || { echo AARIS_AUDIO_SOURCE_MISSING; exit 12; }
