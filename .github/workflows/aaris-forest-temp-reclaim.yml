@@ -1,0 +1,25 @@
+name: Reclaim verified Unity temporary review worktree
+on:
+  push:
+    branches: ['review/deep-forest-terrain-bake-20261109']
+    paths:
+      - 'Tools/Codespaces/forest_temp_reclaim.sh'
+      - '.github/workflows/aaris-forest-temp-reclaim.yml'
+permissions:
+  contents: read
+jobs:
+  temp-reclaim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with: {lfs: false}
+      - name: Verify and reclaim only one immutable old scratch worktree
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          set -Eeuo pipefail
+          bash -n Tools/Codespaces/forest_temp_reclaim.sh
+          test -n "${GH_TOKEN:-}"
+          timeout 780 gh codespace ssh -c aaris-ai-ubuntu-minimal-jrg7rgvx5rr435wpp -- 'bash -s' \
+            < Tools/Codespaces/forest_temp_reclaim.sh
