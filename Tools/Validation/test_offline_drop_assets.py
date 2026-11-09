@@ -143,6 +143,20 @@ class OfflineCombatAssetChecks(unittest.TestCase):
         self.assertIn("float.IsNaN(amount)", restore)
         self.assertIn("float.IsInfinity(amount)", restore)
 
+    def test_lethal_health_transition_is_atomic_before_callbacks(self):
+        health = (SCRIPTS / "AarisOfflineHealth.cs").read_text("utf-8")
+        damage = health.split("public void ApplyDamage(float amount, GameObject attacker)", 1)[1]
+        damage = damage.split("public void RestoreHealth(float amount)", 1)[0]
+        # Callbacks are synchronous: listeners must observe IsDead and cannot
+        # heal or trigger duplicate death events after fatal damage.
+        self.assertIn("bool lethal = remaining <= 0f;", damage)
+        self.assertIn("if (lethal) dead = true;", damage)
+        self.assertIn("if (!lethal) return;", damage)
+        self.assertLess(damage.index("if (lethal) dead = true;"),
+                        damage.index("HealthChanged?.Invoke(this);"))
+        self.assertLess(damage.index("HealthChanged?.Invoke(this);"),
+                        damage.index("Died?.Invoke(this);"))
+
     def test_frag_blast_obstacles_not_filtered_as_damage_targets(self):
         frag = (SCRIPTS / "AarisOfflineFragGrenade.cs").read_text("utf-8")
         # Candidate filtering is intentional; collision occlusion needs world geometry.
