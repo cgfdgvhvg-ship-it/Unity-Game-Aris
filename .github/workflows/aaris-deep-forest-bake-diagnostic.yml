@@ -1,0 +1,64 @@
+name: Read-only deep forest Unity bake diagnosis
+on:
+  push:
+    branches: ['review/deep-forest-terrain-bake-20261109']
+    paths:
+      - '.github/workflows/aaris-deep-forest-bake-diagnostic.yml'
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Query only fixed native editor error classifications from current Codespace
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          set -euo pipefail
+          test -n "${GH_TOKEN:-}"
+          timeout 160 gh codespace ssh -c aaris-ai-ubuntu-minimal-jrg7rgvx5rr435wpp -- 'bash -s' <<'SH'
+          set -euo pipefail
+          python3 - <<'PY'
+          import json,pathlib,re
+          folder=pathlib.Path("/tmp/aaris-codespaces/deep-forest-bake")
+          report=pathlib.Path("/tmp/aaris-codespaces/deep-forest-bake-report.json")
+          if report.is_file():
+            try:
+              d=json.loads(report.read_text())
+              print("bake_report_status="+(d.get("status","missing") if d.get("status") in ("passed","failed") else "other"))
+              reason=str(d.get("reason","unknown"))
+              print("bake_report_reason="+(reason if re.fullmatch("[A-Z0-9_]{1,96}",reason) else "redacted"))
+              print("bake_converted="+str(d.get("converted","unknown")))
+              print("bake_tile_count="+str(d.get("terrainTiles","unknown")))
+            except (ValueError,OSError,TypeError):print("bake_report_invalid")
+          else:print("bake_report_missing")
+          p=folder/"private-bake-editor.log"
+          if not p.is_file():
+            print("native_editor_log_missing")
+          else:
+            s=p.read_text(errors="replace")[-1000000:]
+            signatures={
+             "csharp":r"error CS\d{4}",
+             "native_crash":r"SIGSEGV|signal 11|segmentation fault|SIGABRT",
+             "unity_exception":r"AARIS_NATIVE_DEEP_FOREST_BAKE_FAILED:([A-Z_]+)",
+             "missing_method":r"executeMethod.+(not found|error)",
+             "invalid_license":r"license.+(invalid|expired|failed|missing)",
+             "missing_asset":r"asset.+(not found|missing|import failed)",
+             "terrain_error":r"TERRAIN_[A-Z_]+",
+             "early_batch_exit":r"Aborting batchmode",
+             "index_exception":r"IndexOutOfRangeException",
+             "null_exception":r"NullReferenceException",
+             "unsupported":r"NotSupportedException",
+             "argument":r"ArgumentException"
+            }
+            for name,pattern in signatures.items():
+              m=re.search(pattern,s,re.I)
+              print("editor_error_family_"+name+"="+("yes" if m else "no"))
+              if name=="unity_exception" and m:print("editor_first_bake_reason="+m.group(1)[:96])
+            print("editor_log_bytes="+str(p.stat().st_size))
+          PY
+          SH
