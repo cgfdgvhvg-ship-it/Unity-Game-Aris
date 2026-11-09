@@ -180,7 +180,7 @@ PlayerSettings:
   AndroidBundleVersionCode: 7
   AndroidMinSdkVersion: 26
   AndroidTargetSdkVersion: 33
-  AndroidPreferredInstallLocation: 1
+  AndroidPreferredInstallLocation: 0
   AndroidPreferredDataLocation: 1
   aotOptions: 
   stripEngineCode: 1
