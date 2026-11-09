@@ -17,9 +17,9 @@ LAYOUT = ROOT / "Docs" / "MAP_LAYOUT.json"
 
 SPECIES = {
     "Conifer": ("Conifer/Conifer.prefab", (1.30, 0.99, 1.30), 1.0),
-    "Pine_A": ("Pines/Pine_A/Pine_A.prefab", (1.30, 0.98, 1.30), 1.0),
-    "Pine_B": ("Pines/Pine_B/Pine_B.prefab", (1.31, 1.025, 1.31), 1.0),
-    "Pine_C": ("Pines/Pine_C/Pine_C.prefab", (1.27, 0.99, 1.27), 1.0),
+    "Pine_A": ("Pines/Pine_A/Pine_A.prefab", (1.43, 0.98, 1.43), 1.0),
+    "Pine_B": ("Pines/Pine_B/Pine_B.prefab", (1.45, 1.025, 1.45), 1.0),
+    "Pine_C": ("Pines/Pine_C/Pine_C.prefab", (1.40, 0.99, 1.40), 1.0),
     "Pine_D": ("Pines/Pine_D/Pine_D.prefab", (1.34, 0.99, 1.34), 1.0),
     "Cypress": ("Cypress/Cypress_Forest_Desktop.prefab", (1.76, 1.44, 1.76), 1.5),
 }
@@ -52,7 +52,7 @@ class NaturalTreePrefabTests(unittest.TestCase):
                 x, y, z = roots[0]
                 self.assertAlmostEqual(x, z, places=5)
                 self.assertGreater(x / y, 1.05)
-                self.assertLess(x / y, 1.38)
+                self.assertLess(x / y, 1.55)
                 self.assertGreater(x, old_uniform)
                 self.assertLessEqual(y, old_uniform * 1.045)
                 self.assertEqual(source.count("LODGroup:"), 1)
@@ -62,6 +62,28 @@ class NaturalTreePrefabTests(unittest.TestCase):
                 self.assertGreaterEqual(source.count("\nTree:"), 4)
                 self.assertTrue(prefab.with_suffix(".prefab.meta").is_file())
                 self.assertFalse(source.startswith("version https://git-lfs.github.com/spec/v1"))
+
+    def test_selected_cover_trunks_keep_one_matching_native_collider(self):
+        """Root X/Z edits widen trunk and root collider together, no physics scripts."""
+        for name in ("Pine_A", "Pine_B", "Pine_C"):
+            with self.subTest(species=name):
+                relative, (x, y, z), _ = SPECIES[name]
+                source = (TREE_BASE / relative).read_text(encoding="utf-8")
+                section = source.split("BoxCollider:", 1)[1].split("--- !u!", 1)[0]
+                self.assertIn("m_IsTrigger: 0", section)
+                match = re.search(
+                    r"m_Size: \\{x: ([0-9.]+), y: ([0-9.]+), z: ([0-9.]+)\\}",
+                    section,
+                )
+                self.assertIsNotNone(match)
+                sx, sy, sz = (float(value) for value in match.groups())
+                # Approximate horizontal authored collider diameter in metres.
+                self.assertGreaterEqual(sx * x, 1.5)
+                self.assertLessEqual(sx * x, 2.25)
+                self.assertLessEqual(sz * z, 3.0)
+                self.assertGreater(sy * y, 4.0)
+                self.assertEqual(source.count("BoxCollider:"), 1)
+                self.assertEqual(source.count("LODGroup:"), 1)
 
     def test_all_tree_materials_use_real_urp_speedtree8_shader(self):
         materials = sorted(TREE_BASE.rglob("*.mat"))
