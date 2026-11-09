@@ -26,7 +26,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 355
     concurrency:
-      group: aaris-codespace-control
+      # Read-only preflight does not hold the long native Editor build queue.
+      # Actual APK builds remain serialized with every other Unity command.
+      group: ${{ ((github.event_name == 'issue_comment' && github.event.comment.body == 'APK PREFLIGHT') || (github.event_name == 'workflow_dispatch' && inputs.operation == 'preflight')) && 'aaris-apk-preflight' || 'aaris-codespace-control' }}
       cancel-in-progress: false
     permissions:
       contents: write
