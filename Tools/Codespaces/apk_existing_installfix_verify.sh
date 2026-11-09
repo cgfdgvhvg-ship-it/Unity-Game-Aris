@@ -67,6 +67,19 @@ timeout 120 "$AAPT" dump badging "$APK" \
   > "$BASE/private-installfix-aapt.log" 2>&1 || {
   echo APK_INSTALLFIX_MANIFEST_UNREADABLE; exit 22;
 }
+# Show only an allowlisted package token and integer version from actual AAPT.
+# No APK bytes, personal identifiers, private logs or signing certificate names.
+python3 - "$BASE/private-installfix-aapt.log" <<'PY'
+from pathlib import Path
+import re,sys
+text=Path(sys.argv[1]).read_text("utf-8","replace")
+match=re.search(r"^package: name='([a-zA-Z][a-zA-Z0-9_.]{0,127})' versionCode='([0-9]{1,10})'",text,re.M)
+if match:
+    print("apk_actual_package="+match.group(1),flush=True)
+    print("apk_actual_version_code="+match.group(2),flush=True)
+else:
+    print("APK_INSTALLFIX_AAPT_PACKAGE_UNPARSEABLE",flush=True)
+PY
 grep -Eq "^package: name='com[.]aaris[.]game' versionCode='7'" "$BASE/private-installfix-aapt.log" || {
   echo APK_INSTALLFIX_APP_PACKAGE_OR_VERSION_WRONG; exit 23;
 }

@@ -72,9 +72,13 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p dist
-          timeout 480 gh codespace ssh -c "$CODESPACE" -- 'bash -s' \
+          if ! timeout 480 gh codespace ssh -c "$CODESPACE" -- 'bash -s' \
             < Tools/Codespaces/apk_existing_installfix_verify.sh \
-            > "$RUNNER_TEMP/apk-v7-verified.txt"
+            > "$RUNNER_TEMP/apk-v7-verified.txt"; then
+            grep -E '^(APK_INSTALLFIX_[A-Z_]+|apk_actual_package=[a-zA-Z0-9_.]+|apk_actual_version_code=[0-9]+)$' \
+              "$RUNNER_TEMP/apk-v7-verified.txt" || true
+            exit 33
+          fi
           grep -qxF APK_INSTALLFIX_READY_FOR_RELEASE "$RUNNER_TEMP/apk-v7-verified.txt"
           grep -qxF APK_INSTALLFIX_NEW_GAME_V7_SIGNED_API36_VERIFIED "$RUNNER_TEMP/apk-v7-verified.txt"
           grep -qxF apk_bytes=362307306 "$RUNNER_TEMP/apk-v7-verified.txt"
@@ -155,6 +159,11 @@ jobs:
             if test -s "$RUNNER_TEMP/v7-release-url.txt"; then
               echo 'Validated new APK:'
               cat "$RUNNER_TEMP/v7-release-url.txt"
+            fi
+            if test -s "$RUNNER_TEMP/apk-v7-verified.txt"; then
+              echo 'Sanitized actual Android package evidence:'
+              grep -E '^apk_actual_(package|version_code)=[A-Za-z0-9_.]+$' \
+                "$RUNNER_TEMP/apk-v7-verified.txt" || true
             fi
             echo "Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           } > "$RUNNER_TEMP/v7-owner-result.md"
