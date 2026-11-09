@@ -72,7 +72,7 @@ class NaturalTreePrefabTests(unittest.TestCase):
                 section = source.split("BoxCollider:", 1)[1].split("--- !u!", 1)[0]
                 self.assertIn("m_IsTrigger: 0", section)
                 match = re.search(
-                    r"m_Size: \\{x: ([0-9.]+), y: ([0-9.]+), z: ([0-9.]+)\\}",
+                    r"m_Size: \{x: ([0-9.]+), y: ([0-9.]+), z: ([0-9.]+)\}",
                     section,
                 )
                 self.assertIsNotNone(match)
