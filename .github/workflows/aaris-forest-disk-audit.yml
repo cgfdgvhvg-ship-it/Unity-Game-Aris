@@ -6,6 +6,7 @@ on:
       - '.github/workflows/aaris-forest-disk-audit.yml'
 permissions:
   contents: read
+  issues: write
 jobs:
   disk-audit:
     runs-on: ubuntu-latest
@@ -14,6 +15,7 @@ jobs:
       - uses: actions/checkout@v4
         with: {lfs: false}
       - name: Read capacity and audit scratch-only generated worktrees
+        id: audit
         env:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
         run: |
@@ -44,6 +46,12 @@ jobs:
                   u=[s for s in untracked.stdout.splitlines() if s.strip()]
                   from collections import Counter
                   ext=Counter(pathlib.Path(k).suffix or "(none)" for k in u)
+                  lib=z/"Library"
+                  lib_size="NA"
+                  if lib.is_dir() and not lib.is_symlink():
+                      x=subprocess.run(["du","-sm",str(lib)],capture_output=True,text=True,timeout=120)
+                      lib_size=x.stdout.split()[0] if x.returncode==0 and x.stdout.split() else "unknown"
+                  print("WORKTREE_LIBRARY",z.name[:10],"present",lib.is_dir(),"symlink",lib.is_symlink(),"size_mib",lib_size)
                   print("WORKTREE",z.name[:10],"size_mib",mib,
                         "status_known",result.returncode==0,"tracked_changes",modified,
                         "untracked_count",len(u),"untracked_suffixes",dict(ext.most_common(6)))
@@ -57,3 +65,11 @@ jobs:
                         x.stdout.split()[0] if x.returncode==0 and x.stdout.split() else "unknown")
           PY
           SH
+      - name: Publish audit run locator
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AUDIT_OUTCOME: ${{ steps.audit.outcome }}
+        run: |
+          set -euo pipefail
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" -b "FOREST READ-ONLY DISK AUDIT: ${AUDIT_OUTCOME:-inconclusive}. No files were removed. [Inspect bounded audit log](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)"
