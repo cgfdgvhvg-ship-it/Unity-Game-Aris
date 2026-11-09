@@ -12,7 +12,8 @@ assert not scene.startswith("version https://git-lfs.github.com/spec/v1"), "LFS 
 match=re.search(r"(?m)^--- !u!104 &\d+\nRenderSettings:\n(.*?)(?=^--- !u!|\Z)",scene,re.S|re.M)
 assert match, "native RenderSettings missing"
 block=match.group(1)
-assert "m_Fog: 0\n" in block, "Daylight map fog must remain disabled"\nassert "m_AmbientMode: 3\n" in block, "Flat ambient not saved"
+assert "m_Fog: 0\n" in block, "Daylight map fog must remain disabled"
+assert "m_AmbientMode: 3\n" in block, "Flat ambient not saved"
 assert "m_AmbientIntensity: 1.2\n" in block, "ambient intensity mismatch"
 assert "m_AmbientSkyColor: {r: 0.69, g: 0.70, b: 0.65, a: 1.0}" in block
 assert "m_Sun: {fileID: 10010}" in block, "sun link unexpectedly changed"
