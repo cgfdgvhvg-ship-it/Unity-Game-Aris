@@ -65,5 +65,30 @@ if log.is_file():
     }
     for name,pattern in signatures.items():
         emit("SCENE_LOG_"+name, bool(re.search(pattern,s,re.I)))
+# Identify tightly allowlisted shader families near compiler errors; never emit raw
+# shader names, file paths, message bodies, stack traces, or lines.
+if log.is_file():
+    error_lines=[line for line in s.splitlines()
+                 if re.search(r"Shader error|Shader warning|shader.*(?:compile.*fail|unsupported)|ShaderCompiler",line,re.I)]
+    print("AARIS_SHADER_CANDIDATE_LINES="+str(min(9999,len(error_lines))))
+    nearby="\\n".join(error_lines[-150:])
+    names={
+        "SPEEDTREE":r"speedtree|pine[_ ]|conifer|cypress",
+        "URP":r"Universal Render Pipeline|Universal\\/|\\bURP\\b",
+        "TERRAIN":r"terrain|\\bNature\\/",
+        "SHADER_GRAPH":r"shadergraph|shader graph",
+        "CUSTOM":r"\\bAaris\\b|\\bAarisWorld\\b",
+        "ERROR_TOKEN":r"shader error in|ShaderCompiler.*(?:error|failed)",
+        "UNSUPPORTED_BACKEND":r"not supported|unsupported|not available",
+        "SHADER_COMPILE_TIMEOUT":r"timeout|timed out",
+        "GLSL":r"glsl|GLSLPROGRAM|glcore|OpenGL",
+        "VULKAN":r"vulkan|spir-?v",
+        "COMPILER_EXCEPTION":r"exception|segmentation|signal 11",
+    }
+    for label,pattern in names.items():
+        emit("CANDIDATE_"+label,bool(re.search(pattern,nearby,re.I)))
+    # Shader errors are distinct from mere mentions of compiler initialization.
+    emit("EXPLICIT_SHADER_ERROR",bool(re.search(r"Shader error in|failed to compile shader",nearby,re.I)))
+    emit("SHADER_WARNING",bool(re.search(r"Shader warning in",nearby,re.I)))
 print("AARIS_SHADER_READONLY_COMPLETE")
 PY
