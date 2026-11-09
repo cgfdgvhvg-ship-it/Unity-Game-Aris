@@ -1,0 +1,29 @@
+name: Snapshot camera protocol validation
+on:
+  pull_request:
+    paths:
+      - 'Assets/AarisWorld/Editor/AarisLiveCameraBridge.cs'
+      - '.devcontainer/**'
+      - 'Tools/Codespaces/snapshot_cli.py'
+      - 'Tools/Codespaces/graphics_preflight.sh'
+      - 'Tools/Snapshots/**'
+      - 'Tools/Validation/test_snapshots.py'
+      - 'tools/snap'
+      - '.github/workflows/snapshot-protocol.yml'
+  workflow_dispatch:
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Test Python protocol, shell syntax and JSON
+        run: |
+          python3 -m py_compile Tools/Codespaces/snapshot_cli.py Tools/Validation/test_snapshots.py
+          python3 -m unittest discover -s Tools/Validation -p test_snapshots.py -v
+          bash -n tools/snap Tools/Codespaces/graphics_preflight.sh .devcontainer/start_screen.sh
+          python3 -m json.tool .devcontainer/devcontainer.json > /dev/null
+          python3 -m json.tool Tools/Snapshots/presets.json > /dev/null
+          python3 -m json.tool Tools/Snapshots/example-shots.json > /dev/null
