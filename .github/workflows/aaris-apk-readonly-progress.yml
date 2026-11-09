@@ -1,5 +1,9 @@
 name: Aaris Android APK progress (read-only)
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/aaris-apk-readonly-progress.yml'
+      - 'Tools/Codespaces/apk_readonly_status.sh'
   issue_comment:
     types: [created]
 permissions:
@@ -9,8 +13,28 @@ concurrency:
   group: aaris-apk-readonly-progress
   cancel-in-progress: false
 jobs:
+  static-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax and safety of read-only APK progress
+        run: |
+          set -euo pipefail
+          bash -n Tools/Codespaces/apk_readonly_status.sh
+          python3 - <<'PYSTATIC'
+          from pathlib import Path
+          script=Path('Tools/Codespaces/apk_readonly_status.sh').read_text()
+          source=script.split("python3 - <<'PY'\\n",1)[1].rsplit('\\nPY',1)[0]
+          compile(source,'apk_readonly_status.py','exec')
+          assert 'license status' not in script and 'gh release' not in script
+          assert 'APK_READONLY_PROGRESS' in script
+          print('APK_MONITOR_STATIC_CHECK_PASSED')
+          PYSTATIC
   progress:
+
     if: >-
+      github.event_name == 'issue_comment' &&
       github.event.issue.number == 77 &&
       github.event.comment.user.login == 'sundamunda289-art' &&
       github.event.comment.body == 'APK PULSE'
