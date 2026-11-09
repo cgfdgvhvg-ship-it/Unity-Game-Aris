@@ -60,7 +60,7 @@ jobs:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
         run: |
           set -euo pipefail
-          if grep -qx 'first_six_ready=yes' survey-progress/status.txt; then
+          if grep -qx 'first_six_ready=yes' survey-progress/status.txt ||\n             grep -qx 'all_four_sheets_ready=yes' survey-progress/status.txt; then
             CS="${AARIS_MONITOR_CODESPACE:?Selected Codespace from inspection required}"
             [[ "$CS" =~ ^[a-zA-Z0-9-]+$ ]] || exit 31
             if ! timeout 200 gh codespace ssh -c "$CS" -- 'bash -s' < Tools/Codespaces/survey_export_first_six.sh > /tmp/aaris-first-six.b64 2>/dev/null; then
