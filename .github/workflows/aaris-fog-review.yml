@@ -20,7 +20,14 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: read
+      issues: write
     steps:
+      - name: Announce exact native A-B run to owner for live verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" \\
+            --body "AARIS_FOG_REVIEW_RUNNING run_id=$GITHUB_RUN_ID commit=$GITHUB_SHA"
       - uses: actions/checkout@v4
         with:
           lfs: false
@@ -75,3 +82,20 @@ jobs:
           path: fog-review-results/
           if-no-files-found: warn
           retention-days: 2
+      - name: Report actual Unity A-B evidence, never raw logs
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEW_OUTCOME: ${{ job.status }}
+        run: |
+          set -Eeuo pipefail
+          if test -s fog-review-results/daylight-report.json; then
+            echo "AARIS_FOG_REVIEW native_run=$GITHUB_RUN_ID outcome=$REVIEW_OUTCOME verified_unity_images=4 artifact=aaris-unity-fog-review-$GITHUB_RUN_ID" \
+              > /tmp/aaris-fog-status.txt
+          else
+            echo "AARIS_FOG_REVIEW native_run=$GITHUB_RUN_ID outcome=$REVIEW_OUTCOME verified_unity_images=0" \
+              > /tmp/aaris-fog-status.txt
+          fi
+          printf 'Report: https://github.com/%s/actions/runs/%s\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" \
+            >> /tmp/aaris-fog-status.txt
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" -F /tmp/aaris-fog-status.txt
