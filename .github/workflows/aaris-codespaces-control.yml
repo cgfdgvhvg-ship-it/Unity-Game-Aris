@@ -80,6 +80,7 @@ jobs:
           python3 Tools/Codespaces/test_scene_probe.py
           python3 Tools/Validation/check_saved_ambient.py
           python3 Tools/Codespaces/photo_request.py --selftest
+          python3 Tools/Codespaces/test_survey_monitor.py
           bash -n Tools/Codespaces/play_probe_diagnostic.sh
           echo "CODESPACE_STATIC_PASS"
       - name: Verify immutable native Unity bake expected by the Codespace handoff
