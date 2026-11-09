@@ -51,6 +51,7 @@ echo AARIS_AUDIO_793_NATIVE_ASSETS_VERIFIED
 set +e
 timeout --signal=TERM 1450 env TMPDIR="$ROOT/UnityTemp" \
   "$EDITOR" -batchmode -quit -nographics -projectPath "$PROJECT" \
+  -executeMethod Aaris.MapReview.Editor.AarisOfflineAudioClipProbe.Verify \
   -logFile "$ROOT/private-unity-compile.log" \
   > "$ROOT/private-stdout.log" 2> "$ROOT/private-stderr.log"
 rc=$?
@@ -74,5 +75,10 @@ if ! grep -Eqi 'AssetDatabase|Asset Pipeline|Refresh|script assemblies|Scripts/A
   echo AARIS_AUDIO_COMPILE_NO_IMPORT_EVIDENCE
   exit 21
 fi
+if ! grep -q 'AARIS_AUDIO_CLIPS_IMPORT_PASS=42' "$ROOT/private-unity-compile.log" 2>/dev/null; then
+  echo AARIS_AUDIO_IMPORTED_CLIP_CHECK_NOT_PASSED
+  exit 22
+fi
+echo AARIS_AUDIO_NATIVE_42_CLIPS_IMPORTED
 echo AARIS_AUDIO_NATIVE_COMPILE_EXIT_ZERO_NO_CS_ERRORS
 echo AARIS_AUDIO_REVIEW_BRANCH_ONLY_UNCHANGED_SOURCE
