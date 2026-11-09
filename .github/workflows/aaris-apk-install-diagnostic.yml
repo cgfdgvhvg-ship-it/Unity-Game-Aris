@@ -19,7 +19,7 @@ jobs:
         run: |
           set -euo pipefail
           bash -n Tools/Codespaces/apk_install_diagnostic.sh
-          grep -q 'apksigner.*verify' Tools/Codespaces/apk_install_diagnostic.sh
+          grep -Fq '"$APKSIGNER" verify' Tools/Codespaces/apk_install_diagnostic.sh
           grep -q 'apk_signature_v2=' Tools/Codespaces/apk_install_diagnostic.sh || \
             grep -q 'apk_signature_' Tools/Codespaces/apk_install_diagnostic.sh
           echo APK_DIAGNOSTIC_STATIC_OK
