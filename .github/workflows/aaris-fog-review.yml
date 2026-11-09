@@ -14,6 +14,7 @@ jobs:
     if: github.repository == 'sundamunda289-art/Unity-Game-Aris'
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # Serialize with existing owner-only Codespace actions: one licensed Unity Editor at a time.
     concurrency:
       group: aaris-codespace-control
       cancel-in-progress: false
