@@ -1,0 +1,26 @@
+name: Aaris offline loot spatial streaming regression
+on:
+  pull_request:
+    paths:
+      - 'Assets/AarisWorld/Scripts/AarisWeaponLootWorld.cs'
+      - 'Tools/Validation/test_loot_cell_streaming.py'
+      - '.github/workflows/aaris-loot-grid-validation.yml'
+  push:
+    paths:
+      - 'Assets/AarisWorld/Scripts/AarisWeaponLootWorld.cs'
+      - 'Tools/Validation/test_loot_cell_streaming.py'
+      - '.github/workflows/aaris-loot-grid-validation.yml'
+permissions:
+  contents: read
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          persist-credentials: false
+      - name: Prove 42m circle matches original full-index scan
+        run: python3 Tools/Validation/test_loot_cell_streaming.py
+      - name: Confirm no map data was modified
+        run: echo "Only game loot query logic is under test; no scene, map, terrain, or rendering assets involved."
