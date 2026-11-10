@@ -147,6 +147,14 @@ namespace Aaris.MapReview
                             slots[i] = enginePaint;
                         else if (label.IndexOf("SafetyAccent", StringComparison.OrdinalIgnoreCase) >= 0)
                             slots[i] = safetyPaint;
+                        // Some mobile OBJ import paths discard the MTL names but
+                        // retain the five source submesh slots in OBJ declaration
+                        // order. Preserve their contrast even in this case.
+                        else if (slots.Length == 5)
+                            slots[i] = i == 1 ? cockpitPaint :
+                                i == 2 ? wingPaint :
+                                i == 3 ? enginePaint :
+                                i == 4 ? safetyPaint : hullPaint;
                         else slots[i] = hullPaint;
                     }
                     renderer.sharedMaterials = slots;
@@ -154,6 +162,7 @@ namespace Aaris.MapReview
             }
             else
             {
+                Debug.LogError("AARIS_CARGO_PLANE_MODEL_NOT_IMPORTED: using emergency offline placeholder.");
                 root = new GameObject("Aaris_OriginalCargoAircraft");
                 root.transform.SetPositionAndRotation(position, rotation);
                 Material shell = Paint(ref hull, new Color(0.36f, 0.44f, 0.47f));
