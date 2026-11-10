@@ -44,6 +44,10 @@ jobs:
                          'Rate limit exceeded', 'too many requests'):
               assert re.search(rule,actual,re.I), actual
           print('APK_HTTP_RATE_LIMIT_CONTEXT_REGRESSION_PASS')
+          assert 'apk_source_sha=' in script
+          assert 'source_sha=match.group(1) if match else "unknown"' in script
+          assert '([0-9a-f]{40})' in script
+          assert 'install,build,source_sha=process_info()' in script
           print('APK_MONITOR_STATIC_CHECK_PASSED')
           PYSTATIC
   progress:
