@@ -41,7 +41,7 @@ jobs:
           if len(paths)!=9 or paths[0]!='screens/':
               raise SystemExit('LIVE_GAMEPLAY_UNEXPECTED_ARCHIVE_ENTRIES')
           for path in paths[1:]:
-              if not re.fullmatch(r'screens/0[0-7]-[a-z-]+\\.png',path):
+              if not re.fullmatch(r'screens/0[0-7]-[a-z-]+\.png',path):
                   raise SystemExit('LIVE_GAMEPLAY_UNEXPECTED_SCREEN_NAME')
           print('LIVE_GAMEPLAY_BOUNDED_ARTIFACT_VERIFIED')
           PY
