@@ -74,6 +74,24 @@ class OfflineCombatAssetChecks(unittest.TestCase):
         self.assertNotIn("terrain.SampleHeight(new Vector3(x, 0f, z)) + p.y", source)
         self.assertNotIn("p.y + t.SampleHeight(position)", source)
 
+    def test_replacement_cargo_plane_has_swept_four_engine_art(self):
+        verts, faces, materials, size = read_obj(MODELS["aircraft"][0])
+        self.assertGreaterEqual(len(faces), 750)
+        self.assertLessEqual(len(faces), 2400, "Avoid mobile overdraw and oversized plane geometry")
+        self.assertLessEqual(len(verts), 1300)
+        self.assertGreater(size[0], 31)
+        self.assertGreater(size[1], 7)
+        self.assertGreater(size[2], 22)
+        self.assertTrue({"HulledMetal", "DarkCockpit", "WingPanels",
+                         "EngineDark", "SafetyAccent"}.issubset(materials))
+        source = (SCRIPTS / "AarisOfflineDropVisuals.cs").read_text("utf-8")
+        movement = (SCRIPTS / "AarisOfflineDrop.cs").read_text("utf-8")
+        self.assertIn("BuildPropellerMesh()", source)
+        self.assertIn("Quaternion.Euler(0f, 0f,", movement)
+        self.assertIn("Time.unscaledDeltaTime", movement)
+        self.assertNotIn('"PropellerBladeA"', source)
+        self.assertNotIn('"PropellerBladeB"', source)
+
     def test_parachute_is_elongated_and_round_ended_not_rectangular(self):
         verts, _, _, bounds = read_obj(MODELS["parachute"][0])
         self.assertGreater(bounds[0] / max(bounds[2], 0.1), 2.8)
