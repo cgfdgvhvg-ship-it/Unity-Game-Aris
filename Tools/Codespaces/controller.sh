@@ -24,6 +24,28 @@ PY
 trap finish EXIT
 if test -n "$ISSUE"; then
   case "$ISSUE" in
+    # Exact owner-specified fallback machine. Issue comments never supply shell
+    # commands or arbitrary machine names; all operations stay allowlisted.
+    'CS FALLBACK '*)
+      MACHINE='aaris-ai-ubuntu-fallback-2-vp5r9xx4rwv6c6pq7'
+      case "$ISSUE" in
+        'CS FALLBACK INFO') OP=info ;;
+        'CS FALLBACK START') OP=start ;;
+        'CS FALLBACK STATUS') OP=status ;;
+        'CS FALLBACK CHANGES') OP=changes ;;
+        'CS FALLBACK LFS REPORT') OP=lfs_report ;;
+        'CS FALLBACK LICENSE') OP=license ;;
+        'CS FALLBACK COMPILE REPORT') OP=compile_report ;;
+        'CS FALLBACK EDITOR') OP=editor ;;
+        'CS FALLBACK SHOT') OP=shot ;;
+        'CS FALLBACK SCENE PLAY') OP=scene_play ;;
+        'CS FALLBACK DROP FRAMES') OP=drop_frames ;;
+        'CS FALLBACK DROP VIDEO') OP=drop_video ;;
+        'CS FALLBACK TEST') OP=test ;;
+        'CS FALLBACK STOP') OP=stop ;;
+        *) DETAIL="unsupported_fallback_command"; exit 2 ;;
+      esac
+      ;;
     'CS MACHINES') OP=machines ;;
     'CS START') OP=start ;;
     'CS FRESH') OP=fresh ;;
