@@ -30,7 +30,7 @@ if test -n "$ISSUE"; then
       MACHINE='aaris-ai-ubuntu-fallback-2-vp5r9xx4rwv6c6pq7'
       case "$ISSUE" in
         'CS FALLBACK INFO') OP=info ;;
-        'CS FALLBACK START') OP=start ;;
+        'CS FALLBACK START') OP=wait_start ;;
         'CS FALLBACK STATUS') OP=status ;;
         'CS FALLBACK CHANGES') OP=changes ;;
         'CS FALLBACK LFS REPORT') OP=lfs_report ;;
@@ -106,7 +106,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|fresh|fresh_ssh|fresh_minimal|rebuild|full_rebuild|status|logs|sync|recovery_sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|bootstrap|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
+  machines|info|quota|start|wait_start|fresh|fresh_ssh|fresh_minimal|rebuild|full_rebuild|status|logs|sync|recovery_sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|bootstrap|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -272,6 +272,41 @@ if test "$OP" = recovery_sync; then
     fi
   fi
   DETAIL="recovery_sync_failed_without_reset"; exit 36
+fi
+# A stopped Codespace may need time to finish shutting down, especially
+# after a hung Editor import. Start ONLY the exact user-selected machine.
+# Bounded polling prevents repeated 409/start races and never resets a worktree.
+if test "$OP" = wait_start; then
+  requested=0
+  for ((attempt=1; attempt<=36; attempt++)); do
+    current="$(gh codespace view -c "$CS" --json state --jq .state 2>/dev/null || true)"
+    case "$current" in
+      Available)
+        echo "codespace=$CS" > "$OUT/terminal.txt"
+        echo "state=Available" >> "$OUT/terminal.txt"
+        STATE="SUCCESS"; DETAIL="existing_exact_codespace_available"; exit 0
+        ;;
+      Shutdown|Stopped)
+        if ((requested==0)); then
+          if gh api -X POST "/user/codespaces/$CS/start" >/dev/null 2>/dev/null; then
+            requested=1
+            echo "CODESPACE_START_REQUEST_ACCEPTED" > "$OUT/terminal.txt"
+          else
+            echo "CODESPACE_START_RETRY_AFTER_STATE_CHECK" > "$OUT/terminal.txt"
+          fi
+        fi
+        ;;
+      ShuttingDown|Starting|Provisioning|Rebuilding|Queued)
+        ;;
+      *)
+        echo "CODESPACE_TRANSITION_STATE_UNKNOWN" > "$OUT/terminal.txt"
+        STATE="UNKNOWN"; DETAIL="codespace_state_not_safe_to_start"; exit 0
+        ;;
+    esac
+    sleep 15
+  done
+  echo "CODESPACE_WAIT_START_TIMED_OUT_NONDESTRUCTIVELY" >> "$OUT/terminal.txt"
+  STATE="PENDING"; DETAIL="codespace_not_available_after_bounded_wait"; exit 0
 fi
 # Read Codespace machine and state without SSH. Safe when the old container is unavailable.
 if test "$OP" = logs; then
