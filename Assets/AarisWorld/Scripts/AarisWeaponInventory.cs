@@ -48,7 +48,7 @@ namespace Aaris.MapReview
             dropped = null;
             if (incoming == null || incoming.Spec == null || !incoming.Spec.Valid)
                 return false;
-            GameObject prefab = Resources.Load<GameObject>(incoming.Spec.modelResource);
+            GameObject prefab = AarisWeaponCatalog.ModelFor(incoming.Spec);
             if (prefab == null) return false;
 
             var root = new GameObject("Aaris Equipped " + incoming.Spec.id);

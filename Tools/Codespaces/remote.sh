@@ -101,12 +101,24 @@ paths = [
     "Assets/AarisWorld/Scripts/AarisOfflineDrop.cs",
     "Assets/AarisWorld/Scripts/AarisOfflineDropVisuals.cs",
     "Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs",
+    "Assets/AarisWorld/Scripts/AarisBattleActions.cs",
+    "Assets/AarisWorld/Scripts/AarisCharacterVisual.cs",
+    "Assets/AarisWorld/Scripts/AarisEquippedGun.cs",
+    "Assets/AarisWorld/Scripts/AarisVehicleSession.cs",
+    "Assets/AarisWorld/Scripts/AarisWeaponCatalog.cs",
+    "Assets/AarisWorld/Scripts/AarisWeaponInventory.cs",
     "Assets/AarisWorld/Scripts/AarisWeaponLootWorld.cs",
+    "Assets/AarisWorld/Scripts/AarisWeaponPickup.cs",
     "Assets/AarisWorld/Scripts/AarisBreakablePanel.cs",
     "Assets/Resources/AarisDrop/CargoPlane.obj",
     "Assets/Resources/AarisDrop/CargoPlane.mtl",
     "Tools/Validation/test_offline_drop_assets.py",
     "Tools/Validation/test_loot_cell_streaming.py",
+    "Tools/Validation/simulate_battle_feel.py",
+    "Tools/Validation/check_battle_hardening.py",
+    "Tools/Validation/check_armed_locomotion.py",
+    "Tools/Validation/check_single_weapon_transactions.py",
+    "Tools/Validation/check_weapon_loot.py",
 ]
 def git(*args):
     return subprocess.check_output(["git", "-C", str(root), *args], stderr=subprocess.DEVNULL)
@@ -134,7 +146,12 @@ required = {
     "Assets/AarisWorld/Scripts/AarisOfflineDrop.cs": b"support = Mathf.Max(support, t.SampleHeight(position));",
     "Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs": b"ground = Mathf.Max(ground, t.SampleHeight(position));",
     "Assets/AarisWorld/Scripts/AarisBreakablePanel.cs": b"OpenAngle * openDirection",
-    "Assets/AarisWorld/Scripts/AarisWeaponLootWorld.cs": b"terrain.SampleHeight(new Vector3(c.x, 0f, c.z))",
+    "Assets/AarisWorld/Scripts/AarisWeaponLootWorld.cs": b"deferVisual: true",
+    "Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs": b"ProneWallSlide(horizontalVelocity, dt)",
+    "Assets/AarisWorld/Scripts/AarisCharacterVisual.cs": b"float stanceMotion = Mathf.Clamp01(horizontal / 1.2f) * pose;",
+    "Assets/AarisWorld/Scripts/AarisWeaponCatalog.cs": b"modelCache[modelPath] = prefab;",
+    "Assets/AarisWorld/Scripts/AarisWeaponPickup.cs": b"public bool TryReserve()",
+    "Assets/AarisWorld/Scripts/AarisEquippedGun.cs": b"node.GetComponents(damageScratch)",
     "Assets/Resources/AarisDrop/CargoPlane.obj": b"o Aaris_CargoPlane_Transport_V2",
 }
 for name, marker in required.items():
@@ -206,6 +223,12 @@ PYINPLACE
     }
     python3 Tools/Validation/test_loot_cell_streaming.py >/dev/null || {
       echo 'AARIS_GAMEPLAY_INPLACE_LOOT_REGRESSION_FAILED'; exit 62;
+    }
+    python3 Tools/Validation/simulate_battle_feel.py >/dev/null || {
+      echo 'AARIS_GAMEPLAY_INPLACE_MOVEMENT_REGRESSION_FAILED'; exit 63;
+    }
+    python3 Tools/Validation/check_single_weapon_transactions.py >/dev/null || {
+      echo 'AARIS_GAMEPLAY_INPLACE_WEAPON_REGRESSION_FAILED'; exit 64;
     }
     echo 'AARIS_GAMEPLAY_INPLACE_STATIC_TESTS_PASSED'
     ;;

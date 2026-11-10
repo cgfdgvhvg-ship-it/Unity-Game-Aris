@@ -53,7 +53,7 @@ namespace Aaris.MapReview
         private AarisBattleActions actions;
         private AarisThirdPersonPlayer playerMotor;
         private AarisOfflineDrop aerialDrop;
-        private Transform punchArm;
+        private Transform punchArm, crawlLeftArm, crawlRightArm, crawlLeftLeg, crawlRightLeg;
         private Vector3 restingLocalPosition;
         private Quaternion restingLocalRotation;
         private float crouchBlend, proneBlend;
@@ -137,6 +137,10 @@ namespace Aaris.MapReview
             restingLocalPosition = visual.transform.localPosition;
             restingLocalRotation = visual.transform.localRotation;
             punchArm = animator.GetBoneTransform(HumanBodyBones.RightUpperArm);
+            crawlLeftArm = animator.GetBoneTransform(HumanBodyBones.LeftUpperArm);
+            crawlRightArm = animator.GetBoneTransform(HumanBodyBones.RightUpperArm);
+            crawlLeftLeg = animator.GetBoneTransform(HumanBodyBones.LeftUpperLeg);
+            crawlRightLeg = animator.GetBoneTransform(HumanBodyBones.RightUpperLeg);
             animator.applyRootMotion = false;
             animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             SetupAnimations();
@@ -459,9 +463,12 @@ namespace Aaris.MapReview
                 // transitions, and reactive one-shot combat weights. Every
                 // mixer input participates in a weight sum of approximately 1.
                 float pose = Mathf.Clamp01(crouchBlend + proneBlend);
-                float crouchMotion = Mathf.Clamp01(horizontal / 1.2f) *
-                    crouchBlend * (1f - proneBlend);
-                float crouchRest = pose - crouchMotion;
+                // Exclusive stance weights already subtract the standing
+                // locomotion share; reuse the crouch-walk clip as a low-speed
+                // prone locomotion base when no authored crawl clip exists.
+                // Keep the weighted sum at one: stanceRest + stanceMotion = pose.
+                float stanceMotion = Mathf.Clamp01(horizontal / 1.2f) * pose;
+                float stanceRest = pose - stanceMotion;
                 float grounded = (1f - airborneBlend) * (1f - pose);
                 float jumping = velocity.y >= -0.6f ? 1f : 0f;
 
@@ -513,8 +520,8 @@ namespace Aaris.MapReview
                 mixer.SetInputWeight(2, baseWeight * grounded * runBlend * walkRunBlend);
                 mixer.SetInputWeight(3, baseWeight * airborneBlend * jumping * (1f - pose));
                 mixer.SetInputWeight(4, baseWeight * airborneBlend * (1f - jumping) * (1f - pose));
-                mixer.SetInputWeight(5, baseWeight * crouchRest);
-                mixer.SetInputWeight(6, baseWeight * crouchMotion);
+                mixer.SetInputWeight(5, baseWeight * stanceRest);
+                mixer.SetInputWeight(6, baseWeight * stanceMotion);
                 mixer.SetInputWeight(7, startWeight);
                 mixer.SetInputWeight(8, landWeight);
                 weaponUpperMixer.SetInputWeight(0, 1f - attackRatio);
@@ -550,6 +557,25 @@ namespace Aaris.MapReview
                 LoopPlayable(runPlayable, runClip, locomotionPhase);
                 LoopPlayable(crouchWalkPlayable, crouchWalkClip, locomotionPhase);
 
+            }
+
+            // Add a very small, speed-driven opposing limb cycle for prone.
+            // This affects only the existing Humanoid bones (no meshes,
+            // animators, physics objects or extra per-frame allocations).
+            if (graphReady && proneBlend > .01f)
+            {
+                float crawlWeight = proneBlend *
+                    Mathf.Clamp01(planar / 1.35f);
+                float wave = Mathf.Sin(locomotionPhase * Mathf.PI * 3.0f) *
+                    16f * crawlWeight;
+                if (crawlLeftArm != null)
+                    crawlLeftArm.localRotation *= Quaternion.Euler(wave, 0f, 0f);
+                if (crawlRightArm != null)
+                    crawlRightArm.localRotation *= Quaternion.Euler(-wave, 0f, 0f);
+                if (crawlLeftLeg != null)
+                    crawlLeftLeg.localRotation *= Quaternion.Euler(-wave * .65f, 0f, 0f);
+                if (crawlRightLeg != null)
+                    crawlRightLeg.localRotation *= Quaternion.Euler(wave * .65f, 0f, 0f);
             }
 
             // In-place upper-arm punch pulse. Only the animation skeleton is

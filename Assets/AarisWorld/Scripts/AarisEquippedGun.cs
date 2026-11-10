@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Aaris.MapReview
@@ -41,6 +42,10 @@ namespace Aaris.MapReview
     public sealed class AarisEquippedGun : MonoBehaviour
     {
         private readonly RaycastHit[] rayHits = new RaycastHit[48];
+        // Reuse one scratch list during repeated shotgun damage traces.
+        // Unity gameplay/Physics events are dispatched on the main thread.
+        private static readonly List<MonoBehaviour> damageScratch =
+            new List<MonoBehaviour>(8);
         private AarisWeaponSpec spec;
         private int magazine, reserve;
         private float reloadUntil, nextFire;
@@ -199,13 +204,19 @@ namespace Aaris.MapReview
             if (collider == null) return;
             for (Transform node = collider.transform; node != null; node = node.parent)
             {
-                foreach (var component in node.GetComponents<MonoBehaviour>())
-                    if (component is IAarisDamageable damageable)
-                    {
-                        damageable.ApplyDamage(amount, attacker);
-                        return;
-                    }
+                // GetComponents<T>(List<T>) fills the reusable list without
+                // allocating a new managed array for every bullet/pellet.
+                damageScratch.Clear();
+                node.GetComponents(damageScratch);
+                for (int i = 0; i < damageScratch.Count; i++)
+                {
+                    if (!(damageScratch[i] is IAarisDamageable damageable)) continue;
+                    damageScratch.Clear();
+                    damageable.ApplyDamage(amount, attacker);
+                    return;
+                }
             }
+            damageScratch.Clear();
         }
     }
 

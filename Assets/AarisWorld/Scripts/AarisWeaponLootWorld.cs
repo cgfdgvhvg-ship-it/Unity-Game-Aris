@@ -368,28 +368,34 @@ namespace Aaris.MapReview
         }
 
         private AarisDroppedWeapon CreateDropped(AarisWeaponState state,
-            Vector3 point, float graceSeconds)
+            Vector3 point, float graceSeconds, bool deferVisual = false)
         {
             if (state == null || state.Spec == null ||
                 dropped.Count >= MaximumDroppedLoot) return null;
             int id = nextDropId--;
-            var root = new GameObject("Dropped " + state.Spec.displayName + " #" + (-id));
-            root.transform.SetParent(transform, false);
-            root.transform.position = point;
-            var pickup = root.AddComponent<AarisWeaponPickup>();
-            if (!pickup.Initialize(state, id))
-            {
-                Destroy(root);
-                return null;
-            }
             var record = new AarisDroppedWeapon
             {
                 id = id, state = state, position = point,
-                blockedUntil = Time.unscaledTime + graceSeconds,
-                visible = pickup
+                blockedUntil = Time.unscaledTime + graceSeconds
             };
+            // During an exchange, defer the previous gun mesh to the next
+            // bounded loot-stream tick. This avoids two FBX Instantiates
+            // during the same mobile frame as the new equipped model.
+            if (!deferVisual)
+            {
+                var root = new GameObject("Dropped " + state.Spec.displayName + " #" + (-id));
+                root.transform.SetParent(transform, false);
+                root.transform.position = point;
+                var pickup = root.AddComponent<AarisWeaponPickup>();
+                if (!pickup.Initialize(state, id))
+                {
+                    Destroy(root);
+                    return null;
+                }
+                record.visible = pickup;
+                active.Add(pickup);
+            }
             dropped.Add(record);
-            active.Add(pickup);
             if (Debug.isDebugBuild)
                 Debug.Log("AARIS_LOOT_DROPPED " + state.Spec.id +
                     " pos=" + point.ToString("F2"));
@@ -399,8 +405,11 @@ namespace Aaris.MapReview
         private void UndoDrop(AarisDroppedWeapon record)
         {
             if (record == null) return;
-            active.Remove(record.visible);
-            if (record.visible != null) Destroy(record.visible.gameObject);
+            if (record.visible != null)
+            {
+                active.Remove(record.visible);
+                Destroy(record.visible.gameObject);
+            }
             DeleteDrop(record.id);
         }
 
@@ -410,15 +419,11 @@ namespace Aaris.MapReview
             if (player == null) return false;
             Vector3 forward = player.forward;
             Vector3 right = player.right;
-            Vector3[] attempts =
+            // Fixed four positions: no managed Vector3[] allocation per drop.
+            for (int attempt = 0; attempt < 4; attempt++)
             {
-                player.position + forward * .65f,
-                player.position - forward * .65f,
-                player.position + right * .65f,
-                player.position - right * .65f
-            };
-            foreach (var place in attempts)
-            {
+                Vector3 place = player.position + (attempt == 0 ? forward :
+                    attempt == 1 ? -forward : attempt == 2 ? right : -right) * .65f;
                 if (place.x < -957f || place.x > 957f ||
                     place.z < -957f || place.z > 957f) continue;
                 Ray ray = new Ray(place + Vector3.up * 1.6f, Vector3.down);
@@ -499,7 +504,7 @@ namespace Aaris.MapReview
         private bool TryTake(AarisWeaponPickup pickup)
         {
             if (pickup == null || pickup.State == null || inventory == null ||
-                IsBlockedDrop(pickup)) return false;
+                IsBlockedDrop(pickup) || !pickup.TryReserve()) return false;
 
             // Reserve the previous gun at the location already proven to be
             // a reachable, clear loot spot. This prevents inventing a second
@@ -507,12 +512,18 @@ namespace Aaris.MapReview
             var outgoing = inventory.Current != null
                 ? inventory.Current.CaptureState() : null;
             var replacement = outgoing != null
-                ? CreateDropped(outgoing, pickup.transform.position, 1.25f) : null;
-            if (outgoing != null && replacement == null) return false;
+                ? CreateDropped(outgoing, pickup.transform.position, 1.25f,
+                    deferVisual: true) : null;
+            if (outgoing != null && replacement == null)
+            {
+                pickup.ReleaseReservation();
+                return false;
+            }
 
             if (!inventory.TryPickup(pickup.State, out AarisWeaponState exchanged))
             {
                 UndoDrop(replacement);
+                pickup.ReleaseReservation();
                 return false;
             }
 
@@ -522,6 +533,7 @@ namespace Aaris.MapReview
                 consumed[id] = true;
             else
                 DeleteDrop(id);
+            pickup.CommitConsumed();
             active.Remove(pickup);
             Destroy(pickup.gameObject);
             requestPickupUntil = 0f;

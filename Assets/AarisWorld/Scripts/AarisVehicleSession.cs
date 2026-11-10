@@ -191,16 +191,14 @@ namespace Aaris.MapReview
             position = default(Vector3);
             if (car == null) return false;
             var t = car.transform;
-            Vector3[] options =
-            {
-                t.position + t.right * 3.2f,
-                t.position - t.right * 3.2f,
-                t.position - t.forward * 3.5f,
-                t.position + t.forward * 3.5f
-            };
             float seaLevel = -38.07552f;
-            foreach (var option in options)
+            // Exit candidates are computed on demand, without allocating
+            // a new array or touching any driving/render quality settings.
+            for (int side = 0; side < 4; side++)
             {
+                Vector3 option = t.position + (side == 0 ? t.right * 3.2f :
+                    side == 1 ? -t.right * 3.2f :
+                    side == 2 ? -t.forward * 3.5f : t.forward * 3.5f);
                 if (Mathf.Abs(option.x) > 973f || Mathf.Abs(option.z) > 973f) continue;
                 int hits = Physics.RaycastNonAlloc(
                     new Ray(option + Vector3.up * 2.5f, Vector3.down), exitGround, 5f,

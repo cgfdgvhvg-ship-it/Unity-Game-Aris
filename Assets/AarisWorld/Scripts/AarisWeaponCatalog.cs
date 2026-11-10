@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Aaris.MapReview
@@ -45,6 +46,11 @@ namespace Aaris.MapReview
     public static class AarisWeaponCatalog
     {
         private static AarisWeaponSpec[] specs;
+        // One cached reference per authored local weapon model: do not perform
+        // asset lookups while the player is firing or exchanging floor loot.
+        // These are prefab references, not duplicate live GameObjects.
+        private static readonly Dictionary<string, GameObject> modelCache =
+            new Dictionary<string, GameObject>(8, StringComparer.Ordinal);
         public static bool Ready => specs != null && specs.Length > 0;
 
         public static bool TryLoad()
@@ -68,8 +74,14 @@ namespace Aaris.MapReview
                     for (int j = 0; j < i; j++)
                         if (doc.weapons[i].id == doc.weapons[j].id)
                             throw new FormatException("Duplicate weapon identifier.");
-                    if (Resources.Load<GameObject>(doc.weapons[i].modelResource) == null)
-                        throw new FormatException("Missing local model: " + doc.weapons[i].modelResource);
+                    string modelPath = doc.weapons[i].modelResource;
+                    if (!modelCache.TryGetValue(modelPath, out GameObject prefab) || prefab == null)
+                    {
+                        prefab = Resources.Load<GameObject>(modelPath);
+                        if (prefab == null)
+                            throw new FormatException("Missing local model: " + modelPath);
+                        modelCache[modelPath] = prefab;
+                    }
                 }
                 specs = doc.weapons;
                 return true;
@@ -79,6 +91,17 @@ namespace Aaris.MapReview
                 Debug.LogError("Aaris: invalid local weapon catalog: " + e.Message);
                 return false;
             }
+        }
+
+        public static GameObject ModelFor(AarisWeaponSpec spec)
+        {
+            if (spec == null || !TryLoad()) return null;
+            if (modelCache.TryGetValue(spec.modelResource, out GameObject prefab) &&
+                prefab != null) return prefab;
+            // Only a domain reload/re-import should reach this path after boot.
+            prefab = Resources.Load<GameObject>(spec.modelResource);
+            if (prefab != null) modelCache[spec.modelResource] = prefab;
+            return prefab;
         }
 
         public static AarisWeaponSpec Get(string id)

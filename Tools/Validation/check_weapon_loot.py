@@ -67,7 +67,9 @@ def run():
     action = (SCRIPTS / "AarisBattleActions.cs").read_text()
     hud = (SCRIPTS / "AarisWeaponHUD.cs").read_text()
     assert "JsonUtility.FromJson<AarisWeaponCatalogDocument>" in catalog_cs
-    assert "Resources.Load<GameObject>(doc.weapons[i].modelResource)" in catalog_cs
+    assert "public static GameObject ModelFor(AarisWeaponSpec spec)" in catalog_cs
+    assert "Resources.Load<GameObject>(modelPath)" in catalog_cs
+    assert "modelCache[modelPath] = prefab;" in catalog_cs
     assert "TryFirstOtherHit" not in gun_cs # renamed and rewritten, not a second weapon motor
     assert "FirstExternalHit" in gun_cs and "SameTarget" in gun_cs
     assert "magazine--;" in gun_cs and "nextFire = Time.time + spec.ShotInterval;" in gun_cs
@@ -95,7 +97,8 @@ def run():
     # the collected world pickup without duping its ammo/weapon state.
     assert "private AarisDroppedWeapon CreateDropped" in world
     assert "private bool TryTake(AarisWeaponPickup pickup)" in world
-    assert "CreateDropped(outgoing, pickup.transform.position, 1.25f)" in world
+    assert "CreateDropped(outgoing, pickup.transform.position, 1.25f," in world
+    assert "deferVisual: true" in world and "pickup.CommitConsumed();" in world
     assert "UndoDrop(replacement)" in world
     assert "inventory.TryPickup(pickup.State, out AarisWeaponState exchanged)" in world
     assert "consumed[id] = true;" in world and "DeleteDrop(id);" in world

@@ -74,6 +74,83 @@ class OfflineCombatAssetChecks(unittest.TestCase):
         self.assertNotIn("origin.y + t.SampleHeight(position)", player)
         self.assertIn("if (GroundHeight(position) >= seaLevel + 0.35f)", player)
 
+    def test_mobile_jump_and_prone_movement_safety(self):
+        motor = (SCRIPTS / "AarisThirdPersonPlayer.cs").read_text("utf-8")
+        stance = (SCRIPTS / "AarisBattleActions.cs").read_text("utf-8")
+        self.assertIn("HasWalkableGroundWithinStep()", motor)
+        self.assertIn("!wasGrounded && verticalVelocity <= 0f", motor)
+        self.assertIn("now - lastJumpStarted > 0.18f", motor)
+        self.assertIn("now - lastGrounded <= 0.15f", motor)
+        self.assertIn("jumpUntil = Time.unscaledTime + 0.20f;", motor)
+        self.assertIn("if (groundedBeforeStand) lastGrounded = Time.unscaledTime;", motor)
+        self.assertIn("ProneWallSlide(horizontalVelocity, dt)", motor)
+        self.assertIn("SafeFooting(next) && battle.CanAdvanceProne(next, test)", motor)
+        self.assertIn("private float jumpHeight = 1.35f, gravity = 18.5f;", motor)
+        self.assertIn("private float earlyJumpReleaseGravity = 1.35f;", motor)
+        self.assertIn("stance == PlayerStance.Crouching ? 0.20f : 0.16f", stance)
+        self.assertIn("if (height > capsule.height && !HasRoomAbove(height)) return false;", stance)
+
+    def test_animation_stance_weights_remain_exclusive_and_prone_moves(self):
+        source = (SCRIPTS / "AarisCharacterVisual.cs").read_text("utf-8")
+        self.assertIn("float stanceMotion = Mathf.Clamp01(horizontal / 1.2f) * pose;", source)
+        self.assertIn("float stanceRest = pose - stanceMotion;", source)
+        self.assertIn("float grounded = (1f - airborneBlend) * (1f - pose);", source)
+        self.assertIn("baseWeight * stanceMotion", source)
+        self.assertIn("baseWeight * stanceRest", source)
+        self.assertIn("crawlLeftArm.localRotation *=", source)
+        self.assertIn("crawlRightLeg.localRotation *=", source)
+        self.assertIn("float crawlWeight = proneBlend *", source)
+        # Stance/rest, air and standing weights must total the available
+        # locomotion share, not two concurrent 100% standing/crouching clips.
+        for pose in (0, .2, .5, 1):
+            for airborne in (0, .15, .55, 1):
+                for speed in (0, .2, .85, 1.4):
+                    motion = min(1.0, speed / 1.2) * pose
+                    rest = pose - motion
+                    standing = (1-airborne) * (1-pose)
+                    air = airborne * (1-pose)
+                    self.assertAlmostEqual(standing + air + rest + motion, 1.0)
+
+    def test_weapon_fps_swap_and_damage_gc_regression(self):
+        catalog = (SCRIPTS / "AarisWeaponCatalog.cs").read_text("utf-8")
+        inventory = (SCRIPTS / "AarisWeaponInventory.cs").read_text("utf-8")
+        pickup = (SCRIPTS / "AarisWeaponPickup.cs").read_text("utf-8")
+        world = (SCRIPTS / "AarisWeaponLootWorld.cs").read_text("utf-8")
+        combat = (SCRIPTS / "AarisEquippedGun.cs").read_text("utf-8")
+        self.assertIn("private static readonly Dictionary<string, GameObject> modelCache", catalog)
+        self.assertIn("public static GameObject ModelFor(AarisWeaponSpec spec)", catalog)
+        self.assertIn("AarisWeaponCatalog.ModelFor(incoming.Spec)", inventory)
+        self.assertIn("AarisWeaponCatalog.ModelFor(state.Spec)", pickup)
+        self.assertIn("public bool TryReserve()", pickup)
+        self.assertIn("public void ReleaseReservation()", pickup)
+        self.assertIn("public void CommitConsumed()", pickup)
+        self.assertIn("!pickup.TryReserve()", world)
+        self.assertIn("pickup.ReleaseReservation();", world)
+        self.assertIn("pickup.CommitConsumed();", world)
+        self.assertIn("deferVisual: true", world)
+        self.assertIn("private const int MaximumActiveLoot = 40;", world)
+        self.assertIn("CollectNearbyCandidateIndices(playerPosition);", world)
+        self.assertIn("damageScratch.Clear();", combat)
+        self.assertIn("node.GetComponents(damageScratch)", combat)
+        self.assertIn("Physics.RaycastNonAlloc", combat)
+        self.assertNotIn("node.GetComponents<MonoBehaviour>()", combat)
+        self.assertNotIn("Vector3[] attempts =", world)
+
+    def test_vehicle_exit_resets_physics_without_damaging_validated_floor(self):
+        session = (SCRIPTS / "AarisVehicleSession.cs").read_text("utf-8")
+        player = (SCRIPTS / "AarisThirdPersonPlayer.cs").read_text("utf-8")
+        self.assertIn("footMotor.ResetCameraAfterVehicle();", session)
+        self.assertIn("Physics.OverlapCapsuleNonAlloc", session)
+        self.assertIn("Physics.RaycastNonAlloc", session)
+        self.assertNotIn("Vector3[] options =", session)
+        after = player.split("public void ResetCameraAfterVehicle()", 1)[1]
+        before_reset = after.split("private void ResetPlayer()", 1)[0]
+        for token in ("verticalVelocity = -groundedDownVelocity;",
+                      "horizontalVelocity = Vector3.zero;",
+                      "lastGrounded = Time.unscaledTime;",
+                      "lastJumpStarted = jumpUntil = -10f;"):
+            self.assertIn(token, before_reset)
+    
     def test_world_y_not_double_added_to_drop_altitude(self):
         source = (SCRIPTS / "AarisOfflineDrop.cs").read_text(encoding="utf-8")
         self.assertIn("tallest = Mathf.Max(tallest, terrain.SampleHeight(", source)
