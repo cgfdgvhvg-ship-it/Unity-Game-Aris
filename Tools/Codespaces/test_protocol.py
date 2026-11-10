@@ -56,6 +56,13 @@ assert 'TMP_AUDIT_COMPLETE' in audit and 'TMP_SCAN_READ_ONLY' in audit
 assert 'TMP_PRIVATE_LOG_' in audit and 'TMP_ORIGINAL_LFS_POINTERS_' in audit
 assert 'CS TMP AUDIT' in controller and 'tmp_audit) REMOTE_TIMEOUT=240' in controller
 assert "'CS FALLBACK TMP AUDIT') OP=tmp_audit ;;" in controller
+assert "'CS FALLBACK TMP RECLAIM') OP=tmp_reclaim ;;" in controller
+reclaim=(r/'Tools/Codespaces/reclaim_native_photo_tmp.sh').read_text()
+assert "/tmp/aaris-native-photo-worktrees" in reclaim
+assert "git" in reclaim and "worktree" in reclaim and "remove" in reclaim
+assert "/workspaces/Unity-Game-Aris" in reclaim
+assert "AARIS_TMP_RECLAIM_ORIGINAL_PROJECT_PRESERVED" in reclaim
+assert "tmp_reclaim) REMOTE_TIMEOUT=900" in controller
 assert 'tmp_audit.sh' in controller and 'tmp_audit' in wf and 'tmp_audit' in response
 assert 'editor-exit-code.txt' in remote_source
 assert 'AARIS_EDITOR_EXIT_CODE_' in remote_source
