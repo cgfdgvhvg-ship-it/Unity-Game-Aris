@@ -606,6 +606,18 @@ namespace Aaris.MapReview
             // Clear any stale left/right finger IDs captured before entering
             // the car; a held arrow must not turn into an on-foot joystick.
             ClearInput();
+            // The disabled foot motor retains its pre-drive vertical speed.
+            // Restore a grounded baseline only AFTER the vehicle controller
+            // has verified a real floor and enabled the CharacterController.
+            horizontalVelocity = Vector3.zero;
+            verticalVelocity = -groundedDownVelocity;
+            lastGrounded = Time.unscaledTime;
+            lastLanding = Time.unscaledTime;
+            lastJumpStarted = jumpUntil = -10f;
+            travelSpeed = gait = 0f;
+            yaw = transform.eulerAngles.y;
+            controller.stepOffset = battle != null
+                ? battle.GroundStepOffset : savedGroundStepOffset;
             cameraVelocity = Vector3.zero;
             lastMouse = Input.mousePosition;
             PlaceCamera(true);
