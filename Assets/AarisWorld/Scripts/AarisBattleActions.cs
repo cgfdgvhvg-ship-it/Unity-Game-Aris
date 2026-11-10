@@ -14,6 +14,10 @@ namespace Aaris.MapReview
     {
         public enum PlayerStance { Standing, Crouching, Prone }
 
+        internal const float PunchVisualDuration = 0.48f;
+        // KayKit's authored punch reaches full extension at frame 12 of 28.
+        private const float PunchContactDelay = PunchVisualDuration * (12f / 28f);
+
         [SerializeField, Min(0.56f)] private float crouchHeight = 1.14f;
         [SerializeField, Min(0.56f)] private float proneHeight = 0.62f;
         [SerializeField, Min(0.3f)] private float punchReach = 1.45f;
@@ -31,6 +35,7 @@ namespace Aaris.MapReview
         private bool semiShotQueued;
         private int attackSequence;
         private float lastPunchTime = -10f;
+        private float punchContactTime = -1f;
         private float lastShootTime = -10f;
 
         public PlayerStance Stance => stance;
@@ -185,6 +190,11 @@ namespace Aaris.MapReview
 
         private void Update()
         {
+            if (punchContactTime >= 0f && Time.time >= punchContactTime)
+            {
+                punchContactTime = -1f;
+                Punch();
+            }
             if (!fireHeld || Time.time < nextAttack) return;
             if (IsArmed)
             {
@@ -200,10 +210,10 @@ namespace Aaris.MapReview
                 return;
             }
 
-            nextAttack = Time.time + punchInterval;
             lastPunchTime = Time.time;
+            nextAttack = lastPunchTime + Mathf.Max(punchInterval, PunchVisualDuration);
+            punchContactTime = lastPunchTime + PunchContactDelay;
             attackSequence++;
-            Punch();
         }
 
         private void Punch()
@@ -247,10 +257,18 @@ namespace Aaris.MapReview
             AarisEquippedGun.ApplyDamage(victim, punchDamage, gameObject);
         }
 
-        private void OnDisable() { fireHeld = false; semiShotQueued = false; }
+        private void OnDisable()
+        {
+            fireHeld = false;
+            semiShotQueued = false;
+            punchContactTime = -1f;
+        }
+
         private void OnApplicationPause(bool paused)
         {
-            if (paused) fireHeld = false;
+            if (!paused) return;
+            fireHeld = false;
+            punchContactTime = -1f;
         }
     }
 }
