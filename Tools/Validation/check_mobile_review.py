@@ -74,6 +74,8 @@ def check(native=False):
     assert 'GetTotalMemory(false)'in source and 'Application.lowMemory +='in source
     assert 'GC.Collect'not in source and 'GC.Collect'not in (ROOT/'Assets/AarisWorld/Scripts/AarisNearbyColliders.cs').read_text()
     player=(ROOT/'Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs').read_text();assert 'nearbyColliders.RefreshNow()'in player and 'GUIUtility.systemCopyBuffer'in player
+    assert 'horizontalVelocity.sqrMagnitude > 0.000001f' in player
+    assert 'SafeFooting(candidate)' in player and 'CanAdvanceProne(candidate, horizontalVelocity)' in player
     settings=documents(ROOT/'ProjectSettings/ProjectSettings.asset')[0][3]
     assert settings['bundleVersion']=='0.3.1' and settings['AndroidBundleVersionCode']==7
     assert settings['productName']=='Aaris Game'
