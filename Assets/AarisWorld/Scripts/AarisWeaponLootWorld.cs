@@ -47,6 +47,7 @@ namespace Aaris.MapReview
         private const int MaximumDroppedLoot = 320;
         private const float PickupDistance = 2.15f;
         private const float SeaLevel = -38.07552f;
+        private const float CandidateCellMetres = 64f;
 
         private readonly List<AarisWeaponPickup> active = new List<AarisWeaponPickup>(32);
         private readonly List<AarisDroppedWeapon> dropped = new List<AarisDroppedWeapon>(16);
@@ -54,6 +55,12 @@ namespace Aaris.MapReview
         private readonly RaycastHit[] dropFloorHits = new RaycastHit[32];
         private readonly RaycastHit[] candidateFloorHits = new RaycastHit[32];
         private readonly Collider[] dropBlockers = new Collider[32];
+        // Immutable map candidate slots stay indexed, while only nearby cells
+        // are considered for instantiation each 330ms. No world/loot state is
+        // discarded when the player moves out of range.
+        private readonly Dictionary<long, List<int>> candidateCells =
+            new Dictionary<long, List<int>>();
+        private readonly List<int> nearbyCandidateIndices = new List<int>(32);
         private AarisLootCandidate[] candidates;
         private AarisWeaponSpec[] choices;
         private bool[] consumed;
@@ -147,8 +154,49 @@ namespace Aaris.MapReview
                 choices[i] = spec;
                 selected++;
             }
+            IndexPlannedCandidates();
             Debug.Log("Aaris: match seed " + matchSeed + ", planned " + selected +
                 " offline pickups (actual ground/collision validated near player).");
+        }
+
+        private static int CandidateCell(float coordinate) =>
+            Mathf.FloorToInt(coordinate / CandidateCellMetres);
+        private static long CandidateCellKey(int x, int z) =>
+            ((long)x << 32) ^ (uint)z;
+
+        private void IndexPlannedCandidates()
+        {
+            candidateCells.Clear();
+            for (int i = 0; i < candidates.Length; i++)
+            {
+                if (choices[i] == null) continue;
+                var c = candidates[i];
+                long key = CandidateCellKey(CandidateCell(c.x), CandidateCell(c.z));
+                if (!candidateCells.TryGetValue(key, out List<int> cell))
+                {
+                    cell = new List<int>(8);
+                    candidateCells.Add(key, cell);
+                }
+                cell.Add(i);
+            }
+        }
+
+        private void CollectNearbyCandidateIndices(Vector3 center)
+        {
+            nearbyCandidateIndices.Clear();
+            // Expanded cell range includes points in all adjacent cells near
+            // boundaries; final precise 42m circle check remains unchanged.
+            int firstX = CandidateCell(center.x - ActivationMetres);
+            int lastX = CandidateCell(center.x + ActivationMetres);
+            int firstZ = CandidateCell(center.z - ActivationMetres);
+            int lastZ = CandidateCell(center.z + ActivationMetres);
+            for (int x = firstX; x <= lastX; x++)
+                for (int z = firstZ; z <= lastZ; z++)
+                    if (candidateCells.TryGetValue(CandidateCellKey(x, z), out List<int> cell))
+                        nearbyCandidateIndices.AddRange(cell);
+            // Preserve legacy spawn priority (original candidate index order)
+            // so 6-per-refresh and 40-active budgets behave identically.
+            nearbyCandidateIndices.Sort();
         }
 
         private void AppendNativeTreeCover(List<AarisLootCandidate> result)
@@ -551,8 +599,10 @@ namespace Aaris.MapReview
                 built++;
             }
 
-            for (int i = 0; i < candidates.Length && active.Count < MaximumActiveLoot; i++)
+            CollectNearbyCandidateIndices(playerPosition);
+            foreach (int i in nearbyCandidateIndices)
             {
+                if (active.Count >= MaximumActiveLoot) break;
                 if (choices[i] == null || consumed[i] || IsCurrentlyActive(i)) continue;
                 var c = candidates[i];
                 float dx = c.x - playerPosition.x, dz = c.z - playerPosition.z;
