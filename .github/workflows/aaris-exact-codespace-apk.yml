@@ -49,22 +49,22 @@ jobs:
           src=Path('Tools/Codespaces/android_apk.sh').read_text()
           changes=[
           ("""if pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then
-  echo APK_EXISTING_EDITOR_BUSY_NO_FORCE_KILL; exit 19
-fi""",
+            echo APK_EXISTING_EDITOR_BUSY_NO_FORCE_KILL; exit 19
+          fi""",
            """# Isolated commit-pinned temporary worktree; existing GUI Editor untouched.
-echo APK_OWNER_GUI_NOT_MODIFIED"""),
+          echo APK_OWNER_GUI_NOT_MODIFIED"""),
           ("""grep -qxF apk_target_sdk=33 "$CHECK" || {
-  echo APK_ANDROID_API_TARGET_UNEXPECTED; exit 37;
-}""",
+            echo APK_ANDROID_API_TARGET_UNEXPECTED; exit 37;
+          }""",
            """# PlayerSettings target 33 can produce an actual target 36 manifest.
-# Both install on API 33 Android; verify exact APK signer, min SDK and ABI below.
-if grep -qxF apk_target_sdk=33 "$CHECK"; then
-  echo APK_TARGET_SDK_33_VALID
-elif grep -qxF apk_target_sdk=36 "$CHECK"; then
-  echo APK_TARGET_SDK_36_VALID
-else
-  echo APK_ANDROID_API_TARGET_UNEXPECTED; exit 37
-fi"""),
+          # Both install on API 33 Android; verify exact APK signer, min SDK and ABI below.
+          if grep -qxF apk_target_sdk=33 "$CHECK"; then
+            echo APK_TARGET_SDK_33_VALID
+          elif grep -qxF apk_target_sdk=36 "$CHECK"; then
+            echo APK_TARGET_SDK_36_VALID
+          else
+            echo APK_ANDROID_API_TARGET_UNEXPECTED; exit 37
+          fi"""),
           ("echo APK_INSTALLABILITY_SIGNATURE_MANIFEST_API33_VERIFIED",
            "echo APK_INSTALLABILITY_SIGNATURE_MANIFEST_COMPAT_VERIFIED")]
           for before,after in changes:
