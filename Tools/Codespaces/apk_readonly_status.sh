@@ -39,7 +39,9 @@ def classify():
     data="\n".join(tail(private_logs[name]) for name in relevant)
     checks=[
         ("OUT_OF_SPACE",r"no space left|disk full|not enough disk"),
-        ("ACCESS_DENIED",r"403|forbidden|access denied"),
+        # Only actual permission/access error contexts; a bare numeric 403
+        # can be an innocuous shader variant/asset count in Unity import logs.
+        ("ACCESS_DENIED",r"\b(?:error|http|failed)[^\n]{0,90}\b403\b|\b403\b[^\n]{0,90}\b(?:error|forbidden|denied)\b|\bforbidden\b|\baccess\s+denied\b"),
         ("AUTH_REQUIRED",r"login required|authentication required|not authenticated|401 unauthorized"),
         ("RATE_LIMIT",r"429|rate limit"),
         ("NETWORK",r"could not resolve|connection reset|connection timed out|network unreachable|tls handshake"),
@@ -50,6 +52,31 @@ def classify():
     for label,pattern in checks:
         if re.search(pattern,data,re.I):return label
     return "NO_CLASSIFIED_ERROR" if data else "NO_PRIVATE_LOG_YET"
+
+def permission_signal():
+    # Public diagnostics never include raw Unity, token or license messages.
+    # Count only hits in a bounded editor tail, and emit a fixed subsystem
+    # family. Do not conflate a numeric 403 elsewhere with HTTP denial.
+    data=tail(private_logs["editor"])
+    lines=[line for line in data.splitlines()
+           if re.search(r"\b403\b|\bforbidden\b|\baccess\s+denied\b",line,re.I)]
+    valid=[line for line in lines if re.search(
+        r"\b(?:error|failed|http|forbidden|access|denied)\b",line,re.I)]
+    if not valid:return (0,"none")
+    joined="\n".join(valid[-6:]).lower()
+    if any(t in joined for t in ("package", "registry", "upm", "packages.unity")):
+        family="packages"
+    elif any(t in joined for t in ("license", "entitlement", "activation")):
+        family="license"
+    elif any(t in joined for t in ("shader", "variant")):
+        family="shader"
+    elif any(t in joined for t in ("permission", "filesystem", "file access", "ioexception")):
+        family="filesystem"
+    elif any(t in joined for t in ("http", "forbidden", "network")):
+        family="network"
+    else:
+        family="unclassified"
+    return (min(1000,len(valid)),family)
 
 def log_age_seconds(p):
     try:
@@ -125,5 +152,9 @@ print("apk_build_report="+status)
 print("apk_apk_bytes="+str(apk_bytes))
 print("apk_apk_zip="+apk_zip)
 print("apk_tmp_free_gb="+str(free_gb))
+count,family=permission_signal()
+print("apk_denied_mentions="+str(count))
+print("apk_denied_family="+family)
+print("apk_editor_csharp_errors="+str(min(999,len(re.findall(r"error CS\d{4}",tail(private_logs["editor"]),re.I)))))
 print("apk_error_class="+classify())
 PY
