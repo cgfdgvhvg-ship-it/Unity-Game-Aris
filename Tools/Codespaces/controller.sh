@@ -46,6 +46,7 @@ if test -n "$ISSUE"; then
         'CS FALLBACK HUD REVIEW') OP=hud_review ;;
         'CS FALLBACK DROP FRAMES') OP=drop_frames ;;
         'CS FALLBACK DROP VIDEO') OP=drop_video ;;
+        'CS FALLBACK DROP REVIEW') OP=drop_video ;;
         'CS FALLBACK TEST') OP=test ;;
         'CS FALLBACK STOP') OP=stop ;;
         *) DETAIL="unsupported_fallback_command"; exit 2 ;;
@@ -496,6 +497,9 @@ fi
 if test "$OP" = drop_video; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/offline_drop_probe.sh"
   REMOTE_SHELL="bash -s"
+  if test "$ISSUE" = 'CS FALLBACK DROP REVIEW'; then
+    REMOTE_SHELL="bash -s -- hud_review"
+  fi
 fi
 if test "$OP" = drop_frames; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/offline_drop_collect.sh"
