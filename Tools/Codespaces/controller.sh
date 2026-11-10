@@ -33,6 +33,7 @@ if test -n "$ISSUE"; then
         'CS FALLBACK START') OP=wait_start ;;
         'CS FALLBACK STATUS') OP=status ;;
         'CS FALLBACK CHANGES') OP=changes ;;
+        'CS FALLBACK TMP AUDIT') OP=tmp_audit ;;
         'CS FALLBACK APPLY GAMEPLAY') OP=apply_gameplay ;;
         'CS FALLBACK LFS REPORT') OP=lfs_report ;;
         'CS FALLBACK LICENSE') OP=license ;;
