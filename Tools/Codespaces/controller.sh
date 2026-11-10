@@ -37,6 +37,9 @@ if test -n "$ISSUE"; then
         'CS FALLBACK LICENSE') OP=license ;;
         'CS FALLBACK COMPILE REPORT') OP=compile_report ;;
         'CS FALLBACK EDITOR') OP=editor ;;
+        'CS FALLBACK ACCEPT TERMS') OP=accept_terms ;;
+        'CS FALLBACK CLOSE EDITOR') OP=close_editor ;;
+        'CS FALLBACK EDITOR PROCESS') OP=editor_process ;;
         'CS FALLBACK SHOT') OP=shot ;;
         'CS FALLBACK SCENE PLAY') OP=scene_play ;;
         'CS FALLBACK DROP FRAMES') OP=drop_frames ;;
