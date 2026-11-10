@@ -537,6 +537,7 @@ namespace Aaris.MapReview
             baseStick.GetComponent<Image>().sprite = AarisHudGlyphs.Ring;
             stick = baseStick.GetComponent<AarisOfflineDropStick>();
             stick.Build();
+            AarisHudGlyphs.ApplyCanvasShader(root.transform);
         }
 
         private void ApplySafeArea()
