@@ -1,0 +1,60 @@
+name: Aaris frame-by-frame verified Unity motion capture
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+jobs:
+  frames:
+    if: >-
+      github.event.issue.number == 77 &&
+      github.event.comment.user.login == 'sundamunda289-art' &&
+      github.event.comment.body == 'ANIM FRAMES'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Capture original Codespace Unity animations without resetting project
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          CS=aaris-ai-ubuntu-minimal-xr4p7jj6p4qjc6q5x
+          test -n "$GH_TOKEN" || { echo CODESPACE_PAT_MISSING; exit 70; }
+          OUT="$RUNNER_TEMP/aaris-frames"
+          mkdir -p "$OUT"
+          timeout 700 gh codespace ssh -c "$CS" -- 'bash -s' \
+            < Tools/Codespaces/collect_animation_frames.sh \
+            > "$OUT/terminal.txt"
+          timeout 280 gh codespace ssh -c "$CS" -- \
+            'base64 /tmp/aaris-codespaces/animation-frame-by-frame/motion-capture.tar.gz' \
+            > "$OUT/motion-frames.b64"
+          base64 --decode "$OUT/motion-frames.b64" > "$OUT/motion-frames.tar.gz"
+          rm -f "$OUT/motion-frames.b64"
+          python3 - "$OUT/motion-frames.tar.gz" <<'PY'
+          import pathlib,sys,tarfile,re
+          archive=pathlib.Path(sys.argv[1])
+          if archive.stat().st_size > 45*1024*1024: raise SystemExit('MOTION_ARCHIVE_TOO_LARGE')
+          with tarfile.open(archive,'r:gz') as tar:
+              names=[m.name for m in tar.getmembers()]
+              for member in tar.getmembers():
+                  if not member.isfile() and not member.isdir(): raise SystemExit('UNSAFE_ARCHIVE_MEMBER')
+                  if not re.fullmatch(r'(frames|sheets)(/[a-z0-9-]+\.jpg)?/?|full-before\.png',member.name):
+                      raise SystemExit('UNEXPECTED_ARCHIVE_PATH')
+              assert len([n for n in names if n.startswith('frames/') and n.endswith('.jpg')])==42
+              assert len([n for n in names if n.startswith('sheets/') and n.endswith('.jpg')])==7
+          print('ANIM_FRAMES_ARCHIVE_42_AND_7_SHEETS_VALIDATED')
+          PY
+          tar -xzf "$OUT/motion-frames.tar.gz" -C "$OUT"
+          echo ANIM_FRAMES_DELIVERABLE_READY
+      - name: Deliver all 42 frames and 7 contact sheets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-42-gameplay-frames-${{ github.run_id }}
+          path: ${{ runner.temp }}/aaris-frames/
+          if-no-files-found: warn
+          retention-days: 3
