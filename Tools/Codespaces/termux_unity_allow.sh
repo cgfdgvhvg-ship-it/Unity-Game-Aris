@@ -16,8 +16,21 @@ unset GH_TOKEN GITHUB_TOKEN
 LIST="$(gh codespace list -R "$REPO" --json name,displayName,state --limit 30)" || {
   echo 'Cannot list Codespaces'; exit 4;
 }
-# Prefer the current verified fallback Ubuntu Codespace; avoid stopped legacy machines.
-CS="$(printf '%s' "$LIST" | jq -r '([.[]|select(.displayName=="aaris-ai-ubuntu-fallback-2")][0].name) // ([.[]|select(.displayName=="aaris-ai-ubuntu-minimal")][0].name) // ([.[]|select(.displayName=="aaris-ai-unity-ssh")][0].name) // ([.[]|select(.displayName=="aaris-ai-unity")][0].name) // .[0].name // empty')"
+# Explicit selection wins: never sign in to a stale Codespace by mistake.
+# Example: AARIS_CODESPACE_NAME=aaris-ai-ubuntu-minimal-... bash termux_unity_allow.sh
+if [[ -n "${AARIS_CODESPACE_NAME:-}" ]]; then
+  [[ "$AARIS_CODESPACE_NAME" =~ ^[A-Za-z0-9-]+$ ]] || {
+    echo 'Invalid exact Codespace name'; exit 5;
+  }
+  CS="$(printf '%s' "$LIST" | jq -r --arg name "$AARIS_CODESPACE_NAME" '[.[] | select(.name == $name)] | if length == 1 then .[0].name else empty end')"
+  [[ "$CS" == "$AARIS_CODESPACE_NAME" ]] || {
+    echo 'Exact Codespace missing from authenticated account'; exit 5;
+  }
+else
+  # Backward-compatible default only if there is one eligible Ubuntu Codespace.
+  CS="$(printf '%s' "$LIST" | jq -r '[.[] | select(.displayName == "aaris-ai-ubuntu-minimal" or .displayName == "aaris-ai-ubuntu-fallback-2")] | if length == 1 then .[0].name else empty end')"
+  [[ -n "$CS" ]] || { echo 'Several Codespaces exist. Set AARIS_CODESPACE_NAME to choose one explicitly.'; exit 5; }
+fi
 [[ "$CS" =~ ^[A-Za-z0-9-]+$ ]] || { echo 'Codespace not found; use CS START first'; exit 5; }
 printf 'Using Codespace: %s\n' "$CS"
 WORK="$(mktemp -d "$HOME/.aaris-unity-allow.XXXXXXXX")"
