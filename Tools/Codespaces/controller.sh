@@ -427,7 +427,7 @@ esac
 # Transfer the ORIGINAL historical Unity bake from the trusted Actions artifact,
 # never a model-generated replacement or an account token. All payload hashes
 # are checked again by restore_preserved_source_lfs.py against main's pointers.
-if [[ "$OP" =~ ^(scene_render|scene_play|hud_review|photo|foliage_diag|survey)$ ]]; then
+if [[ "$OP" =~ ^(scene_render|scene_play|hud_review|photo|foliage_diag|survey|fresh_tmp)$ ]]; then
   ARCHIVE_DIR="$RUNNER_TEMP/aaris-verified-native-tree-archive"
   mkdir -p "$ARCHIVE_DIR"
   if ! GH_TOKEN="$AARIS_ISSUE_REPLY_TOKEN" gh run download 42472771253 \
