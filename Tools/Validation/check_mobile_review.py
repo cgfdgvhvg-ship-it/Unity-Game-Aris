@@ -70,7 +70,23 @@ def check(native=False):
         assert d['m_Size']['x']>=1.7 and abs(tr['m_LocalPosition']['y']-(level*3+1.4))<.001
     assert all(p['standing_height_m']==12 and p['stair_width_m']>=1.7 and p['riser_m']<.30 for p in placements if p['kind']=='tower')
     source=(ROOT/'Assets/AarisWorld/Scripts/AarisMobileRuntime.cs').read_text()
-    assert 'texture.Apply(false, true)'in source and 'UNITY_ANDROID && !UNITY_EDITOR'in source and 'GetPixels('not in source
+    # The scene's legacy serialized release flag remains 1, but the runtime
+    # deliberately ignores it. Do not upload/discard painted control maps:
+    # GLES3 terrain splatmaps must be owned by Unity's Terrain renderer.
+    assert 'texture.Apply(false, true)' not in source
+    assert 'releaseTerrainPaintCpuCopies = false' in source
+    assert 'AuditNativeTerrain();' in source
+    assert 'AARIS_TERRAIN_RENDER_AUDIT' in source
+    assert 'terrainLitAvailable = lit != null && lit.isSupported;' in source
+    assert 'tile.enabled && tile.drawHeightmap' in source
+    assert 'GetPixels(' not in source
+    android=(ROOT/'Assets/AarisWorld/Editor/AarisCodespaceAndroidBuild.cs').read_text()
+    assert 'ANDROID_TERRAIN_LIT_MATERIAL_INVALID' in android
+    assert 'ANDROID_TERRAIN_HEIGHTMAP_HIDDEN' in android
+    assert 'ANDROID_TERRAIN_PAINT_LAYERS_MISSING' in android
+    assert 'AARIS_TERRAIN_ANDROID_PREFLIGHT_FOUR_PAINTED_TILES_READY' in android
+    terrain_mat=(ROOT/'Assets/TerrainDemoScene_URP/Terrain/Materials/TerrainLit.mat').read_text()
+    assert 'm_Shader: {fileID: 4800000, guid: 69c1f799e772cb6438f56c23efccb782, type: 3}' in terrain_mat
     assert 'GetTotalMemory(false)'in source and 'Application.lowMemory +='in source
     assert 'GC.Collect'not in source and 'GC.Collect'not in (ROOT/'Assets/AarisWorld/Scripts/AarisNearbyColliders.cs').read_text()
     player=(ROOT/'Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs').read_text();assert 'nearbyColliders.RefreshNow()'in player and 'GUIUtility.systemCopyBuffer'in player
