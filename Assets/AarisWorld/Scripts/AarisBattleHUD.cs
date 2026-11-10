@@ -16,7 +16,10 @@ namespace Aaris.MapReview
         internal enum Action { Fire, Jump, Crouch, Prone, Sprint }
 
         private static AarisBattleHUD instance;
-        public static bool IsVisible => instance != null && instance.isActiveAndEnabled;
+        public static bool IsVisible => instance != null && instance.isActiveAndEnabled &&
+            instance.canvas != null && instance.canvas.isActiveAndEnabled;
+        private Canvas canvas;
+        private RectTransform moveRing, moveKnob;
         private readonly List<AarisHudButton> buttons = new List<AarisHudButton>(5);
         private AarisBattleActions actions;
         private AarisThirdPersonPlayer player;
@@ -58,7 +61,7 @@ namespace Aaris.MapReview
             var canvasObj = new GameObject("Mobile Battle Canvas", typeof(RectTransform),
                 typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             canvasObj.transform.SetParent(transform, false);
-            var canvas = canvasObj.GetComponent<Canvas>();
+            canvas = canvasObj.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 180;
             var scaler = canvasObj.GetComponent<CanvasScaler>();
@@ -81,6 +84,9 @@ namespace Aaris.MapReview
             Add(Action.Crouch, new Vector2(1f, 0.17f), new Vector2(-78f, 0f), 86f);
             Add(Action.Prone, new Vector2(1f, 0.15f), new Vector2(-193f, 0f), 84f);
 
+            moveRing = AddStickGraphic("Move Stick", AarisHudGlyphs.Ring, safeRoot);
+            moveKnob = AddStickGraphic("Move Knob", AarisHudGlyphs.Knob, moveRing);
+            AarisHudGlyphs.ApplyCanvasShader(canvasObj.transform);
             UpdateSafeArea(true);
             Debug.Log("Aaris HUD: five original offline action buttons enabled: Fire/Punch, Jump, Crouch, Prone, Sprint.");
         }
@@ -121,6 +127,16 @@ namespace Aaris.MapReview
             buttons.Add(button);
         }
 
+        private static RectTransform AddStickGraphic(string name, Sprite sprite, RectTransform parent)
+        {
+            var obj = new GameObject(name, typeof(RectTransform), typeof(Image));
+            var image = obj.GetComponent<Image>();
+            image.rectTransform.SetParent(parent, false);
+            image.sprite = sprite;
+            image.raycastTarget = false;
+            return image.rectTransform;
+        }
+
         private void UpdateSafeArea(bool force)
         {
             var safe = Screen.safeArea;
@@ -136,7 +152,17 @@ namespace Aaris.MapReview
 
         private void LateUpdate()
         {
+            if (!IsVisible) return;
             UpdateSafeArea(false);
+            if (player != null && RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                safeRoot, player.MoveStickScreenCenter, null, out Vector2 stickPosition))
+            {
+                float scale = player.MoveStickScreenScale / canvas.scaleFactor;
+                moveRing.anchoredPosition = stickPosition;
+                moveRing.sizeDelta = Vector2.one * (152f * scale);
+                moveKnob.anchoredPosition = player.MoveStickInput * (44f * scale);
+                moveKnob.sizeDelta = Vector2.one * (56f * scale);
+            }
             foreach (var button in buttons)
             {
                 bool selected = button.Kind == Action.Sprint && player != null && player.IsAutoSprinting ||
@@ -171,13 +197,13 @@ namespace Aaris.MapReview
         /// <summary>Use on touch BEGAN to keep HUD fingers out of the camera joystick.</summary>
         public static bool CapturesScreenPosition(Vector2 screenPosition)
         {
-            if (instance == null || !instance.isActiveAndEnabled) return false;
+            if (!IsVisible) return false;
             foreach (var b in instance.buttons)
                 if (b != null && b.IsWithin(screenPosition)) return true;
             return false;
         }
 
-        /// <summary>Clear any held Fire/Jump fingers before entering a car.</summary>
+        /// <summary>Clear held Fire/Jump before switching control modes.</summary>
         public void CancelVehicleInputs() => ReleaseAllPointers();
 
         private void ReleaseAllPointers()

@@ -36,7 +36,8 @@ namespace Aaris.MapReview
         private AarisVehicleMotor nearbyCar;
         private Vector3 cameraVelocity;
         public bool IsDriving => car != null;
-        public bool CanEnter => nearbyCar != null && !IsDriving;
+        public bool CanEnter => nearbyCar != null && !IsDriving &&
+            footMotor != null && footMotor.isActiveAndEnabled;
         public AarisVehicleMotor DrivenCar => car;
 
         public void Configure(AarisVehicleWorld vehicleWorld, AarisThirdPersonPlayer player)
@@ -54,6 +55,11 @@ namespace Aaris.MapReview
         private void Update()
         {
             if (world == null || footMotor == null) return;
+            if (!IsDriving && !footMotor.isActiveAndEnabled)
+            {
+                nearbyCar = null;
+                return;
+            }
             if (car == null && Time.unscaledTime >= nextVehicleSearch)
             {
                 nextVehicleSearch = Time.unscaledTime + .25f;
@@ -96,8 +102,7 @@ namespace Aaris.MapReview
 
         private bool TryEnter()
         {
-            if (car != null || nearbyCar == null || capsule == null ||
-                footMotor == null || followCamera == null) return false;
+            if (!CanEnter || capsule == null || followCamera == null) return false;
             if ((nearbyCar.transform.position - transform.position).sqrMagnitude > 16f)
                 return false;
             // The DRIVE action cannot reach through a house/rock wall.

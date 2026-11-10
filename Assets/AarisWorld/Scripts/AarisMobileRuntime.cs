@@ -28,11 +28,6 @@ namespace Aaris.MapReview
         private string lastError = "";
         private const float ReportInterval = 15f;
 #if UNITY_ANDROID && !UNITY_EDITOR
-        private UniversalRenderPipelineAsset mobilePipeline;
-        private RenderPipelineAsset originalQualityPipeline;
-        private float maximumScale, minimumScale;
-        private float budgetSeconds, budgetSampleAt;
-        private int budgetFrames, slowWindows, fastWindows;
         private long androidPssKB = -1;
 #endif
         public static string LatestReport { get; private set; } = "Starting map...";
@@ -40,9 +35,6 @@ namespace Aaris.MapReview
         private void Awake()
         {
             Application.targetFrameRate = targetFrameRate;
-#if UNITY_ANDROID && !UNITY_EDITOR
-            ConfigureMobileRendering();
-#endif
             sampleAt = Time.unscaledTime + ReportInterval;
             Application.lowMemory += OnLowMemory;
             Application.logMessageReceived += OnLog;
@@ -101,9 +93,6 @@ namespace Aaris.MapReview
                 frameIndex = (frameIndex + 1) % frameTimes.Length;
                 frameCount = Mathf.Min(frameCount + 1, frameTimes.Length);
             }
-#if UNITY_ANDROID && !UNITY_EDITOR
-            TuneRenderScale(dt);
-#endif
             if (lowMemoryPending)
             {
                 lowMemoryPending = false;
@@ -125,79 +114,14 @@ namespace Aaris.MapReview
         private void OnApplicationPause(bool paused)
         {
             if (paused) Record("pause");
-#if UNITY_ANDROID && !UNITY_EDITOR
-            ResetRenderBudget();
-#endif
         }
         private void OnApplicationQuit() { Record("quit"); }
         private void OnDestroy()
         {
             Application.lowMemory -= OnLowMemory;
             Application.logMessageReceived -= OnLog;
-#if UNITY_ANDROID && !UNITY_EDITOR
-            if (mobilePipeline != null)
-            {
-                if (QualitySettings.renderPipeline == mobilePipeline)
-                    QualitySettings.renderPipeline = originalQualityPipeline;
-                Destroy(mobilePipeline);
-            }
-#endif
         }
 
-#if UNITY_ANDROID && !UNITY_EDITOR
-        private void ConfigureMobileRendering()
-        {
-            var source = GraphicsSettings.currentRenderPipeline as UniversalRenderPipelineAsset;
-            if (source == null) return;
-            int ramMb = SystemInfo.systemMemorySize;
-            bool lowMemoryDevice = ramMb > 0 && ramMb <= 2600;
-            originalQualityPipeline = QualitySettings.renderPipeline;
-            mobilePipeline = Instantiate(source);
-            mobilePipeline.name = "Aaris Android Runtime Quality";
-            maximumScale = Mathf.Min(source.renderScale, lowMemoryDevice ? 0.85f : 1f);
-            minimumScale = Mathf.Min(maximumScale, lowMemoryDevice ? 0.70f : 0.78f);
-            mobilePipeline.renderScale = lowMemoryDevice ? Mathf.Min(maximumScale, 0.80f) : maximumScale;
-            mobilePipeline.shadowDistance = Mathf.Min(source.shadowDistance, lowMemoryDevice ? 90f : 150f);
-            mobilePipeline.shadowCascadeCount = Mathf.Min(source.shadowCascadeCount, 2);
-            mobilePipeline.mainLightShadowmapResolution = Mathf.Min(source.mainLightShadowmapResolution,
-                lowMemoryDevice ? 1024 : 2048);
-            QualitySettings.renderPipeline = mobilePipeline;
-            ResetRenderBudget();
-        }
-
-        private void ResetRenderBudget()
-        {
-            budgetSeconds = 0f;
-            budgetFrames = slowWindows = fastWindows = 0;
-            budgetSampleAt = Time.unscaledTime + 4f;
-        }
-
-        private void TuneRenderScale(float dt)
-        {
-            if (mobilePipeline == null || dt <= 0f) return;
-            budgetSeconds += Mathf.Min(dt, 0.1f);
-            budgetFrames++;
-            if (Time.unscaledTime < budgetSampleAt) return;
-            float refresh = (float)Screen.currentResolution.refreshRateRatio.value;
-            float target = Mathf.Max(30f, Application.targetFrameRate);
-            if (refresh > 0f) target = refresh / Mathf.Max(1f, Mathf.Ceil(refresh / (target + 0.1f)));
-            float mean = budgetSeconds / budgetFrames;
-            slowWindows = mean > 1.18f / target ? slowWindows + 1 : 0;
-            fastWindows = mean < 1.04f / target ? fastWindows + 1 : 0;
-            float scale = mobilePipeline.renderScale;
-            // Two slow windows lower pixel cost. Recover slowly to avoid oscillation.
-            if (slowWindows >= 2 || fastWindows >= 4)
-            {
-                float nextScale = Mathf.Clamp(scale + (slowWindows >= 2 ? -0.07f : 0.04f),
-                    minimumScale, maximumScale);
-                if (!Mathf.Approximately(nextScale, scale)) mobilePipeline.renderScale = nextScale;
-                slowWindows = fastWindows = 0;
-            }
-            budgetSeconds = 0f;
-            budgetFrames = 0;
-            budgetSampleAt = Time.unscaledTime + 3f;
-        }
-#endif
         private void OnLog(string message, string stackTrace, LogType type)
         {
             if (type != LogType.Error && type != LogType.Exception && type != LogType.Assert) return;
@@ -241,7 +165,8 @@ namespace Aaris.MapReview
                 catch (Exception e) { Debug.LogWarning("Android PSS unavailable: " + e.GetType().Name); }
             }
             s.androidPssKB = androidPssKB;
-            if (mobilePipeline != null) s.renderScale = mobilePipeline.renderScale;
+            if (GraphicsSettings.currentRenderPipeline is UniversalRenderPipelineAsset pipeline)
+                s.renderScale = pipeline.renderScale;
 #endif
             LatestReport = JsonUtility.ToJson(s);
             if (logPath == null) return;

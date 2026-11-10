@@ -117,7 +117,8 @@ def check() -> None:
         assert (base / (clip + ".fbx.meta")).is_file(), f"Missing Unity GUID for {clip}"
 
     # Glyphs are locally rasterized once, without asset download links.
-    assert "new Texture2D(Size, Size" in glyph and "Sprite.Create" in glyph
+    assert glyph.count("new Texture2D(") == 1 and "BuildAtlas()" in glyph and "Sprite.Create" in glyph
+    assert 'AddStickGraphic("Move Stick", AarisHudGlyphs.Ring' in hud
     assert "https://" not in glyph and "UnityWebRequest" not in hud
     assert "Resources.Load<Sprite>" not in hud
     print("PASS: five mobile controls, one motor, sprint/stance/combat, "

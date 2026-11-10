@@ -21,7 +21,7 @@ namespace Aaris.MapReview
         private readonly System.Collections.Generic.HashSet<int> heldPointers =
             new System.Collections.Generic.HashSet<int>();
         private static readonly Color Normal = Color.white;
-        private static readonly Color Selected = new Color(0.57f, 0.83f, 1f, 1f);
+        private static readonly Color Selected = new Color(1f, 0.85f, 0.62f, 1f);
 
         internal AarisBattleHUD.Action Kind => kind;
 
@@ -44,7 +44,7 @@ namespace Aaris.MapReview
 
         public void OnPointerDown(PointerEventData eventData)
         {
-            if (owner == null || eventData == null) return;
+            if (owner == null || !AarisBattleHUD.IsVisible || eventData == null) return;
             bool isHoldAction = kind == AarisBattleHUD.Action.Fire ||
                 kind == AarisBattleHUD.Action.Jump;
             if (!isHoldAction && heldPointers.Count > 0) return;

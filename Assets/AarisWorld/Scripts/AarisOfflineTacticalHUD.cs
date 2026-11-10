@@ -20,6 +20,7 @@ namespace Aaris.MapReview
         private AarisOfflineDrop drop;
         private AarisVehicleSession vehicle;
         private Canvas canvas;
+        private GraphicRaycaster raycaster;
         private RectTransform safe;
         private Text wallLabel, grenadeLabel;
         private float nextThrow;
@@ -60,7 +61,11 @@ namespace Aaris.MapReview
             if (drop == null) drop = GetComponent<AarisOfflineDrop>();
             bool onFoot = (drop == null || drop.HasLanded) &&
                 (vehicle == null || !vehicle.IsDriving);
-            if (canvas != null && canvas.enabled != onFoot) canvas.enabled = onFoot;
+            if (canvas != null && canvas.enabled != onFoot)
+            {
+                canvas.enabled = onFoot;
+                raycaster.enabled = onFoot;
+            }
             if (!onFoot)
             {
                 // Canvas.enabled=false does not invoke the touch button's OnDisable.
@@ -114,6 +119,7 @@ namespace Aaris.MapReview
                 typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             canvasObject.transform.SetParent(transform, false);
             canvas = canvasObject.GetComponent<Canvas>();
+            raycaster = canvasObject.GetComponent<GraphicRaycaster>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 200;
             var scaler = canvasObject.GetComponent<CanvasScaler>();
@@ -127,7 +133,7 @@ namespace Aaris.MapReview
             RefreshSafeArea();
 
             wallLabel = CreateAction("Gloo Wall", new Vector2(1f, 0.64f),
-                new Vector2(-343f, 0f), new Color(0.64f, 0.86f, 1f, 1f),
+                new Vector2(-343f, 0f), Color.white,
                 out GameObject wallButtonObject);
             wallTouch = wallButtonObject.AddComponent<AarisGlooTouchButton>();
             wallTouch.Bind(gloo);
@@ -137,6 +143,7 @@ namespace Aaris.MapReview
             var button = grenadeButton.AddComponent<Button>();
             button.targetGraphic = grenadeButton.GetComponent<Image>();
             button.onClick.AddListener(ThrowFrag);
+            AarisHudGlyphs.ApplyCanvasShader(canvasObject.transform);
         }
 
         private Text CreateAction(string name, Vector2 anchor, Vector2 offset, Color color,
