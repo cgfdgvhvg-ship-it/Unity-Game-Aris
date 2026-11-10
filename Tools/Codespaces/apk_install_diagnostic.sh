@@ -7,10 +7,15 @@ APK="$BASE/Build/AarisGame.apk"
 test -s "$APK" || { echo APK_INSTALL_DIAG_FILE_MISSING; exit 11; }
 mkdir -p "$BASE"
 PRIVATE="$BASE/private-android-install-diagnostic.log"
-find "$BASE/managed-editors" /home/vscode/.local/share/aaris-unity-editors \
-  /workspaces/.aaris-unity-editors -type f -name apksigner -print 2>/dev/null \
-  | head -n 1 > "$BASE/private-apksigner-location.txt" || true
-APKSIGNER="$(head -n 1 "$BASE/private-apksigner-location.txt")"
+# Use exactly the Android SDK belonging to the Unity Editor that built
+# this APK. A random older SDK from a different editor can give false results.
+PLAYER="${AARIS_ANDROID_PLAYER_ROOT:-}"
+if test -z "$PLAYER" || ! test -d "$PLAYER/SDK/build-tools"; then
+  echo APK_INSTALL_DIAG_EDITOR_SDK_NOT_SPECIFIED
+  exit 12
+fi
+APKSIGNER="$(find "$PLAYER/SDK/build-tools" -maxdepth 2 -type f -name apksigner -print 2>/dev/null | sort -V | tail -n 1)"
+printf '%s\n' "$APKSIGNER" > "$BASE/private-apksigner-location.txt"
 if ! test -f "$APKSIGNER"; then
   echo APK_INSTALL_DIAG_APKSIGNER_MISSING
   exit 12
