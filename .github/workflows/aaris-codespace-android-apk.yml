@@ -60,10 +60,12 @@ jobs:
           test -n "${GH_TOKEN:-}" || { echo 'APK_CODESPACE_PAT_MISSING'; exit 10; }
           CS="$(gh codespace list -R "$GITHUB_REPOSITORY" --json name,displayName,state --limit 30 |
             jq -er '
+              (map(select(.name == "aaris-ai-ubuntu-fallback-2-vp5r9xx4rwv6c6pq7"))) as $fallback |
               (map(select(.name == "aaris-ai-unity-ssh-vp5g97jv4r4gfpjgq"))) as $pinned |
               (map(select(.displayName == "aaris-ai-ubuntu-minimal"))) as $minimal |
               (map(select(.displayName == "aaris-ai-unity-ssh"))) as $ssh |
-              if ($pinned | length) == 1 then $pinned[0].name
+              if ($fallback | length) == 1 then $fallback[0].name
+              elif ($pinned | length) == 1 then $pinned[0].name
               elif ($minimal | length) == 1 then $minimal[0].name
               elif ($minimal | length) > 1 then empty
               elif ($ssh | length) == 1 then $ssh[0].name
