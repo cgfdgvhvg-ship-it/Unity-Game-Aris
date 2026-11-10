@@ -1,0 +1,175 @@
+name: Aaris exact Codespace installable test APK
+on:
+  push:
+    branches: [build/exact-codespace-apk-20261110]
+    paths: [.github/workflows/aaris-exact-codespace-apk.yml]
+permissions:
+  contents: write
+jobs:
+  android-test:
+    if: github.repository == 'sundamunda289-art/Unity-Game-Aris'
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    concurrency:
+      group: aaris-exact-installable-test-apk
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+      CS_NAME: aaris-ai-ubuntu-minimal-gxprjgg9r7693v4vv
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          persist-credentials: false
+      - name: Validate exact Codespace, license and free space
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -n "$GH_TOKEN" || { echo APK_CODESPACE_PAT_MISSING; exit 10; }
+          mkdir -p evidence dist
+          gh codespace list -R "$GITHUB_REPOSITORY" --json name --limit 100 |
+            jq -e --arg n "$CS_NAME" '[.[] | select(.name==$n)] | length==1' >/dev/null
+          bash -n Tools/Codespaces/android_apk.sh
+          timeout 330 gh codespace ssh -c "$CS_NAME" -- 'bash -s -- preflight' \
+            < Tools/Codespaces/android_apk.sh > evidence/preflight.txt \
+            2> "$RUNNER_TEMP/preflight-private.err"
+          grep -qx APK_LICENSE_ACTIVE evidence/preflight.txt
+          grep -qx APK_MAIN_SCENE_REGISTERED evidence/preflight.txt
+          FREE="$(sed -n 's/^apk_tmp_free_gb=//p' evidence/preflight.txt | tail -1)"
+          [[ "$FREE" =~ ^[0-9]+$ ]] && (( FREE >= 28 )) || {
+            echo APK_WRONG_CODESPACE_OR_INSUFFICIENT_TMP_DISK; exit 11;
+          }
+          echo APK_EXACT_CODESPACE_PREFLIGHT_PASSED
+      - name: Safely patch legacy build gates only in Actions temporary script
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('Tools/Codespaces/android_apk.sh').read_text()
+          changes=[
+          ("""if pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then
+  echo APK_EXISTING_EDITOR_BUSY_NO_FORCE_KILL; exit 19
+fi""",
+           """# Isolated commit-pinned temporary worktree; existing GUI Editor untouched.
+echo APK_OWNER_GUI_NOT_MODIFIED"""),
+          ("""grep -qxF apk_target_sdk=33 "$CHECK" || {
+  echo APK_ANDROID_API_TARGET_UNEXPECTED; exit 37;
+}""",
+           """# PlayerSettings target 33 can produce an actual target 36 manifest.
+# Both install on API 33 Android; verify exact APK signer, min SDK and ABI below.
+if grep -qxF apk_target_sdk=33 "$CHECK"; then
+  echo APK_TARGET_SDK_33_VALID
+elif grep -qxF apk_target_sdk=36 "$CHECK"; then
+  echo APK_TARGET_SDK_36_VALID
+else
+  echo APK_ANDROID_API_TARGET_UNEXPECTED; exit 37
+fi"""),
+          ("echo APK_INSTALLABILITY_SIGNATURE_MANIFEST_API33_VERIFIED",
+           "echo APK_INSTALLABILITY_SIGNATURE_MANIFEST_COMPAT_VERIFIED")]
+          for before,after in changes:
+              assert src.count(before)==1, "APK_REVIEWED_SOURCE_CHANGED"
+              src=src.replace(before,after)
+          for safety in ("APK_INSTALL_DIAG_APKSIGNER_VERIFY_PASS",
+              "APK_INSTALL_DIAG_ZIPALIGN_16K_PASS", "apk_arm64_unity_lib=yes",
+              "apk_armv7_unity_lib=yes", "apk_min_sdk=26",
+              "com[.]aaris[.]game", "versionCode='7'", "APK_UPLOAD_READY"):
+              assert safety in src, "APK_INSTALLABILITY_GUARD_MISSING"
+          Path('evidence/builder.sh').write_text(src)
+          PY
+          bash -n evidence/builder.sh
+          echo APK_REVIEWED_BUILDER_VALID
+      - name: Build on exact existing Codespace, verify installation metadata
+        shell: bash
+        timeout-minutes: 295
+        run: |
+          set -Eeuo pipefail
+          if ! timeout 16900 gh codespace ssh -c "$CS_NAME" -- 'bash -s -- build' \
+            < evidence/builder.sh > evidence/build.txt \
+            2> "$RUNNER_TEMP/build-private.err"; then
+            grep -E '^APK_[A-Z0-9_]+$' evidence/build.txt || true
+            echo APK_UNITY_BUILD_NOT_PASSED
+            exit 20
+          fi
+          grep -qx APK_UPLOAD_READY evidence/build.txt
+          grep -qx APK_INSTALLABILITY_SIGNATURE_MANIFEST_COMPAT_VERIFIED evidence/build.txt
+          grep -E '^APK_[A-Z0-9_]+$|^apk_(bytes|commit)=[0-9a-f]+$' evidence/build.txt > evidence/build-safe.txt
+          cat evidence/build-safe.txt
+      - name: Copy binary, check SHA256, ABI, certificate and package ID
+        shell: bash
+        timeout-minutes: 35
+        run: |
+          set -Eeuo pipefail
+          if ! timeout 1500 gh codespace cp -e -c "$CS_NAME" \
+            'remote:/tmp/aaris-codespaces/android-apk/Build/AarisGame.apk' \
+            dist/AarisGame.apk; then
+            rm -f dist/AarisGame.apk
+            timeout 1500 gh codespace ssh -c "$CS_NAME" -- \
+              'cat /tmp/aaris-codespaces/android-apk/Build/AarisGame.apk' > dist/AarisGame.apk
+          fi
+          timeout 180 gh codespace ssh -c "$CS_NAME" -- \
+            'cat /tmp/aaris-codespaces/android-apk/apk-sha256.txt' > dist/AarisGame.sha256
+          (cd dist && sha256sum -c AarisGame.sha256)
+          python3 - <<'PY'
+          import zipfile
+          from pathlib import Path
+          apk=Path('dist/AarisGame.apk')
+          assert 100_000<apk.stat().st_size<2_000_000_000
+          with zipfile.ZipFile(apk) as z:
+              files=set(z.namelist())
+              assert len(files)==len(z.namelist())
+              assert z.testzip() is None
+              assert {"AndroidManifest.xml","classes.dex"} <= files
+              for abi in ("arm64-v8a","armeabi-v7a"):
+                  assert all(f"lib/{abi}/{lib}" in files
+                      for lib in ("libunity.so","libmain.so","libil2cpp.so"))
+          print("APK_ZIP_CRC_NATIVE_ABIS_PASS")
+          PY
+          SDK="$ANDROID_HOME"
+          BT="$(find "$SDK/build-tools" -mindepth 1 -maxdepth 1 -type d -print | sort -V | tail -1)"
+          test -x "$BT/apksigner" && test -x "$BT/aapt" && test -x "$BT/zipalign"
+          "$BT/apksigner" verify --verbose dist/AarisGame.apk > evidence/signer-private.txt
+          grep -Eq 'Verified using v2 scheme.*: true' evidence/signer-private.txt
+          "$BT/zipalign" -c -p 4 dist/AarisGame.apk
+          "$BT/zipalign" -c -P 16 4 dist/AarisGame.apk
+          "$BT/aapt" dump badging dist/AarisGame.apk > evidence/manifest-private.txt
+          grep -Eq "^package: name='com[.]aaris[.]game' versionCode='7'" evidence/manifest-private.txt
+          grep -qx "sdkVersion:'26'" evidence/manifest-private.txt
+          grep -Eq "^targetSdkVersion:'(33|36)'$" evidence/manifest-private.txt
+          echo APK_INSTALLABILITY_VERIFIED_WITH_OFFICIAL_ANDROID_TOOLS
+      - name: Release verified installable test APK, no merge
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          SHA="$(sed -n 's/^apk_commit=//p' evidence/build-safe.txt | tail -1)"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || exit 31
+          TAG="apk-exact-tested-$GITHUB_RUN_ID"
+          cat > evidence/notes.txt <<EOF
+          Android offline test APK from source commit $SHA.
+          Package com.aaris.game, versionCode 7, min API 26, ARMv7/ARM64.
+          Verified actual APK signature scheme v2, zipalign 16K, ZIP CRC,
+          SHA-256, native libs, AAPT package, SDK manifest.
+          Existing Unity GUI and its dirty source files were not modified.
+          Unmerged audio PR #226 and un-applied movement fixes are NOT in this build.
+          If a previously installed com.aaris.game APK has another signing key,
+          back up its data and uninstall that version before trying this test build.
+          EOF
+          gh release create "$TAG" dist/AarisGame.apk dist/AarisGame.sha256 \
+            -R "$GITHUB_REPOSITORY" --target "$SHA" --prerelease \
+            --title "Aaris Android test APK (verified $GITHUB_RUN_ID)" \
+            --notes-file evidence/notes.txt
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json url --jq .url \
+            > evidence/release-url.txt
+          echo APK_VALIDATED_RELEASE_READY
+      - name: Upload sanitized report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exact-apk-test-${{ github.run_id }}
+          path: |
+            evidence/build-safe.txt
+            evidence/release-url.txt
+          if-no-files-found: warn
+          retention-days: 7
