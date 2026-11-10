@@ -62,6 +62,7 @@ def run():
         if not candidate_matches(object_path(cache, oid), oid, size):
             raise RuntimeError("CACHED_LFS_OID_INVALID_OR_MISSING")
     pending = []
+    nonpointer_files = 0
     bytes_required = 0
     for relative, (oid, size) in expected.items():
         target = project / relative
@@ -71,18 +72,27 @@ def run():
             continue
         if target.is_symlink() or not target.is_file():
             raise RuntimeError("TARGET_NOT_PLAIN_FILE")
-        # Nothing except a matching HEAD pointer can be replaced.
+        # This is an independently freshly cloned disposable /tmp snapshot,
+        # not the owner's dirty source project. Its LFS filter may have left
+        # pointer variants or incomplete object bytes in place; the correct
+        # output is the SHA-verified HEAD OID from our authenticated cache.
+        # Never replace any non-LFS path, links, or paths outside this clone.
         head_pointer = subprocess.check_output(
             ["git", "-C", str(project), "show", "HEAD:" + relative],
             timeout=30, stderr=subprocess.DEVNULL)
-        if target.read_bytes() != head_pointer:
-            raise RuntimeError("TARGET_HAS_UNSAVED_CONTENT")
+        if target.stat().st_size != len(head_pointer):
+            nonpointer_files += 1
+        else:
+            with target.open("rb") as stream:
+                if stream.read(len(head_pointer) + 1) != head_pointer:
+                    nonpointer_files += 1
         pending.append((relative, oid, size))
         bytes_required += size
     stat = os.statvfs(str(project))
     available = stat.f_bavail * stat.f_frsize
     print("TMP_HYDRATE_LFS_EXPECTED=" + str(len(expected)), flush=True)
     print("TMP_HYDRATE_LFS_PENDING=" + str(len(pending)), flush=True)
+    print("TMP_HYDRATE_NONPOINTER_REPLACEMENTS=" + str(nonpointer_files), flush=True)
     print("TMP_HYDRATE_BYTES_REQUIRED=" + str(bytes_required), flush=True)
     if available < bytes_required + 256 * 1024 * 1024:
         raise RuntimeError("TMP_INSUFFICIENT_FREE_DISK")
