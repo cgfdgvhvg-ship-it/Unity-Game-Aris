@@ -48,7 +48,7 @@ namespace Aaris.MapReview
         // This is independent from the temporary stepOffset=0 in the air.
         public float GroundStepOffset => stance == PlayerStance.Standing
             ? standingStepOffset : Mathf.Min(standingStepOffset,
-                stance == PlayerStance.Crouching ? 0.18f : 0.075f);
+                stance == PlayerStance.Crouching ? 0.20f : 0.16f);
 
         private void Awake()
         {
