@@ -25,7 +25,7 @@ namespace Aaris.MapReview
                 !gunState.Spec.Valid) return false;
             state = gunState;
             candidateIndex = index;
-            GameObject prefab = Resources.Load<GameObject>(state.Spec.modelResource);
+            GameObject prefab = AarisWeaponCatalog.ModelFor(state.Spec);
             if (prefab == null)
             {
                 Debug.LogError("Missing local weapon FBX: " + state.Spec.modelResource);
