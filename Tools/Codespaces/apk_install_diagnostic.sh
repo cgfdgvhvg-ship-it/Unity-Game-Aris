@@ -29,6 +29,9 @@ fi
 if test -x "$SDK_BUILD/zipalign"; then
   if timeout 120 "$SDK_BUILD/zipalign" -c -p 4 "$APK" >/dev/null 2>&1; then
     echo APK_INSTALL_DIAG_ZIPALIGN_PASS
+    if timeout 120 "$SDK_BUILD/zipalign" -c -P 16 4 "$APK" >/dev/null 2>&1; then
+      echo APK_INSTALL_DIAG_ZIPALIGN_16K_PASS
+    fi
   else
     echo APK_INSTALL_DIAG_ZIPALIGN_FAIL
   fi
@@ -55,7 +58,9 @@ with zipfile.ZipFile(archive) as z:
     names=set(z.namelist())
     print("apk_android_manifest="+("yes" if "AndroidManifest.xml" in names else "no"))
     print("apk_classes_dex="+("yes" if any(n.endswith(".dex") for n in names) else "no"))
-    print("apk_arm64_unity_lib="+("yes" if any(n.startswith("lib/arm64-v8a/") and n.endswith(".so") for n in names) else "no"))
+    for label, abi in (("arm64", "arm64-v8a"), ("armv7", "armeabi-v7a")):
+        required={f"lib/{abi}/{lib}" for lib in ("libunity.so", "libmain.so", "libil2cpp.so")}
+        print(f"apk_{label}_unity_lib="+("yes" if required <= names else "no"))
     print("apk_v1_certificate_files="+str(sum(n.startswith("META-INF/") and n.upper().endswith((".RSA",".DSA",".EC")) for n in names)))
     print("apk_file_bytes="+str(archive.stat().st_size))
 text=(root/"private-aapt-badging.log").read_text("utf8","replace") if (root/"private-aapt-badging.log").is_file() else ""

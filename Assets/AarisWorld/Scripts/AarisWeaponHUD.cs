@@ -17,6 +17,7 @@ namespace Aaris.MapReview
         private readonly List<Button> buttons = new List<Button>(4);
         private readonly List<Text> captions = new List<Text>(4);
         private AarisWeaponInventory inventory;
+        private Canvas canvas;
         private RectTransform safeRoot;
         private Vector2 previousScreen;
         private Rect previousSafe;
@@ -50,7 +51,7 @@ namespace Aaris.MapReview
                 typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler),
                 typeof(GraphicRaycaster));
             go.transform.SetParent(transform, false);
-            var canvas = go.GetComponent<Canvas>();
+            canvas = go.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 181;
             var scaler = go.GetComponent<CanvasScaler>();
@@ -65,6 +66,7 @@ namespace Aaris.MapReview
             Add("PICK", new Vector2(-225f, -57f), () => inventory.RequestPickup());
             Add("DROP", new Vector2(-141f, -57f), () => inventory.DropCurrent());
             Add("RELOAD", new Vector2(-57f, -57f), () => inventory.Reload());
+            AarisHudGlyphs.ApplyCanvasShader(go.transform);
             UpdateArea(true);
         }
 
@@ -79,7 +81,7 @@ namespace Aaris.MapReview
             rect.sizeDelta = new Vector2(66f, 66f);
             var image = go.GetComponent<Image>();
             image.sprite = AarisHudGlyphs.Ring;
-            image.color = new Color(.85f, .93f, 1f, .93f);
+            image.color = Color.white;
             var button = go.GetComponent<Button>();
             button.targetGraphic = image;
             button.onClick.AddListener(callback);
@@ -116,6 +118,7 @@ namespace Aaris.MapReview
 
         private void LateUpdate()
         {
+            if (canvas == null || !canvas.isActiveAndEnabled) return;
             UpdateArea(false);
             bool armed = inventory != null && inventory.HasGun;
             bool canPick = inventory != null && inventory.PickupAvailable;
@@ -140,7 +143,8 @@ namespace Aaris.MapReview
         public static bool CapturesScreenPosition(Vector2 screenPosition)
         {
             // PICK must also consume touch when the player is unarmed.
-            if (instance == null || !instance.isActiveAndEnabled) return false;
+            if (instance == null || !instance.isActiveAndEnabled || instance.canvas == null ||
+                !instance.canvas.isActiveAndEnabled) return false;
             foreach (var rect in instance.hitRects)
                 if (rect != null && rect.gameObject.activeInHierarchy &&
                     RectTransformUtility.RectangleContainsScreenPoint(rect, screenPosition, null))

@@ -9,11 +9,13 @@ namespace Aaris.MapReview
     [DisallowMultipleComponent]
     public sealed class AarisBreakablePanel : MonoBehaviour, IAarisDamageable
     {
-        private const float NearRadius = 2.8f;
+        private const float NearRadius = 3.2f;
+        private const float NearFloorTolerance = 1.8f;
         private const float OpenAngle = 95f;
         private const float OpenSpeed = 230f;
         private Transform leaf, player, house;
         private Collider solid;
+        private Vector3 doorwayCenter;
         private float health, lastNear = -999f, currentAngle;
         private bool isDoor, destroyed;
         private readonly Collider[] blockers = new Collider[16];
@@ -29,6 +31,7 @@ namespace Aaris.MapReview
             player = nearbyPlayer;
             isDoor = door;
             house = houseRoot;
+            if (isDoor) doorwayCenter = new Vector3(0f, 0f, transform.localPosition.z);
             health = Mathf.Max(1f, hitPoints);
             enabled = door; // windows do no per-frame polling
         }
@@ -36,8 +39,13 @@ namespace Aaris.MapReview
         private void Update()
         {
             if (destroyed || leaf == null || !isDoor) return;
-            bool near = player != null &&
-                (player.position - transform.position).sqrMagnitude <= NearRadius * NearRadius;
+            bool near = false;
+            if (player != null && house != null)
+            {
+                Vector3 approach = player.position - house.TransformPoint(doorwayCenter);
+                near = Mathf.Abs(approach.y) <= NearFloorTolerance &&
+                    approach.x * approach.x + approach.z * approach.z <= NearRadius * NearRadius;
+            }
             if (near) lastNear = Time.time;
             bool shouldOpen = near || Time.time - lastNear < 1.5f;
             // Never shut a moving solid door across a player, car or other

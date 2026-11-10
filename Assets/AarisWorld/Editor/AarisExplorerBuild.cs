@@ -13,6 +13,7 @@ namespace Aaris.MapReview.Editor
     public sealed class AarisExplorerBuild : IPreprocessBuildWithReport
     {
         public const string ScenePath = "Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity";
+        internal const AndroidArchitecture AndroidArchitectures = AndroidArchitecture.ARMv7 | AndroidArchitecture.ARM64;
         public int callbackOrder => 0;
 
         public void OnPreprocessBuild(BuildReport report) { Configure(); ValidateSavedScene(); }
@@ -42,7 +43,9 @@ namespace Aaris.MapReview.Editor
             PlayerSettings.allowedAutorotateToPortrait = false;
             PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
             PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android, "com.aaris.game");
-            PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+            // A single sideloadable APK supports both Android ARM userlands.
+            PlayerSettings.Android.targetArchitectures = AndroidArchitectures;
+            PlayerSettings.Android.buildApkPerCpuArchitecture = false;
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
             PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel33;
             // A reproducible GLES3 renderer/ETC2 pair avoids silently selecting a different

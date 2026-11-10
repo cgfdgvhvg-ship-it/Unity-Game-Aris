@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Aaris.MapReview
 {
@@ -11,16 +12,50 @@ namespace Aaris.MapReview
     {
         internal enum Glyph { Fire, Jump, Crouch, Prone, Sprint }
         private const int Size = 128;
-        private static readonly Sprite[] Sprites = new Sprite[5];
-        private static Sprite ring, knob;
+        private const int Columns = 4;
+        private const int RingIndex = 5, KnobIndex = 6;
+        private static readonly Sprite[] Sprites = new Sprite[7];
+        private static readonly Color Outline = new Color(0.94f, 0.94f, 0.94f, 0.88f);
+        private static readonly Color Disc = new Color(0.13f, 0.13f, 0.13f, 0.48f);
 
-        internal static Sprite Ring => ring != null ? ring : (ring = BuildDisc(true));
-        internal static Sprite Knob => knob != null ? knob : (knob = BuildDisc(false));
+        // Resources holds the Shader asset in the Android player build. Shader.Find
+        // by name alone can return null after shader variant stripping on mobile.
+        // One shared material is assigned once per HUD canvas, never per frame.
+        private static Material overlayMaterial;
+        private static bool overlayChecked;
 
-        internal static Sprite Get(Glyph glyph)
+        internal static void ApplyCanvasShader(Transform canvasRoot)
         {
-            int index = (int)glyph;
-            if (Sprites[index] == null) Sprites[index] = BuildGlyph(glyph);
+            if (canvasRoot == null) return;
+            if (!overlayChecked)
+            {
+                overlayChecked = true;
+                Shader shader = Resources.Load<Shader>("AarisHUDOverlay");
+                if (shader != null && shader.isSupported)
+                {
+                    overlayMaterial = new Material(shader)
+                    {
+                        name = "Aaris Android Overlay (shared)",
+                        hideFlags = HideFlags.DontSave
+                    };
+                }
+                else
+                {
+                    Debug.LogError("Aaris UI: build-retained AarisHUDOverlay shader unavailable or unsupported.");
+                }
+            }
+            if (overlayMaterial == null) return;
+            foreach (Graphic graphic in canvasRoot.GetComponentsInChildren<Graphic>(true))
+                if (graphic != null) graphic.material = overlayMaterial;
+        }
+
+        internal static Sprite Ring => GetSprite(RingIndex);
+        internal static Sprite Knob => GetSprite(KnobIndex);
+        internal static Sprite Get(Glyph glyph) => GetSprite((int)glyph);
+
+        private static Sprite GetSprite(int index)
+        {
+            if (Sprites[index] == null) BuildAtlas();
             return Sprites[index];
         }
 
@@ -108,55 +143,43 @@ namespace Aaris.MapReview
             return a;
         }
 
-        private static Sprite BuildGlyph(Glyph glyph)
+        private static void BuildAtlas()
         {
-            var texture = new Texture2D(Size, Size, TextureFormat.RGBA32, false);
-            texture.name = "AarisHUD_" + glyph;
-            var pixels = new Color32[Size * Size];
-            for (int y = 0; y < Size; y++)
+            const int width = Size * Columns, height = Size * 2;
+            var pixels = new Color32[width * height];
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
             {
-                for (int x = 0; x < Size; x++)
-                {
-                    var p = new Vector2((x + 0.5f) / Size, (y + 0.5f) / Size);
-                    float alpha = glyph == Glyph.Fire ? Fire(p) : Human(glyph, p);
-                    pixels[y * Size + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(alpha * 255f));
-                }
+                name = "Aaris HUD Atlas",
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear
+            };
+            for (int i = 0; i < Sprites.Length; i++)
+            {
+                int left = i % Columns * Size, bottom = i / Columns * Size;
+                // Leave a transparent gutter between sprites for bilinear filtering.
+                for (int y = 1; y < Size - 1; y++)
+                    for (int x = 1; x < Size - 1; x++)
+                    {
+                        var point = new Vector2((x + 0.5f) / Size, (y + 0.5f) / Size);
+                        Color color;
+                        if (i < RingIndex)
+                            color = new Color(1f, 1f, 1f, i == 0 ? Fire(point) : Human((Glyph)i, point));
+                        else
+                        {
+                            float distance = (point - Vector2.one * 0.5f).magnitude;
+                            float rim = Mathf.SmoothStep(0f, 1f, (distance - 0.452f) * 32f);
+                            color = i == RingIndex ? Color.Lerp(Disc, Outline, rim) : Outline;
+                            color.a *= Mathf.Clamp01((0.49f - distance) * Size / 1.5f);
+                        }
+                        pixels[(bottom + y) * width + left + x] = color;
+                    }
             }
             texture.SetPixels32(pixels);
             texture.Apply(false, true);
-            texture.wrapMode = TextureWrapMode.Clamp;
-            texture.filterMode = FilterMode.Bilinear;
-            return Sprite.Create(texture, new Rect(0f, 0f, Size, Size), Vector2.one * 0.5f, 100f);
-        }
-
-        private static Sprite BuildDisc(bool outlined)
-        {
-            var texture = new Texture2D(Size, Size, TextureFormat.RGBA32, false);
-            texture.name = outlined ? "AarisHUD_OutlinedDisc" : "AarisHUD_Knob";
-            var pixels = new Color32[Size * Size];
-            for (int y = 0; y < Size; y++)
-            {
-                for (int x = 0; x < Size; x++)
-                {
-                    float dx = (x + 0.5f) / Size - 0.5f;
-                    float dy = (y + 0.5f) / Size - 0.5f;
-                    float d = Mathf.Sqrt(dx * dx + dy * dy);
-                    float edge = Mathf.Clamp01((0.496f - d) * Size / 1.5f);
-                    float rim = outlined ? Mathf.SmoothStep(0f, 1f, (d - 0.452f) * 32f) : 0f;
-                    float highlight = Mathf.Clamp01(0.5f + dy) * 0.15f;
-                    Color fill = outlined
-                        ? Color.Lerp(new Color(0.07f, 0.12f, 0.17f, 0.65f),
-                            new Color(0.63f, 0.79f, 0.89f, 0.85f), rim * (0.82f + highlight))
-                        : new Color(0.78f, 0.9f, 0.95f, 0.92f);
-                    fill.a *= edge;
-                    pixels[y * Size + x] = fill;
-                }
-            }
-            texture.SetPixels32(pixels);
-            texture.Apply(false, true);
-            texture.wrapMode = TextureWrapMode.Clamp;
-            texture.filterMode = FilterMode.Bilinear;
-            return Sprite.Create(texture, new Rect(0f, 0f, Size, Size), Vector2.one * 0.5f, 100f);
+            for (int i = 0; i < Sprites.Length; i++)
+                Sprites[i] = Sprite.Create(texture,
+                    new Rect(i % Columns * Size, i / Columns * Size, Size, Size),
+                    Vector2.one * 0.5f, 100f, 0, SpriteMeshType.FullRect);
         }
     }
 }

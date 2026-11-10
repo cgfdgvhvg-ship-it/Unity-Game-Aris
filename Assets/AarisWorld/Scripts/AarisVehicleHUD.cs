@@ -42,7 +42,7 @@ namespace Aaris.MapReview
         private void State(bool pressed)
         {
             if (ring != null) ring.color = pressed
-                ? new Color(.52f, .90f, 1f, 1f) : Color.white;
+                ? new Color(1f, .85f, .62f, 1f) : Color.white;
             if (owner != null) owner.ArrowState(direction, pressed);
         }
     }
@@ -145,7 +145,7 @@ namespace Aaris.MapReview
             rect.sizeDelta = new Vector2(84f, 84f);
             var bg = driveButton.GetComponent<Image>();
             bg.sprite = AarisHudGlyphs.Ring;
-            bg.color = new Color(.55f, .81f, 1f, 1f);
+            bg.color = Color.white;
             var button = driveButton.GetComponent<Button>();
             button.targetGraphic = bg;
             button.onClick.AddListener(() =>
@@ -169,6 +169,7 @@ namespace Aaris.MapReview
             driveCaption.raycastTarget = false;
             arrowPanel.SetActive(false);
             driveButton.SetActive(false);
+            AarisHudGlyphs.ApplyCanvasShader(obj.transform);
             UpdateSafe(true);
         }
 

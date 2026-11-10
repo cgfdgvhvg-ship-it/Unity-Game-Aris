@@ -237,12 +237,23 @@ DISPLAY=:99 xdpyinfo >/dev/null 2>&1 || {
   echo APK_DISPLAY_MISSING; exit 29; }
 mkdir -p "$BASE/UnityTemp" "$BASE/Build"
 rm -f "$BASE/Build/AarisGame.apk" "$BASE/build-report.json"
+ANDROID="$(dirname "$EDITOR")/Data/PlaybackEngines/AndroidPlayer"
+COMPILE_SDK=
+# The bundled SDK can lack API 33. Keep the manifest target at 33 and use
+# installed API 34 for compilation when the ordinary main builder needs it.
+if test "$MODE" = build && ! test -s "$ANDROID/SDK/platforms/android-33/android.jar"; then
+  test -s "$ANDROID/SDK/platforms/android-34/android.jar" || {
+    echo APK_ANDROID_COMPILE_PLATFORM_MISSING; exit 29;
+  }
+  COMPILE_SDK=34
+fi
 echo APK_NATIVE_UNITY_BUILD_STARTED
 # -buildTarget Android is required BEFORE executeMethod to avoid broken
 # batchmode domain reload/scripting target switches.
 set +e
 timeout --signal=TERM 12000 env DISPLAY=:99 LIBGL_ALWAYS_SOFTWARE=1 \
-  TMPDIR="$BASE/UnityTemp" "$EDITOR" -batchmode -quit -force-glcore \
+  AARIS_ANDROID_COMPILE_SDK="$COMPILE_SDK" TMPDIR="$BASE/UnityTemp" \
+  "$EDITOR" -batchmode -quit -force-glcore \
   -projectPath "$PROJECT" -buildTarget Android \
   -executeMethod Aaris.MapReview.Editor.AarisCodespaceAndroidBuild.BuildTestApk \
   -logFile "$BASE/private-editor.log" \
@@ -271,12 +282,17 @@ try:
     assert d["status"]=="passed" and d["terrainTiles"]==4
     assert d["buildTarget"]=="Android" and d["sceneCount"]==1
     assert p.is_file() and 100000<p.stat().st_size<2_000_000_000
-    assert p.read_bytes()[:2]==b'PK'
     with zipfile.ZipFile(p) as z:
         names=set(z.namelist())
+        assert len(names)==len(z.infolist()), "duplicate ZIP entries"
         assert "AndroidManifest.xml" in names
-        assert any(s.endswith(".dex") for s in names)
-    sha=hashlib.sha256(p.read_bytes()).hexdigest()
+        assert "classes.dex" in names
+        assert z.testzip() is None, "bad ZIP CRC"
+    with p.open("rb") as stream:
+        digest=hashlib.sha256()
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    sha=digest.hexdigest()
     (root/"apk-sha256.txt").write_text(sha+"  AarisGame.apk\n")
 except Exception:
     raise SystemExit("APK_ARCHIVE_OR_NATIVE_REPORT_INVALID")
@@ -304,7 +320,17 @@ grep -qxF apk_signer_count=1 "$CHECK" || {
 }
 grep -qxF apk_android_manifest=yes "$CHECK"
 grep -qxF apk_classes_dex=yes "$CHECK"
-grep -qxF apk_arm64_unity_lib=yes "$CHECK"
+grep -qxF apk_arm64_unity_lib=yes "$CHECK" || {
+  echo APK_ARM64_NATIVE_LIBRARIES_MISSING; exit 36;
+}
+if test "$MODE" = build; then
+  grep -qxF apk_armv7_unity_lib=yes "$CHECK" || {
+    echo APK_ARMV7_NATIVE_LIBRARIES_MISSING; exit 36;
+  }
+  grep -qxF APK_INSTALL_DIAG_ZIPALIGN_16K_PASS "$CHECK" || {
+    echo APK_ZIPALIGN_16K_VERIFICATION_FAILED; exit 36;
+  }
+fi
 grep -qxF apk_min_sdk=26 "$CHECK"
 grep -qxF apk_target_sdk=33 "$CHECK" || {
   echo APK_ANDROID_API_TARGET_UNEXPECTED; exit 37;

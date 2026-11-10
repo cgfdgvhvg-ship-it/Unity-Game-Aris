@@ -28,13 +28,18 @@ namespace Aaris.MapReview
         [SerializeField, Range(20f, 90f)] private float freefallFastSink = 54f;
 
         private AarisThirdPersonPlayer footMotor;
+        private AarisCharacterVisual characterVisual;
         private CharacterController capsule;
         private AarisBattleActions combat;
         private Camera view;
         private AarisOfflineDropHud hud;
         private AarisVehicleSession vehicle;
         private Canvas battleCanvas, weaponCanvas;
+        private GraphicRaycaster battleRaycaster, weaponRaycaster;
         private bool battleCanvasWasEnabled, weaponCanvasWasEnabled, combatWasEnabled;
+        private bool battleRaycasterWasEnabled, weaponRaycasterWasEnabled, controlsSuspended;
+        private bool canopyRequested;
+        private float nextHeightSample, nextContactSample;
         private GameObject plane, canopy;
         private Transform[] propellers;
         private Renderer[] initialPlayerRenderers;
@@ -66,6 +71,7 @@ namespace Aaris.MapReview
         private void Awake()
         {
             footMotor = GetComponent<AarisThirdPersonPlayer>();
+            characterVisual = GetComponent<AarisCharacterVisual>();
             capsule = GetComponent<CharacterController>();
             combat = GetComponent<AarisBattleActions>();
             vehicle = GetComponent<AarisVehicleSession>();
@@ -88,17 +94,25 @@ namespace Aaris.MapReview
             for (int i = 0; i < initialPlayerRenderers.Length; i++)
                 previousRendererStates[i] = initialPlayerRenderers[i].enabled;
 
+            controlsSuspended = true;
             combatWasEnabled = combat != null && combat.enabled;
             if (combat != null) { combat.SetFireHeld(false); combat.enabled = false; }
             footMotor.enabled = false;
             // Original combat HUD is retained, only hidden during the drop.
             var battleHud = FindFirstObjectByType<AarisBattleHUD>();
+            if (battleHud != null) battleHud.CancelVehicleInputs();
             battleCanvas = battleHud != null ? battleHud.GetComponentInChildren<Canvas>(true) : null;
-            battleCanvasWasEnabled = battleCanvas != null && battleCanvas.enabled;
-            if (battleCanvas != null) battleCanvas.enabled = false;
             var weaponHud = FindFirstObjectByType<AarisWeaponHUD>();
             weaponCanvas = weaponHud != null ? weaponHud.GetComponentInChildren<Canvas>(true) : null;
+            battleRaycaster = battleCanvas != null ? battleCanvas.GetComponent<GraphicRaycaster>() : null;
+            weaponRaycaster = weaponCanvas != null ? weaponCanvas.GetComponent<GraphicRaycaster>() : null;
+            battleCanvasWasEnabled = battleCanvas != null && battleCanvas.enabled;
             weaponCanvasWasEnabled = weaponCanvas != null && weaponCanvas.enabled;
+            battleRaycasterWasEnabled = battleRaycaster != null && battleRaycaster.enabled;
+            weaponRaycasterWasEnabled = weaponRaycaster != null && weaponRaycaster.enabled;
+            if (battleRaycaster != null) battleRaycaster.enabled = false;
+            if (weaponRaycaster != null) weaponRaycaster.enabled = false;
+            if (battleCanvas != null) battleCanvas.enabled = false;
             if (weaponCanvas != null) weaponCanvas.enabled = false;
 
             BuildFlightPath();
@@ -174,20 +188,24 @@ namespace Aaris.MapReview
             }
             else
             {
-                // Freefall needs exact support for auto-deploy. A deployed canopy only
-                // needs the long ray for HUD telemetry; landing uses the short contact ray.
-                bool sampleHeight = phase == DropPhase.Freefall || (hud != null && hud.TelemetryDue);
+                // At 54 m/s a tenth of a second is 5.4 m. Deployment has a
+                // much larger margin, and touchdown always checks the capsule.
+                bool sampleHeight = phase == DropPhase.Freefall
+                    ? Time.time >= nextHeightSample : hud != null && hud.TelemetryDue;
                 float height = 0f;
                 bool reliableHeight = !sampleHeight || TryGetDistanceToSupport(out height, 1600f);
-                if (Input.GetKeyDown(KeyCode.Space) && phase == DropPhase.Freefall) OpenCanopy();
+                if (sampleHeight) nextHeightSample = Time.time + 0.10f;
+                if (Input.GetKeyDown(KeyCode.Space) && phase == DropPhase.Freefall) canopyRequested = true;
                 if (phase == DropPhase.Freefall)
                 {
-                    if (!reliableHeight || height <= autoDeployHeight) OpenCanopy();
+                    if (sampleHeight && (!reliableHeight || height <= autoDeployHeight))
+                        canopyRequested = true;
+                    if (canopyRequested) OpenCanopy();
                     if (phase == DropPhase.Freefall) UpdateFreefall(dt);
                 }
                 if (phase == DropPhase.Opening || phase == DropPhase.Gliding)
                     UpdateGlide(dt);
-                if (sampleHeight && hud != null)
+                if (sampleHeight && reliableHeight && hud != null)
                     hud.SetTelemetry(height, Mathf.Abs(downwardSpeed) * 3.6f, phase);
             }
         }
@@ -264,7 +282,7 @@ namespace Aaris.MapReview
                 if (canopy != null)
                 {
                     float s = Mathf.SmoothStep(InitialCanopyScale, 1f, openingProgress);
-                    canopy.transform.localScale = new Vector3(s, s, s);
+                    SetCanopyOpeningScale(s);
                 }
                 if (openingProgress >= 1f) phase = DropPhase.Gliding;
             }
@@ -291,13 +309,19 @@ namespace Aaris.MapReview
             if (capsule == null || !capsule.enabled) return;
             Vector3 movement = (horizontalVelocity + Vector3.up * downwardSpeed) * dt;
             Vector3 candidate = transform.position + movement;
-            if (Mathf.Abs(candidate.x) > 975f) movement.x = 0f;
-            if (Mathf.Abs(candidate.z) > 975f) movement.z = 0f;
+            if (Mathf.Abs(candidate.x) > 975f && Mathf.Abs(candidate.x) > Mathf.Abs(transform.position.x))
+                movement.x = 0f;
+            if (Mathf.Abs(candidate.z) > 975f && Mathf.Abs(candidate.z) > Mathf.Abs(transform.position.z))
+                movement.z = 0f;
             CollisionFlags flags = capsule.Move(movement);
             if ((flags & CollisionFlags.Below) != 0 && downwardSpeed < -0.1f) Land();
-            else if (phase == DropPhase.Gliding &&
-                TryGetDistanceToSupport(out float height, 1.25f) && height <= 0.48f)
-                Land();
+            else if (IsUnderCanopy && downwardSpeed < -0.1f && Time.time >= nextContactSample)
+            {
+                nextContactSample = Time.time + 0.10f;
+                if (TryGetDistanceToSupport(out float height, 1.25f) && height <= 0.48f &&
+                    (capsule.Move(Vector3.down * 0.50f) & CollisionFlags.Below) != 0)
+                    Land();
+            }
         }
 
         private bool TryGetDistanceToSupport(out float height, float rayLength)
@@ -335,7 +359,11 @@ namespace Aaris.MapReview
         public void OnAction()
         {
             if (phase == DropPhase.InPlane) Eject();
-            else if (phase == DropPhase.Freefall) OpenCanopy();
+            else if (phase == DropPhase.Freefall)
+            {
+                canopyRequested = true;
+                OpenCanopy();
+            }
         }
 
         private void Eject()
@@ -345,6 +373,8 @@ namespace Aaris.MapReview
             transform.position = plane.transform.position - Vector3.up * 7f;
             transform.rotation = Quaternion.Euler(0f, yaw, 0f);
             ShowPlayer();
+            ApplyLegacyFallbackPose(false);
+            capsule.stepOffset = 0f;
             capsule.enabled = true;
             downwardSpeed = -3f;
             horizontalVelocity = Vector3.zero;
@@ -357,11 +387,26 @@ namespace Aaris.MapReview
         private void OpenCanopy()
         {
             if (phase != DropPhase.Freefall || Time.time - airborneSince < 0.35f) return;
+            canopyRequested = false;
             phase = DropPhase.Opening;
             openingProgress = 0f;
             canopy = AarisOfflineDropVisuals.CreateElongatedCanopy(transform);
-            canopy.transform.localScale = Vector3.one * InitialCanopyScale;
+            SetCanopyOpeningScale(InitialCanopyScale);
+            ApplyLegacyFallbackPose(true);
             if (hud != null) hud.SetAction("OPEN", false);
+        }
+
+        private void SetCanopyOpeningScale(float scale)
+        {
+            if (canopy == null) return;
+            // The suspension rig has a 4.35m canopy centre and a 1.55m
+            // base offset at full size. Scale the art while maintaining the
+            // wing ABOVE the head throughout its half-second deployment.
+            // Otherwise a just-opened 30%-scale canopy visually intersects
+            // the character, who appears to stand on the wing.
+            float s = Mathf.Clamp(scale, InitialCanopyScale, 1f);
+            canopy.transform.localScale = Vector3.one * s;
+            canopy.transform.localPosition = Vector3.up * (4.35f - 2.8f * s);
         }
 
         private void Land()
@@ -376,16 +421,20 @@ namespace Aaris.MapReview
             }
             if (plane != null) { Destroy(plane); plane = null; }
             ShowPlayer();
+            if (footMotor != null) footMotor.RestoreLegacyAerialPose();
             capsule.enabled = true;
-            if (combat != null) combat.enabled = combatWasEnabled;
-            if (battleCanvas != null) battleCanvas.enabled = battleCanvasWasEnabled;
-            if (weaponCanvas != null) weaponCanvas.enabled = weaponCanvasWasEnabled;
-            if (hud != null) { Destroy(hud.gameObject); hud = null; }
-            // Motor restores its own cached yaw, camera, and on-foot gravity.
-            footMotor.ResumeFromAerialDrop();
-            footMotor.enabled = true;
+            RestoreFootControls();
             phase = DropPhase.Landed;
             Debug.Log("Aaris offline drop: parachute touchdown; on-foot controls restored.");
+        }
+
+        private void ApplyLegacyFallbackPose(bool underCanopy)
+        {
+            // Native Android builds may lack a valid optional imported Avatar.
+            // Preserve their animated locomotion if present, and pose only the
+            // saved lightweight placeholder if the real Humanoid failed to load.
+            if (footMotor != null && (characterVisual == null || !characterVisual.HasWorkingHumanoid))
+                footMotor.SetLegacyAerialPose(underCanopy);
         }
 
         private void HidePlayer()
@@ -447,15 +496,36 @@ namespace Aaris.MapReview
                 1f - Mathf.Exp(-9f * Time.deltaTime));
         }
 
-        private void OnDisable()
+        private void RestoreFootControls()
         {
-            if (phase == DropPhase.Landed || footMotor == null) return;
-            if (capsule != null) capsule.enabled = true;
+            controlsSuspended = false;
+            if (hud != null)
+            {
+                hud.gameObject.SetActive(false);
+                Destroy(hud.gameObject);
+                hud = null;
+            }
             if (combat != null) combat.enabled = combatWasEnabled;
             if (battleCanvas != null) battleCanvas.enabled = battleCanvasWasEnabled;
             if (weaponCanvas != null) weaponCanvas.enabled = weaponCanvasWasEnabled;
+            if (battleRaycaster != null) battleRaycaster.enabled = battleRaycasterWasEnabled;
+            if (weaponRaycaster != null) weaponRaycaster.enabled = weaponRaycasterWasEnabled;
+            if (footMotor != null)
+            {
+                footMotor.ResumeFromAerialDrop();
+                footMotor.enabled = true;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (!controlsSuspended) return;
+            if (plane != null) Destroy(plane);
+            if (canopy != null) Destroy(canopy);
+            if (capsule != null) capsule.enabled = true;
             ShowPlayer();
-            footMotor.enabled = true;
+            if (footMotor != null) footMotor.RestoreLegacyAerialPose();
+            RestoreFootControls();
         }
     }
 
@@ -537,6 +607,7 @@ namespace Aaris.MapReview
             baseStick.GetComponent<Image>().sprite = AarisHudGlyphs.Ring;
             stick = baseStick.GetComponent<AarisOfflineDropStick>();
             stick.Build();
+            AarisHudGlyphs.ApplyCanvasShader(root.transform);
         }
 
         private void ApplySafeArea()

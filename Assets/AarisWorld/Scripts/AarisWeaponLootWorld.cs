@@ -46,6 +46,7 @@ namespace Aaris.MapReview
         private const int MaximumActiveLoot = 40;
         private const int MaximumDroppedLoot = 320;
         private const float PickupDistance = 2.15f;
+        private const float StarterLootRange = 10f;
         private const float SeaLevel = -38.07552f;
         private const float CandidateCellMetres = 64f;
 
@@ -70,6 +71,7 @@ namespace Aaris.MapReview
         private float nextRefresh, requestPickupUntil;
         private int nextDropId = -1;
         private bool allowInitialAutoPickup = true;
+        private bool starterLootSettled;
         private uint rng, matchSeed;
         public bool HasPickupInRange { get; private set; }
 
@@ -325,13 +327,15 @@ namespace Aaris.MapReview
             return true;
         }
 
-        private bool CanReachPickup(AarisWeaponPickup pickup)
+        private bool CanReachPickup(AarisWeaponPickup pickup) => CanReachPoint(pickup.transform.position);
+
+        private bool CanReachPoint(Vector3 position)
         {
             // Range is not enough: a weapon behind a solid wall must not be
             // collected through that wall. Ignore only the player's own
             // colliders, not all colliders on the player layer.
             Vector3 eye = player.position + Vector3.up * .95f;
-            Vector3 target = pickup.transform.position + Vector3.up * .24f;
+            Vector3 target = position + Vector3.up * .24f;
             Vector3 toTarget = target - eye;
             float distance = toTarget.magnitude;
             if (distance <= 0.001f) return true;
@@ -398,7 +402,7 @@ namespace Aaris.MapReview
             DeleteDrop(record.id);
         }
 
-        private bool TryFindDropSpot(out Vector3 position)
+        private bool TryFindDropSpot(out Vector3 position, bool requireReachable = false)
         {
             position = Vector3.zero;
             if (player == null) return false;
@@ -452,7 +456,9 @@ namespace Aaris.MapReview
                     break;
                 }
                 if (!clear) continue;
-                position = hitPoint + Vector3.up * .13f;
+                Vector3 candidate = hitPoint + Vector3.up * .13f;
+                if (requireReachable && !CanReachPoint(candidate)) continue;
+                position = candidate;
                 return true;
             }
             return false;
@@ -635,6 +641,39 @@ namespace Aaris.MapReview
                         " kind=" + c.kind + " origin=" + c.origin +
                         " index=" + i + " pos=" + spot.ToString("F2"));
             }
+
+            EnsureStarterLoot(playerPosition);
+        }
+
+        private void EnsureStarterLoot(Vector3 playerPosition)
+        {
+            if (starterLootSettled || !allowInitialAutoPickup || active.Count >= MaximumActiveLoot)
+                return;
+            if (inventory.HasGun)
+            {
+                starterLootSettled = true;
+                return;
+            }
+            if (player.TryGetComponent(out AarisOfflineDrop flight) && !flight.HasLanded) return;
+            if (!player.TryGetComponent(out CharacterController controller) || !controller.isGrounded) return;
+
+            foreach (var pickup in active)
+            {
+                if (pickup != null && !IsBlockedDrop(pickup) &&
+                    (pickup.transform.position - playerPosition).sqrMagnitude <= StarterLootRange * StarterLootRange &&
+                    CanReachPickup(pickup))
+                {
+                    starterLootSettled = true;
+                    return;
+                }
+            }
+
+            // One fallback per match. Use the existing safe floor and pickup path.
+            if (!TryFindDropSpot(out Vector3 point, requireReachable: true)) return;
+            var spec = AarisWeaponCatalog.Select(ref rng, false);
+            if (spec == null) return;
+            var state = new AarisWeaponState(spec, matchSeed ^ 0x4F67A2C1u);
+            starterLootSettled = CreateDropped(state, point, 0f) != null;
         }
 
         private bool IsCurrentlyActive(int candidateIndex)

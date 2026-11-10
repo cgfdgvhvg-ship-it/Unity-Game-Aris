@@ -6,6 +6,10 @@ using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+#if UNITY_ANDROID
+using System.Text.RegularExpressions;
+using UnityEditor.Android;
+#endif
 
 namespace Aaris.MapReview.Editor
 {
@@ -92,7 +96,8 @@ namespace Aaris.MapReview.Editor
                     PlayerSettings.Android.targetSdkVersion != AndroidSdkVersions.AndroidApiLevel33)
                     throw new InvalidOperationException("ANDROID_V7_SETTINGS_NOT_APPLIED");
                 PlayerSettings.Android.useCustomKeystore = false;
-                PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+                PlayerSettings.Android.targetArchitectures = AarisExplorerBuild.AndroidArchitectures;
+                PlayerSettings.Android.buildApkPerCpuArchitecture = false;
                 PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android,
                                                    ScriptingImplementation.IL2CPP);
                 evidence.scriptingBackend = "IL2CPP";
@@ -136,6 +141,9 @@ namespace Aaris.MapReview.Editor
                     evidence.applicationVersionCode != ExpectedVersionCode ||
                     PlayerSettings.Android.targetSdkVersion != AndroidSdkVersions.AndroidApiLevel33)
                     throw new InvalidOperationException("ANDROID_GAME_IDENTITY_POSTBUILD_MISMATCH");
+                if (PlayerSettings.Android.targetArchitectures != AarisExplorerBuild.AndroidArchitectures ||
+                    PlayerSettings.Android.buildApkPerCpuArchitecture)
+                    throw new InvalidOperationException("ANDROID_UNIVERSAL_APK_SETTINGS_CHANGED");
                 FileInfo apk = new FileInfo(Apk);
                 if (!apk.Exists || apk.Length < 100000)
                     throw new InvalidOperationException("ANDROID_APK_FILE_INVALID");
@@ -158,4 +166,32 @@ namespace Aaris.MapReview.Editor
             }
         }
     }
+
+#if UNITY_ANDROID
+    // Android's compile SDK and manifest target SDK are independent. The
+    // isolated build can compile with the installed platform without changing the app target.
+    public sealed class AarisBundledCompileSdk : IPostGenerateGradleAndroidProject
+    {
+        public int callbackOrder => int.MaxValue;
+
+        public void OnPostGenerateGradleAndroidProject(string path)
+        {
+            if (Environment.GetEnvironmentVariable("AARIS_ANDROID_COMPILE_SDK") != "34") return;
+            string launcher = Path.Combine(Path.GetDirectoryName(path), "launcher", "build.gradle");
+            string library = Path.Combine(path, "build.gradle");
+            foreach (string gradle in new[] { launcher, library })
+            {
+                string text = File.ReadAllText(gradle);
+                const string compile = @"(?m)^([ \t]*compileSdk[ \t]+)(?:33|34)([ \t]*\r?)$";
+                const string target = @"(?m)^[ \t]*targetSdk[ \t]+33[ \t]*\r?$";
+                if (Regex.Matches(text, compile).Count != 1 || !Regex.IsMatch(text, target))
+                    throw new BuildFailedException("AARIS_ANDROID_GENERATED_SDK_SETTINGS_UNEXPECTED");
+                string updated = Regex.Replace(text, compile, match =>
+                    match.Groups[1].Value + "34" + match.Groups[2].Value);
+                if (updated != text) File.WriteAllText(gradle, updated);
+            }
+            Debug.Log("AARIS_ANDROID_COMPILE_SDK_34_TARGET_SDK_33");
+        }
+    }
+#endif
 }

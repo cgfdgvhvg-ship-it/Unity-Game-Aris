@@ -77,6 +77,35 @@ namespace Aaris.MapReview
         public float LastLandingTime => lastLanding;
         public float LastJumpStartedTime => lastJumpStarted;
         public Camera AimCamera => followCamera;
+
+        // The original lightweight placeholder has articulated arm/leg pivots.
+        // If an Android build cannot initialize the optional Humanoid rig,
+        // never leave this visible fallback frozen in a horizontal T-pose
+        // during the airplane / parachute sequence. Visuals only: no physics.
+        internal void SetLegacyAerialPose(bool beneathCanopy)
+        {
+            // Angles fold a horizontal legacy T-pose into a suspended,
+            // riser-holding pose (or a slightly spread freefall posture).
+            float armAngle = beneathCanopy ? 48f : -38f;
+            if (leftArm != null)
+                leftArm.localRotation = leftArmRest *
+                    Quaternion.Euler(-10f, 0f, -armAngle);
+            if (rightArm != null)
+                rightArm.localRotation = rightArmRest *
+                    Quaternion.Euler(-10f, 0f, armAngle);
+            if (leftLeg != null)
+                leftLeg.localRotation = leftLegRest * Quaternion.Euler(13f, 0f, -6f);
+            if (rightLeg != null)
+                rightLeg.localRotation = rightLegRest * Quaternion.Euler(-9f, 0f, 6f);
+        }
+
+        internal void RestoreLegacyAerialPose()
+        {
+            if (leftArm != null) leftArm.localRotation = leftArmRest;
+            if (rightArm != null) rightArm.localRotation = rightArmRest;
+            if (leftLeg != null) leftLeg.localRotation = leftLegRest;
+            if (rightLeg != null) rightLeg.localRotation = rightLegRest;
+        }
         public bool IsAutoSprinting => running;
 
         public void CancelAutoSprint() => running = false;
@@ -166,6 +195,11 @@ namespace Aaris.MapReview
             reportButton = new Rect(right - 100f, top, 100f, 36f);
             fpsButton = new Rect(right - 212f, top, 100f, 36f);
         }
+        internal Vector2 MoveStickScreenCenter =>
+            new Vector2(stickCenter.x * uiScale, Screen.height - stickCenter.y * uiScale);
+        internal float MoveStickScreenScale => uiScale;
+        internal Vector2 MoveStickInput => moveInput;
+
         private Vector2 ToGUI(Vector2 p) => new Vector2(p.x / uiScale, (Screen.height - p.y) / uiScale);
         private bool OverButton(Vector2 p) =>
             (!AarisBattleHUD.IsVisible && (jumpButton.Contains(p) || runButton.Contains(p))) ||
@@ -542,7 +576,8 @@ namespace Aaris.MapReview
 
         private void OnGUI()
         {
-            Layout();
+            bool fallback = !AarisBattleHUD.IsVisible;
+            if (Event.current.type != EventType.Repaint || (!fallback && !Debug.isDebugBuild)) return;
             if (buttonStyle == null)
             {
                 buttonStyle = new GUIStyle(GUI.skin.box) { fontSize = 17, alignment = TextAnchor.MiddleCenter };
@@ -555,14 +590,14 @@ namespace Aaris.MapReview
             }
             Matrix4x4 matrix = GUI.matrix; Color oldColor = GUI.color;
             GUI.matrix = Matrix4x4.Scale(new Vector3(uiScale, uiScale, 1f));
-            GUI.color = new Color(0.08f, 0.12f, 0.17f, 0.65f);
-            GUI.DrawTexture(new Rect(stickCenter.x - 76f, stickCenter.y - 76f, 152f, 152f), disc);
-            GUI.color = new Color(0.70f, 0.86f, 0.92f, 0.90f);
-            Vector2 knob = stickCenter + new Vector2(moveInput.x, -moveInput.y) * 44f;
-            GUI.DrawTexture(new Rect(knob.x - 28f, knob.y - 28f, 56f, 56f), disc);
-            GUI.color = Color.white;
-            if (!AarisBattleHUD.IsVisible)
+            if (fallback)
             {
+                GUI.color = new Color(0.13f, 0.13f, 0.13f, 0.48f);
+                GUI.DrawTexture(new Rect(stickCenter.x - 76f, stickCenter.y - 76f, 152f, 152f), disc);
+                GUI.color = new Color(0.94f, 0.94f, 0.94f, 0.88f);
+                Vector2 knob = stickCenter + new Vector2(moveInput.x, -moveInput.y) * 44f;
+                GUI.DrawTexture(new Rect(knob.x - 28f, knob.y - 28f, 56f, 56f), disc);
+                GUI.color = Color.white;
                 GUI.Box(jumpButton, "JUMP", buttonStyle);
                 GUI.Box(runButton, running ? "RUN: ON" : "WALK", buttonStyle);
             }
