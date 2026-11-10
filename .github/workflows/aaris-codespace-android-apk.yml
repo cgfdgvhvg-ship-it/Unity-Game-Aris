@@ -8,7 +8,7 @@ on:
         description: 'Read-only APK preflight or build and publish debug test APK'
         required: true
         type: choice
-        options: [preflight, build]
+        options: [preflight, build, build_hud]
         default: preflight
 permissions:
   contents: read
@@ -22,7 +22,7 @@ jobs:
        github.event.issue.number == 77 &&
        github.event.comment.user.login == 'sundamunda289-art' &&
        (github.event.comment.body == 'APK PREFLIGHT' ||
-        github.event.comment.body == 'APK BUILD'))
+        (github.event.comment.body == 'APK BUILD' || github.event.comment.body == 'APK HUD BUILD')))
     runs-on: ubuntu-latest
     timeout-minutes: 355
     concurrency:
@@ -36,7 +36,7 @@ jobs:
       issues: write
     env:
       GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
-      OPERATION: ${{ github.event_name == 'workflow_dispatch' && inputs.operation || (github.event.comment.body == 'APK BUILD' && 'build' || 'preflight') }}
+      OPERATION: ${{ github.event_name == 'workflow_dispatch' && inputs.operation || (github.event.comment.body == 'APK HUD BUILD' && 'build_hud' || github.event.comment.body == 'APK BUILD' && 'build' || 'preflight') }}
     steps:
       - name: Checkout exact latest main controller and APK builder
         uses: actions/checkout@v4
@@ -90,7 +90,7 @@ jobs:
               apk-evidence/preflight.txt > apk-evidence/preflight-safe.txt
           cat apk-evidence/preflight-safe.txt
       - name: Supply immutable original SpeedTree LFS archive when building
-        if: env.OPERATION == 'build'
+        if: env.OPERATION != 'preflight'
         timeout-minutes: 10
         env:
           RELEASE_GH_TOKEN: ${{ github.token }}
@@ -113,12 +113,12 @@ jobs:
           test "$REMOTE_SHA" = 234024b842e8cc5e1253607ce41b5a6aebec6a7abd3c9fd81837bc960a24197d
           echo APK_ORIGINAL_AUTHENTIC_LFS_ARCHIVE_VERIFIED
       - name: Install official Unity Android modules and build APK on Codespace
-        if: env.OPERATION == 'build'
+        if: env.OPERATION != 'preflight'
         timeout-minutes: 290
         run: |
           set -euo pipefail
           # Only reviewed fixed command; no interpolation of issue-comment shell content.
-          timeout 16900 gh codespace ssh -c "$CODESPACE" -- 'bash -s -- build' \
+          timeout 16900 gh codespace ssh -c "$CODESPACE" -- "bash -s -- $OPERATION" \
             < Tools/Codespaces/android_apk.sh > apk-evidence/build-status.txt \
             2> "$RUNNER_TEMP/private-apk-build-ssh-errors.log" || {
               echo 'APK_NATIVE_CODESPACE_BUILD_FAILED'
@@ -132,7 +132,7 @@ jobs:
             apk-evidence/build-status.txt > apk-evidence/build-status-safe.txt
           cat apk-evidence/build-status-safe.txt
       - name: Copy and SHA-256 verify actual APK from Codespace
-        if: env.OPERATION == 'build'
+        if: env.OPERATION != 'preflight'
         timeout-minutes: 25
         run: |
           set -euo pipefail
@@ -165,17 +165,23 @@ jobs:
           print("APK_RELEASE_BYTES_VERIFIED")
           PY
       - name: Publish validated installable APK as GitHub Release asset
-        if: env.OPERATION == 'build'
+        if: env.OPERATION != 'preflight'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           TAG="apk-test-$GITHUB_RUN_ID"
+          BUILD_SOURCE="main"
+          if test "$OPERATION" = build_hud; then
+            TAG="apk-hud-review-$GITHUB_RUN_ID"
+            BUILD_SOURCE="fixed HUD/parachute review branch"
+            grep -qxF APK_HUD_REVIEW_BUILD_VERIFIED apk-evidence/build-status.txt
+          fi
           SHA="$(grep '^apk_commit=' apk-evidence/build-status-safe.txt | head -n1 | cut -d= -f2)"
           [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || exit 31
           cat > apk-evidence/release-notes.md <<EOF
           Temporary offline single-player Android ARM64 test APK, signed with the Unity debug key.
-          Original Unity main snapshot: $SHA.
+          Unity source snapshot: $SHA ($BUILD_SOURCE).
           Native 2 km x 2 km scene: Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity (four terrain tiles).
           Download AarisGame.apk from Assets; verify with AarisGame.sha256 before installing.
           This is a test build, not a Google Play production release. Android device FPS, crashes,
