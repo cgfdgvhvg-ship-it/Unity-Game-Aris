@@ -89,11 +89,15 @@ def process_info():
     try:
         p=subprocess.run(["ps","-eo","args="],capture_output=True,text=True,timeout=6,check=True)
         data=p.stdout
-    except (OSError,subprocess.SubprocessError):return ("unknown","unknown")
+    except (OSError,subprocess.SubprocessError):return ("unknown","unknown","unknown")
     # Fixed substring only; do not emit process arguments.
     install = bool(re.search(r"\bunity\s+(?:install|install-modules)\b",data))
     build=bool(re.search(r"/Editor/Unity\b[^\n]*-buildTarget\s+Android",data))
-    return ("yes" if install else "no","yes" if build else "no")
+    # Only the immutable 40-hex commit in the existing temp worktree.
+    # No paths, arguments or other process data leave the Codespace.
+    match=re.search(r"/tmp/aaris-native-android-build-worktrees/([0-9a-f]{40})(?:/|\\s|$)",data)
+    source_sha=match.group(1) if match else "unknown"
+    return ("yes" if install else "no","yes" if build else "no",source_sha)
 
 def module_state():
     candidates=[
@@ -110,7 +114,7 @@ def module_state():
             return "ready"
     return "pending"
 
-install,build=process_info()
+install,build,source_sha=process_info()
 report=root/"build-report.json"
 status="not_created"
 if report.is_file():
@@ -145,6 +149,7 @@ print("apk_stage="+stage)
 print("apk_toolchain="+module_state())
 print("apk_cli_installer_running="+install)
 print("apk_unity_android_build_running="+build)
+print("apk_source_sha="+source_sha)
 print("apk_module_log_bytes="+str(size(private_logs["module"])))
 print("apk_install_log_bytes="+str(size(private_logs["install"])))
 print("apk_editor_log_bytes="+str(size(private_logs["editor"])))
