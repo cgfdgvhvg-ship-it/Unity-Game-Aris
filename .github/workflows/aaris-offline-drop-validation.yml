@@ -96,21 +96,18 @@ jobs:
           grep -E '^AARIS_V3_' safe-report/safe-status.txt || true
           grep -Eq '^AARIS_V3_EXISTING_CODESPACE_PROJECT_UPDATED$|^AARIS_V3_LIVE_PROJECT_ALREADY_CURRENT$' safe-report/safe-status.txt
           echo 'AARIS_V3_EXISTING_CODESPACE_SOURCE_APPLIED_NO_EDITOR_LAUNCH'
-      - name: Reopen exactly the same Unity Editor project if it stopped
+      - name: Diagnose existing Unity launch crash without launching another Editor
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p safe-report
-          if ! timeout 165 gh codespace ssh -c "$EXACT_CODESPACE" -- 'bash -s' \
-            < Tools/Codespaces/restart_existing_unity_v3.sh \
-            > safe-report/restart-status.txt 2> "$RUNNER_TEMP/restart-ssh-private.log"; then
-            grep -E '^AARIS_GUI_' safe-report/restart-status.txt || true
-            echo 'AARIS_GUI_SAFE_RESTART_NOT_VERIFIED'
-            exit 15
+          if ! timeout 95 gh codespace ssh -c "$EXACT_CODESPACE" -- 'bash -s' \
+            < Tools/Codespaces/classify_existing_unity_crash.sh \
+            > safe-report/crash-classification.txt 2> "$RUNNER_TEMP/crash-private-ssh.log"; then
+            echo 'AARIS_GUI_CRASH_CLASSIFIER_UNAVAILABLE'
+            exit 17
           fi
-          grep -E '^AARIS_GUI_' safe-report/restart-status.txt || true
-          grep -Eq '^AARIS_GUI_ORIGINAL_PROJECT_EDITOR_PROCESS_ALIVE$|^AARIS_GUI_EXACT_EXISTING_EDITOR_ALREADY_RUNNING$' safe-report/restart-status.txt
-          echo 'AARIS_GUI_SAME_EXISTING_PROJECT_REOPENED'
+          grep -E '^AARIS_GUI_DIAG_' safe-report/crash-classification.txt || true
       - name: Save only sanitized state, never backups, credentials or raw Unity logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -119,6 +116,6 @@ jobs:
           path: |
             safe-report/safe-status.txt
             safe-report/editor-diagnostic.txt
-            safe-report/restart-status.txt
+            safe-report/crash-classification.txt
           if-no-files-found: warn
           retention-days: 2
