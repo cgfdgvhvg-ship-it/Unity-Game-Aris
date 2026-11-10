@@ -34,6 +34,7 @@ if test -n "$ISSUE"; then
         'CS FALLBACK STATUS') OP=status ;;
         'CS FALLBACK CHANGES') OP=changes ;;
         'CS FALLBACK TMP AUDIT') OP=tmp_audit ;;
+        'CS FALLBACK TMP RECLAIM') OP=tmp_reclaim ;;
         'CS FALLBACK APPLY GAMEPLAY') OP=apply_gameplay ;;
         'CS FALLBACK LFS REPORT') OP=lfs_report ;;
         'CS FALLBACK LICENSE') OP=license ;;
@@ -110,7 +111,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|wait_start|fresh|fresh_ssh|fresh_minimal|rebuild|full_rebuild|status|logs|sync|recovery_sync|lfs|lfs_report|changes|apply_gameplay|preserve_assets|retry_assets|install|bootstrap|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|hud_review|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
+  machines|info|quota|start|wait_start|fresh|fresh_ssh|fresh_minimal|rebuild|full_rebuild|status|logs|sync|recovery_sync|lfs|lfs_report|changes|apply_gameplay|preserve_assets|retry_assets|install|bootstrap|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|tmp_reclaim|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|hud_review|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -411,6 +412,7 @@ case "$OP" in
   editor) REMOTE_TIMEOUT=350 ;;
   editor_isolate) REMOTE_TIMEOUT=650 ;;
   tmp_audit) REMOTE_TIMEOUT=240 ;;
+  tmp_reclaim) REMOTE_TIMEOUT=900 ;;
   scene_render|scene_play|hud_review|photo|foliage_diag|survey|tree_audit|tree_preview|tree_publish) REMOTE_TIMEOUT=1800 ;;
   drop_video) REMOTE_TIMEOUT=2100 ;;
   drop_frames) REMOTE_TIMEOUT=420 ;;
@@ -523,6 +525,10 @@ if test "$OP" = editor_isolate; then
 fi
 if test "$OP" = tmp_audit; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/tmp_audit.sh"
+  REMOTE_SHELL="bash -s"
+fi
+if test "$OP" = tmp_reclaim; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/reclaim_native_photo_tmp.sh"
   REMOTE_SHELL="bash -s"
 fi
 if test "$OP" = accept_terms; then
