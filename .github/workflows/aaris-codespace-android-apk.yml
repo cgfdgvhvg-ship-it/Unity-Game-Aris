@@ -37,7 +37,7 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
       OPERATION: ${{ github.event_name == 'workflow_dispatch' && inputs.operation || (github.event.comment.body == 'APK HUD BUILD' && 'build_hud' || github.event.comment.body == 'APK BUILD' && 'build' || 'preflight') }}
-      AARIS_EXPECTED_BUILD_SHA: d6934f56c1d7536d650abf30a197b3341484abe0
+      AARIS_EXPECTED_BUILD_SHA: ${{ github.sha }}
     steps:
       - name: Checkout exact latest main controller and APK builder
         uses: actions/checkout@v4
@@ -53,6 +53,7 @@ jobs:
           test -s Assets/AarisWorld/Editor/AarisCodespaceAndroidBuild.cs.meta
           grep -q 'm_EditorVersion: 6000.3.26f1' ProjectSettings/ProjectVersion.txt
           grep -q 'path: Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity' ProjectSettings/EditorBuildSettings.asset
+          test "$(git rev-parse HEAD)" = "$AARIS_EXPECTED_BUILD_SHA" || { echo APK_WORKFLOW_CHECKOUT_NOT_EVENT_COMMIT; exit 15; }
           mkdir -p apk-evidence
           echo "APK_STATIC_SCENE_AND_BUILDER_VALID"
       - name: Select the same exact authorized Codespace, fail on ambiguity
@@ -103,7 +104,7 @@ jobs:
           grep -qxF 'APK_INSTALLABILITY_SIGNATURE_MANIFEST_API33_VERIFIED' apk-evidence/build-status.txt
           grep -qxF 'APK_AUTHENTIC_796_LFS_VERIFIED' apk-evidence/build-status.txt || \
             grep -qxF 'APK_REMOTE_796_LFS_SHA256_VERIFIED' apk-evidence/build-status.txt
-          grep -qxF 'apk_commit=d6934f56c1d7536d650abf30a197b3341484abe0' apk-evidence/build-status.txt
+          grep -qxF "apk_commit=$AARIS_EXPECTED_BUILD_SHA" apk-evidence/build-status.txt
           grep -E '^APK_[A-Z_]+$|^apk_bytes=[0-9]+$|^apk_commit=[0-9a-f]{40}$' \
             apk-evidence/build-status.txt > apk-evidence/build-status-safe.txt
           cat apk-evidence/build-status-safe.txt
