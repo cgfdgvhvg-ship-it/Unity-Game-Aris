@@ -13,20 +13,20 @@ namespace Aaris.MapReview
         [SerializeField, Min(0f)] private float unarmedSprintSpeed = 6.5f;
         [SerializeField, Min(0f)] private float armedSprintSpeed = 5.7f;
         [SerializeField, Min(0f)] private float crouchMoveSpeed = 2.4f;
-        [SerializeField, Min(0f)] private float proneMoveSpeed = 1.1f;
+        [SerializeField, Min(0f)] private float proneMoveSpeed = 1.45f;
         [SerializeField, Min(0f)] private float combatMoveSpeed = 2.0f;
         [SerializeField, Min(0f)] private float adsMoveSpeed = 2.65f;
         [SerializeField, Min(1f)] private float weaponTurnResponse = 17f;
         [SerializeField, Min(0.01f)] private float horizontalAcceleration = 13f;
         [SerializeField, Min(0.01f)] private float horizontalBraking = 19f;
         [Header("Jump, slope and third-person camera feel")]
-        [SerializeField, Min(1.1f)] private float earlyJumpReleaseGravity = 2.15f;
-        [SerializeField, Range(0.0f, 0.18f)] private float minimumJumpAscentSeconds = 0.075f;
+        [SerializeField, Min(1.1f)] private float earlyJumpReleaseGravity = 1.35f;
+        [SerializeField, Range(0.0f, 0.18f)] private float minimumJumpAscentSeconds = 0.12f;
         [SerializeField, Range(0f, 0.6f)] private float downhillProbeDistance = 0.32f;
         [SerializeField, Min(0.1f)] private float groundedDownVelocity = 5.5f;
-        [SerializeField, Range(0.2f, 1f)] private float airborneSteering = 0.58f;
+        [SerializeField, Range(0.2f, 1f)] private float airborneSteering = 0.78f;
         [SerializeField, Range(0.05f, 0.6f)] private float stanceCameraBlendSeconds = 0.15f;
-        [SerializeField] private float jumpHeight = 1.0f, gravity = 24f;
+        [SerializeField] private float jumpHeight = 1.35f, gravity = 18.5f;
         [SerializeField] private float followDistance = 4.2f, pivotHeight = 1.45f;
         [SerializeField] private float lookSensitivity = 0.12f;
         [SerializeField] private float minLookPitch = -70f, maxLookPitch = 70f;
@@ -122,9 +122,17 @@ namespace Aaris.MapReview
         public void RequestJump()
         {
             if (battle == null) battle = GetComponent<AarisBattleActions>();
-            if (battle != null && !battle.TryStand()) return;
-            // Accept taps slightly before landing and shortly after leaving a ledge.
-            jumpUntil = Time.unscaledTime + 0.17f;
+            // A crouched jump is one action, not two taps. Retain a valid
+            // grounded timestamp across the CharacterController resize,
+            // without granting an extra mid-air jump when there's no floor.
+            if (battle != null && battle.Stance != AarisBattleActions.PlayerStance.Standing)
+            {
+                bool groundedBeforeStand = controller != null && controller.isGrounded;
+                if (!battle.TryStand()) return; // Closed ceilings still block.
+                if (groundedBeforeStand) lastGrounded = Time.unscaledTime;
+            }
+            // Buffered jump survives a short resize/landing transition.
+            jumpUntil = Time.unscaledTime + 0.20f;
         }
 
         public void SetJumpHeld(bool held)
@@ -291,12 +299,17 @@ namespace Aaris.MapReview
             // CharacterController.isGrounded reflects the PREVIOUS Move.
             // Single movement authority retains short coyote/buffer windows.
             bool wasGrounded = controller.isGrounded;
+            // isGrounded is from the previous Move. A downward sphere sweep
+            // bridges tiny downhill gaps but must never trigger during ascent.
+            if (!wasGrounded && verticalVelocity <= 0f &&
+                now - lastJumpStarted > 0.18f)
+                wasGrounded = HasWalkableGroundWithinStep();
             if (wasGrounded)
             {
                 lastGrounded = now;
                 if (verticalVelocity < 0f) verticalVelocity = -groundedDownVelocity;
             }
-            bool launchJump = now <= jumpUntil && now - lastGrounded <= 0.11f;
+            bool launchJump = now <= jumpUntil && now - lastGrounded <= 0.15f;
             if (launchJump)
             {
                 verticalVelocity = Mathf.Sqrt(2f * gravity * jumpHeight);
@@ -310,7 +323,8 @@ namespace Aaris.MapReview
             // as soon as a grounded Move succeeds.
             float groundedStep = battle != null
                 ? battle.GroundStepOffset : savedGroundStepOffset;
-            controller.stepOffset = wasGrounded && !launchJump ? groundedStep : 0f;
+            controller.stepOffset = !launchJump && (wasGrounded || verticalVelocity <= 0f)
+                ? groundedStep : 0f;
 
             // Sole controller motor: no extra movement component or double
             // gravity. Touch, keyboard and auto-sprint use one intent pipeline.
@@ -353,11 +367,15 @@ namespace Aaris.MapReview
             // No horizontal displacement: let CharacterController handle vertical
             // grounding without repeating terrain samples and shoreline/prone
             // obstacle raycasts. Full checks still run whenever the player moves.
-            if (horizontalVelocity.sqrMagnitude > 0.000001f &&
-                (Mathf.Abs(candidate.x) > 975f || Mathf.Abs(candidate.z) > 975f ||
-                 !SafeFooting(candidate) ||
-                 (battle != null && !battle.CanAdvanceProne(candidate, horizontalVelocity))))
-                horizontalVelocity = Vector3.zero;
+            if (horizontalVelocity.sqrMagnitude > 0.000001f)
+            {
+                if (Mathf.Abs(candidate.x) > 975f || Mathf.Abs(candidate.z) > 975f ||
+                    !SafeFooting(candidate))
+                    horizontalVelocity = Vector3.zero; // shoreline / map boundary
+                else if (battle != null &&
+                         !battle.CanAdvanceProne(candidate, horizontalVelocity))
+                    horizontalVelocity = ProneWallSlide(horizontalVelocity, dt);
+            }
 
             // Camera-relative strafe during ADS and firing. Without this,
             // a standing player could shoot sideways while the gun and torso
@@ -453,6 +471,41 @@ namespace Aaris.MapReview
             if (leftLeg != null) leftLeg.localRotation = leftLegRest * Quaternion.Euler(angle, 0f, 0f);
             if (rightLeg != null) rightLeg.localRotation = rightLegRest * Quaternion.Euler(-angle, 0f, 0f);
         }
+        private bool HasWalkableGroundWithinStep()
+        {
+            if (downhillProbeDistance <= 0f || controller == null) return false;
+            float radius = Mathf.Max(.07f, controller.radius - controller.skinWidth);
+            Vector3 footSphere = transform.TransformPoint(
+                controller.center + Vector3.down * (controller.height * .5f - radius));
+            Vector3 start = footSphere + Vector3.up * .04f;
+            if (!Physics.SphereCast(start, radius, Vector3.down, out RaycastHit hit,
+                downhillProbeDistance + .04f, WorldMask, QueryTriggerInteraction.Ignore))
+                return false;
+            return hit.normal.y >= Mathf.Cos(controller.slopeLimit * Mathf.Deg2Rad) &&
+                hit.distance <= downhillProbeDistance + .04f;
+        }
+
+        // Slide only along already requested movement, never drift sideways
+        // without input. Prone clearance and terrain are rechecked for each
+        // alternative; solid doors/walls and shorelines remain impassable.
+        private Vector3 ProneWallSlide(Vector3 velocity, float dt)
+        {
+            Vector3 side = transform.right * Vector3.Dot(velocity, transform.right);
+            Vector3 ahead = transform.forward * Vector3.Dot(velocity, transform.forward);
+            Vector3 first = side.sqrMagnitude >= ahead.sqrMagnitude ? side : ahead;
+            Vector3 second = side.sqrMagnitude >= ahead.sqrMagnitude ? ahead : side;
+            for (int i = 0; i < 2; i++)
+            {
+                Vector3 test = (i == 0 ? first : second) * .8f;
+                if (test.sqrMagnitude < .0001f) continue;
+                Vector3 next = transform.position + test * dt;
+                if (Mathf.Abs(next.x) <= 975f && Mathf.Abs(next.z) <= 975f &&
+                    SafeFooting(next) && battle.CanAdvanceProne(next, test))
+                    return test;
+            }
+            return Vector3.zero;
+        }
+
         private float GroundHeight(Vector3 position)
         {
             float ground = seaLevel - 10f;
