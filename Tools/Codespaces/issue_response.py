@@ -9,7 +9,7 @@ try:
     data = json.loads((folder / 'result.json').read_text())
 except (OSError, ValueError):
     data = {}
-operations = set('machines info quota start fresh fresh_ssh fresh_minimal rebuild full_rebuild status logs sync recovery_sync lfs lfs_report changes preserve_assets retry_assets install bootstrap deps cli_diag editor editor_diag editor_isolate tmp_audit license auth probe shot accept_terms safe_mode compile_report refresh close_editor editor_process editor_recover scene_render scene_play drop_video drop_frames map_verify photo play_diag foliage_diag test stop'.split())
+operations = set('machines info quota start fresh fresh_ssh fresh_minimal rebuild full_rebuild status logs sync recovery_sync lfs lfs_report changes apply_gameplay preserve_assets retry_assets install bootstrap deps cli_diag editor editor_diag editor_isolate tmp_audit license auth probe shot accept_terms safe_mode compile_report refresh close_editor editor_process editor_recover scene_render scene_play drop_video drop_frames map_verify photo play_diag foliage_diag test stop'.split())
 statuses = {'SUCCESS', 'FAILED', 'NO_CODESPACE', 'TARGET_UNAVAILABLE', 'UNKNOWN'}
 op = data.get('operation', 'unknown')
 state = data.get('status', 'FAILED')
@@ -77,6 +77,9 @@ for line in lines:
         re.fullmatch(r'CODESPACES_(INCLUDED_CORE_HOURS)=[0-9]{1,6}', line)):
         safe.append(line)
     elif op == 'machines' and re.fullmatch(r'[A-Za-z0-9-]{3,55}\t\d{1,2}\t\d{1,3}', line):
+        safe.append(line)
+    elif op == 'apply_gameplay' and re.fullmatch(
+        r'(gameplay_files_checked|gameplay_files_updated)=[0-9]{1,2}|main_commit=[a-f0-9]{40}', line):
         safe.append(line)
     if len(safe) >= (42 if op == 'cli_diag' else 22):
         break
