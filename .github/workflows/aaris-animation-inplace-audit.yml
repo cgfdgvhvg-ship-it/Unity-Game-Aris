@@ -3,17 +3,20 @@ on:
   issue_comment:
     types: [created]
 permissions:
-  contents: read
+  contents: write
 jobs:
   snapshot:
     if: >-
       github.event.issue.number == 77 &&
       github.event.comment.user.login == 'sundamunda289-art' &&
-      github.event.comment.body == 'ANIM AUDIT'
+      (github.event.comment.body == 'ANIM AUDIT' || github.event.comment.body == 'ANIM PUBLISH')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
       - name: Read-only snapshot of exact existing Codespace
         env:
           GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
@@ -48,7 +51,9 @@ jobs:
                              f'Assets/Resources/AarisCharacters/Primary/Animations/{stem}.fbx.meta'])
           optional.extend([
             'Assets/Resources/AarisCharacters/Primary/Animations/kaykit-clip-sources.json',
-            'Assets/Resources/AarisCharacters/Primary/LICENSE-KAYKIT-ANIMATIONS.txt'])
+            'Assets/Resources/AarisCharacters/Primary/LICENSE-KAYKIT-ANIMATIONS.txt',
+            'Assets/Resources/AarisCharacters/Primary/Animations/kaykit-clip-sources.json.meta',
+            'Assets/Resources/AarisCharacters/Primary/LICENSE-KAYKIT-ANIMATIONS.txt.meta'])
           paths.extend(p for p in optional if (root/p).is_file())
           def git(*args):return subprocess.check_output(['git',*args],stderr=subprocess.DEVNULL).decode().strip()
           summary={'codespace':'aaris-ai-ubuntu-minimal-xr4p7jj6p4qjc6q5x','head':git('rev-parse','HEAD'),'assets':[]}
@@ -80,7 +85,7 @@ jobs:
           python3 - "$RUNNER_TEMP/animation-audit/manifest.json" <<'PY'
           import json,sys
           data=json.load(open(sys.argv[1]))
-          assert 17 <= len(data['assets']) <= 25
+          assert 17 <= len(data['assets']) <= 27
           assert data['codespace']=='aaris-ai-ubuntu-minimal-xr4p7jj6p4qjc6q5x'
           print('INPLACE_ANIMATION_AND_GLOO_SNAPSHOT_VERIFIED')
           print('selected_assets='+str(len(data['assets'])))
@@ -94,3 +99,128 @@ jobs:
           path: ${{ runner.temp }}/animation-audit/
           retention-days: 2
           if-no-files-found: warn
+
+      - name: Publish only reviewed in-place gameplay assets to an isolated Git branch
+        if: github.event.comment.body == 'ANIM PUBLISH'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUDIT="$RUNNER_TEMP/animation-audit"
+          test -s "$AUDIT/tracked-assets.tar.gz"
+          BRANCH='feat/complete-existing-kaykit-humanoid-gloo-20261110'
+          git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null && { echo BRANCH_ALREADY_EXISTS; exit 70; } || true
+          python3 - "$AUDIT/tracked-assets.tar.gz" "$GITHUB_WORKSPACE" "$AUDIT/selected-paths.txt" "$AUDIT/lfs-oids.txt" <<'PY'
+          import hashlib,json,pathlib,re,subprocess,sys,tarfile
+          archive,root,pathfile,oidfile=sys.argv[1:]
+          root=pathlib.Path(root)
+          with tarfile.open(archive,'r:gz') as tf:
+            members={m.name:m for m in tf.getmembers()}
+            if any(not m.isfile() for m in members.values()):raise RuntimeError('Unsafe tar entry')
+            data=json.loads(tf.extractfile('manifest.json').read())
+            records=data['assets']
+            names=[x['path'] for x in records]
+            required={
+              'Assets/AarisWorld/Editor/AarisCharacterImport.cs',
+              'Assets/AarisWorld/Scripts/AarisBattleActions.cs',
+              'Assets/AarisWorld/Scripts/AarisCharacterVisual.cs',
+              'Assets/AarisWorld/Scripts/AarisOfflineGlooWall.cs',
+              'Assets/AarisWorld/Scripts/AarisOfflineTacticalHUD.cs',
+              'Assets/Resources/AarisCharacters/Primary/Animations/clip-sources.json',
+              'Assets/Resources/AarisCharacters/Primary/asset-source.json',
+              'Assets/Resources/AarisCharacters/Primary/Animations/kaykit-clip-sources.json',
+              'Assets/Resources/AarisCharacters/Primary/LICENSE-KAYKIT-ANIMATIONS.txt'}
+            anim='Assets/Resources/AarisCharacters/Primary/Animations/'
+            for n in ['walk','run','sprint','crouch','crouch_walk','prone','crawl','punch']:
+              required.update([anim+n+'.fbx',anim+n+'.fbx.meta'])
+            if not required.issubset(names) or len(set(names))!=len(names) or not 25<=len(names)<=27:
+              raise RuntimeError('Missing required source/clip/meta assets')
+            optional={
+              anim+'kaykit-clip-sources.json.meta',
+              'Assets/Resources/AarisCharacters/Primary/LICENSE-KAYKIT-ANIMATIONS.txt.meta'}
+            if set(names)-required-optional:raise RuntimeError('Unapproved changes in capture')
+            if set(members)!={'manifest.json','source-diff.patch',*names}:
+              raise RuntimeError('Unapproved archive entries')
+            if data.get('codespace')!='aaris-ai-ubuntu-minimal-xr4p7jj6p4qjc6q5x':
+              raise RuntimeError('Wrong Codespace')
+            source=data['head']
+            if not re.fullmatch(r'[0-9a-f]{40}',source):raise RuntimeError('Unverified source SHA')
+            def git(*a):
+              return subprocess.run(['git',*a],cwd=root,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+            if git('cat-file','-e',source+'^{commit}').returncode:
+              raise RuntimeError('Source history not present')
+            original={}
+            for record in records:
+              p=record['path']
+              if not re.fullmatch(r'Assets/[A-Za-z0-9_./-]+',p):raise RuntimeError('Bad asset path')
+              if not p.startswith(('Assets/AarisWorld/Editor/AarisCharacterImport.cs',
+                                  'Assets/AarisWorld/Scripts/Aaris',
+                                  'Assets/Resources/AarisCharacters/Primary/')):
+                raise RuntimeError('Bad asset scope')
+              content=tf.extractfile(p).read()
+              if len(content)!=record['bytes'] or hashlib.sha256(content).hexdigest()!=record['sha256']:
+                raise RuntimeError('Hash mismatch: '+p)
+              tracked=bool(record['tracked'])
+              baseline=git('rev-parse','--verify',source+':'+p)
+              current=git('rev-parse','--verify','HEAD:'+p)
+              if tracked:
+                if baseline.returncode or current.returncode or baseline.stdout!=current.stdout:
+                  raise RuntimeError('Upstream conflict: '+p)
+              elif current.returncode==0:
+                raise RuntimeError('New path already exists in main: '+p)
+              if p.endswith('.fbx') and not content.startswith(b'Kaydara FBX Binary'):
+                raise RuntimeError('Invalid FBX header: '+p)
+              if p.endswith('.meta'):
+                m=re.search(rb'(?m)^guid: ([0-9a-f]{32})$',content)
+                if not m:raise RuntimeError('Invalid Unity asset GUID: '+p)
+                original[p]=m.group(1).decode()
+                if tracked:
+                  old=git('show','HEAD:'+p).stdout
+                  old_guid=re.search(rb'(?m)^guid: ([0-9a-f]{32})$',old)
+                  if old_guid and old_guid.group(1)!=m.group(1):
+                    raise RuntimeError('Existing Unity asset GUID changed: '+p)
+              destination=root/p
+              destination.parent.mkdir(parents=True,exist_ok=True)
+              destination.write_bytes(content)
+            if len(set(original.values()))!=len(original):raise RuntimeError('Duplicate Unity GUID')
+            clip_manifest=json.loads((root/anim/'kaykit-clip-sources.json').read_text())
+            if clip_manifest.get('license')!='CC0-1.0':raise RuntimeError('Missing CC0 provenance')
+            if 'CC0' not in (root/'Assets/Resources/AarisCharacters/Primary/LICENSE-KAYKIT-ANIMATIONS.txt').read_text():
+              raise RuntimeError('License notice missing')
+            for clip in ['walk','run','sprint','crouch','crouch_walk','prone','crawl','punch']:
+              if hashlib.sha256((root/anim/(clip+'.fbx')).read_bytes()).hexdigest()!=clip_manifest['clips'][clip]['sha256']:
+                raise RuntimeError('KayKit clip provenance mismatch: '+clip)
+            # Commit new text metadata using deterministic GUIDs if Unity did not create it yet.
+            for p in sorted(optional-set(names)):
+              if git('rev-parse','--verify','HEAD:'+p).returncode==0:
+                raise RuntimeError('Optional .meta already exists upstream: '+p)
+              guid=hashlib.sha256(('aaris-meta-guid-v1:'+p).encode()).hexdigest()[:32]
+              (root/p).write_text('fileFormatVersion: 2\n'+'guid: '+guid+'\n'+'TextScriptImporter:\n  externalObjects: {}\n  userData:\n  assetBundleName:\n  assetBundleVariant:\n')
+              names.append(p)
+            pathlib.Path(pathfile).write_text('\n'.join(names)+'\n')
+            pathlib.Path(oidfile).write_text('\n'.join(
+              sorted({x['sha256'] for x in records if x['path'].endswith('.fbx')}))+'\n')
+            print('EXACT_INPLACE_ASSETS_VERIFIED',len(records))
+            print('KAYKIT_8_CLIP_PROVENANCE_AND_LICENSE_PASS')
+            print('ORIGINAL_MAP_AND_OTHER_DIRTY_FILES_NOT_COPIED')
+          PY
+          git config user.name 'Aaris Gameplay Recovery'
+          git config user.email 'codespace-recovery@users.noreply.github.com'
+          git lfs install --local
+          git checkout -b "$BRANCH"
+          mapfile -t FILES < "$AUDIT/selected-paths.txt"
+          git add -- "${FILES[@]}"
+          git diff --cached --check
+          test "$(git diff --cached --name-only | wc -l)" -ge 25
+          git commit -m 'feat: preserve KayKit humanoid motions and Gloo Wall fixes from existing Codespace'
+          # Every FBX is LFS-tracked; publish only eight SHA-verified source objects,
+          # never traverse the enormous historical terrain/mesh LFS inventory.
+          while IFS= read -r oid; do
+            [[ "$oid" =~ ^[0-9a-f]{64}$ ]] || exit 73
+            git lfs push --object-id origin "$oid" >/dev/null
+          done < "$AUDIT/lfs-oids.txt"
+          git push origin "HEAD:refs/heads/$BRANCH"
+          echo 'AARIS_ANIMATION_REVIEW_BRANCH_PUBLISHED'
+          echo "branch=$BRANCH"
+          git rev-parse HEAD
