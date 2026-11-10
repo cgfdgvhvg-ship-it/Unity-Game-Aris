@@ -316,9 +316,13 @@ namespace Aaris.MapReview
                 desiredVelocity, response * dt);
             Vector3 candidate = transform.position + horizontalVelocity * dt;
             // Original 2km map bounds and shoreline/bridge checks survive.
-            if (Mathf.Abs(candidate.x) > 975f || Mathf.Abs(candidate.z) > 975f ||
-                !SafeFooting(candidate) ||
-                (battle != null && !battle.CanAdvanceProne(candidate, horizontalVelocity)))
+            // No horizontal displacement: let CharacterController handle vertical
+            // grounding without repeating terrain samples and shoreline/prone
+            // obstacle raycasts. Full checks still run whenever the player moves.
+            if (horizontalVelocity.sqrMagnitude > 0.000001f &&
+                (Mathf.Abs(candidate.x) > 975f || Mathf.Abs(candidate.z) > 975f ||
+                 !SafeFooting(candidate) ||
+                 (battle != null && !battle.CanAdvanceProne(candidate, horizontalVelocity))))
                 horizontalVelocity = Vector3.zero;
 
             // Camera-relative strafe during ADS and firing. Without this,
