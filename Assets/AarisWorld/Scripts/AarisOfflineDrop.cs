@@ -145,7 +145,9 @@ namespace Aaris.MapReview
                         for (int b = 0; b <= 4; b++)
                         {
                             float x = p.x + s.x * (a / 4f), z = p.z + s.z * (b / 4f);
-                            tallest = Mathf.Max(tallest, terrain.SampleHeight(new Vector3(x, 0f, z)) + p.y);
+                            // Unity Terrain.SampleHeight returns the sampled world-space Y.
+                            // Adding the Terrain tile's Y again corrupts flight clearance.
+                            tallest = Mathf.Max(tallest, terrain.SampleHeight(new Vector3(x, 0f, z)));
                         }
                 }
             }
@@ -336,7 +338,7 @@ namespace Aaris.MapReview
                     Vector3 p = t.transform.position, sz = t.terrainData.size;
                     if (position.x >= p.x && position.x <= p.x + sz.x &&
                         position.z >= p.z && position.z <= p.z + sz.z)
-                        support = Mathf.Max(support, p.y + t.SampleHeight(position));
+                        support = Mathf.Max(support, t.SampleHeight(position));
                 }
 
             int n = Physics.RaycastNonAlloc(
