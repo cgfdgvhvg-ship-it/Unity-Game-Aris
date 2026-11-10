@@ -20,6 +20,8 @@ namespace Aaris.MapReview
         private RectTransform safeRoot;
         private Vector2 previousScreen;
         private Rect previousSafe;
+        private int shownMagazine = -1, shownReserve = -1;
+        private bool shownReloading;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Boot()
@@ -74,7 +76,7 @@ namespace Aaris.MapReview
             rect.anchorMin = rect.anchorMax = Vector2.one;
             rect.pivot = new Vector2(.5f, .5f);
             rect.anchoredPosition = offset;
-            rect.sizeDelta = new Vector2(78f, 53f);
+            rect.sizeDelta = new Vector2(66f, 66f);
             var image = go.GetComponent<Image>();
             image.sprite = AarisHudGlyphs.Ring;
             image.color = new Color(.85f, .93f, 1f, .93f);
@@ -90,7 +92,7 @@ namespace Aaris.MapReview
             var text = txt.GetComponent<Text>();
             text.text = label;
             text.color = Color.white;
-            text.fontSize = 15;
+            text.fontSize = 13;
             text.alignment = TextAnchor.MiddleCenter;
             text.raycastTarget = false;
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
@@ -125,11 +127,14 @@ namespace Aaris.MapReview
             }
             if (!armed) return;
             captions[0].text = inventory.Aiming ? "ADS ON" : "ADS";
-            captions[1].text = "PICK";
-            captions[2].text = "DROP";
             var gun = inventory.Current;
-            captions[3].text = gun.Reloading ? "LOADING" :
-                gun.Magazine + "/" + gun.Reserve;
+            if (shownMagazine != gun.Magazine || shownReserve != gun.Reserve || shownReloading != gun.Reloading)
+            {
+                shownMagazine = gun.Magazine;
+                shownReserve = gun.Reserve;
+                shownReloading = gun.Reloading;
+                captions[3].text = shownReloading ? "LOADING" : shownMagazine + "/" + shownReserve;
+            }
         }
 
         public static bool CapturesScreenPosition(Vector2 screenPosition)

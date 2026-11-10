@@ -141,17 +141,19 @@ namespace Aaris.MapReview
         {
             var root = new GameObject("Aaris_ElongatedCanopy");
             root.transform.SetParent(player, false);
-            root.transform.localPosition = Vector3.zero;
+            const float harnessHeight = 1.55f;
+            root.transform.localPosition = Vector3.up * harnessHeight;
+            var rig = new GameObject("Canopy and suspension").transform;
+            rig.SetParent(root.transform, false);
+            rig.localPosition = Vector3.down * harnessHeight;
 
             var imported = Resources.Load<GameObject>("AarisDrop/ElongatedParachute");
             if (imported != null)
             {
-                var model = UnityEngine.Object.Instantiate(imported, root.transform, false);
+                var model = UnityEngine.Object.Instantiate(imported, rig, false);
                 model.name = "LocalCanopyArt";
-                // The bundled OBJ vertices are already in player-local coordinates
-                // (canopy rim about 4.55m above the player). Offsetting it another
-                // 4.25m would detach the canopy visually from the suspension ropes.
-                model.transform.localPosition = Vector3.zero;
+                // The OBJ is centered on the wing. Lift it to the same height as the procedural rig.
+                model.transform.localPosition = Vector3.up * 4.25f;
                 model.transform.localScale = Vector3.one;
                 Material navy = Paint(ref canopyBlue, new Color(0.05f, 0.23f, 0.39f));
                 Material ivory = Paint(ref canopyWhite, new Color(0.91f, 0.91f, 0.83f));
@@ -180,7 +182,7 @@ namespace Aaris.MapReview
                 for (int panel = 0; panel < 7; panel++)
                 {
                     var segment = new GameObject("CurvedCanopyPanel_" + panel);
-                    segment.transform.SetParent(root.transform, false);
+                    segment.transform.SetParent(rig, false);
                     var filter = segment.AddComponent<MeshFilter>();
                     filter.sharedMesh = PanelMesh(panel, 7);
                     var renderer = segment.AddComponent<MeshRenderer>();
@@ -194,9 +196,9 @@ namespace Aaris.MapReview
                 float s = Mathf.Lerp(-0.91f, 0.91f, i / 8f);
                 Vector3 edge = CanopyPoint(s, 0.13f);
                 Vector3 harness = new Vector3(s < 0f ? -0.23f : 0.23f, 1.55f, 0.12f);
-                RigidLine(root.transform, "LeftSuspension_" + i, edge, harness, 0.011f, cords);
+                RigidLine(rig, "LeftSuspension_" + i, edge, harness, 0.011f, cords);
                 if (i % 2 == 0)
-                    RigidLine(root.transform, "RearSuspension_" + i,
+                    RigidLine(rig, "RearSuspension_" + i,
                         CanopyPoint(s, 0.88f), harness + Vector3.back * 0.2f, 0.009f, cords);
             }
             return root;

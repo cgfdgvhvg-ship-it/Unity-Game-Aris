@@ -38,7 +38,8 @@ namespace Aaris.MapReview
 
         internal void SetSelected(bool selected)
         {
-            if (background != null) background.color = selected ? Selected : Normal;
+            Color tint = selected || heldPointers.Count > 0 ? Selected : Normal;
+            if (background != null && background.color != tint) background.color = tint;
         }
 
         public void OnPointerDown(PointerEventData eventData)

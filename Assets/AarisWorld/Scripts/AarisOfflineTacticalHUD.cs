@@ -23,6 +23,9 @@ namespace Aaris.MapReview
         private RectTransform safe;
         private Text wallLabel, grenadeLabel;
         private float nextThrow;
+        private int shownWalls = -1, shownGrenades = -1;
+        private Rect previousSafeArea;
+        private Vector2Int previousScreen;
         private bool initialized;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -67,8 +70,16 @@ namespace Aaris.MapReview
                 return;
             }
             if (Input.GetKeyDown(KeyCode.Q)) ThrowFrag();
-            if (wallLabel != null) wallLabel.text = "WALL\nx" + gloo.Count;
-            if (grenadeLabel != null) grenadeLabel.text = "FRAG\nx" + fragGrenades;
+            if (shownWalls != gloo.Count)
+            {
+                shownWalls = gloo.Count;
+                wallLabel.text = "WALL\n×" + shownWalls;
+            }
+            if (shownGrenades != fragGrenades)
+            {
+                shownGrenades = fragGrenades;
+                grenadeLabel.text = "FRAG\n×" + shownGrenades;
+            }
         }
 
         public bool TryGiveGrenades(int amount)
@@ -116,14 +127,16 @@ namespace Aaris.MapReview
             RefreshSafeArea();
 
             wallLabel = CreateAction("Gloo Wall", new Vector2(1f, 0.64f),
-                new Vector2(-395f, 0f), new Color(0.18f, 0.59f, 0.83f, 0.86f),
+                new Vector2(-343f, 0f), new Color(0.64f, 0.86f, 1f, 1f),
                 out GameObject wallButtonObject);
             wallTouch = wallButtonObject.AddComponent<AarisGlooTouchButton>();
             wallTouch.Bind(gloo);
             grenadeLabel = CreateAction("Frag Grenade", new Vector2(1f, 0.27f),
-                new Vector2(-395f, 0f), new Color(0.36f, 0.42f, 0.32f, 0.90f),
+                new Vector2(-343f, 0f), new Color(0.94f, 0.86f, 0.66f, 1f),
                 out GameObject grenadeButton);
-            grenadeButton.AddComponent<Button>().onClick.AddListener(ThrowFrag);
+            var button = grenadeButton.AddComponent<Button>();
+            button.targetGraphic = grenadeButton.GetComponent<Image>();
+            button.onClick.AddListener(ThrowFrag);
         }
 
         private Text CreateAction(string name, Vector2 anchor, Vector2 offset, Color color,
@@ -134,8 +147,10 @@ namespace Aaris.MapReview
             var rect = actionObject.GetComponent<RectTransform>();
             rect.anchorMin = rect.anchorMax = anchor;
             rect.anchoredPosition = offset;
-            rect.sizeDelta = new Vector2(99f, 79f);
-            actionObject.GetComponent<Image>().color = color;
+            rect.sizeDelta = new Vector2(78f, 78f);
+            var image = actionObject.GetComponent<Image>();
+            image.sprite = AarisHudGlyphs.Ring;
+            image.color = color;
             var textObject = new GameObject("Count", typeof(RectTransform), typeof(Text));
             textObject.transform.SetParent(actionObject.transform, false);
             var textRect = textObject.GetComponent<RectTransform>();
@@ -144,7 +159,7 @@ namespace Aaris.MapReview
             textRect.offsetMin = textRect.offsetMax = Vector2.zero;
             var label = textObject.GetComponent<Text>();
             label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            label.fontSize = 18;
+            label.fontSize = 16;
             label.alignment = TextAnchor.MiddleCenter;
             label.color = Color.white;
             label.raycastTarget = false;
@@ -155,6 +170,10 @@ namespace Aaris.MapReview
         {
             if (safe == null || Screen.width <= 0 || Screen.height <= 0) return;
             Rect area = Screen.safeArea;
+            var screen = new Vector2Int(Screen.width, Screen.height);
+            if (previousScreen == screen && previousSafeArea == area) return;
+            previousScreen = screen;
+            previousSafeArea = area;
             safe.anchorMin = new Vector2(area.xMin / Screen.width, area.yMin / Screen.height);
             safe.anchorMax = new Vector2(area.xMax / Screen.width, area.yMax / Screen.height);
             safe.offsetMin = safe.offsetMax = Vector2.zero;

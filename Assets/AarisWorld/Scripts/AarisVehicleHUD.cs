@@ -141,8 +141,8 @@ namespace Aaris.MapReview
             driveButton.transform.SetParent(safeRoot, false);
             var rect = driveButton.GetComponent<RectTransform>();
             rect.anchorMin = rect.anchorMax = new Vector2(1f, 1f);
-            rect.anchoredPosition = new Vector2(-96f, -100f);
-            rect.sizeDelta = new Vector2(153f, 63f);
+            rect.anchoredPosition = new Vector2(-78f, -144f);
+            rect.sizeDelta = new Vector2(84f, 84f);
             var bg = driveButton.GetComponent<Image>();
             bg.sprite = AarisHudGlyphs.Ring;
             bg.color = new Color(.55f, .81f, 1f, 1f);
@@ -164,7 +164,7 @@ namespace Aaris.MapReview
             driveCaption = labelObject.GetComponent<Text>();
             driveCaption.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             driveCaption.alignment = TextAnchor.MiddleCenter;
-            driveCaption.fontSize = 24;
+            driveCaption.fontSize = 17;
             driveCaption.color = Color.white;
             driveCaption.raycastTarget = false;
             arrowPanel.SetActive(false);
