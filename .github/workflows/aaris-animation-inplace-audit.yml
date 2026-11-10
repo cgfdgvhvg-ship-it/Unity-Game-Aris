@@ -41,15 +41,26 @@ jobs:
             'Assets/Resources/AarisCharacters/Primary/asset-source.json']
           for stem in ('run','walk','crouch','crouch_walk','punch'):
             paths.extend([f'Assets/Resources/AarisCharacters/Primary/Animations/{stem}.fbx',f'Assets/Resources/AarisCharacters/Primary/Animations/{stem}.fbx.meta'])
+          # Additional clips and licensing files may be UNTRACKED in the unfinished Codespace.
+          optional=[]
+          for stem in ('sprint','prone','crawl'):
+            optional.extend([f'Assets/Resources/AarisCharacters/Primary/Animations/{stem}.fbx',
+                             f'Assets/Resources/AarisCharacters/Primary/Animations/{stem}.fbx.meta'])
+          optional.extend([
+            'Assets/Resources/AarisCharacters/Primary/Animations/kaykit-clip-sources.json',
+            'Assets/Resources/AarisCharacters/Primary/LICENSE-KAYKIT-ANIMATIONS.txt'])
+          paths.extend(p for p in optional if (root/p).is_file())
           def git(*args):return subprocess.check_output(['git',*args],stderr=subprocess.DEVNULL).decode().strip()
           summary={'codespace':'aaris-ai-ubuntu-minimal-xr4p7jj6p4qjc6q5x','head':git('rev-parse','HEAD'),'assets':[]}
           for p in paths:
             f=root/p
-            if not f.is_file() or f.is_symlink() or not git('ls-files','--',p):raise RuntimeError('Tracked asset missing '+p)
+            if not f.is_file() or f.is_symlink():raise RuntimeError('Asset missing or symlink '+p)
+            tracked=bool(git('ls-files','--',p))
+            if not tracked and p not in optional:raise RuntimeError('Unexpected untracked asset '+p)
             data=f.read_bytes()
             if len(data)>25*1024*1024:raise RuntimeError('Asset too large '+p)
             if p.endswith('.json'):json.loads(data)
-            summary['assets'].append({'path':p,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'different_from_head':bool(git('diff','--name-only','HEAD','--',p))})
+            summary['assets'].append({'path':p,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'tracked':tracked,'different_from_head':not tracked or bool(git('diff','--name-only','HEAD','--',p))})
           (out/'manifest.json').write_text(json.dumps(summary,indent=2)+'\n')
           safe=[p for p in paths if not p.endswith(('.fbx','.fbx.meta'))]
           (out/'source-diff.patch').write_bytes(subprocess.check_output(['git','diff','HEAD','--',*safe],stderr=subprocess.DEVNULL))
@@ -69,7 +80,7 @@ jobs:
           python3 - "$RUNNER_TEMP/animation-audit/manifest.json" <<'PY'
           import json,sys
           data=json.load(open(sys.argv[1]))
-          assert len(data['assets'])==17
+          assert 17 <= len(data['assets']) <= 25
           assert data['codespace']=='aaris-ai-ubuntu-minimal-xr4p7jj6p4qjc6q5x'
           print('INPLACE_ANIMATION_AND_GLOO_SNAPSHOT_VERIFIED')
           print('selected_assets='+str(len(data['assets'])))
