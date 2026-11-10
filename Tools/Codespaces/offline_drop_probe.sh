@@ -10,7 +10,6 @@ MODE="${1:-main}"
 case "$MODE" in
   main) FEATURE=main ;;
   hud_review) FEATURE=fix/android-ugui-shader-parachute-20261110 ;;
-  aircraft_review) FEATURE=fix/realistic-aircraft-drop-loot-20261110 ;;
   *) echo AARIS_DROP_REVIEW_MODE_NOT_ALLOWED; exit 2 ;;
 esac
 EDITOR="$HOME/.local/share/aaris-unity-editors/6000.3.26f1/Editor/Unity"
@@ -33,11 +32,6 @@ if ! git -C "$SOURCE" fetch --quiet origin "+refs/heads/$FEATURE:refs/remotes/or
   exit 14
 fi
 SHA="$(git -C "$SOURCE" rev-parse --verify "refs/remotes/origin/$FEATURE^{commit}")"
-EXPECTED_SHA="${2:-}"
-if test -n "$EXPECTED_SHA" && { [[ ! "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]] || test "$EXPECTED_SHA" != "$SHA"; }; then
-  echo AARIS_DROP_EXACT_PR_HEAD_CHANGED
-  exit 29
-fi
 [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo AARIS_DROP_BAD_SHA; exit 14; }
 PROJECT="$TEMP_ROOT/$SHA"
 if ! test -d "$PROJECT"; then
@@ -59,7 +53,7 @@ fi
 # Copy ALL real working-tree tracked edits from the existing Codespace to temp,
 # except protected player/probe scripts. Never change the source or its git index.
 # Dot files, symlinks, credentials, Library, Temp, hidden secret dirs are excluded.
-if test "$MODE" = hud_review || test "$MODE" = aircraft_review; then
+if test "$MODE" = hud_review; then
   # Exactly the published reviewed player/HUD/parachute code, never a
   # local tracked overlay from an unrelated GUI session.
   echo AARIS_DROP_REVIEW_IMMUTABLE_REF_NO_WORKSPACE_OVERLAY
