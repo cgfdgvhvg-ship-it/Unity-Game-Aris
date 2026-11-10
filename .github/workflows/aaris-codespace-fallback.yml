@@ -1,0 +1,105 @@
+name: Aaris independent fallback Codespace setup
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+  issues: write
+jobs:
+  fallback:
+    if: >-
+      github.event.issue.number == 77 &&
+      github.event.comment.user.login == 'sundamunda289-art' &&
+      github.event.comment.body == 'CS ALT SETUP'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    concurrency:
+      group: aaris-independent-fallback
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Create independent Ubuntu SSH and install Unity before LFS
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p fallback-results
+          OUT=fallback-results/status.txt
+          : > "$OUT"
+          say() { printf '%s\n' "$1" | tee -a "$OUT"; }
+          LABEL=aaris-ai-ubuntu-fallback-2
+          if [[ -z "$GH_TOKEN" ]]; then say PAT_NOT_CONFIGURED; exit 1; fi
+          LIST="$(gh codespace list -R "$GITHUB_REPOSITORY" --json name,displayName,state --limit 70 2>/dev/null)"
+          COUNT="$(jq --arg label "$LABEL" '[.[]|select(.displayName==$label)]|length' <<<"$LIST")"
+          if ((COUNT>1)); then say DUPLICATE_TARGET; exit 1; fi
+          if ((COUNT==1)); then
+            CS="$(jq -r --arg label "$LABEL" '.[]|select(.displayName==$label)|.name' <<<"$LIST")"
+            say FALLBACK_EXISTING_MACHINE
+            gh api -X POST "/user/codespaces/$CS/start" >/dev/null 2>/dev/null || true
+          else
+            CS="$(timeout 1500 gh codespace create -R "$GITHUB_REPOSITORY" -b main -m standardLinux32gb --devcontainer-path .devcontainer/minimal-ubuntu/devcontainer.json --idle-timeout 240m --display-name "$LABEL" --default-permissions 2>/dev/null | tail -1 | tr -d '[:space:]')"
+            say FALLBACK_CREATED_NEW_MACHINE
+          fi
+          if [[ ! "$CS" =~ ^[a-zA-Z0-9-]+$ ]]; then say INVALID_MACHINE_NAME; exit 1; fi
+          say "CODESPACE=$CS"
+          READY=0
+          for i in {1..25}; do
+            if timeout 50 gh codespace ssh -c "$CS" -- 'echo SSH_READY' >"$RUNNER_TEMP/ssh.log" 2>/dev/null && grep -qx SSH_READY "$RUNNER_TEMP/ssh.log"; then READY=1; break; fi
+            sleep 15
+          done
+          if ((READY==0)); then say SSH_FAILED; exit 1; fi
+          say SSH_READY
+          timeout 150 gh codespace ssh -c "$CS" -- 'bash -s -- status' < Tools/Codespaces/remote.sh >"$RUNNER_TEMP/status.log" 2>/dev/null
+          if ! grep -qx os_id=ubuntu "$RUNNER_TEMP/status.log"; then say NOT_UBUNTU; exit 1; fi
+          say UBUNTU_READY
+          timeout 1200 gh codespace ssh -c "$CS" -- 'bash -s -- bootstrap' < Tools/Codespaces/remote.sh >"$RUNNER_TEMP/bootstrap.log" 2>/dev/null
+          grep -qx UNITY_GUI_DEPS_READY "$RUNNER_TEMP/bootstrap.log" && say GUI_DEPENDENCIES_READY || say GUI_DEPENDENCIES_DEFERRED
+          if gh codespace stop -c aaris-ai-ubuntu-minimal-vp5r9xx4rqpw3wpg5 >/dev/null 2>/dev/null; then say OLD_CODESPACE_STOPPED; else say OLD_CODESPACE_STOP_UNCONFIRMED; fi
+          say UNITY_INSTALL_STARTED
+          if ! timeout 3200 gh codespace ssh -c "$CS" -- 'bash -s' < Tools/Codespaces/install_unity.sh >"$RUNNER_TEMP/unity-install.log" 2>/dev/null; then
+            say UNITY_INSTALL_FAILED
+            grep -E '^UNITY_EDITOR_INSTALL_(EXIT_CODE|CATEGORY)_' "$RUNNER_TEMP/unity-install.log" >>"$OUT" || true
+            exit 1
+          fi
+          grep -qx UNITY_PERSISTENT_EDITOR_READY "$RUNNER_TEMP/unity-install.log" || { say UNITY_BINARY_NOT_VERIFIED; exit 1; }
+          say UNITY_EDITOR_INSTALLED
+          say LFS_FETCH_AFTER_UNITY_STARTED
+          if timeout 1200 gh codespace ssh -c "$CS" -- 'bash -s -- lfs' < Tools/Codespaces/remote.sh >"$RUNNER_TEMP/lfs.log" 2>/dev/null; then
+            say LFS_PULL_COMPLETED
+          else
+            say LFS_PULL_FAILED
+            grep -E '^(LFS_|GIT_LFS_)' "$RUNNER_TEMP/lfs.log" | head -10 >>"$OUT" || true
+          fi
+          if timeout 180 gh codespace ssh -c "$CS" -- 'bash -c "cd /workspaces/Unity-Game-Aris && python3 Tools/Codespaces/verify_lfs.py"' >"$RUNNER_TEMP/verify.log" 2>/dev/null; then
+            say FULL_LFS_VERIFIED
+          else
+            say FULL_LFS_INCOMPLETE
+          fi
+          grep -E '^AARIS_LFS_' "$RUNNER_TEMP/verify.log" >>"$OUT" || true
+          grep -qx FULL_LFS_VERIFIED "$OUT"
+      - name: Publish sanitized status on owner issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          {
+            echo '**AARIS ALTERNATE CODESPACE SETUP**'
+            echo
+            echo '~~~text'
+            if [[ -f fallback-results/status.txt ]]; then head -40 fallback-results/status.txt; else echo SETUP_NO_STATUS; fi
+            echo '~~~'
+            echo "[Actions run](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)"
+          } >"$RUNNER_TEMP/reply.md"
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" -F "$RUNNER_TEMP/reply.md"
+      - name: Store sanitized status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-fallback-${{ github.run_id }}
+          path: fallback-results/status.txt
+          retention-days: 3
+          if-no-files-found: warn
