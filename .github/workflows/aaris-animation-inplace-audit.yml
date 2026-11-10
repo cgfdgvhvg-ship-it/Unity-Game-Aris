@@ -1,0 +1,85 @@
+name: Aaris In-place Humanoid and Gloo Wall Audit
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    if: >-
+      github.event.issue.number == 77 &&
+      github.event.comment.user.login == 'sundamunda289-art' &&
+      github.event.comment.body == 'ANIM AUDIT'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read-only snapshot of exact existing Codespace
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          CS='aaris-ai-ubuntu-minimal-xr4p7jj6p4qjc6q5x'
+          test -n "$GH_TOKEN" || { echo CODESPACE_PAT_MISSING; exit 3; }
+          mkdir -p "$RUNNER_TEMP/animation-audit"
+          timeout 240 gh codespace ssh -c "$CS" -- 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /workspaces/Unity-Game-Aris
+          OUT=/tmp/aaris-animation-inplace-audit
+          mkdir -p "$OUT"
+          python3 - "$OUT" <<'PY'
+          import hashlib,json,pathlib,subprocess,sys,tarfile
+          out=pathlib.Path(sys.argv[1]);root=pathlib.Path.cwd()
+          paths=[
+            'Assets/AarisWorld/Editor/AarisCharacterImport.cs',
+            'Assets/AarisWorld/Scripts/AarisBattleActions.cs',
+            'Assets/AarisWorld/Scripts/AarisCharacterVisual.cs',
+            'Assets/AarisWorld/Scripts/AarisOfflineGlooWall.cs',
+            'Assets/AarisWorld/Scripts/AarisOfflineTacticalHUD.cs',
+            'Assets/Resources/AarisCharacters/Primary/Animations/clip-sources.json',
+            'Assets/Resources/AarisCharacters/Primary/asset-source.json']
+          for stem in ('run','walk','crouch','crouch_walk','punch'):
+            paths.extend([f'Assets/Resources/AarisCharacters/Primary/Animations/{stem}.fbx',f'Assets/Resources/AarisCharacters/Primary/Animations/{stem}.fbx.meta'])
+          def git(*args):return subprocess.check_output(['git',*args],stderr=subprocess.DEVNULL).decode().strip()
+          summary={'codespace':'aaris-ai-ubuntu-minimal-xr4p7jj6p4qjc6q5x','head':git('rev-parse','HEAD'),'assets':[]}
+          for p in paths:
+            f=root/p
+            if not f.is_file() or f.is_symlink() or not git('ls-files','--',p):raise RuntimeError('Tracked asset missing '+p)
+            data=f.read_bytes()
+            if len(data)>25*1024*1024:raise RuntimeError('Asset too large '+p)
+            if p.endswith('.json'):json.loads(data)
+            summary['assets'].append({'path':p,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'different_from_head':bool(git('diff','--name-only','HEAD','--',p))})
+          (out/'manifest.json').write_text(json.dumps(summary,indent=2)+'\n')
+          safe=[p for p in paths if not p.endswith(('.fbx','.fbx.meta'))]
+          (out/'source-diff.patch').write_bytes(subprocess.check_output(['git','diff','HEAD','--',*safe],stderr=subprocess.DEVNULL))
+          with tarfile.open(out/'tracked-assets.tar.gz','w:gz') as archive:
+            archive.add(out/'manifest.json',arcname='manifest.json')
+            archive.add(out/'source-diff.patch',arcname='source-diff.patch')
+            for p in paths:archive.add(root/p,arcname=p,recursive=False)
+          print('INPLACE_READ_ONLY_SNAPSHOT_READY')
+          print('selected_assets='+str(len(paths)))
+          PY
+          REMOTE
+          timeout 360 gh codespace ssh -c "$CS" -- 'base64 /tmp/aaris-animation-inplace-audit/tracked-assets.tar.gz' > "$RUNNER_TEMP/animation-audit/data.b64"
+          base64 --decode "$RUNNER_TEMP/animation-audit/data.b64" > "$RUNNER_TEMP/animation-audit/tracked-assets.tar.gz"
+          rm -f "$RUNNER_TEMP/animation-audit/data.b64"
+          tar -tzf "$RUNNER_TEMP/animation-audit/tracked-assets.tar.gz" > "$RUNNER_TEMP/animation-audit/archive-index.txt"
+          tar -xOf "$RUNNER_TEMP/animation-audit/tracked-assets.tar.gz" manifest.json > "$RUNNER_TEMP/animation-audit/manifest.json"
+          python3 - "$RUNNER_TEMP/animation-audit/manifest.json" <<'PY'
+          import json,sys
+          data=json.load(open(sys.argv[1]))
+          assert len(data['assets'])==17
+          assert data['codespace']=='aaris-ai-ubuntu-minimal-xr4p7jj6p4qjc6q5x'
+          print('INPLACE_ANIMATION_AND_GLOO_SNAPSHOT_VERIFIED')
+          print('selected_assets='+str(len(data['assets'])))
+          print('modified_assets='+str(sum(x['different_from_head'] for x in data['assets'])))
+          PY
+      - name: Upload audited source and animation bytes for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-inplace-animation-audit-${{ github.run_id }}
+          path: ${{ runner.temp }}/animation-audit/
+          retention-days: 2
+          if-no-files-found: warn
