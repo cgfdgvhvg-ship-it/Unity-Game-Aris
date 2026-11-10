@@ -6,7 +6,12 @@ umask 077
 SOURCE=/workspaces/Unity-Game-Aris
 RUN=/tmp/aaris-codespaces/offline-drop-probe
 TEMP_ROOT=/tmp/aaris-offline-drop-worktrees
-FEATURE=main
+MODE="${1:-main}"
+case "$MODE" in
+  main) FEATURE=main ;;
+  hud_review) FEATURE=fix/android-ugui-shader-parachute-20261110 ;;
+  *) echo AARIS_DROP_REVIEW_MODE_NOT_ALLOWED; exit 2 ;;
+esac
 EDITOR="$HOME/.local/share/aaris-unity-editors/6000.3.26f1/Editor/Unity"
 for candidate in "/workspaces/.aaris-unity-editors/6000.3.26f1/Editor/Unity" "/tmp/aaris-unity-runtime/editors/6000.3.26f1/Editor/Unity"; do
   if ! test -x "$EDITOR" && test -x "$candidate"; then EDITOR="$candidate"; fi
@@ -38,12 +43,21 @@ fi
 test "$(git -C "$PROJECT" rev-parse HEAD)" = "$SHA" || {
   echo AARIS_DROP_WORKTREE_MISMATCH; exit 16;
 }
-git -C "$PROJECT" lfs pull >/dev/null 2>&1 || {
-  echo AARIS_DROP_LFS_NOT_HYDRATED; exit 17;
-}
+if python3 "$PROJECT/Tools/Codespaces/restore_preserved_source_lfs.py" "$PROJECT" >/dev/null 2>&1; then
+  echo AARIS_DROP_LOCAL_FIRST_LFS_VERIFIED
+elif git -C "$PROJECT" lfs pull >/dev/null 2>&1; then
+  echo AARIS_DROP_REMOTE_LFS_VERIFIED
+else
+  echo AARIS_DROP_LFS_NOT_HYDRATED; exit 17
+fi
 # Copy ALL real working-tree tracked edits from the existing Codespace to temp,
 # except protected player/probe scripts. Never change the source or its git index.
 # Dot files, symlinks, credentials, Library, Temp, hidden secret dirs are excluded.
+if test "$MODE" = hud_review; then
+  # Exactly the published reviewed player/HUD/parachute code, never a
+  # local tracked overlay from an unrelated GUI session.
+  echo AARIS_DROP_REVIEW_IMMUTABLE_REF_NO_WORKSPACE_OVERLAY
+else
 python3 - "$SOURCE" "$PROJECT" "$SHA" <<'PY'
 import os, subprocess, sys
 from pathlib import Path
@@ -89,6 +103,7 @@ print("AARIS_DROP_LOCAL_MODIFICATIONS_COPIED")
 print("overlay_files="+str(count))
 print("overlay_bytes="+str(total))
 PY
+fi
 SCENE="$PROJECT/Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity"
 test -s "$SCENE" || { echo AARIS_DROP_SCENE_MISSING; exit 21; }
 if head -c 110 "$SCENE" | grep -q 'version https://git-lfs.github.com/spec/v1'; then
