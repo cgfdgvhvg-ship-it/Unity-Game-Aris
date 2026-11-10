@@ -510,6 +510,9 @@ if not found:
 PY
     ;;
   editor)
+    case "${2:-}" in ''|glcore) ;; *) echo 'EDITOR_LAUNCH_MODE_NOT_ALLOWED'; exit 12;; esac
+    EDITOR_ARGS=()
+    if test "${2:-}" = glcore; then EDITOR_ARGS=(-force-glcore); fi
     if ! test -x "$EDITOR"; then
       echo 'EDITOR_ABSENT_INSTALLING_ON_TMP_DISK'
       echo 'EDITOR_NOT_INSTALLED_USE_CS_INSTALL_FIRST'
@@ -542,8 +545,8 @@ PY
       # arguments, OAuth values, terminal output or proprietary logs leave
       # this Codespace. The wrapper is detached from the SSH session.
       nohup setsid env DISPLAY=:99 TMPDIR="$RUN/UnityTemp" LIBGL_ALWAYS_SOFTWARE=1 \
-        bash -c 'rc=0; "$1" -projectPath "$2" -logFile "$3" || rc=$?; printf "%s\\n" "$rc" > "$4"; exit "$rc"' \
-        bash "$EDITOR" "$PROJECT" "$RUN/Editor.log" "$RUN/editor-exit-code.txt" \
+        bash -c 'rc=0; "$1" -projectPath "$2" "${@:5}" -logFile "$3" || rc=$?; printf "%s\\n" "$rc" > "$4"; exit "$rc"' \
+        bash "$EDITOR" "$PROJECT" "$RUN/Editor.log" "$RUN/editor-exit-code.txt" "${EDITOR_ARGS[@]}" \
         </dev/null >"$RUN/editor-launch-stdout.log" 2>"$RUN/editor-launch-stderr.log" &
       sleep 8
     fi
