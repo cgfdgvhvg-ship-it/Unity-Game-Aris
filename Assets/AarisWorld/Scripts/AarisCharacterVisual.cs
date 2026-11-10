@@ -463,9 +463,14 @@ namespace Aaris.MapReview
                 sprintBlend = Mathf.Lerp(sprintBlend, sprintTarget, alpha);
                 airborneBlend = Mathf.Lerp(airborneBlend, airTarget, alpha);
 
-                float pose = Mathf.Clamp01(crouchBlend + proneBlend);
-                float crouchWeight = authoredProne ? crouchBlend : pose;
-                float proneWeight = authoredProne ? proneBlend : 0f;
+                // Rapid crouch/prone changes can overlap during exponential
+                // smoothing. Normalize to one stance share, including during
+                // an interrupted transition; never exceed the base mixer sum.
+                float stanceTotal = crouchBlend + proneBlend;
+                float pose = Mathf.Clamp01(stanceTotal);
+                float stanceScale = stanceTotal > 1f ? pose / stanceTotal : 1f;
+                float crouchWeight = authoredProne ? crouchBlend * stanceScale : pose;
+                float proneWeight = authoredProne ? proneBlend * stanceScale : 0f;
                 float crouchMoving = Mathf.InverseLerp(0.06f, 0.85f, horizontal);
                 float crawlMoving = Mathf.InverseLerp(0.05f, 0.55f, horizontal);
                 float grounded = (1f - airborneBlend) * (1f - pose);
