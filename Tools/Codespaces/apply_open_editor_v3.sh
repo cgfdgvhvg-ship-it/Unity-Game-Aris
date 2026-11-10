@@ -32,6 +32,14 @@ for process in Path('/proc').iterdir():
         continue
     at=args.index('-projectPath')
     if at+1<len(args): editors.append(Path(args[at+1]).resolve())
+print('AARIS_V3_EDITOR_COUNT='+str(len(editors)))
+for editor in editors[:4]:
+    label=('primary' if editor==root else
+           'tmp' if str(editor).startswith('/tmp/') else
+           'other')
+    print('AARIS_V3_OPEN_PROJECT_CLASS='+label)
+    print('AARIS_V3_OPEN_PROJECT_HAS_ASSETS='+str((editor/'Assets').is_dir()).lower())
+    print('AARIS_V3_OPEN_PROJECT_HAS_GIT='+str((editor/'.git').exists()).lower())
 if not editors or editors.count(root)!=1 or len(editors)!=1:
     print('AARIS_V3_NOT_ONE_EXISTING_OPEN_PROJECT_EDITOR')
     sys.exit(21)
