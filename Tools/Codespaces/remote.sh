@@ -432,7 +432,7 @@ PY
   shot)
     pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null || { echo 'SHOT_BLOCKED_EDITOR_NOT_RUNNING'; exit 14; }
     DISPLAY=:99 xdpyinfo >/dev/null 2>&1 || { echo 'SHOT_BLOCKED_NO_DISPLAY'; exit 15; }
-    scrot -o "$RUN/screen.png" || { echo 'SHOT_FAILED'; exit 16; }
+    DISPLAY=:99 scrot -o "$RUN/screen.png" || { echo 'SHOT_FAILED'; exit 16; }
     test -s "$RUN/screen.png" || exit 16
     VARIANCE="$(convert "$RUN/screen.png" -colorspace Gray -format '%[fx:standard_deviation]' info: 2>/dev/null || echo 0)"
     python3 - "$VARIANCE" <<'PY'
