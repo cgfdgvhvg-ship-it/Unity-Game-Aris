@@ -31,3 +31,103 @@ jobs:
         run: |
           echo 'Static OBJ, GUID and API presence checks completed.'
           echo 'A licensed Unity compile, real native Play Mode and device FPS tests are still required.'
+
+  # Same-repository, exact named review branch only. No forks, no generalized
+  # remote shell, no extra Codespace, and no modifications to /workspaces files.
+  unity-v3-review:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'feat/drop-aircraft-realism-fps-20261110'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    concurrency:
+      group: aaris-existing-codespace-v3-unity-review
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+      EXACT_CODESPACE: aaris-ai-ubuntu-fallback-2-vp5r9xx4rwv6c6pq7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          lfs: false
+      - name: Verify owner Codespace exists and is already running
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -z "$GH_TOKEN"; then
+            echo 'UNITY_REVIEW_CODESPACE_PAT_UNAVAILABLE'
+            exit 2
+          fi
+          gh codespace list -R "$GITHUB_REPOSITORY" --json name,state --limit 30 > "$RUNNER_TEMP/codespaces-private.json"
+          python3 - <<'PYCHECK'
+          import json,os,sys
+          from pathlib import Path
+          items=json.loads((Path(os.environ['RUNNER_TEMP'])/'codespaces-private.json').read_text())
+          matches=[c for c in items if c.get('name')==os.environ['EXACT_CODESPACE']]
+          if len(matches)!=1:
+              print('UNITY_REVIEW_EXACT_CODESPACE_UNAVAILABLE')
+              sys.exit(3)
+          if matches[0].get('state')!='Available':
+              print('UNITY_REVIEW_CODESPACE_NOT_RUNNING_NO_AUTO_START')
+              sys.exit(4)
+          print('UNITY_REVIEW_EXISTING_CODESPACE_SELECTED')
+          PYCHECK
+      - name: Run actual Unity Play Mode against V3 branch in isolated temporary checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p review-evidence
+          if ! timeout 1650 gh codespace ssh -c "$EXACT_CODESPACE" -- 'bash -s -- v3_review' \
+            < Tools/Codespaces/offline_drop_probe.sh \
+            > review-evidence/remote-status.txt 2> "$RUNNER_TEMP/remote-error-private.log"; then
+            echo 'UNITY_REVIEW_REMOTE_PROBE_FAILED'
+            grep -E '^(AARIS_|play_frames=|runtime_errors=)' review-evidence/remote-status.txt || true
+            exit 5
+          fi
+          grep -E '^(AARIS_|play_frames=|runtime_errors=)' review-evidence/remote-status.txt || true
+          if ! grep -qxF 'AARIS_DROP_PLAYMODE_VERIFIED' review-evidence/remote-status.txt; then
+            echo 'UNITY_REVIEW_REAL_PLAYMODE_NOT_VERIFIED'
+            exit 6
+          fi
+          echo 'UNITY_REVIEW_REAL_PLAYMODE_PASSED'
+      - name: Recover verified real Unity video and sanitized phase report
+        shell: bash
+        run: |
+          set -euo pipefail
+          for item in report.json drop.mp4; do
+            if ! timeout 240 gh codespace ssh -c "$EXACT_CODESPACE" -- \
+              "base64 /tmp/aaris-codespaces/offline-drop-probe/$item" \
+              > "review-evidence/$item.b64" 2> "$RUNNER_TEMP/transfer-private.log"; then
+              echo 'UNITY_REVIEW_ARTIFACT_TRANSFER_FAILED'
+              exit 7
+            fi
+            base64 -d "review-evidence/$item.b64" > "review-evidence/$item"
+            rm -f "review-evidence/$item.b64"
+          done
+          python3 - <<'PYVERIFY'
+          from pathlib import Path
+          import json
+          r=json.loads(Path('review-evidence/report.json').read_text())
+          v=Path('review-evidence/drop.mp4')
+          assert r.get('status')=='passed' and r.get('mode')=='offline_drop_video'
+          assert r.get('errors')==0 and r.get('existingMotorRestored')
+          assert all(r.get('observed'+phase) for phase in ('InPlane','Freefall','Opening','Gliding','Landed'))
+          assert r.get('canopyActuallyRendered') and v.stat().st_size>=32768
+          assert b'ftyp' in v.read_bytes()[:64]
+          print('UNITY_REVIEW_REAL_VIDEO_AND_PHASES_VERIFIED')
+          PYVERIFY
+      - name: Upload real Unity video (never Unity credentials or raw logs)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-v3-offline-drop-review
+          path: |
+            review-evidence/report.json
+            review-evidence/drop.mp4
+            review-evidence/remote-status.txt
+          if-no-files-found: warn
+          retention-days: 2
