@@ -83,7 +83,12 @@ echo "TMP_REFRESH_MAIN_COMMIT=$SHA"
 if ! timeout 1800 python3 "$PROJECT/Tools/Codespaces/restore_preserved_source_lfs.py" \
   "$PROJECT" 2>/dev/null; then
   echo AARIS_TMP_LFS_LOCAL_RECOVERY_INCOMPLETE
-  if ! timeout 1500 git -C "$PROJECT" lfs pull origin >/dev/null 2>&1; then
+  # A successful verified cache import may still leave Git LFS pointers
+  # because some Unity file extensions are not smudged by git lfs checkout.
+  # Copy only SHA-verified cached OIDs over the exact HEAD pointer bytes.
+  if timeout 1200 python3 "$PROJECT/Tools/Codespaces/hydrate_tmp_lfs.py" "$PROJECT"; then
+    echo AARIS_TMP_LFS_DIRECT_CACHE_RECOVERY_COMPLETE
+  elif ! timeout 1500 git -C "$PROJECT" lfs pull origin >/dev/null 2>&1; then
     echo AARIS_TMP_LFS_REMOTE_PULL_FAILED; exit 20
   fi
 fi
