@@ -368,19 +368,32 @@ assert 'mobile_license.py' in direct
 assert 'gh codespace ssh' in direct
 assert 'workers.dev' not in direct
 assert 'APPROVALS' not in direct
-# Regression: phone Unity Allow must target the SSH-ready Codespace, not an old
-# 'Available' machine with a nonfunctional sshd, regardless of list order.
-selection_line=next(line for line in direct.splitlines() if line.startswith('CS="$(printf'))
-selector=selection_line.split("jq -r '",1)[1].split("'",1)[0]
-old={"displayName":"aaris-ai-unity","name":"old-unreachable"}
-ssh={"displayName":"aaris-ai-unity-ssh","name":"new-ssh-ready"}
-minimal={"displayName":"aaris-ai-ubuntu-minimal","name":"new-minimal-ubuntu"}
-for candidates, expected in (([old,ssh],"new-ssh-ready"),
-                             ([ssh,old],"new-ssh-ready"),
-                             ([old],"old-unreachable"),
-                             ([ssh,minimal],"new-minimal-ubuntu"),
-                             ([minimal,old,ssh],"new-minimal-ubuntu")):
-    selected=subprocess.run(["jq","-r",selector],input=json.dumps(candidates),
+# Regression: an explicitly named Codespace must always beat legacy/fallback
+# names, independent of list order; missing or duplicate names fail closed.
+exact_line=next(line for line in direct.splitlines()
+                if 'jq -r --arg name "$AARIS_CODESPACE_NAME"' in line)
+exact_selector=exact_line.rsplit(chr(39),2)[1]
+old={"displayName":"aaris-ai-ubuntu-fallback-2","name":"old-fallback"}
+new={"displayName":"aaris-ai-ubuntu-minimal","name":"new-clean-ubuntu"}
+for candidates, requested, expected in (
+    ([old,new],"new-clean-ubuntu","new-clean-ubuntu"),
+    ([new,old],"new-clean-ubuntu","new-clean-ubuntu"),
+    ([old,new],"old-fallback","old-fallback"),
+    ([old],"new-clean-ubuntu",""),
+    ([new,new],"new-clean-ubuntu",""),
+):
+    selected=subprocess.run(["jq","-r","--arg","name",requested,exact_selector],
+                            input=json.dumps(candidates),
+                            capture_output=True,text=True,check=True).stdout.strip()
+    assert selected==expected, (selected,expected)
+# The convenience default is allowed only for exactly one eligible Ubuntu
+# instance; if both old and new exist the user must select by exact name.
+default_line=next(line for line in direct.splitlines()
+                  if 'jq -r ' in line and 'select(.displayName' in line)
+default_selector=default_line.rsplit(chr(39),2)[1]
+for candidates, expected in (([old],"old-fallback"),([new],"new-clean-ubuntu"),
+                             ([old,new],""),([], "")):
+    selected=subprocess.run(["jq","-r",default_selector],input=json.dumps(candidates),
                             capture_output=True,text=True,check=True).stdout.strip()
     assert selected==expected, (selected,expected)
 print('CODESPACE_CONTROLLER_MOCK_PASS')
