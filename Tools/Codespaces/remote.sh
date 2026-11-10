@@ -78,6 +78,129 @@ for path in sorted(files)[:70]:
         print('change='+path)
 PY
     ;;
+  apply_gameplay)
+    # Owner-authorized update of the EXISTING project in place. No worktree,
+    # no checkout/reset/stash and no changes to the native scene or graphics.
+    if pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then
+      echo 'AARIS_GAMEPLAY_INPLACE_EDITOR_BUSY'
+      exit 58
+    fi
+    test -d "$PROJECT/.git" || { echo 'AARIS_GAMEPLAY_REPO_MISSING'; exit 59; }
+    git fetch --quiet origin main || { echo 'AARIS_GAMEPLAY_MAIN_FETCH_FAILED'; exit 60; }
+    python3 - "$PROJECT" <<'PYINPLACE'
+import hashlib
+import json
+import os
+import pathlib
+import subprocess
+import sys
+import tempfile
+
+root = pathlib.Path(sys.argv[1]).resolve(strict=True)
+paths = [
+    "Assets/AarisWorld/Scripts/AarisOfflineDrop.cs",
+    "Assets/AarisWorld/Scripts/AarisOfflineDropVisuals.cs",
+    "Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs",
+    "Assets/AarisWorld/Scripts/AarisWeaponLootWorld.cs",
+    "Assets/AarisWorld/Scripts/AarisBreakablePanel.cs",
+    "Assets/Resources/AarisDrop/CargoPlane.obj",
+    "Assets/Resources/AarisDrop/CargoPlane.mtl",
+    "Tools/Validation/test_offline_drop_assets.py",
+    "Tools/Validation/test_loot_cell_streaming.py",
+]
+def git(*args):
+    return subprocess.check_output(["git", "-C", str(root), *args], stderr=subprocess.DEVNULL)
+
+head = git("rev-parse", "--verify", "refs/remotes/origin/main^{commit}").decode().strip()
+if len(head) != 40 or any(c not in "0123456789abcdef" for c in head):
+    raise SystemExit("AARIS_GAMEPLAY_INVALID_MAIN_COMMIT")
+before, after = {}, {}
+for name in paths:
+    target = root / name
+    if not target.is_file() or target.is_symlink() or target.resolve().parent != target.parent.resolve():
+        raise SystemExit("AARIS_GAMEPLAY_TARGET_MISSING_OR_UNSAFE")
+    old = target.read_bytes()
+    latest = git("show", "refs/remotes/origin/main:" + name)
+    if not latest or len(latest) > 2_000_000 or latest.startswith(b"version https://git-lfs.github.com/spec/v1"):
+        raise SystemExit("AARIS_GAMEPLAY_TARGET_SOURCE_INVALID")
+    before[name] = old
+    after[name] = latest
+
+# Fail closed if GitHub main does not contain the exact reviewed fixes.
+required = {
+    "Assets/AarisWorld/Scripts/AarisOfflineDropVisuals.cs": b"AarisSharedTriBladeRotor",
+    "Assets/AarisWorld/Scripts/AarisOfflineDrop.cs": b"support = Mathf.Max(support, t.SampleHeight(position));",
+    "Assets/AarisWorld/Scripts/AarisThirdPersonPlayer.cs": b"ground = Mathf.Max(ground, t.SampleHeight(position));",
+    "Assets/AarisWorld/Scripts/AarisBreakablePanel.cs": b"OpenAngle * openDirection",
+    "Assets/AarisWorld/Scripts/AarisWeaponLootWorld.cs": b"terrain.SampleHeight(new Vector3(c.x, 0f, c.z))",
+    "Assets/Resources/AarisDrop/CargoPlane.obj": b"o Aaris_CargoPlane_Transport_V2",
+}
+for name, marker in required.items():
+    if marker not in after[name]:
+        raise SystemExit("AARIS_GAMEPLAY_REVIEWED_SOURCE_NOT_YET_ON_MAIN")
+
+# Backups are held inside this SAME existing project, not a second clone.
+# Never touch the other dirty tracked files, especially native map assets.
+backup = root / ".aaris-recovery" / ("gameplay-inplace-" + head[:12])
+if backup.exists():
+    raise SystemExit("AARIS_GAMEPLAY_ALREADY_APPLIED_BACKUP_EXISTS")
+backup.mkdir(parents=True, exist_ok=False)
+manifest = []
+for name in paths:
+    dest = backup / name
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(before[name])
+    manifest.append({
+        "path": name,
+        "before_sha256": hashlib.sha256(before[name]).hexdigest(),
+        "after_sha256": hashlib.sha256(after[name]).hexdigest(),
+        "changed": before[name] != after[name]
+    })
+(backup / "manifest.json").write_text(json.dumps({"sourceMain": head, "files": manifest}, indent=2))
+
+updated = []
+try:
+    for name in paths:
+        if before[name] == after[name]:
+            continue
+        target = root / name
+        mode = target.stat().st_mode & 0o777
+        fd, temp = tempfile.mkstemp(prefix=".aaris-inplace-", dir=target.parent)
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write(after[name])
+                f.flush()
+                os.fsync(f.fileno())
+            os.chmod(temp, mode)
+            os.replace(temp, target)
+        finally:
+            if os.path.exists(temp):
+                os.unlink(temp)
+        updated.append(name)
+except Exception:
+    for name in reversed(updated):
+        target = root / name
+        target.write_bytes(before[name])
+    raise
+for name in paths:
+    if (root / name).read_bytes() != after[name]:
+        raise SystemExit("AARIS_GAMEPLAY_WRITE_VERIFY_FAILED")
+print("AARIS_GAMEPLAY_EXISTING_PROJECT_UPDATED")
+print("gameplay_files_checked=" + str(len(paths)))
+print("gameplay_files_updated=" + str(len(updated)))
+print("main_commit=" + head)
+print("map_scene_terrain_materials_preserved=yes")
+print("previous_gameplay_files_backed_up=yes")
+PYINPLACE
+    # Run license-free regressions directly in the original project.
+    python3 Tools/Validation/test_offline_drop_assets.py >/dev/null || {
+      echo 'AARIS_GAMEPLAY_INPLACE_ASSET_REGRESSION_FAILED'; exit 61;
+    }
+    python3 Tools/Validation/test_loot_cell_streaming.py >/dev/null || {
+      echo 'AARIS_GAMEPLAY_INPLACE_LOOT_REGRESSION_FAILED'; exit 62;
+    }
+    echo 'AARIS_GAMEPLAY_INPLACE_STATIC_TESTS_PASSED'
+    ;;
   sync)
     # Never discard unsaved work. The legacy repo contains exactly 11 checked-in
     # full blobs mistakenly matched by a later git-lfs clean filter. Allow these
