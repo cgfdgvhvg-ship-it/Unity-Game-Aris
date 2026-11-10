@@ -5,6 +5,7 @@ These checks are NOT a substitute for a licensed Unity compilation, physics
 test, native scene render, Android profiling or Play Mode verification.
 """
 from pathlib import Path
+import json
 import math
 import re
 import unittest
@@ -99,6 +100,38 @@ class OfflineCombatAssetChecks(unittest.TestCase):
         center = [abs(z) for x, y, z in verts if abs(x) < 0.25]
         self.assertTrue(near_tip and center)
         self.assertLess(max(near_tip), max(center) * 0.65)
+
+    def test_saved_loot_and_car_resources_have_full_map_coverage(self):
+        # Asset-backed coverage check only: physics-spawn and device play still
+        # need the native Unity player to validate real clearance.
+        loot = json.loads((ASSETS / "AarisWeapons" / "loot_candidates.json").read_text("utf-8"))
+        points = json.loads((ASSETS / "AarisVehicles" / "vehicle_candidates.json").read_text("utf-8"))
+        cars = json.loads((ASSETS / "AarisVehicles" / "vehicle_catalog.json").read_text("utf-8"))
+        self.assertEqual(loot["sizeMetres"], 2000)
+        self.assertEqual(points["sizeMetres"], 2000)
+        self.assertEqual(points["hubCount"], 45)
+        self.assertGreaterEqual(len(loot["candidates"]), 400)
+        self.assertGreaterEqual(len(points["candidates"]), 70)
+        self.assertGreaterEqual(len(cars["vehicles"]), 3)
+        self.assertTrue(any(p["kind"] == "indoor" for p in loot["candidates"]))
+        self.assertTrue(any(p["kind"] != "indoor" for p in loot["candidates"]))
+        for vehicle in cars["vehicles"]:
+            for resource in (vehicle["modelResource"], vehicle["wheelResource"]):
+                model = ASSETS / (resource + ".fbx")
+                self.assertTrue(model.is_file(), str(model))
+                self.assertTrue(Path(str(model) + ".meta").is_file(), str(model))
+        source = (SCRIPTS / "AarisVehicleWorld.cs").read_text("utf-8")
+        self.assertIn("MaximumNearbyVehicles = 10", source)
+        self.assertIn("Physics.OverlapBoxNonAlloc", source)
+        self.assertIn("TryResolve(record, out Vector3 pos)", source)
+        door = (SCRIPTS / "AarisBreakablePanel.cs").read_text("utf-8")
+        self.assertIn("ClosingBlocked()", door)
+        self.assertIn("Physics.OverlapBoxNonAlloc", door)
+        self.assertIn("NearRadius = 3.2f", door)
+        self.assertIn("solid.enabled = false", door)
+        modular = (SCRIPTS / "AarisModularHouse.cs").read_text("utf-8")
+        self.assertIn("AutomaticBreakableDoorHinge", modular)
+        self.assertIn("RealDoorLeaf", modular)
 
     def test_script_api_and_damage_compatibility(self):
         contents = {
