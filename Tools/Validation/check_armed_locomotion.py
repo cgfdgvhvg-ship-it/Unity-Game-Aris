@@ -87,8 +87,8 @@ def audit():
         normal = 4.2
         ads = min(normal, 2.65)
         crouch = min(2.4, 2.65)
-        prone = min(1.1, 2.65)
-        assert ads == 2.65 and crouch == 2.4 and prone == 1.1
+        prone = min(1.45, 2.65)
+        assert ads == 2.65 and crouch == 2.4 and prone == 1.45
     print("PASS: independent E/T/V inputs, camera-relative ADS strafing, single-player motor, "
           "world-size-stable hand socket, masked upper-body recoil and 10–120FPS yaw damping")
     print("NOT TESTED: Unity AvatarMask import/retarget and physical Android visual pose")
