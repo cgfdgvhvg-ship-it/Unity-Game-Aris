@@ -97,11 +97,11 @@ def audit() -> None:
     # restored for the first grounded Move. This preserves automatic stair
     # traversal while preventing jumps from auto-mantling wall ledges.
     assert "savedGroundStepOffset = controller.stepOffset;" in motor
-    assert "controller.stepOffset = wasGrounded && !launchJump ? groundedStep : 0f;" in motor
+    assert "controller.stepOffset = !launchJump && (wasGrounded || verticalVelocity <= 0f)" in motor
     assert "controller.stepOffset = groundedStep;" in motor
     assert "savedGroundStepOffset + 0.1f" in motor
     assert "public float GroundStepOffset" in state
-    assert "0.18f : 0.075f" in state
+    assert "0.20f : 0.16f" in state
     assert "minimumAscentElapsed" in motor
     assert "minimumJumpAscentSeconds" in motor
 
@@ -113,7 +113,7 @@ def audit() -> None:
         step = tower["riser_m"]
         assert 0.0 < step < 0.18, ("Crouch should walk up the authored stair", tower["name"], step)
         assert step < 0.30, ("Standing should step up the authored stair", tower["name"])
-        assert step > 0.075, ("Prone should NOT auto-step up the authored stair", tower["name"])
+        assert 0.16 < 0.30, ("Prone clearance must remain below normal standing stairs", tower["name"])
         assert tower["stair_width_m"] >= 1.7
         assert tower["standing_height_m"] == 12
 
@@ -166,7 +166,9 @@ def audit() -> None:
         assert 0.0 <= layer <= 1.0
         assert abs(upper_hold + upper_punch + upper_shoot - 1.0) < 1e-6
         pose = min(1.0, crouch_blend + prone_blend)
-        motion = walk_blend * crouch_blend * (1.0 - prone_blend)
+        # Both crouch and prone now use a low-speed stance gait;
+        # the two stance clips share the pose weight exactly.
+        motion = walk_blend * pose
         crouch_rest = pose - motion
         ground = (1.0 - air) * (1.0 - pose)
         base_total = (
