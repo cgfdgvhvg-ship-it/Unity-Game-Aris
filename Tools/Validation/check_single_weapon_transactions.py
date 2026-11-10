@@ -57,7 +57,10 @@ def audit():
     assert "public AarisWeaponState State => state;" in pickup
     assert "public bool Initialize(AarisWeaponState gunState, int index)" in pickup
     assert "private readonly List<AarisDroppedWeapon> dropped" in world
-    assert "if (outgoing != null && replacement == null) return false;" in world
+    assert "if (outgoing != null && replacement == null)" in world
+    assert "pickup.ReleaseReservation();" in world
+    assert "pickup.CommitConsumed();" in world
+    assert "public bool TryReserve()" in pickup
     reserve = world.index("CreateDropped(outgoing, pickup.transform.position, 1.25f)")
     commit = world.index("inventory.TryPickup(pickup.State, out AarisWeaponState exchanged)")
     assert reserve < commit, "World must reserve old weapon on floor before swap."
