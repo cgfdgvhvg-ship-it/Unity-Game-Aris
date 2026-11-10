@@ -98,18 +98,22 @@ shot '07-gloo-wall'
 # Check nonblank screenshot output and whether actual Game frames changed.
 python3 - "$OUT/screens" <<'PY'
 from pathlib import Path
-from PIL import Image,ImageChops,ImageStat
-import sys
+import sys,struct
 p=Path(sys.argv[1])
 expected=[p/f'{i:02d}-{name}.png' for i,name in enumerate(
     ('before','play-idle','walk','sprint','crouch-walk','prone-crawl','punch','gloo-wall'))]
 for f in expected:
     if not f.is_file() or f.stat().st_size < 10000: raise SystemExit('LIVE_REVIEW_FRAME_MISSING')
-im=[Image.open(f).convert('RGB') for f in expected]
-if any(x.size!=im[0].size for x in im):raise SystemExit('LIVE_REVIEW_SCREEN_SIZE_CHANGED')
+sizes=[]
+for f in expected:
+    header=f.open('rb').read(24)
+    if len(header)!=24 or header[:8]!=bytes((137,80,78,71,13,10,26,10)):
+        raise SystemExit('LIVE_REVIEW_NOT_PNG')
+    sizes.append(struct.unpack('>II',header[16:24]))
+if len(set(sizes))!=1:raise SystemExit('LIVE_REVIEW_SCREEN_SIZE_CHANGED')
 if len({f.read_bytes()[:5000] for f in expected})<3:raise SystemExit('LIVE_REVIEW_TOO_FEW_UNIQUE_FRAMES')
 print('LIVE_REVIEW_EIGHT_FRAMES_CAPTURED')
-print('LIVE_REVIEW_SCREEN_DIMS='+str(im[0].width)+'x'+str(im[0].height))
+print('LIVE_REVIEW_SCREEN_DIMS='+str(sizes[0][0])+'x'+str(sizes[0][1]))
 PY
 AFTER="$(git status --porcelain=v1 --untracked-files=no | sha256sum | cut -d ' ' -f1)"
 if test "$BEFORE" = "$AFTER"; then echo 'LIVE_REVIEW_TRACKED_WORKTREE_UNCHANGED'; else echo 'LIVE_REVIEW_TRACKED_WORKTREE_CHANGED_REVIEW_REQUIRED'; fi
