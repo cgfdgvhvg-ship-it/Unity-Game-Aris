@@ -68,6 +68,12 @@ class OfflineCombatAssetChecks(unittest.TestCase):
                 self.assertGreater(bounds[1], min_y)
                 self.assertGreater(bounds[2], min_z)
 
+    def test_player_safe_footing_uses_same_world_space_ground_height(self):
+        player = (SCRIPTS / "AarisThirdPersonPlayer.cs").read_text("utf-8")
+        self.assertIn("ground = Mathf.Max(ground, t.SampleHeight(position));", player)
+        self.assertNotIn("origin.y + t.SampleHeight(position)", player)
+        self.assertIn("if (GroundHeight(position) >= seaLevel + 0.35f)", player)
+
     def test_world_y_not_double_added_to_drop_altitude(self):
         source = (SCRIPTS / "AarisOfflineDrop.cs").read_text(encoding="utf-8")
         self.assertIn("tallest = Mathf.Max(tallest, terrain.SampleHeight(", source)
