@@ -24,7 +24,7 @@ if report.is_file():
         print("play_status="+("passed" if d.get("status")=="passed" else "failed"))
         reason=str(d.get("reason",""))
         print("play_reason="+(reason if reason in allowed_reasons else "OTHER"))
-        for key in ("frames","terrainTiles","runtimeErrors"):
+        for key in ("frames","terrainTiles","runtimeErrors","editorLifecycleWarnings"):
             val=d.get(key)
             if type(val)==int and 0<=val<=200000:
                 print(key+"="+str(val))
