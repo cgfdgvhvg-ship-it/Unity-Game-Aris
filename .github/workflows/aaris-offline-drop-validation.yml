@@ -109,17 +109,7 @@ jobs:
             exit 15
           fi
           grep -E '^AARIS_GUI_' safe-report/restart-status.txt || true
-          grep -Eq '^AARIS_GUI_ORIGINAL_PROJECT_EDITOR_PROCESS_ALIVE$|^AARIS_GUI_EXACT_EXISTING_EDITOR_ALREADY_RUNNING        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: aaris-v3-same-open-editor-result
-          path: |
-            safe-report/safe-status.txt
-            safe-report/editor-diagnostic.txt
-            safe-report/restart-status.txt
-          if-no-files-found: warn
-          retention-days: 2
- safe-report/restart-status.txt
+          grep -Eq '^AARIS_GUI_ORIGINAL_PROJECT_EDITOR_PROCESS_ALIVE$|^AARIS_GUI_EXACT_EXISTING_EDITOR_ALREADY_RUNNING$' safe-report/restart-status.txt
           echo 'AARIS_GUI_SAME_EXISTING_PROJECT_REOPENED'
       - name: Save only sanitized state, never backups, credentials or raw Unity logs
         if: always()
@@ -129,5 +119,6 @@ jobs:
           path: |
             safe-report/safe-status.txt
             safe-report/editor-diagnostic.txt
+            safe-report/restart-status.txt
           if-no-files-found: warn
           retention-days: 2
