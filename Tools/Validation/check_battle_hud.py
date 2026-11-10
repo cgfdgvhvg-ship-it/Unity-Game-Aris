@@ -88,9 +88,14 @@ def check() -> None:
     assert "Animator.applyRootMotion = false" not in state
     assert "animator.applyRootMotion = false" in visual
     assert 'FindClip("crouch", "crouch")' in visual and "LastPunchTime" in visual
-    # Nine normalized locomotion clips remain on the full body; the
-    # pistol-shot reference, punch and ready hold are upper-body masked.
-    assert "AnimationMixerPlayable.Create(graph, 9)" in visual
+    # Twelve normalized locomotion inputs cover walk/run/sprint,
+    # crouch, genuine prone/crawl and jump stages. Punch, shoot and
+    # weapon ready are upper-body masked (never a second motion motor).
+    assert "AnimationMixerPlayable.Create(graph, 12)" in visual
+    assert 'FindClip("sprint", "sprint")' in visual
+    assert 'FindClip("prone", "prone")' in visual
+    assert 'FindClip("crawl", "crawl")' in visual
+    assert "float stanceScale = stanceTotal > 1f ? pose / stanceTotal : 1f;" in visual
     assert "weaponUpperMixer = AnimationMixerPlayable.Create(graph, 3)" in visual
     assert "AnimationLayerMixerPlayable.Create(graph, 2)" in visual
     assert "SetLayerMaskFromAvatarMask(1, upperBodyMask)" in visual
@@ -101,19 +106,36 @@ def check() -> None:
     assert 'FindClip("shoot", "shoot")' in visual
     source = json.loads((ROOT / "Assets/Resources/AarisCharacters/Primary/Animations/clip-sources.json")
                         .read_text(encoding="utf-8"))
-    expected = {
+    # The original Quaternius animation manifest retains only the clips still
+    # sourced from that package. All replacement motion clips use the reviewed
+    # CC0 KayKit manifest and unchanged local .fbx/.meta GUID pairs.
+    for clip, action_name in {
         "jump": "Jump_Loop",
         "jump_start": "Jump_Start",
         "jump_land": "Jump_Land",
-        "crouch": "Crouch_Idle",
-        "crouch_walk": "Crouch_Fwd",
-        "punch": "Punch_Jab",
         "shoot": "Pistol_Shoot",
-    }
-    for clip, action_name in expected.items():
+    }.items():
         assert action_name in source[clip]["source_action"], (clip, source[clip])
-        base = ROOT / "Assets/Resources/AarisCharacters/Primary/Animations"
-        assert (base / (clip + ".fbx")).is_file(), f"Missing native {clip} FBX LFS pointer"
+    kaykit = json.loads((ROOT / "Assets/Resources/AarisCharacters/Primary/Animations/kaykit-clip-sources.json")
+                        .read_text(encoding="utf-8"))
+    assert kaykit["license"] == "CC0-1.0"
+    assert "CC0" in (ROOT / "Assets/Resources/AarisCharacters/Primary/LICENSE-KAYKIT-ANIMATIONS.txt").read_text()
+    required = {
+        "walk": "Walking_A",
+        "run": "Running_A",
+        "sprint": "Running_B",
+        "crouch": "Crouching",
+        "crouch_walk": "Crouching",
+        "prone": "Crawling",
+        "crawl": "Crawling",
+        "punch": "Melee_Unarmed_Attack_Punch_A",
+    }
+    base = ROOT / "Assets/Resources/AarisCharacters/Primary/Animations"
+    assert set(kaykit["clips"]) == set(required)
+    for clip, action in required.items():
+        assert kaykit["clips"][clip]["source_action"] == action, (clip, action)
+    for clip in tuple(source) + tuple(required):
+        assert (base / (clip + ".fbx")).is_file(), f"Missing local {clip} FBX"
         assert (base / (clip + ".fbx.meta")).is_file(), f"Missing Unity GUID for {clip}"
 
     # Glyphs are locally rasterized once, without asset download links.
