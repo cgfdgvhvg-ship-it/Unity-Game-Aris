@@ -76,6 +76,8 @@ if test -n "$ISSUE"; then
     'CS LFS') OP=lfs ;;
     'CS LFS REPORT') OP=lfs_report ;;
     'CS CHANGES') OP=changes ;;
+    'CS PERF AUDIT') OP=perf_audit ;;
+    'CS PERF TUNE') OP=perf_tune ;;
     'CS SAVE CHANGES') OP=preserve_assets ;;
     'CS RETRY SAVE') OP=retry_assets ;;
     'CS INSTALL') OP=install ;;
@@ -116,7 +118,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|wait_start|fresh|fresh_ssh|fresh_minimal|rebuild|full_rebuild|status|logs|sync|recovery_sync|lfs|lfs_report|changes|apply_gameplay|preserve_assets|retry_assets|install|bootstrap|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|tmp_reclaim|fresh_tmp|hydrate_tmp|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|hud_review|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
+  machines|info|quota|start|wait_start|fresh|fresh_ssh|fresh_minimal|rebuild|full_rebuild|status|logs|sync|recovery_sync|lfs|lfs_report|changes|perf_audit|perf_tune|apply_gameplay|preserve_assets|retry_assets|install|bootstrap|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|tmp_reclaim|fresh_tmp|hydrate_tmp|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|hud_review|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -270,6 +272,12 @@ if test -z "$CS"; then
   STATE="TARGET_UNAVAILABLE"; DETAIL="existing_target_not_unambiguously_selected"; exit 0
 fi
 [[ "$CS" =~ ^[A-Za-z0-9-]+$ ]] || { DETAIL="bad_codespace_name"; exit 9; }
+# User explicitly approved ONLY this existing minimal Codespace for gameplay tuning.
+# A changed Codespace selection fails closed rather than modifying another workspace.
+if [[ "$OP" == perf_audit || "$OP" == perf_tune ]] &&
+   test "$CS" != "aaris-ai-ubuntu-minimal-gxprjgg9r7693v4vv"; then
+  DETAIL="perf_exact_codespace_required"; exit 75
+fi
 # A recovery container can lack Python, Xvfb, Unity and LFS; use a reviewed
 # Bash-only fast-forward, and only on the owner's newly approved worker Codespace.
 if test "$OP" = recovery_sync; then
@@ -411,6 +419,7 @@ case "$OP" in
   deps) REMOTE_TIMEOUT=900 ;;
   sync|lfs) REMOTE_TIMEOUT=1200 ;;
   apply_gameplay) REMOTE_TIMEOUT=480 ;;
+  perf_audit|perf_tune) REMOTE_TIMEOUT=180 ;;
   preserve_assets) REMOTE_TIMEOUT=1500 ;;
   retry_assets) REMOTE_TIMEOUT=900 ;;
   test) REMOTE_TIMEOUT=500 ;;
@@ -594,6 +603,11 @@ fi
 if test "$OP" = tree_audit; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/tree_mass_audit.sh"
   REMOTE_SHELL="bash -s"
+fi
+if test "$OP" = perf_audit || test "$OP" = perf_tune; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/perf_inplace.sh"
+  if test "$OP" = perf_audit; then REMOTE_SHELL="bash -s -- audit"
+  else REMOTE_SHELL="bash -s -- tune"; fi
 fi
 if test "$OP" = play_diag; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/play_probe_diagnostic.sh"
