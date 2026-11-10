@@ -198,7 +198,7 @@ namespace Aaris.MapReview
 
     /// <summary>Press-and-hold preview; release to deploy. Pointer cancel never consumes inventory.</summary>
     public sealed class AarisGlooTouchButton : MonoBehaviour,
-        IPointerDownHandler, IPointerUpHandler, IPointerExitHandler
+        IPointerDownHandler, IPointerUpHandler, ICancelHandler
     {
         private AarisOfflineGlooWall wall;
         private int holding = int.MinValue;
@@ -214,14 +214,18 @@ namespace Aaris.MapReview
         {
             if (holding != data.pointerId) return;
             holding = int.MinValue;
-            if (wall != null) wall.ReleaseAndDeploy();
+            if (wall == null) return;
+            for (int i = 0; i < Input.touchCount; i++)
+            {
+                Touch touch = Input.GetTouch(i);
+                if (touch.fingerId != data.pointerId || touch.phase != TouchPhase.Canceled) continue;
+                wall.CancelAim();
+                return;
+            }
+            wall.ReleaseAndDeploy();
         }
-        public void OnPointerExit(PointerEventData data)
-        {
-            if (holding != data.pointerId) return;
-            holding = int.MinValue;
-            if (wall != null) wall.CancelAim();
-        }
+        public void OnCancel(BaseEventData data) => CancelHold();
+
         public void CancelHold()
         {
             holding = int.MinValue;

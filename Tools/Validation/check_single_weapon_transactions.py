@@ -84,7 +84,14 @@ def audit():
     assert 'Add("PICK"' in hud and 'Add("DROP"' in hud
     assert 'Add("SWAP"' not in hud
     assert "i == 1 ? canPick : armed" in hud
-    assert "combat.Equip(null)" in inventory and "nextAttack = Time.time + punchInterval" in actions
+    # A KayKit punch locks the next swing through the full authored motion;
+    # its delayed impact is sampled at the extension/contact frame, not
+    # instantly on input, and must remain available with empty hands.
+    assert "combat.Equip(null)" in inventory
+    assert "nextAttack = lastPunchTime + Mathf.Max(punchInterval, PunchVisualDuration);" in actions
+    assert "punchContactTime = lastPunchTime + PunchContactDelay;" in actions
+    assert "if (punchContactTime >= 0f && Time.time >= punchContactTime)" in actions
+    assert "punchContactTime = -1f;" in actions
 
     catalog = json.loads((ROOT / "Assets/Resources/AarisWeapons/weapon_catalog.json").read_text())
     ids = {x["id"] for x in catalog["weapons"]}

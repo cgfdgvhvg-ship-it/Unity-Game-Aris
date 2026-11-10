@@ -44,21 +44,23 @@ namespace Aaris.MapReview
         private float runBlend;
         private float airborneBlend;
         private float walkRunBlend;
+        private float sprintBlend;
         private AnimationClipPlayable idlePlayable, walkPlayable, runPlayable, jumpPlayable,
             fallPlayable, crouchPlayable, crouchWalkPlayable, jumpStartPlayable,
-            jumpLandPlayable, punchPlayable, shootPlayable;
+            jumpLandPlayable, punchPlayable, shootPlayable, sprintPlayable, pronePlayable, crawlPlayable;
         private AnimationClip crouchClip, crouchWalkClip, punchClip, shootClip;
+        private AnimationClip sprintClip, proneClip, crawlClip;
         private int lastVisualAttackSequence;
         private float seenTakeoff = -10f, seenTouchdown = -10f;
         private AarisBattleActions actions;
         private AarisThirdPersonPlayer playerMotor;
         private AarisOfflineDrop aerialDrop;
-        private Transform punchArm, crawlLeftArm, crawlRightArm, crawlLeftLeg, crawlRightLeg;
+        private Transform punchArm;
         private Vector3 restingLocalPosition;
         private Quaternion restingLocalRotation;
         private float crouchBlend, proneBlend;
         private AnimationClip idleClip, walkClip, runClip;
-        private float locomotionPhase;
+        private float locomotionPhase, crouchPhase, crawlPhase;
         private bool primaryLoaded;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -137,10 +139,6 @@ namespace Aaris.MapReview
             restingLocalPosition = visual.transform.localPosition;
             restingLocalRotation = visual.transform.localRotation;
             punchArm = animator.GetBoneTransform(HumanBodyBones.RightUpperArm);
-            crawlLeftArm = animator.GetBoneTransform(HumanBodyBones.LeftUpperArm);
-            crawlRightArm = animator.GetBoneTransform(HumanBodyBones.RightUpperArm);
-            crawlLeftLeg = animator.GetBoneTransform(HumanBodyBones.LeftUpperLeg);
-            crawlRightLeg = animator.GetBoneTransform(HumanBodyBones.RightUpperLeg);
             animator.applyRootMotion = false;
             animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             SetupAnimations();
@@ -165,7 +163,7 @@ namespace Aaris.MapReview
                 if (placeholderRenderers[i] != null &&
                     !placeholderRenderers[i].transform.IsChildOf(visual.transform))
                     placeholderRenderers[i].enabled = false;
-            Debug.Log("Aaris: locally rigged Humanoid + 11-way animation mixer ready.");
+            Debug.Log("Aaris: locally rigged Humanoid locomotion ready.");
         }
 
         private bool FitVisualToController()
@@ -275,7 +273,7 @@ namespace Aaris.MapReview
             AnimationClip fallback = null;
             foreach (var clip in clips)
             {
-                if (clip == null || clip.legacy || clip.length < 0.02f) continue;
+                if (clip == null || clip.legacy || !clip.humanMotion || clip.length < 0.02f) continue;
                 string label = clip.name.ToLowerInvariant();
                 if (label.Contains("preview") || label.Contains("pose")) continue;
                 if (label.Contains(preferred)) return clip;
@@ -289,6 +287,9 @@ namespace Aaris.MapReview
             idleClip = FindClip("idle", "idle");
             walkClip = FindClip("walk", "walk") ?? FindClip("run", "run");
             runClip = FindClip("run", "run");
+            sprintClip = FindClip("sprint", "sprint") ?? runClip;
+            proneClip = FindClip("prone", "prone");
+            crawlClip = FindClip("crawl", "crawl");
             // Each FBX has one reviewed humanoid motion: never use the
             // Jump_Land clip for takeoff or airborne looping.
             AnimationClip jump = FindClip("jump", "jump");
@@ -310,10 +311,8 @@ namespace Aaris.MapReview
 
             graph = PlayableGraph.Create("AarisHumanoidLocomotion");
             graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
-            // The original 11-input full-body mixer allowed rifle shooting
-            // to override leg locomotion. Split nine lower-body-compatible
-            // gait clips from the two upper-body attack clips.
-            mixer = AnimationMixerPlayable.Create(graph, 9);
+            // The upper-body attack layer preserves the independently blended gait.
+            mixer = AnimationMixerPlayable.Create(graph, 12);
             weaponUpperMixer = AnimationMixerPlayable.Create(graph, 3);
             layered = AnimationLayerMixerPlayable.Create(graph, 2);
             idlePlayable = AnimationClipPlayable.Create(graph, idleClip);
@@ -327,6 +326,9 @@ namespace Aaris.MapReview
             jumpLandPlayable = AnimationClipPlayable.Create(graph, jumpLand);
             punchPlayable = AnimationClipPlayable.Create(graph, punchClip);
             shootPlayable = AnimationClipPlayable.Create(graph, shootClip);
+            sprintPlayable = AnimationClipPlayable.Create(graph, sprintClip);
+            pronePlayable = AnimationClipPlayable.Create(graph, proneClip ?? crouchClip);
+            crawlPlayable = AnimationClipPlayable.Create(graph, crawlClip ?? crouchWalkClip);
             // Only the locally vendored Pistol_Shoot action currently exists:
             // sample its early aiming pose as a modest weapon-ready visual
             // fallback. A dedicated rifle idle/reload clip is still needed
@@ -336,12 +338,13 @@ namespace Aaris.MapReview
             readyHoldPlayable.SetTime(shootClip.length * 0.16d);
             // Keep one-shot clips short enough to react promptly to attacks
             // without blending over multiple shots in the same hold.
-            punchPlayable.SetSpeed(Mathf.Clamp(punchClip.length / 0.42f, 0.7f, 3.5f));
+            punchPlayable.SetSpeed(0d);
             shootPlayable.SetSpeed(Mathf.Clamp(shootClip.length / 0.2f, 0.7f, 4.0f));
             jumpLandPlayable.SetSpeed(Mathf.Clamp(jumpLand.length / 0.3f, 0.7f, 3.0f));
             idlePlayable.SetApplyFootIK(true);
             walkPlayable.SetApplyFootIK(true);
             runPlayable.SetApplyFootIK(true);
+            sprintPlayable.SetApplyFootIK(true);
             crouchWalkPlayable.SetApplyFootIK(true);
             // All gait clips use distance-driven SetTime in LateUpdate.
             // Freeze their independent clocks so the graph cannot advance
@@ -350,11 +353,15 @@ namespace Aaris.MapReview
             walkPlayable.SetSpeed(0d);
             runPlayable.SetSpeed(0d);
             crouchWalkPlayable.SetSpeed(0d);
+            sprintPlayable.SetSpeed(0d);
+            pronePlayable.SetSpeed(0d);
+            crawlPlayable.SetSpeed(0d);
             var baseInputs = new[]
             {
                 idlePlayable, walkPlayable, runPlayable,
                 jumpPlayable, fallPlayable, crouchPlayable,
-                crouchWalkPlayable, jumpStartPlayable, jumpLandPlayable
+                crouchWalkPlayable, jumpStartPlayable, jumpLandPlayable,
+                sprintPlayable, pronePlayable, crawlPlayable
             };
             for (int i = 0; i < baseInputs.Length; i++)
             {
@@ -406,28 +413,24 @@ namespace Aaris.MapReview
             if (weaponInventory == null && actions != null && actions.IsArmed)
                 weaponInventory = GetComponent<AarisWeaponInventory>();
 
-            float dt = Mathf.Min(Time.deltaTime, 0.05f);
+            float dt = Mathf.Min(Time.deltaTime, 0.15f);
             float alpha = 1f - Mathf.Exp(-dt / Mathf.Max(0.04f, blendResponseSeconds));
+            float stanceAlpha = 1f - Mathf.Exp(-dt / 0.095f);
             bool crouching = actions != null &&
                 actions.Stance == AarisBattleActions.PlayerStance.Crouching;
             bool prone = actions != null &&
                 actions.Stance == AarisBattleActions.PlayerStance.Prone;
-            crouchBlend = Mathf.Lerp(crouchBlend, crouching ? 1f : 0f, alpha);
-            proneBlend = Mathf.Lerp(proneBlend, prone ? 1f : 0f, alpha);
+            crouchBlend = Mathf.Lerp(crouchBlend, crouching ? 1f : 0f, stanceAlpha);
+            proneBlend = Mathf.Lerp(proneBlend, prone ? 1f : 0f, stanceAlpha);
 
-            // The source CC0 pack contains a crouch clip, not a full prone
-            // crawl clip. Tilt/ground-align the mesh as a visual fallback;
-            // the actual prone collision capsule is authoritative.
-            // Runtime animator owns limb poses; this shallow, visual-only
-            // secondary motion adds sprint anticipation and soft landing.
-            // It never moves the physical CharacterController.
-            Vector3 velocityNow = controller.velocity;
-            float planar = new Vector2(velocityNow.x, velocityNow.z).magnitude;
+            bool authoredProne = proneClip != null && crawlClip != null;
+            float fallbackProne = authoredProne ? 0f : proneBlend;
+            Vector3 velocity = controller.velocity;
+            float planar = new Vector2(velocity.x, velocity.z).magnitude;
             float leaning = Mathf.InverseLerp(4.2f, fullRunSpeed, planar) *
-                sprintForwardLeanDegrees * (1f - proneBlend);
-            Quaternion upright = restingLocalRotation * Quaternion.Euler(leaning, 0f, 0f);
-            Quaternion proneRotation = restingLocalRotation * Quaternion.Euler(80f, 0f, 0f);
-            visual.transform.localRotation = Quaternion.Slerp(upright, proneRotation, proneBlend);
+                sprintForwardLeanDegrees * (primaryLoaded ? 0.35f : 1f) * (1f - proneBlend);
+            visual.transform.localRotation = restingLocalRotation *
+                Quaternion.Euler(Mathf.Lerp(leaning, 80f, fallbackProne), 0f, 0f);
             // Visual-only skydiving pose; never tilt the physical CharacterController.
             // Fall/riser animation clips can later replace this safe fallback.
             if (aerialDrop == null) aerialDrop = GetComponent<AarisOfflineDrop>();
@@ -446,30 +449,30 @@ namespace Aaris.MapReview
                 ? Mathf.Sin(Mathf.PI * landingAge / 0.2f) * landingCompressionMetres
                 : 0f;
             visual.transform.localPosition = restingLocalPosition +
-                new Vector3(0f, proneBlend * 0.36f - landingDip, proneBlend * 0.14f);
+                new Vector3(0f, fallbackProne * 0.36f - landingDip, fallbackProne * 0.14f);
 
             if (graphReady)
             {
-                Vector3 velocity = controller.velocity;
-                float horizontal = new Vector2(velocity.x, velocity.z).magnitude;
-                float movementTarget = Mathf.Clamp01(horizontal / 1.2f);
-                float sprintTarget = Mathf.InverseLerp(3.4f,
-                    Mathf.Max(3.5f, fullRunSpeed), horizontal);
+                float horizontal = planar;
+                float movementTarget = Mathf.InverseLerp(0.08f, 1.2f, horizontal);
+                float runTarget = Mathf.InverseLerp(2.1f, 4.1f, horizontal);
+                float sprintTarget = Mathf.InverseLerp(4.3f, Mathf.Max(4.4f, fullRunSpeed), horizontal);
                 float airTarget = controller.isGrounded ? 0f : 1f;
                 runBlend = Mathf.Lerp(runBlend, movementTarget, alpha);
-                walkRunBlend = Mathf.Lerp(walkRunBlend, sprintTarget, alpha);
+                walkRunBlend = Mathf.Lerp(walkRunBlend, runTarget, alpha);
+                sprintBlend = Mathf.Lerp(sprintBlend, sprintTarget, alpha);
                 airborneBlend = Mathf.Lerp(airborneBlend, airTarget, alpha);
 
-                // Exclusive stance base, phase-specific airborne/landing
-                // transitions, and reactive one-shot combat weights. Every
-                // mixer input participates in a weight sum of approximately 1.
-                float pose = Mathf.Clamp01(crouchBlend + proneBlend);
-                // Exclusive stance weights already subtract the standing
-                // locomotion share; reuse the crouch-walk clip as a low-speed
-                // prone locomotion base when no authored crawl clip exists.
-                // Keep the weighted sum at one: stanceRest + stanceMotion = pose.
-                float stanceMotion = Mathf.Clamp01(horizontal / 1.2f) * pose;
-                float stanceRest = pose - stanceMotion;
+                // Rapid crouch/prone changes can overlap during exponential
+                // smoothing. Normalize to one stance share, including during
+                // an interrupted transition; never exceed the base mixer sum.
+                float stanceTotal = crouchBlend + proneBlend;
+                float pose = Mathf.Clamp01(stanceTotal);
+                float stanceScale = stanceTotal > 1f ? pose / stanceTotal : 1f;
+                float crouchWeight = authoredProne ? crouchBlend * stanceScale : pose;
+                float proneWeight = authoredProne ? proneBlend * stanceScale : 0f;
+                float crouchMoving = Mathf.InverseLerp(0.06f, 0.85f, horizontal);
+                float crawlMoving = Mathf.InverseLerp(0.05f, 0.55f, horizontal);
                 float grounded = (1f - airborneBlend) * (1f - pose);
                 float jumping = velocity.y >= -0.6f ? 1f : 0f;
 
@@ -485,12 +488,13 @@ namespace Aaris.MapReview
                     ? Mathf.Clamp01((0.28f - touchdownAge) / 0.18f) : 0f;
                 float lastPunchAge = actions != null ? Time.time - actions.LastPunchTime : 10f;
                 float lastShootAge = actions != null ? Time.time - actions.LastShootTime : 10f;
-                // Smoothly attack and release rather than snapping all
-                // full-body animation weight from 0 to 1 in one frame.
-                // 0.65 cap retains a visible underlying running gait.
-                float punchWeight = lastPunchAge >= 0f && lastPunchAge < 0.43f
-                    ? 0.65f * Mathf.Min(Mathf.Clamp01(lastPunchAge / 0.065f),
-                                       Mathf.Clamp01((0.43f - lastPunchAge) / 0.14f)) : 0f;
+                float punchDuration = AarisBattleActions.PunchVisualDuration;
+                float punchWeight = lastPunchAge >= 0f && lastPunchAge < punchDuration
+                    ? Mathf.Min(Mathf.Clamp01(lastPunchAge / 0.07f),
+                                Mathf.Clamp01((punchDuration - lastPunchAge) / 0.14f)) *
+                        Mathf.Lerp(0.96f, 0.45f, proneBlend) : 0f;
+                if (punchWeight > 0f)
+                    punchPlayable.SetTime(punchClip.length * Mathf.Clamp01(lastPunchAge / punchDuration));
                 float shootWeight = lastShootAge >= 0f && lastShootAge < 0.2f
                     ? 0.65f * Mathf.Min(Mathf.Clamp01(lastShootAge / 0.035f),
                                        Mathf.Clamp01((0.2f - lastShootAge) / 0.07f)) : 0f;
@@ -518,13 +522,16 @@ namespace Aaris.MapReview
                     ? attackUpper / layerWeight : 0f;
                 mixer.SetInputWeight(0, baseWeight * grounded * (1f - runBlend));
                 mixer.SetInputWeight(1, baseWeight * grounded * runBlend * (1f - walkRunBlend));
-                mixer.SetInputWeight(2, baseWeight * grounded * runBlend * walkRunBlend);
+                mixer.SetInputWeight(2, baseWeight * grounded * runBlend * walkRunBlend * (1f - sprintBlend));
                 mixer.SetInputWeight(3, baseWeight * airborneBlend * jumping * (1f - pose));
                 mixer.SetInputWeight(4, baseWeight * airborneBlend * (1f - jumping) * (1f - pose));
-                mixer.SetInputWeight(5, baseWeight * stanceRest);
-                mixer.SetInputWeight(6, baseWeight * stanceMotion);
+                mixer.SetInputWeight(5, baseWeight * crouchWeight * (1f - crouchMoving));
+                mixer.SetInputWeight(6, baseWeight * crouchWeight * crouchMoving);
                 mixer.SetInputWeight(7, startWeight);
                 mixer.SetInputWeight(8, landWeight);
+                mixer.SetInputWeight(9, baseWeight * grounded * runBlend * walkRunBlend * sprintBlend);
+                mixer.SetInputWeight(10, baseWeight * proneWeight * (1f - crawlMoving));
+                mixer.SetInputWeight(11, baseWeight * proneWeight * crawlMoving);
                 weaponUpperMixer.SetInputWeight(0, 1f - attackRatio);
                 weaponUpperMixer.SetInputWeight(1,
                     layerWeight > 0.0001f ? punchUpper / layerWeight : 0f);
@@ -547,36 +554,29 @@ namespace Aaris.MapReview
                 if (actions != null && actions.AttackSequence != lastVisualAttackSequence)
                 {
                     lastVisualAttackSequence = actions.AttackSequence;
-                    punchPlayable.SetTime(0d);
                     shootPlayable.SetTime(0d);
                 }
 
-                locomotionPhase += horizontal * dt / 1.75f;
-                if (locomotionPhase > 1000f) locomotionPhase -= 1000f;
+                // Keep standing gait contacts in phase across walk, run and sprint.
+                // Stance gaits use their own stride distances at the same motor speed.
+                if (controller.isGrounded)
+                {
+                    float standStride = Mathf.Lerp(1.25f,
+                        Mathf.Lerp(2.55f, 3.65f, sprintBlend), walkRunBlend);
+                    float distance = horizontal * dt;
+                    if (pose < 0.999f)
+                        locomotionPhase = Mathf.Repeat(locomotionPhase + distance / standStride, 1f);
+                    if (crouchWeight > 0.001f)
+                        crouchPhase = Mathf.Repeat(crouchPhase + distance / 1.40f, 1f);
+                    if (proneWeight > 0.001f)
+                        crawlPhase = Mathf.Repeat(crawlPhase + distance / 0.90f, 1f);
+                }
                 LoopPlayable(idlePlayable, idleClip, Time.timeAsDouble / Math.Max(0.02, idleClip.length));
                 LoopPlayable(walkPlayable, walkClip, locomotionPhase);
                 LoopPlayable(runPlayable, runClip, locomotionPhase);
-                LoopPlayable(crouchWalkPlayable, crouchWalkClip, locomotionPhase);
-
-            }
-
-            // Add a very small, speed-driven opposing limb cycle for prone.
-            // This affects only the existing Humanoid bones (no meshes,
-            // animators, physics objects or extra per-frame allocations).
-            if (graphReady && proneBlend > .01f)
-            {
-                float crawlWeight = proneBlend *
-                    Mathf.Clamp01(planar / 1.35f);
-                float wave = Mathf.Sin(locomotionPhase * Mathf.PI * 3.0f) *
-                    16f * crawlWeight;
-                if (crawlLeftArm != null)
-                    crawlLeftArm.localRotation *= Quaternion.Euler(wave, 0f, 0f);
-                if (crawlRightArm != null)
-                    crawlRightArm.localRotation *= Quaternion.Euler(-wave, 0f, 0f);
-                if (crawlLeftLeg != null)
-                    crawlLeftLeg.localRotation *= Quaternion.Euler(-wave * .65f, 0f, 0f);
-                if (crawlRightLeg != null)
-                    crawlRightLeg.localRotation *= Quaternion.Euler(wave * .65f, 0f, 0f);
+                LoopPlayable(sprintPlayable, sprintClip, locomotionPhase);
+                LoopPlayable(crouchWalkPlayable, crouchWalkClip, crouchPhase);
+                LoopPlayable(crawlPlayable, crawlClip, crawlPhase);
             }
 
             // In-place upper-arm punch pulse. Only the animation skeleton is

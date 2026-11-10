@@ -15,6 +15,10 @@ namespace Aaris.MapReview
         [SerializeField, Min(0f)] private float deploymentCooldown = 0.6f;
         [SerializeField] private LayerMask groundAndCoverMask = ~0;
 
+        private const float MinimumSupportNormal = 0.766f;
+        private const float MaximumSupportStep = 0.45f;
+        private const float SupportProbeHeight = 2.5f;
+
         private readonly RaycastHit[] forwardHits = new RaycastHit[32];
         private readonly RaycastHit[] groundHits = new RaycastHit[32];
         private readonly Collider[] overlaps = new Collider[48];
@@ -69,7 +73,6 @@ namespace Aaris.MapReview
             if (!CanUse || Time.time < nextDeployment) return;
             aiming = true;
             placementValid = false;
-            if (ghost != null) ghost.SetActive(true);
             UpdatePlacement();
         }
 
@@ -101,76 +104,105 @@ namespace Aaris.MapReview
         private void UpdatePlacement()
         {
             placementValid = false;
-            if (ghost != null) ghost.SetActive(false);
-            if (motor == null || motor.AimCamera == null) { if (ghost != null) ghost.SetActive(false); return; }
+            if (motor == null || motor.AimCamera == null)
+            {
+                if (ghost != null) ghost.SetActive(false);
+                return;
+            }
+
             Vector3 look = motor.AimCamera.transform.forward;
             Vector3 ahead = Vector3.ProjectOnPlane(look, Vector3.up).normalized;
-            if (ahead.sqrMagnitude < 0.5f) ahead = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
-            if (ahead.sqrMagnitude < 0.5f) return;
+            if (ahead.sqrMagnitude < 0.5f) ahead = transform.forward;
+            Vector3 player = transform.position;
             float desired = Mathf.Lerp(minimumDistance, Mathf.Max(maximumDistance, minimumDistance),
                 Mathf.InverseLerp(-0.75f, 0.4f, look.y));
-            Vector3 origin = transform.position + Vector3.up * 1.1f;
-            int count = Physics.RaycastNonAlloc(new Ray(origin, ahead), forwardHits, desired,
-                groundAndCoverMask, QueryTriggerInteraction.Ignore);
-            if (count >= forwardHits.Length) return;
+            float distance = FindOpenDistance(player, ahead, desired);
+            proposedRotation = Quaternion.LookRotation(ahead, Vector3.up);
+            proposedPoint = player + ahead * Mathf.Max(minimumDistance, distance);
+
+            if (TryFindSupport(proposedPoint, player.y, out float centerY))
+            {
+                proposedPoint.y = centerY;
+                Vector3 edge = proposedRotation * Vector3.right *
+                    (AarisGlooWallVisuals.CoverSize.x * 0.45f);
+                if (distance >= minimumDistance &&
+                    TryFindSupport(proposedPoint - edge, player.y, out float leftY) &&
+                    TryFindSupport(proposedPoint + edge, player.y, out float rightY))
+                {
+                    float bottom = Mathf.Min(centerY, Mathf.Min(leftY, rightY));
+                    float top = Mathf.Max(centerY, Mathf.Max(leftY, rightY));
+                    if (top - bottom <= MaximumSupportStep)
+                    {
+                        proposedPoint.y = bottom;
+                        placementValid = HasCoverClearance(top);
+                    }
+                }
+            }
+
+            if (ghost == null) return;
+            ghost.transform.SetPositionAndRotation(proposedPoint, proposedRotation);
+            AarisGlooWallVisuals.Tint(ghostRenderers, placementValid
+                ? new Color(0.20f, 0.78f, 0.98f, 0.40f)
+                : new Color(1f, 0.2f, 0.2f, 0.45f));
+            if (!ghost.activeSelf) ghost.SetActive(true);
+        }
+
+        private float FindOpenDistance(Vector3 player, Vector3 ahead, float desired)
+        {
+            int count = Physics.RaycastNonAlloc(player + Vector3.up * 1.1f, ahead, forwardHits,
+                desired, groundAndCoverMask, QueryTriggerInteraction.Ignore);
+            if (count >= forwardHits.Length) return 0f;
             float nearest = desired;
             for (int i = 0; i < count; i++)
             {
-                var hit = forwardHits[i];
+                RaycastHit hit = forwardHits[i];
                 if (hit.collider == null || hit.collider.transform.IsChildOf(transform) ||
-                    hit.collider is TerrainCollider) continue;
+                    hit.collider is TerrainCollider || hit.normal.y >= MinimumSupportNormal) continue;
                 nearest = Mathf.Min(nearest, hit.distance - 0.65f);
             }
-            if (nearest < minimumDistance) return;
-            Vector3 projected = transform.position + ahead * nearest;
-            int groundCount = Physics.RaycastNonAlloc(
-                new Ray(new Vector3(projected.x, 1200f, projected.z), Vector3.down),
-                groundHits, 2400f, groundAndCoverMask, QueryTriggerInteraction.Ignore);
-            if (groundCount >= groundHits.Length) return;
-            float groundY = float.NegativeInfinity;
-            Collider support = null;
-            Vector3 normal = Vector3.up;
-            for (int i = 0; i < groundCount; i++)
-            {
-                var hit = groundHits[i];
-                if (hit.collider == null || hit.collider.transform.IsChildOf(transform) ||
-                    hit.normal.y < Mathf.Cos(40f * Mathf.Deg2Rad) ||
-                    hit.point.y > transform.position.y + 2.5f) continue;
-                // Prefer highest walkable support, including roof and bridge top.
-                if (hit.point.y > groundY)
-                {
-                    groundY = hit.point.y;
-                    normal = hit.normal;
-                    support = hit.collider;
-                }
-            }
-            if (support == null || groundY < -37.7f || normal.y < 0.765f) return;
-            proposedPoint = new Vector3(projected.x, groundY, projected.z);
-            proposedRotation = Quaternion.LookRotation(ahead, Vector3.up);
+            return nearest;
+        }
 
-            // Full width and height clearance before consuming an item.
-            int blocked = Physics.OverlapBoxNonAlloc(
-                proposedPoint + Vector3.up * 1.18f,
-                new Vector3(1.91f, 1.11f, 0.41f), overlaps, proposedRotation,
-                groundAndCoverMask, QueryTriggerInteraction.Ignore);
-            if (blocked >= overlaps.Length) return; // Fail closed on buffer saturation.
-            for (int i = 0; i < blocked; i++)
+        private bool TryFindSupport(Vector3 point, float playerY, out float height)
+        {
+            point.y = playerY + SupportProbeHeight;
+            int count = Physics.RaycastNonAlloc(point, Vector3.down, groundHits,
+                2f * SupportProbeHeight, groundAndCoverMask, QueryTriggerInteraction.Ignore);
+            height = float.NegativeInfinity;
+            if (count >= groundHits.Length) return false;
+            for (int i = 0; i < count; i++)
             {
-                Collider c = overlaps[i];
-                if (c == null || c.transform.IsChildOf(transform) || c is TerrainCollider) continue;
-                // Flat supporting roof/floor surface can occupy the bottom few centimetres.
-                // Reject taller overlapping architecture, people and vehicles.
-                if (c == support && c.bounds.max.y <= groundY + 0.075f) continue;
-                return;
+                RaycastHit hit = groundHits[i];
+                if (hit.collider == null || hit.collider.transform.IsChildOf(transform) ||
+                    hit.normal.y < MinimumSupportNormal || hit.collider.attachedRigidbody != null ||
+                    hit.collider.GetComponentInParent<AarisGlooWallHealth>() != null ||
+                    hit.collider.GetComponentInParent<CharacterController>() != null) continue;
+                height = Mathf.Max(height, hit.point.y);
             }
-            placementValid = true;
-            if (ghost == null) return;
-            ghost.SetActive(true);
-            ghost.transform.SetPositionAndRotation(proposedPoint, proposedRotation);
-            var tint = placementValid
-                ? new Color(0.20f, 0.78f, 0.98f, 0.40f)
-                : new Color(1f, 0.2f, 0.2f, 0.45f);
-            AarisGlooWallVisuals.Tint(ghostRenderers, tint);
+            return height >= -37.7f;
+        }
+
+        private bool HasCoverClearance(float supportTop)
+        {
+            // Exclude the shallow contact band occupied by the sampled floor.
+            // The deployed box still reaches the lowest supported ground point.
+            float queryBottom = supportTop + 0.075f;
+            float queryTop = proposedPoint.y + AarisGlooWallVisuals.CoverSize.y + 0.04f;
+            Vector3 center = proposedPoint + proposedRotation * AarisGlooWallVisuals.CoverCenter;
+            center.y = (queryBottom + queryTop) * 0.5f;
+            Vector3 halfSize = AarisGlooWallVisuals.CoverSize * 0.5f;
+            halfSize += new Vector3(0.04f, 0f, 0.04f);
+            halfSize.y = (queryTop - queryBottom) * 0.5f;
+            int count = Physics.OverlapBoxNonAlloc(center, halfSize, overlaps, proposedRotation,
+                groundAndCoverMask, QueryTriggerInteraction.Ignore);
+            if (count >= overlaps.Length) return false;
+            for (int i = 0; i < count; i++)
+            {
+                Collider other = overlaps[i];
+                if (other != null && !other.transform.IsChildOf(transform) &&
+                    !(other is TerrainCollider)) return false;
+            }
+            return true;
         }
 
         private void OnApplicationPause(bool paused) { if (paused) CancelAim(); }
@@ -207,7 +239,7 @@ namespace Aaris.MapReview
             if (Time.time >= expiry) { Destroy(gameObject); return; }
             if (reveal < 1f)
             {
-                reveal = Mathf.Min(1f, reveal + Time.deltaTime / 0.16f);
+                reveal = Mathf.Min(1f, reveal + Time.deltaTime / 0.12f);
                 if (visual != null)
                     visual.localScale = new Vector3(1f, Mathf.SmoothStep(0.025f, 1f, reveal), 1f);
             }
@@ -226,6 +258,9 @@ namespace Aaris.MapReview
 
     internal static class AarisGlooWallVisuals
     {
+        internal static readonly Vector3 CoverCenter = new Vector3(0f, 1.15f, -0.06f);
+        internal static readonly Vector3 CoverSize = new Vector3(3.78f, 2.30f, 0.67f);
+
         private static Material solid, preview;
         private static readonly MaterialPropertyBlock block = new MaterialPropertyBlock();
 
@@ -269,7 +304,10 @@ namespace Aaris.MapReview
                 var art = Object.Instantiate(authoredModel, visual.transform, false);
                 art.name = "LocalCurvedIceBarrier";
                 foreach (var c in art.GetComponentsInChildren<Collider>(true))
+                {
+                    c.enabled = false;
                     Object.Destroy(c);
+                }
                 foreach (var renderer in art.GetComponentsInChildren<Renderer>(true))
                 {
                     var slots = renderer.sharedMaterials;
@@ -290,8 +328,8 @@ namespace Aaris.MapReview
             {
                 // Unlike the visual, this collider stays FULL HEIGHT from the first frame.
                 var col = root.AddComponent<BoxCollider>();
-                col.center = new Vector3(0f, 1.15f, -0.06f);
-                col.size = new Vector3(3.78f, 2.30f, 0.67f);
+                col.center = CoverCenter;
+                col.size = CoverSize;
             }
             return root;
         }
@@ -306,7 +344,11 @@ namespace Aaris.MapReview
             cube.transform.localRotation = rotation;
             cube.transform.localScale = dimensions;
             var collider = cube.GetComponent<Collider>();
-            if (collider != null) Object.Destroy(collider);
+            if (collider != null)
+            {
+                collider.enabled = false;
+                Object.Destroy(collider);
+            }
             cube.GetComponent<Renderer>().sharedMaterial = material;
         }
 

@@ -1,0 +1,89 @@
+{
+  "source": "https://kaylousberg.itch.io/kaykit-character-animations",
+  "author": "Kay Lousberg",
+  "version": "1.1",
+  "license": "CC0-1.0",
+  "source_zip_sha256": "65882f31f905ad2e953819648a59287cdeab8f623908d5ef701971d3758be20f",
+  "clips": {
+    "walk": {
+      "source_action": "Walking_A",
+      "source_category": "MovementBasic",
+      "frames": [
+        0,
+        26
+      ],
+      "source_hold_frame": null,
+      "sha256": "9be6bc38d9bb4a3bcf1677b5cbcaf780ee725df6ad7d85edb2b067a55efa6180"
+    },
+    "run": {
+      "source_action": "Running_A",
+      "source_category": "MovementBasic",
+      "frames": [
+        0,
+        19
+      ],
+      "source_hold_frame": null,
+      "sha256": "3bbda6332d2192057b4f9010e54b57e71916a3440cb1a75592cace19f32a905d"
+    },
+    "sprint": {
+      "source_action": "Running_B",
+      "source_category": "MovementBasic",
+      "frames": [
+        0,
+        19
+      ],
+      "source_hold_frame": null,
+      "sha256": "b45a3489fb8db3768f79a48358b97e723133b084f3c595d856145fad2450895f"
+    },
+    "crouch": {
+      "source_action": "Crouching",
+      "source_category": "MovementAdvanced",
+      "frames": [
+        0,
+        24
+      ],
+      "source_hold_frame": 10,
+      "sha256": "9d25bef9b5e63726194139601a2923cd76a9caeed0c7e0f717fa33e884699042"
+    },
+    "crouch_walk": {
+      "source_action": "Crouching",
+      "source_category": "MovementAdvanced",
+      "frames": [
+        0,
+        26
+      ],
+      "source_hold_frame": null,
+      "sha256": "c001fff36626f705e8b8a48fc12e6757bf8bb6a10405c67f0068a4fb7b41e320"
+    },
+    "prone": {
+      "source_action": "Crawling",
+      "source_category": "MovementAdvanced",
+      "frames": [
+        0,
+        24
+      ],
+      "source_hold_frame": 0,
+      "sha256": "b032dc5d0ef8e74209717c839e49a82a8b25d00c8e09d16846d7eaec63abcf86"
+    },
+    "crawl": {
+      "source_action": "Crawling",
+      "source_category": "MovementAdvanced",
+      "frames": [
+        0,
+        26
+      ],
+      "source_hold_frame": null,
+      "sha256": "4d04788135c199557d023c8163d39fb2c6708c3c52938c3ee82b7c8fddce55f9"
+    },
+    "punch": {
+      "source_action": "Melee_Unarmed_Attack_Punch_A",
+      "source_category": "CombatMelee",
+      "frames": [
+        0,
+        28
+      ],
+      "source_hold_frame": null,
+      "sha256": "a9a370f24d02486227136d6d2fd5ac1dc8b1e33c7bb26bc6a0d02b22ecf20d63"
+    }
+  }
+}

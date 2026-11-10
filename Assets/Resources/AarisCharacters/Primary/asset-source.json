@@ -21,16 +21,15 @@
   ],
   "vendor_output": [
     "Player.fbx",
-    "Animations/crouch.fbx",
-    "Animations/crouch_walk.fbx",
     "Animations/idle.fbx",
     "Animations/jump.fbx",
     "Animations/jump_land.fbx",
     "Animations/jump_start.fbx",
-    "Animations/punch.fbx",
-    "Animations/run.fbx",
-    "Animations/shoot.fbx",
-    "Animations/walk.fbx"
+    "Animations/shoot.fbx"
   ],
-  "runtime_network_required": false
+  "runtime_network_required": false,
+  "kaykit_animations": {
+    "manifest": "Animations/kaykit-clip-sources.json",
+    "license_notice": "LICENSE-KAYKIT-ANIMATIONS.txt"
+  }
 }

@@ -6,20 +6,6 @@
       60
     ]
   },
-  "walk": {
-    "source_action": "Walk_Loop_Armature",
-    "frames": [
-      0,
-      32
-    ]
-  },
-  "run": {
-    "source_action": "Sprint_Loop_Armature",
-    "frames": [
-      0,
-      16
-    ]
-  },
   "jump": {
     "source_action": "Jump_Loop_Armature",
     "frames": [
@@ -39,27 +25,6 @@
     "frames": [
       0,
       30
-    ]
-  },
-  "crouch": {
-    "source_action": "Crouch_Idle_Loop_Armature",
-    "frames": [
-      0,
-      70
-    ]
-  },
-  "crouch_walk": {
-    "source_action": "Crouch_Fwd_Loop_Armature",
-    "frames": [
-      0,
-      48
-    ]
-  },
-  "punch": {
-    "source_action": "Punch_Jab_Armature",
-    "frames": [
-      0,
-      20
     ]
   },
   "shoot": {
