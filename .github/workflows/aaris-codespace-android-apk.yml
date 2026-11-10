@@ -37,6 +37,7 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
       OPERATION: ${{ github.event_name == 'workflow_dispatch' && inputs.operation || (github.event.comment.body == 'APK HUD BUILD' && 'build_hud' || github.event.comment.body == 'APK BUILD' && 'build' || 'preflight') }}
+      AARIS_EXPECTED_BUILD_SHA: d6934f56c1d7536d650abf30a197b3341484abe0
     steps:
       - name: Checkout exact latest main controller and APK builder
         uses: actions/checkout@v4
@@ -58,20 +59,15 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${GH_TOKEN:-}" || { echo 'APK_CODESPACE_PAT_MISSING'; exit 10; }
-          CS="$(gh codespace list -R "$GITHUB_REPOSITORY" --json name,displayName,state --limit 30 |
-            jq -er '
-              (map(select(.name == "aaris-ai-ubuntu-fallback-2-vp5r9xx4rwv6c6pq7"))) as $fallback |
-              (map(select(.name == "aaris-ai-unity-ssh-vp5g97jv4r4gfpjgq"))) as $pinned |
-              (map(select(.displayName == "aaris-ai-ubuntu-minimal"))) as $minimal |
-              (map(select(.displayName == "aaris-ai-unity-ssh"))) as $ssh |
-              if ($fallback | length) == 1 then $fallback[0].name
-              elif ($pinned | length) == 1 then $pinned[0].name
-              elif ($minimal | length) == 1 then $minimal[0].name
-              elif ($minimal | length) > 1 then empty
-              elif ($ssh | length) == 1 then $ssh[0].name
-              else empty end
-            ')" || { echo 'APK_CODESPACE_MISSING_OR_AMBIGUOUS'; exit 11; }
+          # Build only on the owner-specified Codespace; previous fallback
+          # selection pointed at an unrelated legacy machine.
+          CS=aaris-ai-ubuntu-minimal-xr4p7jj6p4qjc6q5x
+          gh codespace list -R "$GITHUB_REPOSITORY" --json name,state --limit 50 |
+            jq -e --arg n "$CS" '[.[] | select(.name == $n)] | length == 1' >/dev/null || {
+              echo APK_EXACT_OWNER_CODESPACE_NOT_FOUND; exit 11;
+            }
           [[ "$CS" =~ ^[A-Za-z0-9-]{3,110}$ ]] || exit 12
+          echo APK_EXACT_OWNER_CODESPACE_CONFIRMED
           echo "CODESPACE=$CS" >> "$GITHUB_ENV"
           echo "APK_CODESPACE_SELECTED"
       - name: Perform live Unity license and Android tools preflight
@@ -89,29 +85,6 @@ jobs:
           grep -E '^APK_[A-Z_]+$|^apk_(android_module|android_sdk|android_ndk|android_jdk|tmp_free_gb)=[A-Za-z0-9.]+$' \
               apk-evidence/preflight.txt > apk-evidence/preflight-safe.txt
           cat apk-evidence/preflight-safe.txt
-      - name: Supply immutable original SpeedTree LFS archive when building
-        if: env.OPERATION != 'preflight'
-        timeout-minutes: 10
-        env:
-          RELEASE_GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/original-tree-bake"
-          GH_TOKEN="$RELEASE_GH_TOKEN" gh run download 42472771253 -R "$GITHUB_REPOSITORY" \
-            --name aaris-codespace-42472771253 \
-            -D "$RUNNER_TEMP/original-tree-bake"
-          ARCHIVE="$RUNNER_TEMP/original-tree-bake/mass-package.tar.gz"
-          test "$(stat -c %s "$ARCHIVE")" = 4757727
-          test "$(sha256sum "$ARCHIVE" | cut -d ' ' -f1)" = \
-            234024b842e8cc5e1253607ce41b5a6aebec6a7abd3c9fd81837bc960a24197d
-          timeout 180 gh codespace ssh -c "$CODESPACE" -- \
-            'bash -c "umask 077; mkdir -p /tmp/aaris-codespaces/scene-probe; cat > /tmp/aaris-codespaces/scene-probe/verified-tree-mass-package.tar.gz"' \
-            < "$ARCHIVE" > /dev/null
-          REMOTE_SHA="$(timeout 90 gh codespace ssh -c "$CODESPACE" -- \
-            'sha256sum /tmp/aaris-codespaces/scene-probe/verified-tree-mass-package.tar.gz' |
-            awk '{print $1}')"
-          test "$REMOTE_SHA" = 234024b842e8cc5e1253607ce41b5a6aebec6a7abd3c9fd81837bc960a24197d
-          echo APK_ORIGINAL_AUTHENTIC_LFS_ARCHIVE_VERIFIED
       - name: Install official Unity Android modules and build APK on Codespace
         if: env.OPERATION != 'preflight'
         timeout-minutes: 290
@@ -128,6 +101,9 @@ jobs:
             }
           grep -qxF 'APK_UPLOAD_READY' apk-evidence/build-status.txt
           grep -qxF 'APK_INSTALLABILITY_SIGNATURE_MANIFEST_API33_VERIFIED' apk-evidence/build-status.txt
+          grep -qxF 'APK_AUTHENTIC_796_LFS_VERIFIED' apk-evidence/build-status.txt || \
+            grep -qxF 'APK_REMOTE_796_LFS_SHA256_VERIFIED' apk-evidence/build-status.txt
+          grep -qxF 'apk_commit=d6934f56c1d7536d650abf30a197b3341484abe0' apk-evidence/build-status.txt
           grep -E '^APK_[A-Z_]+$|^apk_bytes=[0-9]+$|^apk_commit=[0-9a-f]{40}$' \
             apk-evidence/build-status.txt > apk-evidence/build-status-safe.txt
           cat apk-evidence/build-status-safe.txt
