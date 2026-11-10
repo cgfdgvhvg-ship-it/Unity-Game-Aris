@@ -136,7 +136,9 @@ assert 'rm -rf' not in shell and 'git reset' not in shell and 'git clean' not in
 restorer = (ROOT / 'Tools/Codespaces/restore_preserved_source_lfs.py').read_text()
 assert 'AARIS_PROBE_LOCAL_FIRST_793_LFS_VERIFIED' in shell
 assert shell.index('restore_preserved_source_lfs.py" "$PROJECT"') < shell.index('elif git lfs pull')
-assert 'AARIS_PRESERVED_LFS_SNAPSHOT_VERIFIED=793' in restorer
+assert 'AARIS_PRESERVED_LFS_SNAPSHOT_VERIFIED=' in restorer
+assert 'EXPECTED_793_OR_796_LFS_POINTERS_NOT_FOUND' in restorer
+assert 'ANDROID_SNAPSHOTS = Path("/tmp/aaris-native-android-build-worktrees")' in restorer
 assert 'AARIS_CODESPACE_ORIGINAL_TREE_ARCHIVE_HASH_VERIFIED=18' in restorer
 assert 'AARIS_PRESERVED_LFS_ORIGINAL_WORKSPACE_UNCHANGED=yes' in restorer
 # Foliage baselines must be captured after loading the native saved scene.
