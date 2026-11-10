@@ -35,6 +35,7 @@ if test -n "$ISSUE"; then
         'CS FALLBACK CHANGES') OP=changes ;;
         'CS FALLBACK TMP AUDIT') OP=tmp_audit ;;
         'CS FALLBACK TMP RECLAIM') OP=tmp_reclaim ;;
+        'CS FALLBACK REFRESH TMP') OP=fresh_tmp ;;
         'CS FALLBACK APPLY GAMEPLAY') OP=apply_gameplay ;;
         'CS FALLBACK LFS REPORT') OP=lfs_report ;;
         'CS FALLBACK LICENSE') OP=license ;;
@@ -113,7 +114,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|wait_start|fresh|fresh_ssh|fresh_minimal|rebuild|full_rebuild|status|logs|sync|recovery_sync|lfs|lfs_report|changes|apply_gameplay|preserve_assets|retry_assets|install|bootstrap|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|tmp_reclaim|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|hud_review|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
+  machines|info|quota|start|wait_start|fresh|fresh_ssh|fresh_minimal|rebuild|full_rebuild|status|logs|sync|recovery_sync|lfs|lfs_report|changes|apply_gameplay|preserve_assets|retry_assets|install|bootstrap|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|tmp_reclaim|fresh_tmp|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|hud_review|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -415,6 +416,7 @@ case "$OP" in
   editor_isolate) REMOTE_TIMEOUT=650 ;;
   tmp_audit) REMOTE_TIMEOUT=240 ;;
   tmp_reclaim) REMOTE_TIMEOUT=900 ;;
+  fresh_tmp) REMOTE_TIMEOUT=2400 ;;
   scene_render|scene_play|hud_review|photo|foliage_diag|survey|tree_audit|tree_preview|tree_publish) REMOTE_TIMEOUT=1800 ;;
   drop_video) REMOTE_TIMEOUT=2100 ;;
   drop_frames) REMOTE_TIMEOUT=420 ;;
@@ -425,7 +427,7 @@ esac
 # Transfer the ORIGINAL historical Unity bake from the trusted Actions artifact,
 # never a model-generated replacement or an account token. All payload hashes
 # are checked again by restore_preserved_source_lfs.py against main's pointers.
-if [[ "$OP" =~ ^(scene_render|scene_play|hud_review|photo|foliage_diag|survey)$ ]]; then
+if [[ "$OP" =~ ^(scene_render|scene_play|hud_review|photo|foliage_diag|survey|fresh_tmp)$ ]]; then
   ARCHIVE_DIR="$RUNNER_TEMP/aaris-verified-native-tree-archive"
   mkdir -p "$ARCHIVE_DIR"
   if ! GH_TOKEN="$AARIS_ISSUE_REPLY_TOKEN" gh run download 42472771253 \
@@ -531,6 +533,10 @@ if test "$OP" = tmp_audit; then
 fi
 if test "$OP" = tmp_reclaim; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/reclaim_native_photo_tmp.sh"
+  REMOTE_SHELL="bash -s"
+fi
+if test "$OP" = fresh_tmp; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/fresh_tmp_project.sh"
   REMOTE_SHELL="bash -s"
 fi
 if test "$OP" = accept_terms; then
