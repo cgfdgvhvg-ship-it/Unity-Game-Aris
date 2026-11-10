@@ -43,6 +43,7 @@ if test -n "$ISSUE"; then
         'CS FALLBACK LICENSE') OP=license ;;
         'CS FALLBACK COMPILE REPORT') OP=compile_report ;;
         'CS FALLBACK EDITOR') OP=editor ;;
+        'CS FALLBACK EDITOR GLCORE') OP=editor ;;
         'CS FALLBACK DEPS') OP=deps ;;
         'CS FALLBACK EDITOR DIAG') OP=editor_diag ;;
         'CS FALLBACK EDITOR ISOLATE') OP=editor_isolate ;;
@@ -508,6 +509,9 @@ if test "$OP" = auth; then
 fi
 SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/remote.sh"
 REMOTE_SHELL="bash -s -- $OP"
+if test "$ISSUE" = 'CS FALLBACK EDITOR GLCORE'; then
+  REMOTE_SHELL='bash -s -- editor glcore'
+fi
 if test "$OP" = preserve_assets; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/preserve_working_assets.sh"
   REMOTE_SHELL="bash -s"
