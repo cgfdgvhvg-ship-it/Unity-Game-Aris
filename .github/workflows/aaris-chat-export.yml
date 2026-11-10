@@ -89,6 +89,7 @@ jobs:
           print('AARIS_LARGEST_ZIP_MIB',round(max(p.stat().st_size for p in vol)/1048576,1))
           PY
       - name: Publish independently downloadable parts
+        if: false
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -97,6 +98,133 @@ jobs:
           echo 'Full tracked Unity source and verified Git LFS bytes. Each ZIP under 80 MiB. Local unsaved Codespace files, editor binaries, temporary caches and .git are not included.' > /tmp/notes.txt
           gh release create "$TAG" aaris-chat-parts/*.zip aaris-chat-parts/Aaris-Project-manifest.json -R "$GITHUB_REPOSITORY" --target b133465c134fb8ce54c8c6b9c7943f70b17b7244 --title 'Aaris Game - ChatGPT upload ZIP parts' --notes-file /tmp/notes.txt --prerelease
           gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.assets[] | [.name, (.size|tostring), .browser_download_url] | @tsv'
+      - name: Upload export batch 01
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-chat-batch-${{ github.run_id }}-01
+          path: |
+            aaris-chat-parts/Aaris-Project-001.zip
+            aaris-chat-parts/Aaris-Project-002.zip
+            aaris-chat-parts/Aaris-Project-003.zip
+            aaris-chat-parts/Aaris-Project-004.zip
+            aaris-chat-parts/Aaris-Project-005.zip
+            aaris-chat-parts/Aaris-Project-006.zip
+            aaris-chat-parts/Aaris-Project-007.zip
+            aaris-chat-parts/Aaris-Project-008.zip
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload export batch 02
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-chat-batch-${{ github.run_id }}-02
+          path: |
+            aaris-chat-parts/Aaris-Project-009.zip
+            aaris-chat-parts/Aaris-Project-010.zip
+            aaris-chat-parts/Aaris-Project-011.zip
+            aaris-chat-parts/Aaris-Project-012.zip
+            aaris-chat-parts/Aaris-Project-013.zip
+            aaris-chat-parts/Aaris-Project-014.zip
+            aaris-chat-parts/Aaris-Project-015.zip
+            aaris-chat-parts/Aaris-Project-016.zip
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload export batch 03
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-chat-batch-${{ github.run_id }}-03
+          path: |
+            aaris-chat-parts/Aaris-Project-017.zip
+            aaris-chat-parts/Aaris-Project-018.zip
+            aaris-chat-parts/Aaris-Project-019.zip
+            aaris-chat-parts/Aaris-Project-020.zip
+            aaris-chat-parts/Aaris-Project-021.zip
+            aaris-chat-parts/Aaris-Project-022.zip
+            aaris-chat-parts/Aaris-Project-023.zip
+            aaris-chat-parts/Aaris-Project-024.zip
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload export batch 04
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-chat-batch-${{ github.run_id }}-04
+          path: |
+            aaris-chat-parts/Aaris-Project-025.zip
+            aaris-chat-parts/Aaris-Project-026.zip
+            aaris-chat-parts/Aaris-Project-027.zip
+            aaris-chat-parts/Aaris-Project-028.zip
+            aaris-chat-parts/Aaris-Project-029.zip
+            aaris-chat-parts/Aaris-Project-030.zip
+            aaris-chat-parts/Aaris-Project-031.zip
+            aaris-chat-parts/Aaris-Project-032.zip
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload export batch 05
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-chat-batch-${{ github.run_id }}-05
+          path: |
+            aaris-chat-parts/Aaris-Project-033.zip
+            aaris-chat-parts/Aaris-Project-034.zip
+            aaris-chat-parts/Aaris-Project-035.zip
+            aaris-chat-parts/Aaris-Project-036.zip
+            aaris-chat-parts/Aaris-Project-037.zip
+            aaris-chat-parts/Aaris-Project-038.zip
+            aaris-chat-parts/Aaris-Project-039.zip
+            aaris-chat-parts/Aaris-Project-040.zip
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload export batch 06
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-chat-batch-${{ github.run_id }}-06
+          path: |
+            aaris-chat-parts/Aaris-Project-041.zip
+            aaris-chat-parts/Aaris-Project-042.zip
+            aaris-chat-parts/Aaris-Project-043.zip
+            aaris-chat-parts/Aaris-Project-044.zip
+            aaris-chat-parts/Aaris-Project-045.zip
+            aaris-chat-parts/Aaris-Project-046.zip
+            aaris-chat-parts/Aaris-Project-047.zip
+            aaris-chat-parts/Aaris-Project-048.zip
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload export batch 07
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-chat-batch-${{ github.run_id }}-07
+          path: |
+            aaris-chat-parts/Aaris-Project-049.zip
+            aaris-chat-parts/Aaris-Project-050.zip
+            aaris-chat-parts/Aaris-Project-051.zip
+            aaris-chat-parts/Aaris-Project-052.zip
+            aaris-chat-parts/Aaris-Project-053.zip
+            aaris-chat-parts/Aaris-Project-054.zip
+            aaris-chat-parts/Aaris-Project-055.zip
+            aaris-chat-parts/Aaris-Project-056.zip
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload export batch 08
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-chat-batch-${{ github.run_id }}-08
+          path: |
+            aaris-chat-parts/Aaris-Project-057.zip
+            aaris-chat-parts/Aaris-Project-058.zip
+            aaris-chat-parts/Aaris-Project-059.zip
+            aaris-chat-parts/Aaris-Project-060.zip
+            aaris-chat-parts/Aaris-Project-061.zip
+            aaris-chat-parts/Aaris-Project-062.zip
+            aaris-chat-parts/Aaris-Project-063.zip
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
       - name: Save small manifest to Actions too
         if: always()
         uses: actions/upload-artifact@v4
