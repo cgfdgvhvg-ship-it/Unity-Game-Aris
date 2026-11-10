@@ -67,6 +67,13 @@ class OfflineCombatAssetChecks(unittest.TestCase):
                 self.assertGreater(bounds[1], min_y)
                 self.assertGreater(bounds[2], min_z)
 
+    def test_world_y_not_double_added_to_drop_altitude(self):
+        source = (SCRIPTS / "AarisOfflineDrop.cs").read_text(encoding="utf-8")
+        self.assertIn("tallest = Mathf.Max(tallest, terrain.SampleHeight(", source)
+        self.assertIn("support = Mathf.Max(support, t.SampleHeight(position));", source)
+        self.assertNotIn("terrain.SampleHeight(new Vector3(x, 0f, z)) + p.y", source)
+        self.assertNotIn("p.y + t.SampleHeight(position)", source)
+
     def test_parachute_is_elongated_and_round_ended_not_rectangular(self):
         verts, _, _, bounds = read_obj(MODELS["parachute"][0])
         self.assertGreater(bounds[0] / max(bounds[2], 0.1), 2.8)
