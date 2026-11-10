@@ -31,8 +31,13 @@ def run():
         raise RuntimeError("TMP_ROOT_INVALID")
     # The only acceptable targets are independent fresh clones we created,
     # with a .git DIRECTORY (not a linked worktree marker) and exact SHA name.
+    if len(sys.argv) > 2:
+        raise RuntimeError("TOO_MANY_PROJECT_ARGUMENTS")
+    explicit = Path(sys.argv[1]) if len(sys.argv) == 2 else None
     candidates = []
     for p in ROOT.iterdir():
+        if explicit is not None and p != explicit:
+            continue
         if not re.fullmatch(r"[a-f0-9]{40}", p.name):
             continue
         if not p.is_dir() or p.is_symlink() or not (p / ".git").is_dir():
