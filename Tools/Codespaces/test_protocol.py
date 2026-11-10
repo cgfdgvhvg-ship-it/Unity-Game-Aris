@@ -57,6 +57,13 @@ assert 'TMP_PRIVATE_LOG_' in audit and 'TMP_ORIGINAL_LFS_POINTERS_' in audit
 assert 'CS TMP AUDIT' in controller and 'tmp_audit) REMOTE_TIMEOUT=240' in controller
 assert "'CS FALLBACK TMP AUDIT') OP=tmp_audit ;;" in controller
 assert "'CS FALLBACK TMP RECLAIM') OP=tmp_reclaim ;;" in controller
+assert "'CS FALLBACK REFRESH TMP') OP=fresh_tmp ;;" in controller
+fresh=(r/'Tools/Codespaces/fresh_tmp_project.sh').read_text()
+assert 'AARIS_TMP_GITHUB_PROJECT_READY' in fresh
+assert 'restore_preserved_source_lfs.py' in fresh
+assert 'TMP_REFRESH_LFS_HASH_VERIFIED' in fresh
+assert 'AARIS_TMP_ORIGINAL_WORKSPACE_UNCHANGED' in fresh
+assert 'fresh_tmp) REMOTE_TIMEOUT=2400' in controller
 reclaim=(r/'Tools/Codespaces/reclaim_native_photo_tmp.sh').read_text()
 assert "/tmp/aaris-native-photo-worktrees" in reclaim
 assert "git" in reclaim and "worktree" in reclaim and "remove" in reclaim
