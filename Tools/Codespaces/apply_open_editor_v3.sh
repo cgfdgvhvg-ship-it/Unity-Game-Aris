@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Modify ONLY the live, already-open owner Codespace project. No second Unity,
-# no worktrees, no checkout/reset/stash, no Unity scene or terrain edits.
+# Modify ONLY the user's existing Codespace workspace /workspaces/Unity-Game-Aris.
+# It is SAFE if Unity Editor is not running: do not start another Editor.
+# No worktree, branch checkout/reset/stash, scene or terrain mutation.
 set -Eeuo pipefail
 umask 077
 PROJECT=/workspaces/Unity-Game-Aris
@@ -12,8 +13,10 @@ test -d "$PROJECT/.git" || { echo AARIS_V3_PROJECT_MISSING; exit 11; }
 test -f "$PROJECT/$EXPECTED_HEAD_FILE" || { echo AARIS_V3_EXISTING_GAMEPLAY_MISSING; exit 12; }
 test -f "$PROJECT/$EXPECTED_AIRFRAME" || { echo AARIS_V3_EXISTING_AIRFRAME_MISSING; exit 13; }
 
-# The user wants the EXISTING Unity Editor; never start/kill/close it or copy
-# its project to another worktree. Require the active Editor to own this path.
+# The user wants the EXISTING project. Never start, kill or close Unity.
+# If Unity happens to be live, confirm it owns this exact project. If Unity
+# is not running, safely edit on-disk assets so the NEXT normal Editor refresh
+# loads them without a second Editor. Refuse another project being open.
 python3 - "$PROJECT" <<'PYPREFLIGHT'
 from pathlib import Path
 import sys
@@ -40,9 +43,13 @@ for editor in editors[:4]:
     print('AARIS_V3_OPEN_PROJECT_CLASS='+label)
     print('AARIS_V3_OPEN_PROJECT_HAS_ASSETS='+str((editor/'Assets').is_dir()).lower())
     print('AARIS_V3_OPEN_PROJECT_HAS_GIT='+str((editor/'.git').exists()).lower())
-if not editors or editors.count(root)!=1 or len(editors)!=1:
-    print('AARIS_V3_NOT_ONE_EXISTING_OPEN_PROJECT_EDITOR')
+if editors and (editors.count(root)!=1 or len(editors)!=1):
+    print('AARIS_V3_FOREIGN_OR_MULTIPLE_EDITORS_PROTECT_WORKSPACE')
     sys.exit(21)
+if editors:
+    print('AARIS_V3_EXISTING_PROJECT_EDITOR_CONFIRMED')
+else:
+    print('AARIS_V3_EDITOR_STOPPED_WRITING_EXISTING_WORKSPACE_ONLY')
 # Avoid asset reloads during an existing Android APK build / expensive imports.
 busy={'gradle','java','il2cpp','bee_backend','aapt2','clang','lld','UnityShaderCompiler'}
 for process in Path('/proc').iterdir():
@@ -52,7 +59,7 @@ for process in Path('/proc').iterdir():
     if name in busy:
         print('AARIS_V3_ACTIVE_BUILD_OR_IMPORT_DETECTED_NO_FILES_CHANGED')
         sys.exit(22)
-print('AARIS_V3_EXISTING_UNITY_EDITOR_VERIFIED')
+print('AARIS_V3_EXISTING_CODESPACE_WORKSPACE_VERIFIED')
 PYPREFLIGHT
 
 # Fetch immutable reviewed commit history without touching current branch or
@@ -149,7 +156,7 @@ except Exception:
     for target,ours in reversed(applied):target.write_bytes(ours)
     print('AARIS_V3_WRITE_FAILED_ROLLBACK')
     raise
-print('AARIS_V3_EXISTING_EDITOR_PROJECT_UPDATED')
+print('AARIS_V3_EXISTING_CODESPACE_PROJECT_UPDATED')
 print('AARIS_V3_FILES_UPDATED='+str(len(prepared)))
 print('AARIS_V3_LOCAL_BACKUPS_CREATED=yes')
 print('AARIS_V3_NATIVE_SCENE_AND_TERRAIN_UNTOUCHED=yes')
@@ -158,4 +165,4 @@ PYAPPLY
 # No second Unity instance, no build, no Editor shutdown. Existing GUI Editor
 # imports changed .cs/.obj when idle. The runtime itself remains unchanged
 # until Unity completes its normal asset refresh and script domain reload.
-echo AARIS_V3_SAME_OPEN_EDITOR_WAITING_FOR_UNITY_REFRESH
+echo AARIS_V3_SAME_CODESPACE_PROJECT_PRESERVED_NO_EDITOR_LAUNCHED
