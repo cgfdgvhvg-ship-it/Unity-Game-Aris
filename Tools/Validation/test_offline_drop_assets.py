@@ -107,6 +107,17 @@ class OfflineCombatAssetChecks(unittest.TestCase):
         self.assertTrue(near_tip and center)
         self.assertLess(max(near_tip), max(center) * 0.65)
 
+    def test_interactive_door_never_hits_approaching_player_and_closes_safely(self):
+        door = (SCRIPTS / "AarisBreakablePanel.cs").read_text("utf-8")
+        self.assertIn("house.InverseTransformPoint(player.position).z", door)
+        self.assertIn("openDirection = house.InverseTransformPoint(player.position).z <", door)
+        self.assertIn("shouldOpen ? OpenAngle * openDirection : 0f", door)
+        self.assertIn("Mathf.Abs(currentAngle) > 80f", door)
+        self.assertIn("Mathf.Abs(currentAngle) > .01f && ClosingBlocked()", door)
+        self.assertIn("Physics.OverlapBoxNonAlloc", door)
+        self.assertIn("if (hits >= blockers.Length) return true;", door)
+        self.assertIn("QueryTriggerInteraction.Ignore", door)
+
     def test_saved_loot_and_car_resources_have_full_map_coverage(self):
         # Asset-backed coverage check only: physics-spawn and device play still
         # need the native Unity player to validate real clearance.
