@@ -78,6 +78,8 @@ if test -n "$ISSUE"; then
     'CS CHANGES') OP=changes ;;
     'CS PERF AUDIT') OP=perf_audit ;;
     'CS PERF TUNE') OP=perf_tune ;;
+    'CS OPEN NATIVE') OP=open_native_probe ;;
+    'CS SELECT NATIVE') OP=open_native_select ;;
     'CS SAVE CHANGES') OP=preserve_assets ;;
     'CS RETRY SAVE') OP=retry_assets ;;
     'CS INSTALL') OP=install ;;
@@ -118,7 +120,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|wait_start|fresh|fresh_ssh|fresh_minimal|rebuild|full_rebuild|status|logs|sync|recovery_sync|lfs|lfs_report|changes|perf_audit|perf_tune|apply_gameplay|preserve_assets|retry_assets|install|bootstrap|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|tmp_reclaim|fresh_tmp|hydrate_tmp|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|hud_review|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
+  machines|info|quota|start|wait_start|fresh|fresh_ssh|fresh_minimal|rebuild|full_rebuild|status|logs|sync|recovery_sync|lfs|lfs_report|changes|perf_audit|perf_tune|open_native_probe|open_native_select|apply_gameplay|preserve_assets|retry_assets|install|bootstrap|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|tmp_reclaim|fresh_tmp|hydrate_tmp|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|hud_review|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -274,7 +276,7 @@ fi
 [[ "$CS" =~ ^[A-Za-z0-9-]+$ ]] || { DETAIL="bad_codespace_name"; exit 9; }
 # User explicitly approved ONLY this existing minimal Codespace for gameplay tuning.
 # A changed Codespace selection fails closed rather than modifying another workspace.
-if [[ "$OP" == perf_audit || "$OP" == perf_tune ]] &&
+if [[ "$OP" == perf_audit || "$OP" == perf_tune || "$OP" == open_native_probe || "$OP" == open_native_select ]] &&
    test "$CS" != "aaris-ai-ubuntu-minimal-gxprjgg9r7693v4vv"; then
   DETAIL="perf_exact_codespace_required"; exit 75
 fi
@@ -420,6 +422,7 @@ case "$OP" in
   sync|lfs) REMOTE_TIMEOUT=1200 ;;
   apply_gameplay) REMOTE_TIMEOUT=480 ;;
   perf_audit|perf_tune) REMOTE_TIMEOUT=180 ;;
+  open_native_probe|open_native_select) REMOTE_TIMEOUT=180 ;;
   preserve_assets) REMOTE_TIMEOUT=1500 ;;
   retry_assets) REMOTE_TIMEOUT=900 ;;
   test) REMOTE_TIMEOUT=500 ;;
@@ -603,6 +606,11 @@ fi
 if test "$OP" = tree_audit; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/tree_mass_audit.sh"
   REMOTE_SHELL="bash -s"
+fi
+if test "$OP" = open_native_probe || test "$OP" = open_native_select; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/open_native_gui.sh"
+  if test "$OP" = open_native_probe; then REMOTE_SHELL="bash -s -- probe"
+  else REMOTE_SHELL="bash -s -- select"; fi
 fi
 if test "$OP" = perf_audit || test "$OP" = perf_tune; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/perf_inplace.sh"
