@@ -117,6 +117,13 @@ assert 'runtimeErrorKind' in editor and 'CategorizePlayError' in editor
 # Count Awake/OnEnable/Start errors as well as errors after first Play frame.
 onlog = editor.split('private static void OnLog(', 1)[1].split('private static string CategorizePlayError(', 1)[0]
 assert 'state != "starting" && state != "running"' in onlog
+assert 'bool editorLifecycleOnly' in onlog
+assert 'trace.Contains("UnityEditor.EditorApplication")' in onlog
+assert '!trace.Contains("Aaris.")' in onlog
+assert 'SessionState.SetInt(EditorWarnings,' in onlog
+assert 'editorLifecycleWarnings = SessionState.GetInt(EditorWarnings, 0)' in editor
+assert '"editorLifecycleWarnings"' in diag
+assert 'runtimeErrors == 0' in editor
 play_method = editor.split('public static void Play()', 1)[1].split('private static void Tick()', 1)[0]
 assert play_method.index('SessionState.SetString(State, "starting")') < play_method.index('EditorApplication.isPlaying = true')
 assert 'runtimeErrorSource' in editor and 'CategorizeErrorSource' in editor
