@@ -95,7 +95,7 @@ def process_info():
     build=bool(re.search(r"/Editor/Unity\b[^\n]*-buildTarget\s+Android",data))
     # Only the immutable 40-hex commit in the existing temp worktree.
     # No paths, arguments or other process data leave the Codespace.
-    match=re.search(r"/tmp/aaris-native-android-build-worktrees/([0-9a-f]{40})(?:/|\\s|$)",data)
+    match=re.search(r"/tmp/aaris-native-android-build-worktrees/([0-9a-f]{40})(?:/|\s|$)",data)
     source_sha=match.group(1) if match else "unknown"
     return ("yes" if install else "no","yes" if build else "no",source_sha)
 
