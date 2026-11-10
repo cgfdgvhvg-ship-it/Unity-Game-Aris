@@ -29,7 +29,7 @@ namespace Aaris.MapReview
         public int id;
         public AarisWeaponState state;
         public Vector3 position;
-        public float blockedUntil;
+        public float blockedUntil, nextVisualAttemptAt;
         public AarisWeaponPickup visible;
     }
 
@@ -44,6 +44,10 @@ namespace Aaris.MapReview
         private const float ActivationMetres = 42f; // below the 55m collider streaming radius
         private const float ReleaseMetres = 69f;
         private const int MaximumActiveLoot = 40;
+        private const int StreamFramesPerRefresh = 3;
+        private const int MaximumBuildAttemptsPerFrame = 2;
+        private const int MaximumCandidateProbesPerFrame = 6;
+        private const float RetryDelaySeconds = 3f;
         private const int MaximumDroppedLoot = 320;
         private const float PickupDistance = 2.15f;
         private const float StarterLootRange = 10f;
@@ -69,6 +73,7 @@ namespace Aaris.MapReview
         private AarisWeaponInventory inventory;
         private Transform player;
         private float nextRefresh, requestPickupUntil;
+        private int streamFramesRemaining;
         private int nextDropId = -1;
         private bool allowInitialAutoPickup = true;
         private bool starterLootSettled;
@@ -196,8 +201,8 @@ namespace Aaris.MapReview
                 for (int z = firstZ; z <= lastZ; z++)
                     if (candidateCells.TryGetValue(CandidateCellKey(x, z), out List<int> cell))
                         nearbyCandidateIndices.AddRange(cell);
-            // Preserve legacy spawn priority (original candidate index order)
-            // so 6-per-refresh and 40-active budgets behave identically.
+            // Preserve spawn priority (original candidate index order)
+            // while distributing construction across frames.
             nearbyCandidateIndices.Sort();
         }
 
@@ -250,9 +255,9 @@ namespace Aaris.MapReview
             c != null && c.x >= -957f && c.x <= 957f &&
             c.z >= -957f && c.z <= 957f;
 
-        private static Terrain TerrainAt(float x, float z)
+        private static Terrain TerrainAt(float x, float z, Terrain[] terrains)
         {
-            foreach (var t in Terrain.activeTerrains)
+            foreach (var t in terrains)
             {
                 if (t == null || t.terrainData == null) continue;
                 Vector3 p = t.transform.position;
@@ -263,10 +268,10 @@ namespace Aaris.MapReview
             return null;
         }
 
-        private bool TryResolve(AarisLootCandidate c, out Vector3 spot)
+        private bool TryResolve(AarisLootCandidate c, Terrain[] terrains, out Vector3 spot)
         {
             spot = default(Vector3);
-            var terrain = TerrainAt(c.x, c.z);
+            var terrain = TerrainAt(c.x, c.z, terrains);
             if (terrain == null) return false;
             bool indoor = c.kind == "indoor";
             // For outdoor positions use the native Terrain surface, NOT
@@ -547,13 +552,28 @@ namespace Aaris.MapReview
         private void Update()
         {
             if (player == null || inventory == null || candidates == null) return;
-            if (Time.unscaledTime < nextRefresh) return;
-            nextRefresh = Time.unscaledTime + .33f;
-            HasPickupInRange = false;
-            var playerPosition = player.position;
+            float now = Time.unscaledTime;
+            Vector3 playerPosition = player.position;
+            if (now >= nextRefresh)
+            {
+                nextRefresh = now + .33f;
+                streamFramesRemaining = RefreshPickups(playerPosition, now) ? 0 : StreamFramesPerRefresh;
+            }
+            if (streamFramesRemaining == 0) return;
+
+            streamFramesRemaining--;
+            if (!StreamNearby(playerPosition, now))
+            {
+                streamFramesRemaining = 0;
+                EnsureStarterLoot(playerPosition);
+            }
+        }
+
+        private bool RefreshPickups(Vector3 playerPosition, float now)
+        {
             float releaseSquared = ReleaseMetres * ReleaseMetres;
             float pickupSquared = PickupDistance * PickupDistance;
-            bool explicitPickup = Time.unscaledTime <= requestPickupUntil;
+            bool explicitPickup = now <= requestPickupUntil;
             AarisWeaponPickup bestPickup = null;
             float bestDistance = pickupSquared;
 
@@ -586,57 +606,63 @@ namespace Aaris.MapReview
                 }
             }
             HasPickupInRange = bestPickup != null;
-            if (bestPickup != null &&
-                (explicitPickup ||
-                    (!inventory.HasGun && allowInitialAutoPickup &&
-                        bestPickup.CandidateIndex >= 0)))
-            {
-                if (TryTake(bestPickup)) return;
-            }
+            return bestPickup != null &&
+                (explicitPickup || (!inventory.HasGun && allowInitialAutoPickup &&
+                    bestPickup.CandidateIndex >= 0)) && TryTake(bestPickup);
+        }
 
-            if (active.Count >= MaximumActiveLoot) return;
+        private bool StreamNearby(Vector3 playerPosition, float now)
+        {
+            if (active.Count >= MaximumActiveLoot) return false;
             float loadSquared = ActivationMetres * ActivationMetres;
-            int built = 0;
+            int buildAttempts = 0;
 
             // Stream dropped guns first; they retain ammo and do not reroll.
             foreach (var record in dropped)
             {
-                if (active.Count >= MaximumActiveLoot || built >= 6) break;
                 if (record.visible != null) continue;
+                if (now < record.nextVisualAttemptAt) continue;
                 float dist = (record.position - playerPosition).sqrMagnitude;
                 if (dist > loadSquared) continue;
+                if (active.Count >= MaximumActiveLoot) return false;
+                if (buildAttempts == MaximumBuildAttemptsPerFrame) return true;
+                buildAttempts++;
                 var root = new GameObject("Dropped " + record.state.Spec.displayName);
                 root.transform.SetParent(transform, false);
                 root.transform.position = record.position;
                 var pickup = root.AddComponent<AarisWeaponPickup>();
                 if (!pickup.Initialize(record.state, record.id))
                 {
+                    record.nextVisualAttemptAt = now + RetryDelaySeconds;
                     Destroy(root);
                     continue;
                 }
                 record.visible = pickup;
                 active.Add(pickup);
-                built++;
             }
 
+            int probes = 0;
+            Terrain[] terrains = null;
             CollectNearbyCandidateIndices(playerPosition);
             foreach (int i in nearbyCandidateIndices)
             {
-                if (active.Count >= MaximumActiveLoot) break;
+                if (active.Count >= MaximumActiveLoot) return false;
                 if (choices[i] == null || consumed[i] || IsCurrentlyActive(i)) continue;
                 var c = candidates[i];
                 float dx = c.x - playerPosition.x, dz = c.z - playerPosition.z;
                 if (dx * dx + dz * dz >= loadSquared) continue;
-                if (built >= 6) break;
-                // Colliders/terrain may stream in shortly after the player;
-                // avoid running the same failed indoor/roof physics query
-                // 3 times per second when a building has no accessible floor.
-                if (Time.unscaledTime < nextCandidateProbeAt[i]) continue;
-                if (!TryResolve(c, out Vector3 spot))
+                if (now < nextCandidateProbeAt[i]) continue;
+                if (buildAttempts == MaximumBuildAttemptsPerFrame ||
+                    probes == MaximumCandidateProbesPerFrame) return true;
+
+                probes++;
+                terrains ??= Terrain.activeTerrains;
+                if (!TryResolve(c, terrains, out Vector3 spot))
                 {
-                    nextCandidateProbeAt[i] = Time.unscaledTime + 3f;
+                    nextCandidateProbeAt[i] = now + RetryDelaySeconds;
                     continue;
                 }
+                buildAttempts++;
                 var root = new GameObject("Loot " + choices[i].displayName + " #" + i);
                 root.transform.SetParent(transform, false);
                 root.transform.position = spot;
@@ -645,18 +671,19 @@ namespace Aaris.MapReview
                     matchSeed ^ (uint)(i + 1));
                 if (!pickup.Initialize(state, i))
                 {
+                    nextCandidateProbeAt[i] = now + RetryDelaySeconds;
                     Destroy(root);
                     continue;
                 }
                 active.Add(pickup);
-                built++;
                 if (Debug.isDebugBuild)
                     Debug.Log("AARIS_LOOT_PLACED " + choices[i].id +
                         " kind=" + c.kind + " origin=" + c.origin +
                         " index=" + i + " pos=" + spot.ToString("F2"));
             }
 
-            EnsureStarterLoot(playerPosition);
+            // Leave a starter fallback for a frame with a construction slot.
+            return buildAttempts == MaximumBuildAttemptsPerFrame;
         }
 
         private void EnsureStarterLoot(Vector3 playerPosition)

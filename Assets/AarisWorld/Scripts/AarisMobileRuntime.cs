@@ -4,6 +4,7 @@ using System.IO;
 using UnityEngine;
 using UnityEngine.Profiling;
 #if UNITY_ANDROID && !UNITY_EDITOR
+using System.Threading.Tasks;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 #endif
@@ -32,6 +33,7 @@ namespace Aaris.MapReview
         private const float ReportInterval = 15f;
 #if UNITY_ANDROID && !UNITY_EDITOR
         private long androidPssKB = -1;
+        private Task<string> pendingLogWrite;
 #endif
         public static string LatestReport { get; private set; } = "Starting map...";
 
@@ -156,8 +158,8 @@ namespace Aaris.MapReview
         private sealed class Sample
         {
             public string reason, utc, version, device, gpu, api, lastError;
-            public int systemRamMB, targetFps, warningCount;
-            public float seconds, averageFps, p95FrameMs, renderScale = 1f;
+            public int systemRamMB, targetFps, warningCount, framesOver50Ms;
+            public float seconds, averageFps, p95FrameMs, p99FrameMs, renderScale = 1f;
             public long unityAllocatedBytes, unityReservedBytes, managedBytes, androidPssKB;
             public ulong textureBytes, desiredTextureBytes;
             public long terrainCpuPaintBytesReleased;
@@ -170,7 +172,14 @@ namespace Aaris.MapReview
         {
             if (reason == "low-memory") warningCount++;
             float total = 0;
-            for (int i = 0; i < frameCount; i++) { total += frameTimes[i]; sortedTimes[i] = frameTimes[i]; }
+            int framesOver50Ms = 0;
+            for (int i = 0; i < frameCount; i++)
+            {
+                float frameTime = frameTimes[i];
+                total += frameTime;
+                sortedTimes[i] = frameTime;
+                if (frameTime > .05f) framesOver50Ms++;
+            }
             Array.Sort(sortedTimes, 0, frameCount);
             var s = new Sample {
                 reason = reason, utc = DateTime.UtcNow.ToString("O"), version = Application.version,
@@ -178,6 +187,8 @@ namespace Aaris.MapReview
                 systemRamMB = SystemInfo.systemMemorySize, targetFps = Application.targetFrameRate,
                 seconds = Time.unscaledTime, averageFps = total > 0 ? frameCount / total : 0,
                 p95FrameMs = frameCount > 0 ? sortedTimes[Mathf.Clamp(Mathf.CeilToInt(frameCount * .95f) - 1, 0, frameCount - 1)] * 1000 : 0,
+                p99FrameMs = frameCount > 0 ? sortedTimes[Mathf.CeilToInt(frameCount * .99f) - 1] * 1000 : 0,
+                framesOver50Ms = framesOver50Ms,
                 unityAllocatedBytes = Profiler.GetTotalAllocatedMemoryLong(), unityReservedBytes = Profiler.GetTotalReservedMemoryLong(),
                 managedBytes = GC.GetTotalMemory(false), textureBytes = Texture.currentTextureMemory,
                 desiredTextureBytes = Texture.desiredTextureMemory, terrainCpuPaintBytesReleased = releasedPaintBytes,
@@ -200,13 +211,49 @@ namespace Aaris.MapReview
 #endif
             LatestReport = JsonUtility.ToJson(s);
             if (logPath == null) return;
+#if UNITY_ANDROID && !UNITY_EDITOR
+            if (pendingLogWrite != null)
+            {
+                // Keep at most one outstanding write. Pause/quit flush in order
+                // because Android can suspend the process after the callback.
+                if (!pendingLogWrite.IsCompleted && reason != "pause" && reason != "quit") return;
+                string previousError = pendingLogWrite.GetAwaiter().GetResult();
+                pendingLogWrite = null;
+                if (previousError != null)
+                {
+                    StopLogging(previousError);
+                    return;
+                }
+            }
+            if (reason != "start" && reason != "pause" && reason != "quit")
+            {
+                string path = logPath, report = LatestReport;
+                pendingLogWrite = Task.Run(() => AppendReport(path, report));
+                return;
+            }
+#endif
+            string error = AppendReport(logPath, LatestReport);
+            if (error != null) StopLogging(error);
+        }
+
+        private static string AppendReport(string path, string report)
+        {
             try
             {
-                if (new FileInfo(logPath).Length > 256 * 1024) File.WriteAllText(logPath, "");
-                File.AppendAllText(logPath, LatestReport + "\n");
+                if (new FileInfo(path).Length > 256 * 1024) File.WriteAllText(path, "");
+                File.AppendAllText(path, report + "\n");
+                return null;
             }
             catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
-            { Debug.LogWarning("Aaris diagnostics write stopped: " + e.Message); logPath = null; }
+            {
+                return e.Message;
+            }
+        }
+
+        private void StopLogging(string error)
+        {
+            Debug.LogWarning("Aaris diagnostics write stopped: " + error);
+            logPath = null;
         }
     }
 }
