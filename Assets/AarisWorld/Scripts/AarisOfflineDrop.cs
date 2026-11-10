@@ -10,7 +10,8 @@ namespace Aaris.MapReview
     /// after actual CollisionFlags.Below / terrain or roof contact. No network code.
     /// </summary>
     [RequireComponent(typeof(AarisThirdPersonPlayer), typeof(CharacterController))]
-    [DisallowMultipleComponent, DefaultExecutionOrder(150)]
+    // Run after AarisCharacterVisual so the drop snapshots the final rig, including hidden placeholders.
+    [DisallowMultipleComponent, DefaultExecutionOrder(225)]
     public sealed class AarisOfflineDrop : MonoBehaviour
     {
         public enum DropPhase { InPlane, Freefall, Opening, Gliding, Landing, Landed }
@@ -46,7 +47,8 @@ namespace Aaris.MapReview
         private DropPhase phase = DropPhase.InPlane;
         private readonly RaycastHit[] groundHits = new RaycastHit[72];
         private readonly RaycastHit[] cameraHits = new RaycastHit[28];
-        private readonly Terrain[] terrainBuffer = new Terrain[4];
+        private Terrain[] flightTerrains;
+        private const float InitialCanopyScale = 0.30f;
 
         public DropPhase Phase => phase;
         public bool HasLanded => phase == DropPhase.Landed;
@@ -113,7 +115,8 @@ namespace Aaris.MapReview
 
         private void BuildFlightPath()
         {
-            var terrains = Terrain.activeTerrains;
+            flightTerrains = Terrain.activeTerrains;
+            var terrains = flightTerrains;
             float minX = 1000f, maxX = -1000f, minZ = 1000f, maxZ = -1000f;
             float tallest = -50f;
             if (terrains != null && terrains.Length > 0)
@@ -171,16 +174,20 @@ namespace Aaris.MapReview
             }
             else
             {
-                float height = DistanceToSupport();
+                // Freefall needs exact support for auto-deploy. A deployed canopy only
+                // needs the long ray for HUD telemetry; landing uses the short contact ray.
+                bool sampleHeight = phase == DropPhase.Freefall || (hud != null && hud.TelemetryDue);
+                float height = 0f;
+                bool reliableHeight = !sampleHeight || TryGetDistanceToSupport(out height, 1600f);
                 if (Input.GetKeyDown(KeyCode.Space) && phase == DropPhase.Freefall) OpenCanopy();
                 if (phase == DropPhase.Freefall)
                 {
-                    if (height <= autoDeployHeight) OpenCanopy();
+                    if (!reliableHeight || height <= autoDeployHeight) OpenCanopy();
                     if (phase == DropPhase.Freefall) UpdateFreefall(dt);
                 }
                 if (phase == DropPhase.Opening || phase == DropPhase.Gliding)
                     UpdateGlide(dt);
-                if (hud != null)
+                if (sampleHeight && hud != null)
                     hud.SetTelemetry(height, Mathf.Abs(downwardSpeed) * 3.6f, phase);
             }
         }
@@ -256,7 +263,7 @@ namespace Aaris.MapReview
                 openingProgress = Mathf.Min(1f, openingProgress + dt / 0.52f);
                 if (canopy != null)
                 {
-                    float s = Mathf.SmoothStep(0.05f, 1f, openingProgress);
+                    float s = Mathf.SmoothStep(InitialCanopyScale, 1f, openingProgress);
                     canopy.transform.localScale = new Vector3(s, s, s);
                 }
                 if (openingProgress >= 1f) phase = DropPhase.Gliding;
@@ -288,15 +295,16 @@ namespace Aaris.MapReview
             if (Mathf.Abs(candidate.z) > 975f) movement.z = 0f;
             CollisionFlags flags = capsule.Move(movement);
             if ((flags & CollisionFlags.Below) != 0 && downwardSpeed < -0.1f) Land();
-            else if (phase == DropPhase.Gliding && DistanceToSupport() <= 0.48f)
+            else if (phase == DropPhase.Gliding &&
+                TryGetDistanceToSupport(out float height, 1.25f) && height <= 0.48f)
                 Land();
         }
 
-        private float DistanceToSupport()
+        private bool TryGetDistanceToSupport(out float height, float rayLength)
         {
             Vector3 position = transform.position;
             float support = -38.07552f;
-            var terrains = Terrain.activeTerrains;
+            var terrains = flightTerrains;
             if (terrains != null)
                 foreach (var t in terrains)
                 {
@@ -309,7 +317,7 @@ namespace Aaris.MapReview
 
             int n = Physics.RaycastNonAlloc(
                 new Ray(position + Vector3.up * 0.75f, Vector3.down),
-                groundHits, 1600f, Physics.DefaultRaycastLayers,
+                groundHits, rayLength, Physics.DefaultRaycastLayers,
                 QueryTriggerInteraction.Ignore);
             if (n < groundHits.Length)
                 for (int i = 0; i < n; i++)
@@ -319,9 +327,9 @@ namespace Aaris.MapReview
                         h.normal.y < 0.5f || h.point.y > position.y + 0.05f) continue;
                     support = Mathf.Max(support, h.point.y);
                 }
-            // Saturated physics queries fail safely: deploy early rather than fall through cover.
-            if (n >= groundHits.Length) return 0f;
-            return Mathf.Max(0f, position.y - support);
+            // A full hit buffer can trigger early deployment, but cannot prove touchdown.
+            height = Mathf.Max(0f, position.y - support);
+            return n < groundHits.Length;
         }
 
         public void OnAction()
@@ -352,7 +360,7 @@ namespace Aaris.MapReview
             phase = DropPhase.Opening;
             openingProgress = 0f;
             canopy = AarisOfflineDropVisuals.CreateElongatedCanopy(transform);
-            canopy.transform.localScale = Vector3.one * 0.05f;
+            canopy.transform.localScale = Vector3.one * InitialCanopyScale;
             if (hud != null) hud.SetAction("OPEN", false);
         }
 
@@ -459,8 +467,12 @@ namespace Aaris.MapReview
         private RectTransform safe;
         private Button action;
         private Text actionLabel, altitude;
+        private Rect previousSafeArea;
+        private Vector2Int previousScreen;
+        private float nextTelemetry;
         private AarisOfflineDropStick stick;
         public Vector2 MoveInput => stick != null ? stick.Value : Vector2.zero;
+        internal bool TelemetryDue => Time.unscaledTime >= nextTelemetry;
 
         public static AarisOfflineDropHud Create(AarisOfflineDrop owner)
         {
@@ -498,18 +510,21 @@ namespace Aaris.MapReview
             buttonRoot.transform.SetParent(safe, false);
             RectTransform buttonRect = buttonRoot.GetComponent<RectTransform>();
             buttonRect.anchorMin = buttonRect.anchorMax = new Vector2(0.84f, 0.55f);
-            buttonRect.sizeDelta = new Vector2(145f, 70f);
-            buttonRoot.GetComponent<Image>().color = new Color(0.96f, 0.51f, 0.14f, 0.96f);
+            buttonRect.sizeDelta = new Vector2(110f, 110f);
+            var actionImage = buttonRoot.GetComponent<Image>();
+            actionImage.sprite = AarisHudGlyphs.Ring;
+            actionImage.color = new Color(1f, 0.87f, 0.68f, 1f);
             action = buttonRoot.GetComponent<Button>();
+            action.targetGraphic = actionImage;
             action.onClick.AddListener(() => { if (owner != null) owner.OnAction(); });
-            actionLabel = Label(buttonRoot.transform, "EJECT", 30, TextAnchor.MiddleCenter);
+            actionLabel = Label(buttonRoot.transform, "EJECT", 23, TextAnchor.MiddleCenter);
             Stretch(actionLabel.rectTransform);
 
             var altitudeRoot = new GameObject("Flight Telemetry", typeof(RectTransform));
             altitudeRoot.transform.SetParent(safe, false);
             var altRect = altitudeRoot.GetComponent<RectTransform>();
             altRect.anchorMin = altRect.anchorMax = new Vector2(0.80f, 0.89f);
-            altRect.sizeDelta = new Vector2(220f, 75f);
+            altRect.sizeDelta = new Vector2(220f, 84f);
             altitude = Label(altitudeRoot.transform, "ALT  -- m\nSPD  -- km/h", 20, TextAnchor.MiddleRight);
             Stretch(altitude.rectTransform);
 
@@ -519,7 +534,7 @@ namespace Aaris.MapReview
             var rect = baseStick.GetComponent<RectTransform>();
             rect.anchorMin = rect.anchorMax = new Vector2(0.12f, 0.20f);
             rect.sizeDelta = new Vector2(142f, 142f);
-            baseStick.GetComponent<Image>().color = new Color(0.13f, 0.20f, 0.27f, 0.63f);
+            baseStick.GetComponent<Image>().sprite = AarisHudGlyphs.Ring;
             stick = baseStick.GetComponent<AarisOfflineDropStick>();
             stick.Build();
         }
@@ -527,6 +542,11 @@ namespace Aaris.MapReview
         private void ApplySafeArea()
         {
             Rect area = Screen.safeArea;
+            var screen = new Vector2Int(Screen.width, Screen.height);
+            if (screen.x <= 0 || screen.y <= 0 ||
+                (previousScreen == screen && previousSafeArea == area)) return;
+            previousScreen = screen;
+            previousSafeArea = area;
             safe.anchorMin = new Vector2(area.xMin / Screen.width, area.yMin / Screen.height);
             safe.anchorMax = new Vector2(area.xMax / Screen.width, area.yMax / Screen.height);
             safe.offsetMin = safe.offsetMax = Vector2.zero;
@@ -540,9 +560,10 @@ namespace Aaris.MapReview
         }
         public void SetTelemetry(float metres, float kmph, AarisOfflineDrop.DropPhase phase)
         {
-            if (altitude != null)
-                altitude.text = "ALT " + Mathf.CeilToInt(metres) + " m\nSPD " +
-                    Mathf.RoundToInt(kmph) + " km/h\n" + phase;
+            if (altitude == null || !TelemetryDue) return;
+            nextTelemetry = Time.unscaledTime + 0.15f;
+            altitude.text = "ALT " + Mathf.CeilToInt(metres) + " m\nSPD " +
+                Mathf.RoundToInt(kmph) + " km/h\n" + phase;
         }
         private static Text Label(Transform parent, string value, int fontSize, TextAnchor align)
         {
@@ -578,8 +599,9 @@ namespace Aaris.MapReview
             child.transform.SetParent(area, false);
             knob = child.GetComponent<RectTransform>();
             knob.sizeDelta = new Vector2(57f, 57f);
-            knob.GetComponent<Image>().color = new Color(0.25f, 0.77f, 0.93f, 0.92f);
-            knob.GetComponent<Image>().raycastTarget = false;
+            var image = knob.GetComponent<Image>();
+            image.sprite = AarisHudGlyphs.Knob;
+            image.raycastTarget = false;
         }
         public void OnPointerDown(PointerEventData data)
         {
@@ -597,15 +619,16 @@ namespace Aaris.MapReview
         }
         public void OnPointerUp(PointerEventData data)
         {
-            if (finger != data.pointerId) return;
+            if (finger == data.pointerId) ResetStick();
+        }
+        private void ResetStick()
+        {
             finger = int.MinValue;
             Value = Vector2.zero;
             if (knob != null) knob.anchoredPosition = Vector2.zero;
         }
-        private void OnDisable()
-        {
-            finger = int.MinValue;
-            Value = Vector2.zero;
-        }
+        private void OnDisable() => ResetStick();
+        private void OnApplicationPause(bool paused) { if (paused) ResetStick(); }
+        private void OnApplicationFocus(bool focused) { if (!focused) ResetStick(); }
     }
 }

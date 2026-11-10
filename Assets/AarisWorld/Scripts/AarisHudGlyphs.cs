@@ -12,9 +12,10 @@ namespace Aaris.MapReview
         internal enum Glyph { Fire, Jump, Crouch, Prone, Sprint }
         private const int Size = 128;
         private static readonly Sprite[] Sprites = new Sprite[5];
-        private static Sprite ring;
+        private static Sprite ring, knob;
 
-        internal static Sprite Ring => ring != null ? ring : (ring = BuildRing());
+        internal static Sprite Ring => ring != null ? ring : (ring = BuildDisc(true));
+        internal static Sprite Knob => knob != null ? knob : (knob = BuildDisc(false));
 
         internal static Sprite Get(Glyph glyph)
         {
@@ -128,10 +129,10 @@ namespace Aaris.MapReview
             return Sprite.Create(texture, new Rect(0f, 0f, Size, Size), Vector2.one * 0.5f, 100f);
         }
 
-        private static Sprite BuildRing()
+        private static Sprite BuildDisc(bool outlined)
         {
             var texture = new Texture2D(Size, Size, TextureFormat.RGBA32, false);
-            texture.name = "AarisHUD_TransparentCircle";
+            texture.name = outlined ? "AarisHUD_OutlinedDisc" : "AarisHUD_Knob";
             var pixels = new Color32[Size * Size];
             for (int y = 0; y < Size; y++)
             {
@@ -141,9 +142,14 @@ namespace Aaris.MapReview
                     float dy = (y + 0.5f) / Size - 0.5f;
                     float d = Mathf.Sqrt(dx * dx + dy * dy);
                     float edge = Mathf.Clamp01((0.496f - d) * Size / 1.5f);
-                    float border = d > 0.460f ? 0.29f : 0f;
-                    byte alpha = (byte)Mathf.RoundToInt(edge * (0.54f + border) * 255f);
-                    pixels[y * Size + x] = new Color32(25, 29, 35, alpha);
+                    float rim = outlined ? Mathf.SmoothStep(0f, 1f, (d - 0.452f) * 32f) : 0f;
+                    float highlight = Mathf.Clamp01(0.5f + dy) * 0.15f;
+                    Color fill = outlined
+                        ? Color.Lerp(new Color(0.07f, 0.12f, 0.17f, 0.65f),
+                            new Color(0.63f, 0.79f, 0.89f, 0.85f), rim * (0.82f + highlight))
+                        : new Color(0.78f, 0.9f, 0.95f, 0.92f);
+                    fill.a *= edge;
+                    pixels[y * Size + x] = fill;
                 }
             }
             texture.SetPixels32(pixels);

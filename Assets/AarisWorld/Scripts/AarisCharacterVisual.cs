@@ -197,8 +197,39 @@ namespace Aaris.MapReview
 
         private void TryApplySkin()
         {
-            // Never recolor an external high-fidelity Player.fbx by force.
-            if (Resources.Load<GameObject>(PrimaryModel) != null) return;
+            if (primaryLoaded)
+            {
+                // The bundled character includes normals, but its untextured body and hair
+                // import in flat white. Keep authored colors/textures on replacement models.
+                int baseMapId = Shader.PropertyToID("_BaseMap");
+                int baseColorId = Shader.PropertyToID("_BaseColor");
+                var properties = new MaterialPropertyBlock();
+                foreach (var renderer in visual.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+                {
+                    var materials = renderer.sharedMaterials;
+                    for (int i = 0; i < materials.Length; i++)
+                    {
+                        var material = materials[i];
+                        if (material == null || !material.HasProperty(baseColorId) || !material.HasProperty(baseMapId)) continue;
+                        var texture = material.GetTexture(baseMapId);
+                        if (texture != null && texture != Texture2D.whiteTexture) continue;
+                        var original = material.GetColor(baseColorId);
+                        if (Mathf.Min(original.r, Mathf.Min(original.g, original.b)) < 0.75f) continue;
+
+                        Color tint;
+                        if (material.name.IndexOf("Superhero_Male", StringComparison.OrdinalIgnoreCase) >= 0)
+                            tint = new Color(0.20f, 0.29f, 0.39f, original.a);
+                        else if (material.name.IndexOf("MI_Hair", StringComparison.OrdinalIgnoreCase) >= 0)
+                            tint = new Color(0.14f, 0.12f, 0.11f, original.a);
+                        else continue;
+
+                        renderer.GetPropertyBlock(properties, i);
+                        properties.SetColor(baseColorId, tint);
+                        renderer.SetPropertyBlock(properties, i);
+                    }
+                }
+                return;
+            }
             var skins = Resources.LoadAll<Texture2D>(KenneyClips);
             Texture2D chosen = null;
             int bestScore = int.MinValue;

@@ -75,11 +75,11 @@ namespace Aaris.MapReview
 
             // Positions are local to the display cutout-safe rectangle. The
             // reference style uses a left sprint and right clustered actions.
-            Add(Action.Sprint, new Vector2(0f, 0.68f), new Vector2(225f, 0f), 112f);
-            Add(Action.Fire, new Vector2(1f, 0.49f), new Vector2(-253f, 0f), 132f);
-            Add(Action.Jump, new Vector2(1f, 0.49f), new Vector2(-83f, 0f), 108f);
-            Add(Action.Crouch, new Vector2(1f, 0.14f), new Vector2(-87f, 0f), 112f);
-            Add(Action.Prone, new Vector2(1f, 0.12f), new Vector2(-227f, 0f), 106f);
+            Add(Action.Sprint, new Vector2(0f, 0.66f), new Vector2(173f, 0f), 84f);
+            Add(Action.Fire, new Vector2(1f, 0.49f), new Vector2(-218f, 0f), 108f);
+            Add(Action.Jump, new Vector2(1f, 0.51f), new Vector2(-78f, 0f), 88f);
+            Add(Action.Crouch, new Vector2(1f, 0.17f), new Vector2(-78f, 0f), 86f);
+            Add(Action.Prone, new Vector2(1f, 0.15f), new Vector2(-193f, 0f), 84f);
 
             UpdateSafeArea(true);
             Debug.Log("Aaris HUD: five original offline action buttons enabled: Fire/Punch, Jump, Crouch, Prone, Sprint.");
