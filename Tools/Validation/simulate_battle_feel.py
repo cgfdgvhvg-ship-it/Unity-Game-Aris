@@ -55,7 +55,7 @@ def assert_regression() -> None:
     assert setting("armedSprintSpeed") == 5.7
     assert setting("walkSpeed") == 4.2
     assert setting("crouchMoveSpeed") == 2.4
-    assert setting("proneMoveSpeed") == 1.1
+    assert setting("proneMoveSpeed") == 1.45
     assert setting("combatMoveSpeed") == 2.0
     acc = setting("horizontalAcceleration")
     brake = setting("horizontalBraking")
@@ -75,28 +75,30 @@ def assert_regression() -> None:
         full_apex, full_time = jump(fps, None)
         short_apex, short_time = jump(fps, 0.10)
         quick_tap_apex, quick_tap_time = jump(fps, 0.0)
-        assert 0.68 <= quick_tap_apex <= 0.86, (fps, "quick tap from stair", quick_tap_apex)
+        assert 1.16 <= quick_tap_apex <= 1.28, (fps, "quick tap from stair", quick_tap_apex)
         assert quick_tap_time > 0.35, (fps, "quick tap must not instantly land")
-        assert 0.97 <= full_apex <= 1.02, (fps, "frame-independent full jump height", full_apex)
-        assert 0.25 <= short_apex < full_apex - 0.13, (fps, "short jump", short_apex)
-        assert 0.36 <= short_time < full_time <= 0.75, (fps, "jump timings", short_time, full_time)
+        assert 1.33 <= full_apex <= 1.36, (fps, "frame-independent full jump height", full_apex)
+        assert 1.12 <= short_apex < full_apex - 0.08, (fps, "short jump", short_apex)
+        assert 0.61 <= short_time < full_time <= 0.86, (fps, "jump timings", short_time, full_time)
 
     assert MOTOR.count("controller.Move(") == 1, "Duplicate motor/controller update"
-    assert "jumpUntil = Time.unscaledTime + 0.17f" in MOTOR
-    assert "now - lastGrounded <= 0.11f" in MOTOR
+    assert "jumpUntil = Time.unscaledTime + 0.20f" in MOTOR
+    assert "now - lastGrounded <= 0.15f" in MOTOR
     assert "jumpButtonHeld || Input.GetKey(KeyCode.Space)" in MOTOR
     assert "earlyJumpReleaseGravity" in MOTOR
     assert "minimumJumpAscentSeconds" in MOTOR
     assert "minimumAscentElapsed" in MOTOR
-    assert "controller.stepOffset = wasGrounded && !launchJump ? groundedStep : 0f;" in MOTOR
+    assert "controller.stepOffset = !launchJump && (wasGrounded || verticalVelocity <= 0f)" in MOTOR
     assert "controller.stepOffset = groundedStep;" in MOTOR
     assert "float rise = savedGroundStepOffset + 0.1f;" in MOTOR
     assert "public float GroundStepOffset" in ACTION
-    assert "0.18f : 0.075f" in ACTION
+    assert "0.20f : 0.16f" in ACTION
     assert "Time.deltaTime" in MOTOR and "airborneSteering" in MOTOR
     assert "previousVerticalVelocity" in MOTOR and "verticalStepSpeed" in MOTOR
     assert "(previousVerticalVelocity + verticalVelocity) * 0.5f" in MOTOR
     assert "Physics.SphereCast(" in MOTOR
+    assert "HasWalkableGroundWithinStep()" in MOTOR
+    assert "ProneWallSlide(horizontalVelocity, dt)" in MOTOR
     assert "CollisionFlags.Below" in MOTOR
     assert "Mathf.SmoothDamp(smoothedEyeHeight" in MOTOR
     assert "player.SetJumpHeld(true)" in HUD and "player.SetJumpHeld(false)" in HUD
