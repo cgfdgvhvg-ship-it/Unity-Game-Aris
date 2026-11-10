@@ -13,9 +13,26 @@ namespace Aaris.MapReview
         private int candidateIndex;
         private Transform model;
         private LineRenderer beacon;
+        private bool reserved, consumed;
 
         public AarisWeaponSpec Spec => state != null ? state.Spec : null;
         public AarisWeaponState State => state;
+        public bool IsConsumed => consumed;
+        public bool TryReserve()
+        {
+            if (reserved || consumed || state == null) return false;
+            reserved = true;
+            return true;
+        }
+        public void ReleaseReservation()
+        {
+            if (!consumed) reserved = false;
+        }
+        public void CommitConsumed()
+        {
+            consumed = true;
+            reserved = false;
+        }
         // Non-negative = baked match node; negative = a player-dropped gun.
         public int CandidateIndex => candidateIndex;
 
@@ -23,8 +40,9 @@ namespace Aaris.MapReview
         {
             if (gunState == null || gunState.Spec == null ||
                 !gunState.Spec.Valid) return false;
-            state = gunState;
+            state = gunState; // Immutable readonly snapshot, no mutable ammo alias.
             candidateIndex = index;
+            reserved = consumed = false;
             GameObject prefab = AarisWeaponCatalog.ModelFor(state.Spec);
             if (prefab == null)
             {
