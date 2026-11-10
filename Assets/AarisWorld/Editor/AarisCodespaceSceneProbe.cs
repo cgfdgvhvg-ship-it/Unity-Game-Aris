@@ -21,6 +21,7 @@ namespace Aaris.MapReview.Editor
         private const string State = "aaris.codespace.probe.state";
         private const string Deadline = "aaris.codespace.probe.deadline";
         private const string Errors = "aaris.codespace.probe.errors";
+        private const string EditorWarnings = "aaris.codespace.probe.editorWarnings";
         private const string ErrorKind = "aaris.codespace.probe.errorKind";
         private const string ErrorSource = "aaris.codespace.probe.errorSource";
         private const string Began = "aaris.codespace.probe.began";
@@ -39,6 +40,7 @@ namespace Aaris.MapReview.Editor
             public int terrainTiles;
             public int frames;
             public int runtimeErrors;
+            public int editorLifecycleWarnings;
             public string runtimeErrorKind;
             public string runtimeErrorSource;
             public bool playerPresent;
@@ -63,6 +65,24 @@ namespace Aaris.MapReview.Editor
             if (state != "starting" && state != "running") return;
             if (type == LogType.Exception || type == LogType.Error || type == LogType.Assert)
             {
+                // Unity 6000 batch Play transitions can throw an Editor-only
+                // index exception in EditorApplication. Do not report that
+                // as gameplay failure if no Aaris code appears in the stack.
+                // Keep it visible as a separate warning; we STILL require
+                // all runtime components plus a valid rendered frame.
+                bool editorLifecycleOnly = type == LogType.Exception &&
+                    message != null &&
+                    (message.Contains("IndexOutOfRangeException") ||
+                     message.Contains("ArgumentOutOfRangeException")) &&
+                    trace != null &&
+                    trace.Contains("UnityEditor.EditorApplication") &&
+                    !trace.Contains("Aaris.");
+                if (editorLifecycleOnly)
+                {
+                    SessionState.SetInt(EditorWarnings,
+                        Math.Min(10000, SessionState.GetInt(EditorWarnings, 0) + 1));
+                    return;
+                }
                 SessionState.SetInt(Errors, Math.Min(10000, SessionState.GetInt(Errors, 0) + 1));
                 // Classify without storing/publishing the raw message or stack.
                 if (SessionState.GetString(ErrorKind, "") == "")
@@ -752,6 +772,7 @@ namespace Aaris.MapReview.Editor
             Directory.CreateDirectory(Output);
             SessionState.SetString(State, "");
             SessionState.SetInt(Errors, 0);
+            SessionState.SetInt(EditorWarnings, 0);
             SessionState.SetString(ErrorKind, "");
             SessionState.SetString(ErrorSource, "");
             try
@@ -820,6 +841,7 @@ namespace Aaris.MapReview.Editor
                     graphicsDevice = SystemInfo.graphicsDeviceType.ToString(),
                     frames = Time.frameCount, terrainTiles = terrains.Length,
                     runtimeErrors = SessionState.GetInt(Errors, 0),
+                    editorLifecycleWarnings = SessionState.GetInt(EditorWarnings, 0),
                     runtimeErrorKind = SessionState.GetString(ErrorKind, ""),
                     runtimeErrorSource = SessionState.GetString(ErrorSource, ""),
                     playerPresent = player != null,
@@ -848,6 +870,7 @@ namespace Aaris.MapReview.Editor
             if (writeReport)
                 Save(new Result { mode = "play", status = "failed", scene = Scene,
                     reason = reason, runtimeErrors = SessionState.GetInt(Errors, 0),
+                    editorLifecycleWarnings = SessionState.GetInt(EditorWarnings, 0),
                     runtimeErrorKind = SessionState.GetString(ErrorKind, ""),
                     runtimeErrorSource = SessionState.GetString(ErrorSource, "") },
                     "play-report.json");
