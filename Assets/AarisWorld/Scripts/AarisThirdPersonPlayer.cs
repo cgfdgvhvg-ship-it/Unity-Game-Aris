@@ -461,7 +461,10 @@ namespace Aaris.MapReview
                 if (t == null || t.terrainData == null) continue;
                 Vector3 origin = t.transform.position, size = t.terrainData.size;
                 if (position.x >= origin.x && position.x <= origin.x + size.x && position.z >= origin.z && position.z <= origin.z + size.z)
-                    ground = Mathf.Max(ground, origin.y + t.SampleHeight(position));
+                    // Terrain.SampleHeight already returns a world-space elevation.
+                    // On offset native tiles, double-adding origin.y misclassifies
+                    // safe land as sea/water and can interrupt on-foot movement.
+                    ground = Mathf.Max(ground, t.SampleHeight(position));
             }
             return ground;
         }

@@ -5,6 +5,7 @@ These checks are NOT a substitute for a licensed Unity compilation, physics
 test, native scene render, Android profiling or Play Mode verification.
 """
 from pathlib import Path
+import json
 import math
 import re
 import unittest
@@ -67,6 +68,39 @@ class OfflineCombatAssetChecks(unittest.TestCase):
                 self.assertGreater(bounds[1], min_y)
                 self.assertGreater(bounds[2], min_z)
 
+    def test_player_safe_footing_uses_same_world_space_ground_height(self):
+        player = (SCRIPTS / "AarisThirdPersonPlayer.cs").read_text("utf-8")
+        self.assertIn("ground = Mathf.Max(ground, t.SampleHeight(position));", player)
+        self.assertNotIn("origin.y + t.SampleHeight(position)", player)
+        self.assertIn("if (GroundHeight(position) >= seaLevel + 0.35f)", player)
+
+    def test_world_y_not_double_added_to_drop_altitude(self):
+        source = (SCRIPTS / "AarisOfflineDrop.cs").read_text(encoding="utf-8")
+        self.assertIn("tallest = Mathf.Max(tallest, terrain.SampleHeight(", source)
+        self.assertIn("support = Mathf.Max(support, t.SampleHeight(position));", source)
+        self.assertNotIn("terrain.SampleHeight(new Vector3(x, 0f, z)) + p.y", source)
+        self.assertNotIn("p.y + t.SampleHeight(position)", source)
+
+    def test_replacement_cargo_plane_has_swept_four_engine_art(self):
+        verts, faces, materials, size = read_obj(MODELS["aircraft"][0])
+        self.assertGreaterEqual(len(faces), 750)
+        self.assertLessEqual(len(faces), 2400, "Avoid mobile overdraw and oversized plane geometry")
+        self.assertLessEqual(len(verts), 1300)
+        self.assertGreater(size[0], 31)
+        self.assertGreater(size[1], 7)
+        self.assertGreater(size[2], 22)
+        self.assertTrue({"HulledMetal", "DarkCockpit", "WingPanels",
+                         "EngineDark", "SafetyAccent"}.issubset(materials))
+        source = (SCRIPTS / "AarisOfflineDropVisuals.cs").read_text("utf-8")
+        movement = (SCRIPTS / "AarisOfflineDrop.cs").read_text("utf-8")
+        self.assertIn("BuildPropellerMesh()", source)
+        self.assertIn("else if (slots.Length == 5)", source)
+        self.assertIn("AARIS_CARGO_PLANE_MODEL_NOT_IMPORTED", source)
+        self.assertIn("Quaternion.Euler(0f, 0f,", movement)
+        self.assertIn("Time.unscaledDeltaTime", movement)
+        self.assertNotIn('"PropellerBladeA"', source)
+        self.assertNotIn('"PropellerBladeB"', source)
+
     def test_parachute_is_elongated_and_round_ended_not_rectangular(self):
         verts, _, _, bounds = read_obj(MODELS["parachute"][0])
         self.assertGreater(bounds[0] / max(bounds[2], 0.1), 2.8)
@@ -74,6 +108,49 @@ class OfflineCombatAssetChecks(unittest.TestCase):
         center = [abs(z) for x, y, z in verts if abs(x) < 0.25]
         self.assertTrue(near_tip and center)
         self.assertLess(max(near_tip), max(center) * 0.65)
+
+    def test_interactive_door_never_hits_approaching_player_and_closes_safely(self):
+        door = (SCRIPTS / "AarisBreakablePanel.cs").read_text("utf-8")
+        self.assertIn("house.InverseTransformPoint(player.position).z", door)
+        self.assertIn("openDirection = house.InverseTransformPoint(player.position).z <", door)
+        self.assertIn("shouldOpen ? OpenAngle * openDirection : 0f", door)
+        self.assertIn("Mathf.Abs(currentAngle) > 80f", door)
+        self.assertIn("Mathf.Abs(currentAngle) > .01f && ClosingBlocked()", door)
+        self.assertIn("Physics.OverlapBoxNonAlloc", door)
+        self.assertIn("if (hits >= blockers.Length) return true;", door)
+        self.assertIn("QueryTriggerInteraction.Ignore", door)
+
+    def test_saved_loot_and_car_resources_have_full_map_coverage(self):
+        # Asset-backed coverage check only: physics-spawn and device play still
+        # need the native Unity player to validate real clearance.
+        loot = json.loads((ASSETS / "AarisWeapons" / "loot_candidates.json").read_text("utf-8"))
+        points = json.loads((ASSETS / "AarisVehicles" / "vehicle_candidates.json").read_text("utf-8"))
+        cars = json.loads((ASSETS / "AarisVehicles" / "vehicle_catalog.json").read_text("utf-8"))
+        self.assertEqual(loot["sizeMetres"], 2000)
+        self.assertEqual(points["sizeMetres"], 2000)
+        self.assertEqual(points["hubCount"], 45)
+        self.assertGreaterEqual(len(loot["candidates"]), 400)
+        self.assertGreaterEqual(len(points["candidates"]), 70)
+        self.assertGreaterEqual(len(cars["vehicles"]), 3)
+        self.assertTrue(any(p["kind"] == "indoor" for p in loot["candidates"]))
+        self.assertTrue(any(p["kind"] != "indoor" for p in loot["candidates"]))
+        for vehicle in cars["vehicles"]:
+            for resource in (vehicle["modelResource"], vehicle["wheelResource"]):
+                model = ASSETS / (resource + ".fbx")
+                self.assertTrue(model.is_file(), str(model))
+                self.assertTrue(Path(str(model) + ".meta").is_file(), str(model))
+        source = (SCRIPTS / "AarisVehicleWorld.cs").read_text("utf-8")
+        self.assertIn("MaximumNearbyVehicles = 10", source)
+        self.assertIn("Physics.OverlapBoxNonAlloc", source)
+        self.assertIn("TryResolve(record, out Vector3 pos)", source)
+        door = (SCRIPTS / "AarisBreakablePanel.cs").read_text("utf-8")
+        self.assertIn("ClosingBlocked()", door)
+        self.assertIn("Physics.OverlapBoxNonAlloc", door)
+        self.assertIn("NearRadius = 3.2f", door)
+        self.assertIn("solid.enabled = false", door)
+        modular = (SCRIPTS / "AarisModularHouse.cs").read_text("utf-8")
+        self.assertIn("AutomaticBreakableDoorHinge", modular)
+        self.assertIn("RealDoorLeaf", modular)
 
     def test_script_api_and_damage_compatibility(self):
         contents = {

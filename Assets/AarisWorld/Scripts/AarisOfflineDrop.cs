@@ -47,6 +47,7 @@ namespace Aaris.MapReview
         private Vector3 pathStart, pathEnd, horizontalVelocity;
         private Quaternion cachedPlayerRotation;
         private float flightProgress, pathDuration, downwardSpeed, yaw, pitch, openingProgress, airborneSince;
+        private float propellerAngle;
         private int lookFinger = -1;
         private Vector3 previousMouse;
         private DropPhase phase = DropPhase.InPlane;
@@ -145,7 +146,9 @@ namespace Aaris.MapReview
                         for (int b = 0; b <= 4; b++)
                         {
                             float x = p.x + s.x * (a / 4f), z = p.z + s.z * (b / 4f);
-                            tallest = Mathf.Max(tallest, terrain.SampleHeight(new Vector3(x, 0f, z)) + p.y);
+                            // Unity Terrain.SampleHeight returns the sampled world-space Y.
+                            // Adding the Terrain tile's Y again corrupts flight clearance.
+                            tallest = Mathf.Max(tallest, terrain.SampleHeight(new Vector3(x, 0f, z)));
                         }
                 }
             }
@@ -180,9 +183,15 @@ namespace Aaris.MapReview
                     plane.transform.position = Vector3.Lerp(pathStart, pathEnd, flightProgress);
                     transform.position = plane.transform.position + Vector3.down * 6f;
                 }
+                // One bounded angle accumulator drives all four shared rotor meshes.
+                // Avoid stacking Transform.Rotate deltas or creating per-frame art.
+                propellerAngle = Mathf.Repeat(propellerAngle +
+                    1150f * Mathf.Min(Time.unscaledDeltaTime, .05f), 360f);
                 if (propellers != null)
                     for (int i = 0; i < propellers.Length; i++)
-                        if (propellers[i] != null) propellers[i].Rotate(0f, 0f, 1500f * dt, Space.Self);
+                        if (propellers[i] != null)
+                            propellers[i].localRotation = Quaternion.Euler(0f, 0f,
+                                (i & 1) == 0 ? propellerAngle : -propellerAngle);
                 if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.F)) OnAction();
                 if (flightProgress >= 0.95f) Eject();
             }
@@ -336,7 +345,7 @@ namespace Aaris.MapReview
                     Vector3 p = t.transform.position, sz = t.terrainData.size;
                     if (position.x >= p.x && position.x <= p.x + sz.x &&
                         position.z >= p.z && position.z <= p.z + sz.z)
-                        support = Mathf.Max(support, p.y + t.SampleHeight(position));
+                        support = Mathf.Max(support, t.SampleHeight(position));
                 }
 
             int n = Physics.RaycastNonAlloc(

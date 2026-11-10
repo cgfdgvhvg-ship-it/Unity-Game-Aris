@@ -10,7 +10,9 @@ namespace Aaris.MapReview
     /// </summary>
     internal static class AarisOfflineDropVisuals
     {
-        private static Material hull, dark, canopyBlue, canopyWhite, canopyOrange, rope;
+        private static Material hull, dark, wingPanels, engineDark, safetyAccent,
+            canopyBlue, canopyWhite, canopyOrange, rope;
+        private static Mesh cachedPropellerMesh;
 
         private static Material Paint(ref Material cached, Color color)
         {
@@ -55,6 +57,65 @@ namespace Aaris.MapReview
                 new Vector3(diameter, offset.magnitude * 0.5f, diameter), material);
         }
 
+        // One lightweight three-blade rotor mesh is shared by all four propellers.
+        // Unlike 8 separate cube primitives it requires no generated colliders
+        // or per-blade GameObjects during a mobile match.
+        private static Mesh BuildPropellerMesh()
+        {
+            if (cachedPropellerMesh != null) return cachedPropellerMesh;
+            var vertices = new List<Vector3>(36);
+            var triangles = new List<int>(72);
+            for (int blade = 0; blade < 3; blade++)
+            {
+                float theta = blade * (Mathf.PI * 2f / 3f);
+                Vector2 direction = new Vector2(Mathf.Cos(theta), Mathf.Sin(theta));
+                Vector2 side = new Vector2(-direction.y, direction.x);
+                float[] radii = { .24f, 1.02f, 1.66f };
+                float[] widths = { .22f, .19f, .055f };
+                int first = vertices.Count;
+                for (int row = 0; row < radii.Length; row++)
+                {
+                    Vector2 middle = direction * radii[row];
+                    Vector2 left = middle - side * widths[row];
+                    Vector2 right = middle + side * widths[row];
+                    vertices.Add(new Vector3(left.x, left.y, .027f));
+                    vertices.Add(new Vector3(right.x, right.y, .027f));
+                }
+                for (int row = 0; row < radii.Length - 1; row++)
+                {
+                    int a = first + row * 2;
+                    int b = a + 1;
+                    int c = a + 2;
+                    int d = c + 1;
+                    triangles.Add(a); triangles.Add(b); triangles.Add(c);
+                    triangles.Add(c); triangles.Add(b); triangles.Add(d);
+                    triangles.Add(a); triangles.Add(c); triangles.Add(b);
+                    triangles.Add(c); triangles.Add(d); triangles.Add(b);
+                }
+            }
+            // The rotor cap is part of the same mesh, not another draw call.
+            int cap = vertices.Count;
+            vertices.Add(new Vector3(0f, 0f, .075f));
+            for (int i = 0; i < 12; i++)
+            {
+                float angle = i * Mathf.PI / 6f;
+                vertices.Add(new Vector3(Mathf.Cos(angle) * .27f,
+                    Mathf.Sin(angle) * .27f, .06f));
+            }
+            for (int i = 0; i < 12; i++)
+            {
+                triangles.Add(cap);
+                triangles.Add(cap + 1 + i);
+                triangles.Add(cap + 1 + (i + 1) % 12);
+            }
+            cachedPropellerMesh = new Mesh { name = "AarisSharedTriBladeRotor" };
+            cachedPropellerMesh.SetVertices(vertices);
+            cachedPropellerMesh.SetTriangles(triangles, 0);
+            cachedPropellerMesh.RecalculateNormals();
+            cachedPropellerMesh.RecalculateBounds();
+            return cachedPropellerMesh;
+        }
+
         internal static GameObject CreatePlane(Vector3 position, Quaternion rotation,
             out Transform[] propellers)
         {
@@ -63,24 +124,45 @@ namespace Aaris.MapReview
             if (prefab != null)
             {
                 root = UnityEngine.Object.Instantiate(prefab, position, rotation);
-                Material hullPaint = Paint(ref hull, new Color(0.36f, 0.44f, 0.47f));
-                Material cockpitPaint = Paint(ref dark, new Color(0.09f, 0.14f, 0.17f));
-                // OBJ/MTL importers can create non-URP materials; explicitly bind
-                // URP Lit on this runtime instance, preserving local mesh geometry.
+                Material hullPaint = Paint(ref hull, new Color(.31f, .36f, .35f));
+                Material cockpitPaint = Paint(ref dark, new Color(.055f, .10f, .13f));
+                Material wingPaint = Paint(ref wingPanels, new Color(.39f, .43f, .40f));
+                Material enginePaint = Paint(ref engineDark, new Color(.095f, .12f, .13f));
+                Material safetyPaint = Paint(ref safetyAccent, new Color(.60f, .60f, .49f));
+                // Imported OBJ/MTL materials are not guaranteed to be URP-compatible.
+                // Map each authored submesh to one cached, shared URP material.
+                // Preserve wing/cockpit/intake contrast instead of flattening
+                // the entire aircraft to one cartoon-like hull colour.
                 foreach (var renderer in root.GetComponentsInChildren<Renderer>(true))
                 {
                     var slots = renderer.sharedMaterials;
                     for (int i = 0; i < slots.Length; i++)
                     {
                         string label = slots[i] != null ? slots[i].name : "";
-                        slots[i] = label.IndexOf("Cockpit", StringComparison.OrdinalIgnoreCase) >= 0
-                            ? cockpitPaint : hullPaint;
+                        if (label.IndexOf("Cockpit", StringComparison.OrdinalIgnoreCase) >= 0)
+                            slots[i] = cockpitPaint;
+                        else if (label.IndexOf("WingPanels", StringComparison.OrdinalIgnoreCase) >= 0)
+                            slots[i] = wingPaint;
+                        else if (label.IndexOf("EngineDark", StringComparison.OrdinalIgnoreCase) >= 0)
+                            slots[i] = enginePaint;
+                        else if (label.IndexOf("SafetyAccent", StringComparison.OrdinalIgnoreCase) >= 0)
+                            slots[i] = safetyPaint;
+                        // Some mobile OBJ import paths discard the MTL names but
+                        // retain the five source submesh slots in OBJ declaration
+                        // order. Preserve their contrast even in this case.
+                        else if (slots.Length == 5)
+                            slots[i] = i == 1 ? cockpitPaint :
+                                i == 2 ? wingPaint :
+                                i == 3 ? enginePaint :
+                                i == 4 ? safetyPaint : hullPaint;
+                        else slots[i] = hullPaint;
                     }
                     renderer.sharedMaterials = slots;
                 }
             }
             else
             {
+                Debug.LogError("AARIS_CARGO_PLANE_MODEL_NOT_IMPORTED: using emergency offline placeholder.");
                 root = new GameObject("Aaris_OriginalCargoAircraft");
                 root.transform.SetPositionAndRotation(position, rotation);
                 Material shell = Paint(ref hull, new Color(0.36f, 0.44f, 0.47f));
@@ -112,20 +194,20 @@ namespace Aaris.MapReview
                 }
             }
 
-            // Dedicated pivots rotate smoothly even if imported model has no separate prop meshes.
-            float[] offsets = { -8.7f, -4.6f, 4.6f, 8.7f };
+            // The three-blade propeller disk sits FORWARD of each engine/wing.
+            // A shared mesh and four pivots replace eight rectangular cube blades.
+            float[] offsets = { -8.65f, -4.55f, 4.55f, 8.65f };
             propellers = new Transform[offsets.Length];
-            Material bladeMaterial = Paint(ref dark, new Color(0.09f, 0.14f, 0.17f));
+            Material bladeMaterial = Paint(ref dark, new Color(.055f, .08f, .085f));
+            Mesh rotor = BuildPropellerMesh();
             for (int i = 0; i < offsets.Length; i++)
             {
-                GameObject hub = new GameObject("PropellerPivot" + i);
+                GameObject hub = new GameObject("PropellerPivot" + i,
+                    typeof(MeshFilter), typeof(MeshRenderer));
                 hub.transform.SetParent(root.transform, false);
-                hub.transform.localPosition = new Vector3(offsets[i], 0.6f, 3.3f);
-                Part(hub.transform, "PropellerBladeA", PrimitiveType.Cube,
-                    Vector3.zero, Quaternion.identity, new Vector3(0.20f, 3.6f, 0.12f), bladeMaterial);
-                Part(hub.transform, "PropellerBladeB", PrimitiveType.Cube,
-                    Vector3.zero, Quaternion.Euler(0f, 0f, 90f),
-                    new Vector3(0.20f, 3.6f, 0.12f), bladeMaterial);
+                hub.transform.localPosition = new Vector3(offsets[i], .46f, 4.37f);
+                hub.GetComponent<MeshFilter>().sharedMesh = rotor;
+                hub.GetComponent<MeshRenderer>().sharedMaterial = bladeMaterial;
                 propellers[i] = hub.transform;
             }
             root.name = "Aaris_CargoPlane";

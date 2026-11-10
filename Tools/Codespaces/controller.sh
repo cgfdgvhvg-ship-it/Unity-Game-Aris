@@ -33,6 +33,7 @@ if test -n "$ISSUE"; then
         'CS FALLBACK START') OP=wait_start ;;
         'CS FALLBACK STATUS') OP=status ;;
         'CS FALLBACK CHANGES') OP=changes ;;
+        'CS FALLBACK APPLY GAMEPLAY') OP=apply_gameplay ;;
         'CS FALLBACK LFS REPORT') OP=lfs_report ;;
         'CS FALLBACK LICENSE') OP=license ;;
         'CS FALLBACK COMPILE REPORT') OP=compile_report ;;
@@ -108,7 +109,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|wait_start|fresh|fresh_ssh|fresh_minimal|rebuild|full_rebuild|status|logs|sync|recovery_sync|lfs|lfs_report|changes|preserve_assets|retry_assets|install|bootstrap|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|hud_review|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
+  machines|info|quota|start|wait_start|fresh|fresh_ssh|fresh_minimal|rebuild|full_rebuild|status|logs|sync|recovery_sync|lfs|lfs_report|changes|apply_gameplay|preserve_assets|retry_assets|install|bootstrap|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|hud_review|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -402,6 +403,7 @@ case "$OP" in
   bootstrap) REMOTE_TIMEOUT=1500 ;;
   deps) REMOTE_TIMEOUT=900 ;;
   sync|lfs) REMOTE_TIMEOUT=1200 ;;
+  apply_gameplay) REMOTE_TIMEOUT=480 ;;
   preserve_assets) REMOTE_TIMEOUT=1500 ;;
   retry_assets) REMOTE_TIMEOUT=900 ;;
   test) REMOTE_TIMEOUT=500 ;;
