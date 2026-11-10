@@ -1,0 +1,139 @@
+name: Aaris recover completed Codespace Android APK to direct GitHub Release
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/aaris-apk-recover-current.yml'
+      - 'Tools/Codespaces/apk_recover_current.sh'
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+  issues: read
+jobs:
+  static:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check read-only APK recovery shell
+        run: |
+          set -Eeuo pipefail
+          bash -n Tools/Codespaces/apk_recover_current.sh
+          grep -q APK_RECOVERY_CURRENT_SIGNED_INSTALLABLE_VERIFIED Tools/Codespaces/apk_recover_current.sh
+          grep -q 'sha256sum' Tools/Codespaces/apk_recover_current.sh
+          grep -q 'apksigner' Tools/Codespaces/apk_recover_current.sh
+          ! grep -Eq 'rm -rf|git reset|license activate|BuildPipeline.BuildPlayer' Tools/Codespaces/apk_recover_current.sh
+          echo APK_RECOVER_CURRENT_STATIC_PASSED
+
+  publish:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.number == 77 &&
+      github.event.comment.user.login == 'sundamunda289-art' &&
+      github.event.comment.body == 'APK RECOVER CURRENT'
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    concurrency:
+      group: aaris-codespace-control
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          lfs: false
+          persist-credentials: false
+      - name: Locate exact existing Codespace without creating a machine
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          set -Eeuo pipefail
+          test -n "$GH_TOKEN"
+          CS=aaris-ai-ubuntu-fallback-2-vp5r9xx4rwv6c6pq7
+          gh codespace list -R "$GITHUB_REPOSITORY" --json name --limit 100 |
+            jq -e --arg n "$CS" '[.[] | select(.name==$n)] | length==1' >/dev/null
+          echo "CODESPACE=$CS" >> "$GITHUB_ENV"
+          echo APK_RECOVERY_EXACT_CODESPACE_SELECTED
+      - name: Verify native Unity success report and Android signature on Codespace
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p dist evidence
+          if ! timeout 600 gh codespace ssh -c "$CODESPACE" -- 'bash -s' \
+              < Tools/Codespaces/apk_recover_current.sh \
+              > evidence/verified.txt 2> "$RUNNER_TEMP/private-apk-ssh-errors.txt"; then
+            grep -E '^APK_RECOVERY_[A-Z_]+$' evidence/verified.txt || true
+            echo APK_RECOVERY_REMOTE_VALIDATION_FAILED
+            exit 21
+          fi
+          grep -qxF APK_RECOVERY_CURRENT_SIGNED_INSTALLABLE_VERIFIED evidence/verified.txt
+          APK_BYTES="$(sed -n 's/^apk_bytes=//p' evidence/verified.txt)"
+          APK_SHA="$(sed -n 's/^apk_sha256=//p' evidence/verified.txt)"
+          [[ "$APK_BYTES" =~ ^[0-9]{6,10}$ ]]
+          [[ "$APK_SHA" =~ ^[0-9a-f]{64}$ ]]
+          echo "APK_BYTES=$APK_BYTES" >> "$GITHUB_ENV"
+          echo "APK_SHA=$APK_SHA" >> "$GITHUB_ENV"
+          echo APK_RECOVERY_NATIVE_ANDROID_SIGNATURE_AND_HASH_VERIFIED
+      - name: Copy existing APK only and verify hash before publishing
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          set -Eeuo pipefail
+          if ! timeout 2100 gh codespace cp -e -c "$CODESPACE" \
+              'remote:/tmp/aaris-codespaces/android-apk/Build/AarisGame.apk' \
+              dist/AarisGame.apk; then
+            rm -f dist/AarisGame.apk
+            timeout 2100 gh codespace ssh -c "$CODESPACE" -- \
+              'cat /tmp/aaris-codespaces/android-apk/Build/AarisGame.apk' > dist/AarisGame.apk
+          fi
+          test "$(stat -c %s dist/AarisGame.apk)" = "$APK_BYTES"
+          test "$(sha256sum dist/AarisGame.apk | cut -d ' ' -f1)" = "$APK_SHA"
+          printf '%s  %s\n' "$APK_SHA" AarisGame.apk > dist/AarisGame.sha256
+          (cd dist && sha256sum -c AarisGame.sha256)
+          echo APK_RECOVERY_TRANSFER_CHECKSUM_PASSED
+      - name: Publish immutable verified APK as direct GitHub Release download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          TAG="apk-recovered-$GITHUB_RUN_ID"
+          cat > evidence/release-notes.md <<EOF
+          Aaris offline Android ARM64 APK recovered from a completed native Unity build on the existing owner Codespace.
+          APK bytes: $APK_BYTES
+          SHA-256: $APK_SHA
+          The Unity native build report, Android game package identity, signing, zipalign, ZIP/DEX/ARM64 contents, and transferred SHA-256 were checked.
+          Original source revision is not certified by this recovery: no APK rebuild or original game asset edit occurred.
+          Test/debug APK, not a Play Store release; verify installation on your device.
+          EOF
+          gh release create "$TAG" dist/AarisGame.apk dist/AarisGame.sha256 \
+            -R "$GITHUB_REPOSITORY" --target main --prerelease \
+            --title "Aaris recovered signed Android test APK ($GITHUB_RUN_ID)" \
+            --notes-file evidence/release-notes.md
+          APK_URL="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" \
+              --jq '.assets[] | select(.name=="AarisGame.apk") | .browser_download_url')"
+          test -n "$APK_URL"
+          printf '%s\n' "$APK_URL" > evidence/direct-url.txt
+          echo APK_RECOVERY_GITHUB_RELEASE_ASSET_PUBLISHED
+      - name: Tell owner direct-click download or exact failed stage
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TASK_RESULT: ${{ job.status }}
+        run: |
+          set -Eeuo pipefail
+          {
+            echo '**AARIS RECOVERED APK DOWNLOAD**'
+            echo "Result: $TASK_RESULT"
+            if test -s evidence/direct-url.txt; then
+              echo 'Validated, signed APK direct download:'
+              cat evidence/direct-url.txt
+              echo "SHA-256: $APK_SHA"
+            else
+              echo 'APK has not yet been published; see the run for the failed verification/transfer stage.'
+            fi
+            echo "Run: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/apk-recovered-owner.md"
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" -F "$RUNNER_TEMP/apk-recovered-owner.md"
