@@ -79,7 +79,8 @@ def audit():
     assert "Physics.RaycastNonAlloc(new Ray(eye, toTarget / distance)" in world
     assert "Physics.RaycastNonAlloc(new Ray(start, Vector3.down)" in world
     assert "if (hits >= candidateFloorHits.Length) return false;" in world
-    assert "nextCandidateProbeAt[i] = Time.unscaledTime + 3f;" in world
+    assert "RetryDelaySeconds = 3f;" in world
+    assert "nextCandidateProbeAt[i] = now + RetryDelaySeconds;" in world
     assert 'Add("PICK"' in hud and 'Add("DROP"' in hud
     assert 'Add("SWAP"' not in hud
     assert "i == 1 ? canPick : armed" in hud

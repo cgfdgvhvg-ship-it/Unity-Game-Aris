@@ -26,7 +26,10 @@ class LootGridRegression(unittest.TestCase):
             "CollectNearbyCandidateIndices(playerPosition);",
             "nearbyCandidateIndices.Sort();",
             "if (dx * dx + dz * dz >= loadSquared) continue;",
-            "if (built >= 6) break;",
+            "StreamFramesPerRefresh = 3;",
+            "MaximumBuildAttemptsPerFrame = 2;",
+            "MaximumCandidateProbesPerFrame = 6;",
+            "probes == MaximumCandidateProbesPerFrame) return true;",
             "candidateCells.TryGetValue(CandidateCellKey(x, z)",
         ):
             self.assertIn(clause, SOURCE)
