@@ -37,6 +37,7 @@ if test -n "$ISSUE"; then
         'CS FALLBACK TMP RECLAIM') OP=tmp_reclaim ;;
         'CS FALLBACK REFRESH TMP') OP=fresh_tmp ;;
         'CS FALLBACK HYDRATE TMP') OP=hydrate_tmp ;;
+        'CS FALLBACK TMP RENDER') OP=scene_render ;;
         'CS FALLBACK APPLY GAMEPLAY') OP=apply_gameplay ;;
         'CS FALLBACK LFS REPORT') OP=lfs_report ;;
         'CS FALLBACK LICENSE') OP=license ;;
@@ -429,7 +430,8 @@ esac
 # Transfer the ORIGINAL historical Unity bake from the trusted Actions artifact,
 # never a model-generated replacement or an account token. All payload hashes
 # are checked again by restore_preserved_source_lfs.py against main's pointers.
-if [[ "$OP" =~ ^(scene_render|scene_play|hud_review|photo|foliage_diag|survey|fresh_tmp)$ ]]; then
+if [[ "$OP" =~ ^(scene_render|scene_play|hud_review|photo|foliage_diag|survey|fresh_tmp)$ ]] &&
+   test "$ISSUE" != "CS FALLBACK TMP RENDER"; then
   ARCHIVE_DIR="$RUNNER_TEMP/aaris-verified-native-tree-archive"
   mkdir -p "$ARCHIVE_DIR"
   if ! GH_TOKEN="$AARIS_ISSUE_REPLY_TOKEN" gh run download 42472771253 \
@@ -601,6 +603,9 @@ if test "$OP" = scene_render || test "$OP" = scene_play || test "$OP" = photo ||
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/scene_probe.sh"
   if test "$OP" = scene_render; then
     REMOTE_SHELL="bash -s -- render"
+    if test "$ISSUE" = "CS FALLBACK TMP RENDER"; then
+      REMOTE_SHELL="bash -s -- render --preverified-tmp"
+    fi
   elif test "$OP" = foliage_diag; then
     REMOTE_SHELL="bash -s -- foliage"
   elif test "$OP" = survey; then
