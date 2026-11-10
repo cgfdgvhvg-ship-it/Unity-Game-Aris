@@ -65,11 +65,16 @@ namespace Aaris.MapReview
         private void Update()
         {
             if (target == null) return;
-            if ((target.position - lastPosition).sqrMagnitude >= 4 || Time.unscaledTime >= nextCheck) RefreshNow();
+            if ((target.position - lastPosition).sqrMagnitude >= 4 || Time.unscaledTime >= nextCheck) RefreshNow(false);
         }
-        public void RefreshNow()
+        // Explicit teleport and startup calls still synchronize immediately.
+        // Periodic polls avoid a global physics sync if no collider changed.
+        public void RefreshNow() => RefreshNow(true);
+
+        private void RefreshNow(bool forcePhysicsSync)
         {
             if (target == null || worldBounds == null) return;
+            bool colliderChanged = false;
             lastPosition = target.position;
             nextCheck = Time.unscaledTime + .25f;
             float limit = activationDistance * activationDistance;
@@ -91,15 +96,18 @@ namespace Aaris.MapReview
                     float dx = q.x - lastPosition.x, dz = q.z - lastPosition.z;
                     if (dx * dx + dz * dz > limit) continue;
                     wanted[i] = query;
-                    if (!c.enabled) c.enabled = true;
+                    if (!c.enabled) { c.enabled = true; colliderChanged = true; }
                     nextActive.Add(i);
                 }
             }
             foreach (int i in active)
-                if (wanted[i] != query && obstacles[i] != null) obstacles[i].enabled = false;
+                if (wanted[i] != query && obstacles[i] != null && obstacles[i].enabled)
+                { obstacles[i].enabled = false; colliderChanged = true; }
             List<int> swap = active; active = nextActive; nextActive = swap;
-            // A teleported CharacterController/camera must see the newly enabled shapes immediately.
-            Physics.SyncTransforms();
+            // Renderer visibility, native tree collisions, and terrain remain
+            // untouched. Unity's global SyncTransforms is only required when
+            // a collider state changed or an explicit teleport requested it.
+            if (forcePhysicsSync || colliderChanged) Physics.SyncTransforms();
         }
         private void OnDisable()
         {
