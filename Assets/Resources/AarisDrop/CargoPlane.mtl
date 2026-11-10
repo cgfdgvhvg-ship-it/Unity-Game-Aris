@@ -1,8 +1,30 @@
+# Native locally authored aircraft materials, Android URP runtime mapping.
 newmtl HulledMetal
-Kd 0.37 0.44 0.47
-Ka 0.08 0.08 0.08
+Ka 0.08 0.09 0.09
+Kd 0.35 0.39 0.38
+Ks 0.07 0.07 0.07
 Ns 38
+
 newmtl DarkCockpit
-Kd 0.08 0.14 0.18
-Ka 0.04 0.06 0.06
-Ns 80
+Ka 0.01 0.02 0.025
+Kd 0.055 0.095 0.115
+Ks 0.13 0.15 0.15
+Ns 96
+
+newmtl WingPanels
+Ka 0.07 0.08 0.08
+Kd 0.39 0.44 0.42
+Ks 0.04 0.04 0.04
+Ns 28
+
+newmtl EngineDark
+Ka 0.02 0.025 0.027
+Kd 0.10 0.13 0.13
+Ks 0.03 0.03 0.03
+Ns 28
+
+newmtl SafetyAccent
+Ka 0.11 0.12 0.10
+Kd 0.60 0.63 0.54
+Ks 0.02 0.02 0.02
+Ns 16
