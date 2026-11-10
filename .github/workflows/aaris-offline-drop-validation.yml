@@ -40,7 +40,7 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.head_ref == 'feat/drop-aircraft-realism-fps-20261110'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     concurrency:
       group: aaris-exact-open-editor-v3-upgrade
       cancel-in-progress: false
@@ -108,6 +108,20 @@ jobs:
             exit 17
           fi
           grep -E '^AARIS_GUI_DIAG_' safe-report/crash-classification.txt || true
+      - name: Isolate installed Unity native crash inside SAME Codespace temporary directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p safe-report
+          if ! timeout 720 gh codespace ssh -c "$EXACT_CODESPACE" -- 'bash -s' \
+            < Tools/Codespaces/editor_isolation_probe.sh \
+            > safe-report/isolation-status.txt 2> "$RUNNER_TEMP/isolation-private-ssh.log"; then
+            grep -E '^EDITOR_ISOLATE_' safe-report/isolation-status.txt || true
+            echo 'AARIS_GUI_ISOLATION_INCONCLUSIVE'
+            exit 18
+          fi
+          grep -E '^EDITOR_ISOLATE_' safe-report/isolation-status.txt || true
+          echo 'AARIS_GUI_ISOLATION_COMPLETED_ON_SAME_CODESPACE'
       - name: Save only sanitized state, never backups, credentials or raw Unity logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -117,5 +131,6 @@ jobs:
             safe-report/safe-status.txt
             safe-report/editor-diagnostic.txt
             safe-report/crash-classification.txt
+            safe-report/isolation-status.txt
           if-no-files-found: warn
           retention-days: 2
