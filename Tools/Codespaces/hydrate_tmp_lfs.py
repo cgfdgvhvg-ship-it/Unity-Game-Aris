@@ -57,9 +57,14 @@ def run():
     )
     expected = audit_pointers(project)
     cache = CACHE_ROOT / project.name / "lfs" / "objects"
-    # Fail before any writes unless ALL 793 OIDs are available and verified.
-    for oid, size in expected.values():
-        if not candidate_matches(object_path(cache, oid), oid, size):
+    # The new temporary snapshot can itself hold verified bytes for 775
+    # assets, while the remaining 18 original OIDs are in the tmp cache.
+    # Verify every object from at least one authentic location before edits.
+    if cache.is_symlink() or cache.resolve() != cache:
+        raise RuntimeError("TMP_CACHE_SYMLINK_OR_REDIRECT")
+    for relative, (oid, size) in expected.items():
+        if (not candidate_matches(project / relative, oid, size)
+                and not candidate_matches(object_path(cache, oid), oid, size)):
             raise RuntimeError("CACHED_LFS_OID_INVALID_OR_MISSING")
     pending = []
     nonpointer_files = 0
@@ -94,6 +99,30 @@ def run():
     print("TMP_HYDRATE_LFS_PENDING=" + str(len(pending)), flush=True)
     print("TMP_HYDRATE_NONPOINTER_REPLACEMENTS=" + str(nonpointer_files), flush=True)
     print("TMP_HYDRATE_BYTES_REQUIRED=" + str(bytes_required), flush=True)
+    # Reclaim ONLY duplicate content-addressed objects in THIS new clone's
+    # cache when an identical, SHA-verified actual file is already hydrated.
+    # Never touch the original /workspaces cache or other snapshots' caches.
+    # Hold every OID still needed by an unhydrated destination.
+    if available < bytes_required + 256 * 1024 * 1024:
+        remaining = {oid for _, oid, _ in pending}
+        redundant = {}
+        for relative, (oid, size) in expected.items():
+            if oid not in remaining and candidate_matches(project / relative, oid, size):
+                redundant[oid] = size
+        reclaimed = 0
+        count = 0
+        for oid, size in redundant.items():
+            obj = object_path(cache, oid)
+            if candidate_matches(obj, oid, size):
+                if not obj.resolve().is_relative_to(cache):
+                    raise RuntimeError("TMP_CACHE_OBJECT_OUTSIDE_ROOT")
+                obj.unlink()
+                reclaimed += size
+                count += 1
+        print("TMP_HYDRATE_DUPLICATE_CACHE_OIDS_REMOVED=" + str(count), flush=True)
+        print("TMP_HYDRATE_DUPLICATE_CACHE_BYTES_RECLAIMED=" + str(reclaimed), flush=True)
+        stat = os.statvfs(str(project))
+        available = stat.f_bavail * stat.f_frsize
     if available < bytes_required + 256 * 1024 * 1024:
         raise RuntimeError("TMP_INSUFFICIENT_FREE_DISK")
     for relative, oid, size in pending:
