@@ -1,0 +1,35 @@
+name: Aaris exact Codespace Android build progress audit
+on:
+  push:
+    branches: [build/exact-codespace-apk-20261110]
+    paths: [.github/workflows/aaris-apk-exact-progress.yml]
+permissions:
+  contents: read
+jobs:
+  progress-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+      CS_NAME: aaris-ai-ubuntu-minimal-gxprjgg9r7693v4vv
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          lfs: false
+      - name: Read active Unity Android build processes, APK output and logs
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -n "$GH_TOKEN" || { echo APK_MONITOR_TOKEN_MISSING; exit 10; }
+          gh codespace list -R "$GITHUB_REPOSITORY" --json name --limit 100 |
+            jq -e --arg n "$CS_NAME" '[.[] | select(.name==$n)] | length==1' >/dev/null
+          bash -n Tools/Codespaces/apk_readonly_status.sh
+          timeout 200 gh codespace ssh -c "$CS_NAME" -- 'bash -s' \
+            < Tools/Codespaces/apk_readonly_status.sh > "$RUNNER_TEMP/progress.txt" \
+            2> "$RUNNER_TEMP/progress-private.err" || {
+              echo APK_MONITOR_SSH_FAILED
+              exit 12
+            }
+          grep -qx APK_READONLY_PROGRESS "$RUNNER_TEMP/progress.txt"
+          grep -E '^APK_READONLY_PROGRESS$|^apk_[a-z_]+=[A-Za-z0-9_]+$' "$RUNNER_TEMP/progress.txt" || true
