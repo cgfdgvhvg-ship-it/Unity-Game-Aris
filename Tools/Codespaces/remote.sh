@@ -110,6 +110,8 @@ paths = [
     "Assets/AarisWorld/Scripts/AarisWeaponLootWorld.cs",
     "Assets/AarisWorld/Scripts/AarisWeaponPickup.cs",
     "Assets/AarisWorld/Scripts/AarisBreakablePanel.cs",
+    "Assets/AarisWorld/Scripts/AarisMobileRuntime.cs",
+    "Assets/AarisWorld/Editor/AarisCodespaceAndroidBuild.cs",
     "Assets/Resources/AarisDrop/CargoPlane.obj",
     "Assets/Resources/AarisDrop/CargoPlane.mtl",
     "Tools/Validation/test_offline_drop_assets.py",
@@ -152,6 +154,8 @@ required = {
     "Assets/AarisWorld/Scripts/AarisWeaponCatalog.cs": b"modelCache[modelPath] = prefab;",
     "Assets/AarisWorld/Scripts/AarisWeaponPickup.cs": b"public bool TryReserve()",
     "Assets/AarisWorld/Scripts/AarisEquippedGun.cs": b"node.GetComponents(damageScratch)",
+    "Assets/AarisWorld/Scripts/AarisMobileRuntime.cs": b"AARIS_TERRAIN_RENDER_AUDIT",
+    "Assets/AarisWorld/Editor/AarisCodespaceAndroidBuild.cs": b"ANDROID_TERRAIN_PAINT_LAYERS_MISSING",
     "Assets/Resources/AarisDrop/CargoPlane.obj": b"o Aaris_CargoPlane_Transport_V2",
 }
 for name, marker in required.items():
