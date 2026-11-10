@@ -94,6 +94,8 @@ class OfflineCombatAssetChecks(unittest.TestCase):
         source = (SCRIPTS / "AarisOfflineDropVisuals.cs").read_text("utf-8")
         movement = (SCRIPTS / "AarisOfflineDrop.cs").read_text("utf-8")
         self.assertIn("BuildPropellerMesh()", source)
+        self.assertIn("else if (slots.Length == 5)", source)
+        self.assertIn("AARIS_CARGO_PLANE_MODEL_NOT_IMPORTED", source)
         self.assertIn("Quaternion.Euler(0f, 0f,", movement)
         self.assertIn("Time.unscaledDeltaTime", movement)
         self.assertNotIn('"PropellerBladeA"', source)
