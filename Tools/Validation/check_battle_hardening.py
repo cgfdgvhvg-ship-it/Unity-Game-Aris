@@ -50,10 +50,13 @@ def audit() -> None:
     assert "part == AvatarMaskBodyPart.LeftArm" in visual
     assert "part == AvatarMaskBodyPart.RightArm" in visual
     assert "layered.SetLayerMaskFromAvatarMask(1, upperBodyMask);" in visual
-    assert "mixer = AnimationMixerPlayable.Create(graph, 9);" in visual
+    assert "mixer = AnimationMixerPlayable.Create(graph, 12);" in visual
     assert "weaponUpperMixer.SetInputWeight(0, 1f - attackRatio);" in visual
     assert "layered.SetInputWeight(1, layerWeight);" in visual
-    assert "mixer.SetInputWeight(9" not in visual and "mixer.SetInputWeight(10" not in visual
+    assert all(f"mixer.SetInputWeight({i}," in visual for i in range(12))
+    assert "mixer.SetInputWeight(12" not in visual
+    assert "float stanceScale = stanceTotal > 1f ? pose / stanceTotal : 1f;" in visual
+    assert "crouchBlend * stanceScale" in visual and "proneBlend * stanceScale" in visual
     assert "HasProneClearance" in state
     assert "count == nearHits.Length" in state
     assert "muzzleHit" in gun
@@ -136,21 +139,23 @@ def audit() -> None:
     # The full-body base graph must ALWAYS remain normalized to 1.0.
     # Shot/punch actions blend through a separate humanoid upper-body
     # override and must NEVER steal the running/jumping leg weights.
-    rng = random.Random(20261107)
-    for _ in range(12000):
-        start = rng.random()
-        land = rng.random()
+    rng = random.Random(20261110)
+    for i in range(12000):
+        # Takeoff and landing are exclusive; include both state families.
+        start = rng.random() if i % 3 else 0.0
+        land = rng.random() if start == 0.0 else 0.0
         punch = rng.random()
         shoot = rng.random()
         crouch_blend = rng.random()
         prone_blend = rng.random()
         air = rng.random()
-        walk_blend = rng.random()
+        run_blend = rng.random()
+        walk_run_blend = rng.random()
         sprint_blend = rng.random()
+        crouch_motion = rng.random()
+        crawl_motion = rng.random()
         jumping = rng.random()
         armed_ready = rng.random() * .63
-        if start > 0:
-            land = 0.0
         primary = min(1.0, start + land)
         base = 1.0 - primary
         if shoot > 0:
@@ -165,22 +170,33 @@ def audit() -> None:
         upper_shoot = shoot_upper / layer if layer > 1e-4 else 0
         assert 0.0 <= layer <= 1.0
         assert abs(upper_hold + upper_punch + upper_shoot - 1.0) < 1e-6
-        pose = min(1.0, crouch_blend + prone_blend)
-        # Both crouch and prone now use a low-speed stance gait;
-        # the two stance clips share the pose weight exactly.
-        motion = walk_blend * pose
-        crouch_rest = pose - motion
+
+        total = crouch_blend + prone_blend
+        pose = min(1.0, total)
+        scale = pose / total if total > 1.0 else 1.0
         ground = (1.0 - air) * (1.0 - pose)
-        base_total = (
-            base * ground * (1 - walk_blend)
-            + base * ground * walk_blend * (1 - sprint_blend)
-            + base * ground * walk_blend * sprint_blend
-            + base * air * jumping * (1 - pose)
-            + base * air * (1 - jumping) * (1 - pose)
-            + base * crouch_rest + base * motion
-            + start + land
-        )
-        assert abs(base_total - 1.0) < 1e-6, ("legs blended away", base_total)
+        for authored_prone in (False, True):
+            cw = crouch_blend * scale if authored_prone else pose
+            pw = prone_blend * scale if authored_prone else 0.0
+            # 12-input mixer: idle/walk/run/jump/fall/crouch-rest/
+            # crouch-move/jump-start/jump-land/sprint/prone/crawl.
+            standing_total = (
+                base * ground * (1-run_blend)
+                + base * ground * run_blend * (1-walk_run_blend)
+                + base * ground * run_blend * walk_run_blend * (1-sprint_blend)
+                + base * ground * run_blend * walk_run_blend * sprint_blend
+            )
+            base_total = (
+                standing_total
+                + base * air * jumping * (1-pose)
+                + base * air * (1-jumping) * (1-pose)
+                + base * cw * (1-crouch_motion)
+                + base * cw * crouch_motion
+                + base * pw * (1-crawl_motion)
+                + base * pw * crawl_motion
+                + start + land
+            )
+            assert abs(base_total - 1.0) < 1e-6, ("legs blended away", base_total)
 
     print("PASS: Unity 6.3 HUD/animation packages, 10-120 FPS elapsed time, "
           "12k adversarial blend combinations, multi-pointer hold/release, "
