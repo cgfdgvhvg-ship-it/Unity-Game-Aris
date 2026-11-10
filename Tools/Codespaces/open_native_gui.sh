@@ -17,9 +17,20 @@ mapfile -t win < <(xdotool search --onlyvisible --name 'Unity - Unity-Game-Aris 
 if test "$MODE" = probe; then
   if test "${#win[@]}" != 1; then echo UNITY_NATIVE_UNTITLED_NOT_UNIQUE; exit 14; fi
   xdotool windowactivate --sync "${win[0]}"
-  xdotool key --clearmodifiers ctrl+o
+  # Unity 6/Linux does not consistently bind Ctrl+O to File/Open Scene.
+  # Open the File menu by a verified window-relative click; do not select a
+  # menu item or discard the current Untitled scene in this first phase.
+  geometry="$(xdotool getwindowgeometry --shell "${win[0]}")"
+  width="$(printf '%s\n' "$geometry" | sed -n 's/^WIDTH=\([0-9]*\)$/\1/p')"
+  height="$(printf '%s\n' "$geometry" | sed -n 's/^HEIGHT=\([0-9]*\)$/\1/p')"
+  if ! [[ "$width" =~ ^[0-9]{3,4}$ && "$height" =~ ^[0-9]{3,4}$ ]] ||
+     (( width < 1100 || width > 1700 || height < 650 || height > 1000 )); then
+    echo UNITY_NATIVE_WINDOW_GEOMETRY_UNEXPECTED
+    exit 18
+  fi
+  xdotool mousemove --window "${win[0]}" 20 34 click 1
   sleep 2
-  echo UNITY_NATIVE_OPEN_DIALOG_REQUESTED
+  echo UNITY_NATIVE_FILE_MENU_REQUESTED
   exit 0
 fi
 # Select only from a real file chooser. Never type a path into an arbitrary GUI.
