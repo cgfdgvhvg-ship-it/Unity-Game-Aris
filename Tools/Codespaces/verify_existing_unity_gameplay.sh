@@ -42,7 +42,7 @@ shot() {
 }
 cleanup() {
   # Leave the editor in Edit Mode even when Play Mode or motion tests fail.
-  DISPLAY=:99 xdotool keyup --clearmodifiers w shift_L ctrl_L b 2>/dev/null || true
+  DISPLAY=:99 xdotool keyup --clearmodifiers w Shift_L Control_L b 2>/dev/null || true
   if test "$started" = 1; then
     DISPLAY=:99 xdotool windowactivate "$WIN" >/dev/null 2>&1 || true
     DISPLAY=:99 xdotool key --clearmodifiers ctrl+p >/dev/null 2>&1 || true
@@ -67,11 +67,11 @@ xdotool keydown w
 sleep 2
 shot '02-walk'
 xdotool keyup w
-xdotool keydown shift_L
+xdotool keydown Shift_L
 xdotool keydown w
 sleep 2
 shot '03-sprint'
-xdotool keyup w shift_L
+xdotool keyup w Shift_L
 xdotool key c
 sleep 2
 xdotool keydown w
@@ -86,10 +86,10 @@ shot '05-prone-crawl'
 xdotool keyup w
 xdotool key z
 sleep 1
-xdotool keydown ctrl_L
+xdotool keydown Control_L
 sleep 1
 shot '06-punch'
-xdotool keyup ctrl_L
+xdotool keyup Control_L
 xdotool keydown b
 sleep 1
 xdotool keyup b
@@ -98,7 +98,7 @@ shot '07-gloo-wall'
 # Check nonblank screenshot output and whether actual Game frames changed.
 python3 - "$OUT/screens" <<'PY'
 from pathlib import Path
-import sys,struct
+import sys,struct,hashlib
 p=Path(sys.argv[1])
 expected=[p/f'{i:02d}-{name}.png' for i,name in enumerate(
     ('before','play-idle','walk','sprint','crouch-walk','prone-crawl','punch','gloo-wall'))]
@@ -111,7 +111,7 @@ for f in expected:
         raise SystemExit('LIVE_REVIEW_NOT_PNG')
     sizes.append(struct.unpack('>II',header[16:24]))
 if len(set(sizes))!=1:raise SystemExit('LIVE_REVIEW_SCREEN_SIZE_CHANGED')
-if len({f.read_bytes()[:5000] for f in expected})<3:raise SystemExit('LIVE_REVIEW_TOO_FEW_UNIQUE_FRAMES')
+if len({hashlib.sha256(f.read_bytes()).digest() for f in expected})<3:raise SystemExit('LIVE_REVIEW_TOO_FEW_UNIQUE_FRAMES')
 print('LIVE_REVIEW_EIGHT_FRAMES_CAPTURED')
 print('LIVE_REVIEW_SCREEN_DIMS='+str(sizes[0][0])+'x'+str(sizes[0][1]))
 PY
