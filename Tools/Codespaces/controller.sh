@@ -78,6 +78,8 @@ if test -n "$ISSUE"; then
     'CS LFS') OP=lfs ;;
     'CS LFS REPORT') OP=lfs_report ;;
     'CS CHANGES') OP=changes ;;
+    'CS GAMEPLAY REVIEW') OP=gameplay_review ;;
+    'CS GAMEPLAY PUBLISH') OP=gameplay_publish ;;
     'CS PERF AUDIT') OP=perf_audit ;;
     'CS PERF TUNE') OP=perf_tune ;;
     'CS OPEN NATIVE') OP=open_native_probe ;;
@@ -122,7 +124,7 @@ if test -n "$ISSUE"; then
   esac
 fi
 case "$OP" in
-  machines|info|quota|start|wait_start|fresh|fresh_ssh|fresh_minimal|rebuild|full_rebuild|status|logs|sync|recovery_sync|lfs|lfs_report|changes|perf_audit|perf_tune|open_native_probe|open_native_select|apply_gameplay|preserve_assets|retry_assets|install|bootstrap|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|tmp_reclaim|fresh_tmp|hydrate_tmp|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|hud_review|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
+  machines|info|quota|start|wait_start|fresh|fresh_ssh|fresh_minimal|rebuild|full_rebuild|status|logs|sync|recovery_sync|lfs|lfs_report|changes|gameplay_review|gameplay_publish|perf_audit|perf_tune|open_native_probe|open_native_select|apply_gameplay|preserve_assets|retry_assets|install|bootstrap|deps|cli_diag|editor|editor_diag|editor_isolate|tmp_audit|tmp_reclaim|fresh_tmp|hydrate_tmp|license|auth|probe|shot|accept_terms|safe_mode|compile_report|refresh|close_editor|editor_process|editor_recover|scene_render|scene_play|hud_review|drop_video|drop_frames|map_verify|photo|survey|play_diag|foliage_diag|tree_audit|tree_preview|tree_publish|tree_report|test|stop) ;;
   *) DETAIL="unsupported_operation"; exit 2 ;;
 esac
 if test "$OP" = photo; then
@@ -423,6 +425,7 @@ case "$OP" in
   deps) REMOTE_TIMEOUT=900 ;;
   sync|lfs) REMOTE_TIMEOUT=1200 ;;
   apply_gameplay) REMOTE_TIMEOUT=480 ;;
+  gameplay_review|gameplay_publish) REMOTE_TIMEOUT=180 ;;
   perf_audit|perf_tune) REMOTE_TIMEOUT=180 ;;
   open_native_probe|open_native_select) REMOTE_TIMEOUT=180 ;;
   preserve_assets) REMOTE_TIMEOUT=1500 ;;
@@ -519,6 +522,10 @@ fi
 if test "$OP" = retry_assets; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/retry_one_lfs_checkpoint.sh"
   REMOTE_SHELL="bash -s"
+fi
+if test "$OP" = gameplay_review || test "$OP" = gameplay_publish; then
+  SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/gameplay_review.py"
+  REMOTE_SHELL="python3 -"
 fi
 if test "$OP" = hud_review; then
   SCRIPT_FILE="$GITHUB_WORKSPACE/Tools/Codespaces/hud_review_probe.sh"
@@ -649,7 +656,26 @@ for attempt in 1 2; do
       < "$SCRIPT_FILE" \
       > "$OUT/terminal.txt" 2>"$PRIVATE_ERRORS"; then
     rm -f "$PRIVATE_ERRORS"
-    if test "$OP" = tree_publish; then
+    if test "$OP" = gameplay_review || test "$OP" = gameplay_publish; then
+      if ! timeout 420 gh codespace ssh -c "$CS" -- \
+         'base64 /tmp/aaris-codespaces/gameplay-review/source.tar.gz' \
+         > "$OUT/gameplay-source.tar.gz.b64" 2>"$PRIVATE_ERRORS"; then
+        DETAIL="gameplay_snapshot_transfer_failed"; safe_error_summary; exit 82
+      fi
+      if ! base64 --decode "$OUT/gameplay-source.tar.gz.b64" > "$OUT/gameplay-source.tar.gz"; then
+        DETAIL="gameplay_snapshot_decode_failed"; exit 83
+      fi
+      rm -f "$OUT/gameplay-source.tar.gz.b64"
+      if test "$OP" = gameplay_publish; then MODE=publish; else MODE=audit; fi
+      if ! python3 "$GITHUB_WORKSPACE/Tools/Codespaces/publish_gameplay_from_actions.py" \
+         "$OUT/gameplay-source.tar.gz" "$MODE" >> "$OUT/terminal.txt" 2>/dev/null; then
+        DETAIL="gameplay_review_or_publish_failed_see_report"; exit 84
+      fi
+      DETAIL="gameplay_existing_codespace_files_audited"
+      if test "$OP" = gameplay_publish; then
+        DETAIL="gameplay_existing_changes_review_branch_published"
+      fi
+    elif test "$OP" = tree_publish; then
       if ! timeout 900 gh codespace ssh -c "$CS" -- \
           'base64 /tmp/aaris-codespaces/tree-mass/mass-package.tar.gz' \
           > "$OUT/mass-package.tar.gz.b64" 2>"$PRIVATE_ERRORS"; then
