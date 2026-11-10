@@ -65,6 +65,7 @@ jobs:
           python3 -m py_compile Tools/Codespaces/restore_local_tree_lfs.py
           python3 Tools/Codespaces/restore_preserved_source_lfs.py --selftest
           python3 -m py_compile Tools/Codespaces/recover_verified_tree_lfs.py
+          python3 -m py_compile Tools/Codespaces/verify_tree_lfs_remote.py
           python3 Tools/Codespaces/test_protocol.py
           # Regression: long-lived Codespace commands must never block PR CI.
           python3 - <<'PYCONCURRENCY'
@@ -89,12 +90,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p "$RUNNER_TEMP/aaris-verified-bake"
-          gh run download 42472771253 -R "$GITHUB_REPOSITORY" \
-            --name aaris-codespace-42472771253 -D "$RUNNER_TEMP/aaris-verified-bake"
-          test "$(sha256sum "$RUNNER_TEMP/aaris-verified-bake/mass-package.tar.gz" | cut -d ' ' -f1)" = \
-            "234024b842e8cc5e1253607ce41b5a6aebec6a7abd3c9fd81837bc960a24197d"
-          python3 Tools/Codespaces/recover_verified_tree_lfs.py --verify \
-            "$RUNNER_TEMP/aaris-verified-bake/mass-package.tar.gz"
+          set -euo pipefail
+          if gh run download 42472771253 -R "$GITHUB_REPOSITORY" \
+              --name aaris-codespace-42472771253 -D "$RUNNER_TEMP/aaris-verified-bake" \
+              >/dev/null 2>&1; then
+            test "$(sha256sum "$RUNNER_TEMP/aaris-verified-bake/mass-package.tar.gz" | cut -d ' ' -f1)" = \
+              "234024b842e8cc5e1253607ce41b5a6aebec6a7abd3c9fd81837bc960a24197d"
+            python3 Tools/Codespaces/recover_verified_tree_lfs.py --verify \
+              "$RUNNER_TEMP/aaris-verified-bake/mass-package.tar.gz"
+          else
+            # Historical artifacts expire in 2 days. Fail closed unless all
+            # 18 real LFS assets can be re-fetched and SHA-256-verified directly
+            # from the repository's authenticated GitHub LFS endpoint.
+            python3 Tools/Codespaces/verify_tree_lfs_remote.py
+          fi
   control:
     # Serialize only remote machine operations; do not block PR static CI.
     concurrency:
