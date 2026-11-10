@@ -32,7 +32,7 @@ for line in lines:
         safe.append(line)
     elif re.fullmatch(r'(commit|arch|os_id|os_version|glibc|docker_ready|cpus|memory_mb|workspace_free_kb|tmp_free_kb|lfs_tracked_count|lfs_unhydrated_pointer_count|lfs_log_recorded|lfs_error_kind|lfs_error_hash_count|lfs_object_hash_1|lfs_object_hash_2|lfs_object_hash_3|changed_files_count|raw_identical_count|raw_different_count|state|idle_minutes|devcontainer|editor_installed|editor_running|display|scene|machine|codespace|target_codespace|reason)=[A-Za-z0-9_.-]{1,80}', line):
         safe.append(line)
-    elif op == 'hydrate_tmp' and re.fullmatch(r'TMP_HYDRATE_(LFS_EXPECTED|LFS_PENDING|LFS_VERIFIED|BYTES_REQUIRED)=[0-9]{1,16}', line):
+    elif op == 'hydrate_tmp' and re.fullmatch(r'TMP_HYDRATE_(LFS_EXPECTED|LFS_PENDING|LFS_VERIFIED|BYTES_REQUIRED|NONPOINTER_REPLACEMENTS)=[0-9]{1,16}', line):
         safe.append(line)
     elif op == 'fresh_tmp' and re.fullmatch(r'TMP_REFRESH_(FREE_KB_BEFORE|FREE_KB_AFTER|LFS_TRACKED|LFS_HASH_VERIFIED)=[0-9]{1,15}|TMP_REFRESH_MAIN_COMMIT=[a-f0-9]{40}', line):
         safe.append(line)

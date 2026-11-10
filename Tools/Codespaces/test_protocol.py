@@ -61,7 +61,7 @@ assert "'CS FALLBACK REFRESH TMP') OP=fresh_tmp ;;" in controller
 assert "'CS FALLBACK HYDRATE TMP') OP=hydrate_tmp ;;" in controller
 hydrator=(r/'Tools/Codespaces/hydrate_tmp_lfs.py').read_text()
 assert 'CACHED_LFS_OID_INVALID_OR_MISSING' in hydrator
-assert 'TARGET_HAS_UNSAVED_CONTENT' in hydrator
+assert 'TMP_HYDRATE_NONPOINTER_REPLACEMENTS' in hydrator
 assert 'AARIS_TMP_CLEAN_GITHUB_LFS_793_READY' in hydrator
 assert 'hydrate_tmp) REMOTE_TIMEOUT=1500' in controller
 fresh=(r/'Tools/Codespaces/fresh_tmp_project.sh').read_text()
