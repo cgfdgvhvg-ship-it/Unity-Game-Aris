@@ -117,9 +117,11 @@ if len(head) != 40 or any(c not in "0123456789abcdef" for c in head):
 before, after = {}, {}
 for name in paths:
     target = root / name
-    if not target.is_file() or target.is_symlink() or target.resolve().parent != target.parent.resolve():
-        raise SystemExit("AARIS_GAMEPLAY_TARGET_MISSING_OR_UNSAFE")
-    old = target.read_bytes()
+    if target.is_symlink() or (target.exists() and not target.is_file()):
+        raise SystemExit("AARIS_GAMEPLAY_TARGET_UNSAFE")
+    if target.parent.exists() and target.parent.resolve() != (root / name).parent.resolve():
+        raise SystemExit("AARIS_GAMEPLAY_TARGET_PARENT_UNSAFE")
+    old = target.read_bytes() if target.is_file() else None
     latest = git("show", "refs/remotes/origin/main:" + name)
     if not latest or len(latest) > 2_000_000 or latest.startswith(b"version https://git-lfs.github.com/spec/v1"):
         raise SystemExit("AARIS_GAMEPLAY_TARGET_SOURCE_INVALID")
@@ -149,11 +151,13 @@ manifest = []
 for name in paths:
     dest = backup / name
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(before[name])
+    if before[name] is not None:
+        dest.write_bytes(before[name])
     manifest.append({
         "path": name,
-        "before_sha256": hashlib.sha256(before[name]).hexdigest(),
+        "before_sha256": hashlib.sha256(before[name]).hexdigest() if before[name] is not None else "not_created",
         "after_sha256": hashlib.sha256(after[name]).hexdigest(),
+        "original_file_existed": before[name] is not None,
         "changed": before[name] != after[name]
     })
 (backup / "manifest.json").write_text(json.dumps({"sourceMain": head, "files": manifest}, indent=2))
@@ -164,7 +168,8 @@ try:
         if before[name] == after[name]:
             continue
         target = root / name
-        mode = target.stat().st_mode & 0o777
+        target.parent.mkdir(parents=True, exist_ok=True)
+        mode = (target.stat().st_mode & 0o777) if target.exists() else 0o644
         fd, temp = tempfile.mkstemp(prefix=".aaris-inplace-", dir=target.parent)
         try:
             with os.fdopen(fd, "wb") as f:
@@ -180,7 +185,10 @@ try:
 except Exception:
     for name in reversed(updated):
         target = root / name
-        target.write_bytes(before[name])
+        if before[name] is None:
+            target.unlink(missing_ok=True)
+        else:
+            target.write_bytes(before[name])
     raise
 for name in paths:
     if (root / name).read_bytes() != after[name]:
