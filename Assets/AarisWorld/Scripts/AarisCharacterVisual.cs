@@ -186,7 +186,8 @@ namespace Aaris.MapReview
             visual.transform.localScale = Vector3.one * scale;
             // FBX pivots vary between packages. Align the bottom of the mesh with
             // the CharacterController's ground point, without moving the collider.
-            Physics.SyncTransforms();
+            // Renderer bounds follow the visual Transform directly; no physics
+            // shape moved, so a global Physics.SyncTransforms() would be wasted.
             combined = new Bounds();
             hasBounds = false;
             foreach (var renderer in renderers)

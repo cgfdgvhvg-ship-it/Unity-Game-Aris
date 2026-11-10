@@ -74,7 +74,6 @@ namespace Aaris.MapReview
         private void RefreshNow(bool forcePhysicsSync)
         {
             if (target == null || worldBounds == null) return;
-            bool colliderChanged = false;
             lastPosition = target.position;
             nextCheck = Time.unscaledTime + .25f;
             float limit = activationDistance * activationDistance;
@@ -96,18 +95,19 @@ namespace Aaris.MapReview
                     float dx = q.x - lastPosition.x, dz = q.z - lastPosition.z;
                     if (dx * dx + dz * dz > limit) continue;
                     wanted[i] = query;
-                    if (!c.enabled) { c.enabled = true; colliderChanged = true; }
+                    if (!c.enabled) c.enabled = true;
                     nextActive.Add(i);
                 }
             }
             foreach (int i in active)
                 if (wanted[i] != query && obstacles[i] != null && obstacles[i].enabled)
-                { obstacles[i].enabled = false; colliderChanged = true; }
+                { obstacles[i].enabled = false; }
             List<int> swap = active; active = nextActive; nextActive = swap;
-            // Renderer visibility, native tree collisions, and terrain remain
-            // untouched. Unity's global SyncTransforms is only required when
-            // a collider state changed or an explicit teleport requested it.
-            if (forcePhysicsSync || colliderChanged) Physics.SyncTransforms();
+            // Collider.enabled toggles do not require a global Transform sync.
+            // Only startup/teleport callers explicitly request the flush; leave
+            // regular 2-metre / 0.25-second streaming checks non-blocking.
+            // Renderer visibility, terrain and native tree collisions are unchanged.
+            if (forcePhysicsSync) Physics.SyncTransforms();
         }
         private void OnDisable()
         {
