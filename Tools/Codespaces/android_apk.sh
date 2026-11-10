@@ -151,8 +151,10 @@ if test "$APK_MODULE" != present || test "$SDK" != present ||
   EDITOR="$MATCH"
   echo APK_ANDROID_MODULES_INSTALLED_AND_VERIFIED
 fi
-if pgrep -f '[E]ditor/Unity.*-projectPath' >/dev/null 2>&1; then
-  echo APK_EXISTING_EDITOR_BUSY_NO_FORCE_KILL; exit 19
+if pgrep -f '[E]ditor/Unity.*-projectPath /workspaces/Unity-Game-Aris' >/dev/null 2>&1; then
+  # The GUI can be frozen without a window; isolate the build in its OWN
+  # immutable worktree rather than touching the original Unity process.
+  echo APK_EXISTING_GUI_EDITOR_LEFT_UNCHANGED
 fi
 # The previous main SHA (PR #251) completed a native Unity build, but its
 # Android metadata was overwritten by the legacy preprocessor callback.
@@ -189,6 +191,10 @@ git -C "$SOURCE" fetch --quiet origin "+refs/heads/$REF_NAME:refs/remotes/origin
   echo APK_REVIEWED_REF_FETCH_FAILED; exit 20; }
 SHA="$(git -C "$SOURCE" rev-parse --verify "refs/remotes/origin/$REF_NAME^{commit}")"
 [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo APK_MAIN_SHA_INVALID; exit 21; }
+if test -n "${AARIS_EXPECTED_BUILD_SHA:-}" && test "$SHA" != "$AARIS_EXPECTED_BUILD_SHA"; then
+  echo APK_MAIN_SOURCE_CHANGED_SINCE_REQUEST; exit 21
+fi
+echo APK_BUILD_SOURCE_PINNED
 ROOT=/tmp/aaris-native-android-build-worktrees
 PROJECT="$ROOT/$SHA"
 mkdir -p "$ROOT"
@@ -209,9 +215,27 @@ cd "$PROJECT"
 # Preserve exact 793 original LFS objects, with authentic SHA verification.
 if python3 Tools/Codespaces/restore_preserved_source_lfs.py "$PROJECT" \
     >"$BASE/private-lfs.log" 2>&1; then
-  echo APK_AUTHENTIC_LOCAL_LFS_VERIFIED
+  # Check the exact newer 796-asset full snapshot, including three new motions.
+  grep -qxF "AARIS_PRESERVED_LFS_SNAPSHOT_VERIFIED=796" "$BASE/private-lfs.log" || {
+    echo APK_EXPECTED_796_LFS_ASSETS_NOT_VERIFIED; exit 25;
+  }
+  echo APK_AUTHENTIC_796_LFS_VERIFIED
 elif git lfs pull >"$BASE/private-lfs.log" 2>&1; then
-  echo APK_REMOTE_LFS_HYDRATED
+  test "$(git lfs ls-files --name-only | wc -l)" -eq 796 || {
+    echo APK_REMOTE_LFS_COUNT_INVALID; exit 25;
+  }
+  # Checkout LFS is insufficient by itself: verify all pointers against
+  # real bytes, not a successfully downloaded but incomplete subcollection.
+  python3 - <<'PYLFS' || { echo APK_REMOTE_LFS_HASH_VERIFICATION_FAILED; exit 25; }
+from pathlib import Path
+import sys
+sys.path.insert(0, "Tools/Codespaces")
+from restore_preserved_source_lfs import audit_pointers, candidate_matches
+ptrs = audit_pointers(Path.cwd())
+assert len(ptrs) == 796
+assert all(candidate_matches(Path(path), oid, size) for path, (oid, size) in ptrs.items())
+PYLFS
+  echo APK_REMOTE_796_LFS_SHA256_VERIFIED
 else
   echo APK_LFS_HYDRATION_FAILED; exit 25
 fi
@@ -301,7 +325,7 @@ print("apk_bytes="+str(p.stat().st_size))
 PY
 # Validate actual Android installation metadata before exposing an APK.
 # The prior build was a valid ZIP, but did not check signing/API compatibility.
-bash Tools/Codespaces/apk_install_diagnostic.sh \
+AARIS_ANDROID_PLAYER_ROOT="$ANDROID" bash Tools/Codespaces/apk_install_diagnostic.sh \
   > "$BASE/private-native-installability-report.log" 2>&1 || {
     echo APK_INSTALLABILITY_TOOLS_FAILED; exit 32;
   }
@@ -336,7 +360,7 @@ grep -qxF apk_target_sdk=33 "$CHECK" || {
   echo APK_ANDROID_API_TARGET_UNEXPECTED; exit 37;
 }
 # New standalone Aaris Game package must not conflict with mapexplorer.
-AAPT="$(find "$BASE/managed-editors" -type f -name aapt -print -quit 2>/dev/null || true)"
+AAPT="$(find "$ANDROID/SDK/build-tools" -maxdepth 2 -type f -name aapt -print -quit 2>/dev/null || true)"
 if ! test -x "$AAPT"; then echo APK_AAPT_MISSING; exit 38; fi
 timeout 120 "$AAPT" dump badging "$BASE/Build/AarisGame.apk" \
   > "$BASE/private-package-id-report.log" 2>&1 || exit 39
