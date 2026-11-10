@@ -31,6 +31,11 @@ class LootGridRegression(unittest.TestCase):
         ):
             self.assertIn(clause, SOURCE)
 
+    def test_native_terrain_world_y_used_for_outdoor_floor(self):
+        self.assertIn("terrain.SampleHeight(new Vector3(c.x, 0f, c.z))", SOURCE)
+        self.assertNotIn("terrain.transform.position.y + terrain.SampleHeight", SOURCE)
+        self.assertIn("float expectedGround = indoor ? c.y :", SOURCE)
+
     def test_all_points_in_circle_covered_and_priority_preserved(self):
         rng = random.Random(20261110)
         points = [(rng.uniform(-1000, 1000), rng.uniform(-1000, 1000))
