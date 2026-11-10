@@ -57,7 +57,11 @@ def audit():
     # Real Unity humanoid mask implementation keeps running feet under
     # shoot/punch clips, rather than borrowing weight from lower-body gait.
     assert "AnimationLayerMixerPlayable.Create(graph, 2)" in visual
-    assert "mixer = AnimationMixerPlayable.Create(graph, 9);" in visual
+    assert "mixer = AnimationMixerPlayable.Create(graph, 12);" in visual
+    assert "mixer.SetInputWeight(9, baseWeight * grounded * runBlend * walkRunBlend * sprintBlend);" in visual
+    assert "mixer.SetInputWeight(10, baseWeight * proneWeight" in visual
+    assert "mixer.SetInputWeight(11, baseWeight * proneWeight" in visual
+    assert "float stanceScale = stanceTotal > 1f ? pose / stanceTotal : 1f;" in visual
     assert "weaponUpperMixer = AnimationMixerPlayable.Create(graph, 3);" in visual
     assert "upperBodyMask.SetHumanoidBodyPartActive(part, active);" in visual
     assert "part == AvatarMaskBodyPart.Body" in visual
