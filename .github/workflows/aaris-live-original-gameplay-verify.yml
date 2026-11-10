@@ -1,0 +1,57 @@
+name: Aaris live original Unity gameplay Play Mode verification
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+jobs:
+  live-gameplay:
+    if: >-
+      github.event.issue.number == 77 &&
+      github.event.comment.user.login == 'sundamunda289-art' &&
+      github.event.comment.body == 'ANIM LIVE PLAY'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Test the original already-running Unity GUI in its existing Codespace
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          CS=aaris-ai-ubuntu-minimal-xr4p7jj6p4qjc6q5x
+          test -n "$GH_TOKEN" || { echo 'CODESPACE_PAT_MISSING'; exit 70; }
+          OUT="$RUNNER_TEMP/live-gameplay"
+          mkdir -p "$OUT"
+          timeout 650 gh codespace ssh -c "$CS" -- 'bash -s' \
+            < Tools/Codespaces/verify_existing_unity_gameplay.sh \
+            > "$OUT/status.txt"
+          timeout 220 gh codespace ssh -c "$CS" -- \
+            'base64 /tmp/aaris-codespaces/live-humanoid-review/gameplay-frames.tar.gz' \
+            > "$OUT/frames.b64"
+          base64 --decode "$OUT/frames.b64" > "$OUT/frames.tar.gz"
+          rm "$OUT/frames.b64"
+          tar -tzf "$OUT/frames.tar.gz" > "$OUT/archive-index.txt"
+          python3 - "$OUT/archive-index.txt" <<'PY'
+          import pathlib,re,sys
+          paths=pathlib.Path(sys.argv[1]).read_text().splitlines()
+          if len(paths)!=9 or paths[0]!='screens/':
+              raise SystemExit('LIVE_GAMEPLAY_UNEXPECTED_ARCHIVE_ENTRIES')
+          for path in paths[1:]:
+              if not re.fullmatch(r'screens/0[0-7]-[a-z-]+\.png',path):
+                  raise SystemExit('LIVE_GAMEPLAY_UNEXPECTED_SCREEN_NAME')
+          print('LIVE_GAMEPLAY_BOUNDED_ARTIFACT_VERIFIED')
+          PY
+          tar -xzf "$OUT/frames.tar.gz" -C "$OUT"
+          echo 'LIVE_GAMEPLAY_EDITOR_POSE_SHOTS_READY'
+      - name: Upload verification frames and status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-live-original-unity-gameplay-${{ github.run_id }}
+          path: ${{ runner.temp }}/live-gameplay/
+          retention-days: 2
+          if-no-files-found: warn
