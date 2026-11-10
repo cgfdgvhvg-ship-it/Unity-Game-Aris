@@ -43,7 +43,8 @@ def classify():
         # can be an innocuous shader variant/asset count in Unity import logs.
         ("ACCESS_DENIED",r"\b(?:error|http|failed)[^\n]{0,90}\b403\b|\b403\b[^\n]{0,90}\b(?:error|forbidden|denied)\b|\bforbidden\b|\baccess\s+denied\b"),
         ("AUTH_REQUIRED",r"login required|authentication required|not authenticated|401 unauthorized"),
-        ("RATE_LIMIT",r"429|rate limit"),
+        # A bare 429 in a shader/import count is not HTTP 429.
+        ("RATE_LIMIT",r"\b(?:http|status(?: code)?|response status)\s*[:=/ -]{0,15}429\b|\b429\s+(?:too many requests|rate[- ]limit(?:ed)?)\b|\b(?:rate[- ]limit(?:ed|ing)?|too many requests)\b"),
         ("NETWORK",r"could not resolve|connection reset|connection timed out|network unreachable|tls handshake"),
         ("MODULE_UNAVAILABLE",r"module.{0,80}not available|no matching module"),
         ("UNITY_COMPILER",r"error CS\d{4}"),

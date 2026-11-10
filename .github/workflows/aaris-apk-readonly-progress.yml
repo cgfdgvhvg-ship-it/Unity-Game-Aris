@@ -29,6 +29,21 @@ jobs:
           compile(source,'apk_readonly_status.py','exec')
           assert 'license status' not in script and 'gh release' not in script
           assert 'APK_READONLY_PROGRESS' in script
+          # Parse the actual runtime pattern, not a duplicated test regex.
+          import ast,re
+          module=ast.parse(source)
+          fn=next(n for n in module.body if isinstance(n,ast.FunctionDef) and n.name=='classify')
+          assign=next(n for n in fn.body if isinstance(n,ast.Assign)
+                      and any(isinstance(t,ast.Name) and t.id=='checks' for t in n.targets))
+          patterns=dict(ast.literal_eval(assign.value))
+          rule=patterns['RATE_LIMIT']
+          for harmless in ('Compiled shader variants 429', 'Total assets imported: 429',
+                           'Building player: 429 shaders', 'duration 429 ms'):
+              assert not re.search(rule,harmless,re.I), harmless
+          for actual in ('HTTP 429 Too Many Requests', 'response status 429',
+                         'Rate limit exceeded', 'too many requests'):
+              assert re.search(rule,actual,re.I), actual
+          print('APK_HTTP_RATE_LIMIT_CONTEXT_REGRESSION_PASS')
           print('APK_MONITOR_STATIC_CHECK_PASSED')
           PYSTATIC
   progress:
