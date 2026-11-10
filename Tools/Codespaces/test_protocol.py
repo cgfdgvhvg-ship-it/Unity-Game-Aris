@@ -59,6 +59,14 @@ assert "'CS FALLBACK TMP AUDIT') OP=tmp_audit ;;" in controller
 assert "'CS FALLBACK TMP RECLAIM') OP=tmp_reclaim ;;" in controller
 assert "'CS FALLBACK REFRESH TMP') OP=fresh_tmp ;;" in controller
 assert "'CS FALLBACK HYDRATE TMP') OP=hydrate_tmp ;;" in controller
+assert "'CS FALLBACK TMP RENDER') OP=scene_render ;;" in controller
+assert 'test "$ISSUE" != "CS FALLBACK TMP RENDER"' in controller
+assert 'bash -s -- render --preverified-tmp' in controller
+scene_script=(r/'Tools/Codespaces/scene_probe.sh').read_text()
+assert 'AARIS_PROBE_EXACT_CLEAN_TMP_CLONE_SELECTED' in scene_script
+assert 'AARIS_PROBE_TMP_793_LFS_SHA256_VERIFIED' in scene_script
+assert 'PREVERIFIED_TMP=0' in scene_script
+assert 'audit_pointers(project)' in scene_script
 hydrator=(r/'Tools/Codespaces/hydrate_tmp_lfs.py').read_text()
 assert 'CACHED_LFS_OID_INVALID_OR_MISSING' in hydrator
 assert 'TMP_HYDRATE_NONPOINTER_REPLACEMENTS' in hydrator
