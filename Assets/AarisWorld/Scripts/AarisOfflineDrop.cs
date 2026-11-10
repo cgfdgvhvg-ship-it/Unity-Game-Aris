@@ -266,7 +266,7 @@ namespace Aaris.MapReview
                 if (canopy != null)
                 {
                     float s = Mathf.SmoothStep(InitialCanopyScale, 1f, openingProgress);
-                    canopy.transform.localScale = new Vector3(s, s, s);
+                    SetCanopyOpeningScale(s);
                 }
                 if (openingProgress >= 1f) phase = DropPhase.Gliding;
             }
@@ -363,9 +363,22 @@ namespace Aaris.MapReview
             phase = DropPhase.Opening;
             openingProgress = 0f;
             canopy = AarisOfflineDropVisuals.CreateElongatedCanopy(transform);
-            canopy.transform.localScale = Vector3.one * InitialCanopyScale;
+            SetCanopyOpeningScale(InitialCanopyScale);
             ApplyLegacyFallbackPose(true);
             if (hud != null) hud.SetAction("OPEN", false);
+        }
+
+        private void SetCanopyOpeningScale(float scale)
+        {
+            if (canopy == null) return;
+            // The suspension rig has a 4.35m canopy centre and a 1.55m
+            // base offset at full size. Scale the art while maintaining the
+            // wing ABOVE the head throughout its half-second deployment.
+            // Otherwise a just-opened 30%-scale canopy visually intersects
+            // the character, who appears to stand on the wing.
+            float s = Mathf.Clamp(scale, InitialCanopyScale, 1f);
+            canopy.transform.localScale = Vector3.one * s;
+            canopy.transform.localPosition = Vector3.up * (4.35f - 2.8f * s);
         }
 
         private void Land()
