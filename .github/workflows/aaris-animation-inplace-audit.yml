@@ -165,8 +165,22 @@ jobs:
               baseline=git('rev-parse','--verify',source+':'+p)
               current=git('rev-parse','--verify','HEAD:'+p)
               if tracked:
-                if baseline.returncode or current.returncode or baseline.stdout!=current.stdout:
-                  raise RuntimeError('Upstream conflict: '+p)
+                if baseline.returncode or current.returncode:
+                  raise RuntimeError('Missing source/upstream asset: '+p)
+                if baseline.stdout!=current.stdout:
+                  # Preserve only the reviewed merged FPS fix, never a generic
+                  # automatic overwrite of newer main gameplay code.
+                  if p!='Assets/AarisWorld/Scripts/AarisCharacterVisual.cs':
+                    raise RuntimeError('Unreviewed upstream conflict: '+p)
+                  before=b'            Physics.SyncTransforms();\n'
+                  after=(b'            // Renderer bounds follow the visual Transform directly; no physics\n'
+                         b'            // shape moved, so a global Physics.SyncTransforms() would be wasted.\n')
+                  old_src=git('show',source+':'+p).stdout
+                  new_main=git('show','HEAD:'+p).stdout
+                  if old_src.count(before)!=1 or old_src.replace(before,after)!=new_main or content.count(before)!=1:
+                    raise RuntimeError('Unexpected performance-fix conflict: '+p)
+                  content=content.replace(before,after)
+                  print('AARIS_SAFELY_PRESERVED_MAIN_PHYSICS_FPS_FIX')
               elif current.returncode==0:
                 raise RuntimeError('New path already exists in main: '+p)
               if p.endswith('.fbx') and not content.startswith(b'Kaydara FBX Binary'):
