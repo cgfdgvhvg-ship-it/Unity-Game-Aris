@@ -28,6 +28,7 @@ namespace Aaris.MapReview
         [SerializeField, Range(20f, 90f)] private float freefallFastSink = 54f;
 
         private AarisThirdPersonPlayer footMotor;
+        private AarisCharacterVisual characterVisual;
         private CharacterController capsule;
         private AarisBattleActions combat;
         private Camera view;
@@ -66,6 +67,7 @@ namespace Aaris.MapReview
         private void Awake()
         {
             footMotor = GetComponent<AarisThirdPersonPlayer>();
+            characterVisual = GetComponent<AarisCharacterVisual>();
             capsule = GetComponent<CharacterController>();
             combat = GetComponent<AarisBattleActions>();
             vehicle = GetComponent<AarisVehicleSession>();
@@ -345,6 +347,7 @@ namespace Aaris.MapReview
             transform.position = plane.transform.position - Vector3.up * 7f;
             transform.rotation = Quaternion.Euler(0f, yaw, 0f);
             ShowPlayer();
+            ApplyLegacyFallbackPose(false);
             capsule.enabled = true;
             downwardSpeed = -3f;
             horizontalVelocity = Vector3.zero;
@@ -361,6 +364,7 @@ namespace Aaris.MapReview
             openingProgress = 0f;
             canopy = AarisOfflineDropVisuals.CreateElongatedCanopy(transform);
             canopy.transform.localScale = Vector3.one * InitialCanopyScale;
+            ApplyLegacyFallbackPose(true);
             if (hud != null) hud.SetAction("OPEN", false);
         }
 
@@ -376,6 +380,7 @@ namespace Aaris.MapReview
             }
             if (plane != null) { Destroy(plane); plane = null; }
             ShowPlayer();
+            if (footMotor != null) footMotor.RestoreLegacyAerialPose();
             capsule.enabled = true;
             if (combat != null) combat.enabled = combatWasEnabled;
             if (battleCanvas != null) battleCanvas.enabled = battleCanvasWasEnabled;
@@ -386,6 +391,15 @@ namespace Aaris.MapReview
             footMotor.enabled = true;
             phase = DropPhase.Landed;
             Debug.Log("Aaris offline drop: parachute touchdown; on-foot controls restored.");
+        }
+
+        private void ApplyLegacyFallbackPose(bool underCanopy)
+        {
+            // Native Android builds may lack a valid optional imported Avatar.
+            // Preserve their animated locomotion if present, and pose only the
+            // saved lightweight placeholder if the real Humanoid failed to load.
+            if (footMotor != null && (characterVisual == null || !characterVisual.HasWorkingHumanoid))
+                footMotor.SetLegacyAerialPose(underCanopy);
         }
 
         private void HidePlayer()
