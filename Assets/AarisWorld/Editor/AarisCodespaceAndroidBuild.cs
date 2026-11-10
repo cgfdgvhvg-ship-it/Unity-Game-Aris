@@ -75,6 +75,34 @@ namespace Aaris.MapReview.Editor
                 if (tiles.Length != 4 || tiles.Any(t => t.terrainData == null))
                     throw new InvalidOperationException("NATIVE_FOUR_TERRAIN_TILES_MISSING");
 
+                // Catch missing terrain paint/shader references BEFORE the
+                // headless Android build. Do not replace the authored terrain
+                // material, alter instancing, disable any tile, or modify LFS
+                // TerrainData: all four surfaces must remain renderable.
+                const string terrainMaterialPath =
+                    "Assets/TerrainDemoScene_URP/Terrain/Materials/TerrainLit.mat";
+                Material nativeTerrainPaint =
+                    AssetDatabase.LoadAssetAtPath<Material>(terrainMaterialPath);
+                if (nativeTerrainPaint == null || nativeTerrainPaint.shader == null ||
+                    nativeTerrainPaint.shader.name != "Universal Render Pipeline/Terrain/Lit" ||
+                    !nativeTerrainPaint.shader.isSupported)
+                    throw new InvalidOperationException("ANDROID_TERRAIN_LIT_MATERIAL_INVALID");
+
+                foreach (Terrain tile in tiles)
+                {
+                    if (!tile.drawHeightmap)
+                        throw new InvalidOperationException("ANDROID_TERRAIN_HEIGHTMAP_HIDDEN");
+                    TerrainData data = tile.terrainData;
+                    if (data.terrainLayers == null || data.terrainLayers.Length == 0 ||
+                        data.alphamapTextureCount == 0)
+                        throw new InvalidOperationException("ANDROID_TERRAIN_PAINT_LAYERS_MISSING");
+                    if (tile.materialTemplate != null &&
+                        (tile.materialTemplate.shader == null ||
+                         !tile.materialTemplate.shader.isSupported))
+                        throw new InvalidOperationException("ANDROID_TERRAIN_TILE_SHADER_UNSUPPORTED");
+                }
+                Debug.Log("AARIS_TERRAIN_ANDROID_PREFLIGHT_FOUR_PAINTED_TILES_READY");
+
                 // This app has no signing key in the repository. The initial
                 // diagnostic installable APK uses Unity's debug signature only.
                 // Do not overwrite a production keystore or change product ID.
