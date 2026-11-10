@@ -16,12 +16,12 @@ namespace Aaris.MapReview
         private Transform leaf, player, house;
         private Collider solid;
         private Vector3 doorwayCenter;
-        private float health, lastNear = -999f, currentAngle;
+        private float health, lastNear = -999f, currentAngle, openDirection = 1f;
         private bool isDoor, destroyed;
         private readonly Collider[] blockers = new Collider[16];
 
         public bool IsBroken => destroyed;
-        public bool IsOpen => isDoor && (destroyed || currentAngle > 80f);
+        public bool IsOpen => isDoor && (destroyed || Mathf.Abs(currentAngle) > 80f);
 
         public void Configure(Transform panel, Collider panelCollider,
             Transform nearbyPlayer, bool door, float hitPoints, Transform houseRoot)
@@ -46,13 +46,23 @@ namespace Aaris.MapReview
                 near = Mathf.Abs(approach.y) <= NearFloorTolerance &&
                     approach.x * approach.x + approach.z * approach.z <= NearRadius * NearRadius;
             }
-            if (near) lastNear = Time.time;
+            if (near)
+            {
+                lastNear = Time.time;
+                // Decide the swing only while the panel is essentially closed.
+                // A player approaching from the exterior (negative local Z)
+                // gets an inward-opening door, not a solid door leaf pushed
+                // into their CharacterController. The hinge side stays unchanged.
+                if (Mathf.Abs(currentAngle) < 1f)
+                    openDirection = house.InverseTransformPoint(player.position).z <
+                        doorwayCenter.z ? -1f : 1f;
+            }
             bool shouldOpen = near || Time.time - lastNear < 1.5f;
             // Never shut a moving solid door across a player, car or other
             // interactive collider. Saturated queries also fail open.
-            if (!shouldOpen && currentAngle > .01f && ClosingBlocked())
+            if (!shouldOpen && Mathf.Abs(currentAngle) > .01f && ClosingBlocked())
                 shouldOpen = true;
-            float next = Mathf.MoveTowards(currentAngle, shouldOpen ? OpenAngle : 0f,
+            float next = Mathf.MoveTowards(currentAngle, shouldOpen ? OpenAngle * openDirection : 0f,
                 OpenSpeed * Time.deltaTime);
             if (Mathf.Abs(next - currentAngle) > .001f)
             {
