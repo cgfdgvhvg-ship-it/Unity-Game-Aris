@@ -9,7 +9,7 @@ try:
     data = json.loads((folder / 'result.json').read_text())
 except (OSError, ValueError):
     data = {}
-operations = set('machines info quota start fresh fresh_ssh fresh_minimal rebuild full_rebuild status logs sync recovery_sync lfs lfs_report changes perf_audit perf_tune open_native_probe open_native_select apply_gameplay preserve_assets retry_assets install bootstrap deps cli_diag editor editor_diag editor_isolate tmp_audit tmp_reclaim fresh_tmp hydrate_tmp license auth probe shot accept_terms safe_mode compile_report refresh close_editor editor_process editor_recover scene_render scene_play drop_video drop_frames map_verify photo play_diag foliage_diag test stop'.split())
+operations = set('machines info quota start fresh fresh_ssh fresh_minimal rebuild full_rebuild status logs sync recovery_sync lfs lfs_report changes gameplay_review gameplay_publish perf_audit perf_tune open_native_probe open_native_select apply_gameplay preserve_assets retry_assets install bootstrap deps cli_diag editor editor_diag editor_isolate tmp_audit tmp_reclaim fresh_tmp hydrate_tmp license auth probe shot accept_terms safe_mode compile_report refresh close_editor editor_process editor_recover scene_render scene_play drop_video drop_frames map_verify photo play_diag foliage_diag test stop'.split())
 statuses = {'SUCCESS', 'FAILED', 'NO_CODESPACE', 'TARGET_UNAVAILABLE', 'UNKNOWN'}
 op = data.get('operation', 'unknown')
 state = data.get('status', 'FAILED')
@@ -31,6 +31,8 @@ for line in lines:
     if re.fullmatch(r'[A-Z][A-Z0-9_]{2,90}', line):
         safe.append(line)
     elif re.fullmatch(r'(commit|arch|os_id|os_version|glibc|docker_ready|cpus|memory_mb|workspace_free_kb|tmp_free_kb|lfs_tracked_count|lfs_unhydrated_pointer_count|lfs_log_recorded|lfs_error_kind|lfs_error_hash_count|lfs_object_hash_1|lfs_object_hash_2|lfs_object_hash_3|changed_files_count|raw_identical_count|raw_different_count|state|idle_minutes|devcontainer|editor_installed|editor_running|display|scene|machine|codespace|target_codespace|reason)=[A-Za-z0-9_.-]{1,80}', line):
+        safe.append(line)
+    elif op in ('gameplay_review', 'gameplay_publish') and re.fullmatch(r'(gameplay_changed_files|gameplay_lfs_files|gameplay_archive_bytes|gameplay_files_checked|gameplay_conflicts|gameplay_published_files)=[0-9]{1,12}|gameplay_source_head=[0-9a-f]{40}|gameplay_commit=[0-9a-f]{40}|gameplay_review_branch=feat/finish-existing-humanoid-gloo-20261110', line):
         safe.append(line)
     elif op == 'hydrate_tmp' and re.fullmatch(r'TMP_HYDRATE_(LFS_EXPECTED|LFS_PENDING|LFS_VERIFIED|BYTES_REQUIRED|NONPOINTER_REPLACEMENTS|DUPLICATE_CACHE_OIDS_REMOVED|DUPLICATE_CACHE_BYTES_RECLAIMED)=[0-9]{1,16}', line):
         safe.append(line)
