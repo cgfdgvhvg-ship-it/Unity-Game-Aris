@@ -34,10 +34,19 @@ done
 echo AARIS_TMP_ORIGINAL_DIRTY_PROJECT_PRESERVED
 BEFORE="$(df -Pk /tmp | awk 'NR==2 {print $4}')"
 echo "TMP_REFRESH_FREE_KB_BEFORE=$BEFORE"
+# Never unlink a directory still registered as a Git worktree of the
+# owner's original repository; such paths need a separately reviewed removal.
+REGISTERED="$(git -C "$SOURCE" worktree list --porcelain)"
 for obsolete in /tmp/aaris-offline-drop-worktrees /tmp/aaris-map-expansion-worktrees \
                 /tmp/aaris-codespaces/offline-drop-probe \
                 /tmp/aaris-codespaces/map-expansion-probe; do
-  if test -d "$obsolete"; then rm -rf --one-file-system -- "$obsolete"; fi
+  if test ! -d "$obsolete"; then continue; fi
+  if grep -Fq "worktree $obsolete/" <<< "$REGISTERED" ||
+     grep -Fxq "worktree $obsolete" <<< "$REGISTERED"; then
+    echo AARIS_TMP_REGISTERED_WORKTREE_PRESERVED
+    continue
+  fi
+  rm -rf --one-file-system -- "$obsolete"
 done
 mkdir -p "$ROOT"
 test -d "$ROOT" && test ! -L "$ROOT" && \
