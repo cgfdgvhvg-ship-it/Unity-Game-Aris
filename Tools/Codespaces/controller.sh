@@ -41,6 +41,7 @@ if test -n "$ISSUE"; then
         'CS FALLBACK COMPILE REPORT') OP=compile_report ;;
         'CS FALLBACK EDITOR') OP=editor ;;
         'CS FALLBACK EDITOR DIAG') OP=editor_diag ;;
+        'CS FALLBACK EDITOR ISOLATE') OP=editor_isolate ;;
         'CS FALLBACK ACCEPT TERMS') OP=accept_terms ;;
         'CS FALLBACK CLOSE EDITOR') OP=close_editor ;;
         'CS FALLBACK EDITOR PROCESS') OP=editor_process ;;
