@@ -18,6 +18,7 @@ import tempfile
 
 SOURCE = Path("/workspaces/Unity-Game-Aris")
 SNAPSHOTS = Path("/tmp/aaris-native-photo-worktrees")
+ANDROID_SNAPSHOTS = Path("/tmp/aaris-native-android-build-worktrees")
 CACHE_ROOT = Path("/tmp/aaris-preserved-lfs-cache")
 PTR = re.compile(
     rb"\Aversion https://git-lfs.github.com/spec/v1\n"
@@ -101,8 +102,15 @@ def original_cache_roots(source: Path) -> list[Path]:
 
 def audit_pointers(project: Path) -> dict[str, tuple[str, int]]:
     paths = git(project, "lfs", "ls-files", "--name-only").decode().splitlines()
-    if len(paths) != 793 or len(set(paths)) != 793:
-        raise RecoveryError("EXPECTED_793_LFS_POINTERS_NOT_FOUND")
+    # The completed PR #302 adds sprint/prone/crawl FBXs as three new LFS objects.
+    # Fail closed on any incomplete or unrelated snapshot.
+    if len(paths) not in (793, 796) or len(set(paths)) != len(paths):
+        raise RecoveryError("EXPECTED_793_OR_796_LFS_POINTERS_NOT_FOUND")
+    if len(paths) == 796:
+        motions = "Assets/Resources/AarisCharacters/Primary/Animations/"
+        for clip in ("sprint", "prone", "crawl"):
+            if motions + clip + ".fbx" not in paths:
+                raise RecoveryError("KAYKIT_NEW_LFS_MOTION_MISSING")
     expected = {}
     for relative in paths:
         parsed = PurePosixPath(relative)
@@ -170,7 +178,8 @@ def restore(project: Path) -> None:
     project = project.resolve(strict=True)
     source = SOURCE.resolve(strict=True)
     revision = git(project, "rev-parse", "HEAD").decode().strip()
-    if (project.parent != SNAPSHOTS or project.name != revision
+    if (project.parent not in (SNAPSHOTS, ANDROID_SNAPSHOTS)
+            or project.name != revision
             or not re.fullmatch("[0-9a-f]{40}", revision)):
         raise RecoveryError("WRONG_TARGET_IMMUTABLE_WORKTREE")
     if source == project or not (source / ".git").exists():
@@ -228,7 +237,7 @@ def restore(project: Path) -> None:
     for relative, (oid, size) in expected.items():
         if not candidate_matches(project / relative, oid, size):
             raise RecoveryError("ISOLATED_LFS_WORKTREE_NOT_HYDRATED")
-    print("AARIS_PRESERVED_LFS_SNAPSHOT_VERIFIED=793", flush=True)
+    print("AARIS_PRESERVED_LFS_SNAPSHOT_VERIFIED=" + str(len(expected)), flush=True)
     print("AARIS_PRESERVED_LFS_ORIGINAL_WORKSPACE_UNCHANGED=yes", flush=True)
 
 
