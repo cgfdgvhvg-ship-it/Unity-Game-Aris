@@ -3,7 +3,7 @@
 # No original dirty GUI workspace/reset/commit, no tokens/license files exported.
 set -Eeuo pipefail
 MODE="${1:-preflight}"
-case "$MODE" in preflight|build) ;; *) echo APK_UNSUPPORTED_MODE; exit 2 ;; esac
+case "$MODE" in preflight|build|build_hud) ;; *) echo APK_UNSUPPORTED_MODE; exit 2 ;; esac
 SOURCE=/workspaces/Unity-Game-Aris
 BASE=/tmp/aaris-codespaces/android-apk
 VERSION=6000.3.26f1
@@ -32,7 +32,7 @@ if test -n "$CLI" && env HOME="$AUTH_HOME" \
   echo APK_LICENSE_ACTIVE
 else
   echo APK_LICENSE_NOT_VERIFIED
-  if test "$MODE" = build; then exit 12; fi
+  if test "$MODE" != preflight; then exit 12; fi
 fi
 test -s "$SOURCE/ProjectSettings/EditorBuildSettings.asset" || {
   echo APK_BUILD_SETTINGS_MISSING; exit 13;
@@ -179,9 +179,15 @@ if test -d "$OLD_PROJECT" && test ! -L "$OLD_PROJECT" &&
     echo "apk_tmp_free_gb_after_cache_cleanup=$(df -BG /tmp | awk 'END {gsub(/G/,"",$4);print $4}')"
   fi
 fi
-git -C "$SOURCE" fetch --quiet origin main || {
-  echo APK_MAIN_FETCH_FAILED; exit 20; }
-SHA="$(git -C "$SOURCE" rev-parse --verify 'origin/main^{commit}')"
+# Build an exact, hard-coded reviewed HUD/parachute branch on owner request;
+# all ordinary builds still use main. No arbitrary ref comes from issue text.
+REF_NAME=main
+if test "$MODE" = build_hud; then
+  REF_NAME=fix/android-ugui-shader-parachute-20261110
+fi
+git -C "$SOURCE" fetch --quiet origin "+refs/heads/$REF_NAME:refs/remotes/origin/$REF_NAME" || {
+  echo APK_REVIEWED_REF_FETCH_FAILED; exit 20; }
+SHA="$(git -C "$SOURCE" rev-parse --verify "refs/remotes/origin/$REF_NAME^{commit}")"
 [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo APK_MAIN_SHA_INVALID; exit 21; }
 ROOT=/tmp/aaris-native-android-build-worktrees
 PROJECT="$ROOT/$SHA"
@@ -215,6 +221,15 @@ if head -c 110 Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity |
 fi
 test -s Assets/AarisWorld/Editor/AarisCodespaceAndroidBuild.cs || {
   echo APK_BUILD_SCRIPT_MISSING; exit 27; }
+if test "$MODE" = build_hud; then
+  test -s Assets/Resources/AarisHUDOverlay.shader || {
+    echo APK_HUD_REVIEW_SHADER_SOURCE_MISSING; exit 27;
+  }
+  grep -q 'ApplyCanvasShader' Assets/AarisWorld/Scripts/AarisHudGlyphs.cs || {
+    echo APK_HUD_REVIEW_CANVAS_BINDING_MISSING; exit 27;
+  }
+  echo APK_HUD_REVIEW_BRANCH_AND_SHADER_VERIFIED
+fi
 bash .devcontainer/start_screen.sh >"$BASE/private-screen.log" 2>&1 || {
   echo APK_DISPLAY_START_FAILED; exit 28
 }
@@ -305,4 +320,5 @@ grep -Eq "^package: name='com[.]aaris[.]game' versionCode='7'" \
   }
 echo APK_INSTALLABILITY_SIGNATURE_MANIFEST_API33_VERIFIED
 echo "apk_commit=$SHA"
+if test "$MODE" = build_hud; then echo APK_HUD_REVIEW_BUILD_VERIFIED; fi
 echo APK_UPLOAD_READY
