@@ -69,6 +69,17 @@ jobs:
               sys.exit(13)
           print('AARIS_V3_EXISTING_CODESPACE_AVAILABLE')
           PYCHECK
+      - name: Classify the existing Unity Editor launch failure without exposing private logs
+        run: |
+          set -euo pipefail
+          mkdir -p safe-report
+          if timeout 95 gh codespace ssh -c "$EXACT_CODESPACE" -- 'bash -s -- editor_diag' \
+            < Tools/Codespaces/remote.sh \
+            > safe-report/editor-diagnostic.txt 2> "$RUNNER_TEMP/private-diagnostic-ssh.log"; then
+            grep -E '^AARIS_EDITOR_' safe-report/editor-diagnostic.txt || true
+          else
+            echo 'AARIS_V3_EDITOR_DIAGNOSTIC_UNAVAILABLE'
+          fi
       - name: Upgrade only aircraft model and aerial controller in already-open Unity project
         run: |
           set -euo pipefail
@@ -90,6 +101,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: aaris-v3-same-open-editor-result
-          path: safe-report/safe-status.txt
+          path: |
+            safe-report/safe-status.txt
+            safe-report/editor-diagnostic.txt
           if-no-files-found: warn
           retention-days: 2
