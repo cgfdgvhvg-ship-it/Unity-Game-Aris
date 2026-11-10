@@ -92,24 +92,62 @@ class OfflineCombatAssetChecks(unittest.TestCase):
 
     def test_animation_stance_weights_remain_exclusive_and_prone_moves(self):
         source = (SCRIPTS / "AarisCharacterVisual.cs").read_text("utf-8")
-        self.assertIn("float stanceMotion = Mathf.Clamp01(horizontal / 1.2f) * pose;", source)
-        self.assertIn("float stanceRest = pose - stanceMotion;", source)
+        self.assertIn("AnimationMixerPlayable.Create(graph, 12)", source)
+        self.assertIn("float stanceTotal = crouchBlend + proneBlend;", source)
+        self.assertIn("float stanceScale = stanceTotal > 1f ? pose / stanceTotal : 1f;", source)
+        self.assertIn("float crouchWeight = authoredProne ? crouchBlend * stanceScale : pose;", source)
+        self.assertIn("float proneWeight = authoredProne ? proneBlend * stanceScale : 0f;", source)
         self.assertIn("float grounded = (1f - airborneBlend) * (1f - pose);", source)
-        self.assertIn("baseWeight * stanceMotion", source)
-        self.assertIn("baseWeight * stanceRest", source)
-        self.assertIn("crawlLeftArm.localRotation *=", source)
-        self.assertIn("crawlRightLeg.localRotation *=", source)
-        self.assertIn("float crawlWeight = proneBlend *", source)
-        # Stance/rest, air and standing weights must total the available
-        # locomotion share, not two concurrent 100% standing/crouching clips.
-        for pose in (0, .2, .5, 1):
-            for airborne in (0, .15, .55, 1):
-                for speed in (0, .2, .85, 1.4):
-                    motion = min(1.0, speed / 1.2) * pose
-                    rest = pose - motion
-                    standing = (1-airborne) * (1-pose)
-                    air = airborne * (1-pose)
-                    self.assertAlmostEqual(standing + air + rest + motion, 1.0)
+        self.assertIn("mixer.SetInputWeight(5, baseWeight * crouchWeight", source)
+        self.assertIn("mixer.SetInputWeight(6, baseWeight * crouchWeight", source)
+        self.assertIn("mixer.SetInputWeight(10, baseWeight * proneWeight", source)
+        self.assertIn("mixer.SetInputWeight(11, baseWeight * proneWeight", source)
+        self.assertIn("LoopPlayable(crawlPlayable, crawlClip, crawlPhase);", source)
+        self.assertIn("LoopPlayable(sprintPlayable, sprintClip, locomotionPhase);", source)
+        # Authored prone is entirely clip driven. The old bone-pulse hack must
+        # not fight the retargeted crawl or spend time mutating limb bones.
+        self.assertNotIn("crawlLeftArm.localRotation *=", source)
+        self.assertNotIn("crawlRightLeg.localRotation *=", source)
+        # Exercise rapid/overlapping stance transitions as well as steady
+        # standing, crouch and prone. Each twelve-input base mixer must
+        # preserve unity total even if Crouch + Prone briefly exceeds one.
+        for crouch in (0, .2, .5, 1):
+            for prone in (0, .2, .5, 1):
+                for airborne in (0, .15, .55, 1):
+                    for speed in (0, .2, .85, 1.4):
+                        total = crouch + prone
+                        pose = min(1., total)
+                        scale = pose / total if total > 1. else 1.
+                        standing = (1-airborne) * (1-pose)
+                        air = airborne * (1-pose)
+                        for authored_prone in (False, True):
+                            cw = crouch * scale if authored_prone else pose
+                            pw = prone * scale if authored_prone else 0.
+                            cm = min(1., max(0., (speed-.06)/(.85-.06)))
+                            pm = min(1., max(0., (speed-.05)/(.55-.05)))
+                            crouch_idle, crouch_walk = cw*(1-cm), cw*cm
+                            prone_idle, crawl = pw*(1-pm), pw*pm
+                            self.assertAlmostEqual(standing+air+crouch_idle+
+                                crouch_walk+prone_idle+crawl,1.,places=7)
+
+    def test_kaykit_cc0_motion_provenance_and_guid_pairs(self):
+        folder = ASSETS / "AarisCharacters" / "Primary"
+        clips = json.loads((folder / "Animations" / "kaykit-clip-sources.json").read_text("utf-8"))
+        self.assertEqual(clips["license"], "CC0-1.0")
+        self.assertIn("CC0", (folder / "LICENSE-KAYKIT-ANIMATIONS.txt").read_text("utf-8"))
+        motions = ("walk", "run", "sprint", "crouch", "crouch_walk", "prone", "crawl", "punch")
+        self.assertEqual(set(clips["clips"]), set(motions))
+        for motion in motions:
+            fbx = folder / "Animations" / (motion + ".fbx")
+            meta = folder / "Animations" / (motion + ".fbx.meta")
+            self.assertTrue(fbx.is_file(), motion)
+            self.assertTrue(meta.is_file(), motion)
+            self.assertRegex(meta.read_text("utf-8"), r"(?m)^guid: [0-9a-f]{32}$")
+            pointer = fbx.read_bytes()
+            if pointer.startswith(b"version https://git-lfs.github.com/spec/v1"):
+                oid = re.search(rb"(?m)^oid sha256:([0-9a-f]{64})$", pointer)
+                self.assertIsNotNone(oid, motion)
+                self.assertEqual(oid.group(1).decode(), clips["clips"][motion]["sha256"])
 
     def test_weapon_fps_swap_and_damage_gc_regression(self):
         catalog = (SCRIPTS / "AarisWeaponCatalog.cs").read_text("utf-8")
