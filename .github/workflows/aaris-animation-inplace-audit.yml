@@ -172,9 +172,9 @@ jobs:
                   # automatic overwrite of newer main gameplay code.
                   if p!='Assets/AarisWorld/Scripts/AarisCharacterVisual.cs':
                     raise RuntimeError('Unreviewed upstream conflict: '+p)
-                  before=b'            Physics.SyncTransforms();\\n'
-                  after=(b'            // Renderer bounds follow the visual Transform directly; no physics\\n'
-                         b'            // shape moved, so a global Physics.SyncTransforms() would be wasted.\\n')
+                  before=b'            Physics.SyncTransforms();\n'
+                  after=(b'            // Renderer bounds follow the visual Transform directly; no physics\n'
+                         b'            // shape moved, so a global Physics.SyncTransforms() would be wasted.\n')
                   old_src=git('show',source+':'+p).stdout
                   new_main=git('show','HEAD:'+p).stdout
                   if old_src.count(before)!=1 or old_src.replace(before,after)!=new_main or content.count(before)!=1:
