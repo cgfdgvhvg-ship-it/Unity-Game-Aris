@@ -21,17 +21,47 @@ test -d "$SOURCE/.git" || test -f "$SOURCE/.git" || {
   echo AARIS_PROBE_SOURCE_REPOSITORY_MISSING
   exit 12
 }
-if ! git -C "$SOURCE" fetch --quiet origin main; then
-  echo AARIS_PROBE_FETCH_MAIN_FAILED
-  exit 12
+# The exact fallback-2 Codespace already has a SHA-verified /tmp clone.
+# Reuse it when specifically requested, rather than fetching main again or
+# creating another 3+ GiB worktree. The original dirty owner project is never
+# an allowable render target in this mode.
+PREVERIFIED_TMP=0
+if test "$MODE" = render && test "${2:-}" = '--preverified-tmp'; then
+  PREVERIFIED_TMP=1
+  PROJECT="$(python3 - "$ISOLATED_ROOT" <<'PYSNAPSHOT'
+import pathlib,re,subprocess,sys
+root=pathlib.Path(sys.argv[1])
+expected="https://github.com/sundamunda289-art/Unity-Game-Aris.git"
+def read(repo,*args):
+    return subprocess.check_output(["git","-C",str(repo),*args],
+        stderr=subprocess.DEVNULL,timeout=45).decode().strip()
+if not root.is_dir() or root.is_symlink() or root.resolve()!=root:
+    raise SystemExit("AARIS_TMP_SNAPSHOT_ROOT_UNSAFE")
+found=[]
+for p in root.iterdir():
+    if not re.fullmatch("[a-f0-9]{40}",p.name) or p.is_symlink() or not (p/".git").is_dir():
+        continue
+    if read(p,"rev-parse","HEAD") == p.name and read(p,"remote","get-url","origin") == expected:
+        found.append(p)
+if len(found)!=1:raise SystemExit("AARIS_TMP_SNAPSHOT_NOT_UNIQUE")
+print(found[0])
+PYSNAPSHOT
+)" || { echo AARIS_TMP_SNAPSHOT_SELECTION_FAILED; exit 12; }
+  REV="$(basename "$PROJECT")"
+  echo AARIS_PROBE_EXACT_CLEAN_TMP_CLONE_SELECTED
+else
+  if ! git -C "$SOURCE" fetch --quiet origin main; then
+    echo AARIS_PROBE_FETCH_MAIN_FAILED
+    exit 12
+  fi
+  REV="$(git -C "$SOURCE" rev-parse --verify 'origin/main^{commit}')" || {
+    echo AARIS_PROBE_MAIN_COMMIT_MISSING
+    exit 12
+  }
+  [[ "$REV" =~ ^[0-9a-f]{40}$ ]] || { echo AARIS_PROBE_MAIN_SHA_INVALID; exit 12; }
+  mkdir -p "$ISOLATED_ROOT"
+  PROJECT="$ISOLATED_ROOT/$REV"
 fi
-REV="$(git -C "$SOURCE" rev-parse --verify 'origin/main^{commit}')" || {
-  echo AARIS_PROBE_MAIN_COMMIT_MISSING
-  exit 12
-}
-[[ "$REV" =~ ^[0-9a-f]{40}$ ]] || { echo AARIS_PROBE_MAIN_SHA_INVALID; exit 12; }
-mkdir -p "$ISOLATED_ROOT"
-PROJECT="$ISOLATED_ROOT/$REV"
 if test ! -d "$PROJECT"; then
   # An official Codespace stop/start can recycle /tmp while preserving the
   # source Git database. Repair ONLY this exact already-missing temporary
@@ -69,7 +99,28 @@ mkdir -p "$RUN"
 # against immutable HEAD pointers before any network transfer. The authenticated
 # original 18-mesh archive is also verified by this same read-only helper.
 # If it cannot prove 793/793, attempt the normal Git LFS download as fallback.
-if test -s "$PROJECT/Tools/Codespaces/restore_preserved_source_lfs.py" &&
+if test "$PREVERIFIED_TMP" -eq 1; then
+  # Full content-authenticity recheck is read-only and independent of Git's
+  # smudge filter. It verifies all 793 original byte hashes against HEAD.
+  if ! python3 - "$PROJECT" <<'PYVERIFY'
+from pathlib import Path
+import sys
+project=Path(sys.argv[1])
+sys.path.insert(0,str(project/"Tools/Codespaces"))
+from restore_preserved_source_lfs import audit_pointers,candidate_matches
+try:
+  data=audit_pointers(project)
+  good=sum(candidate_matches(project/rel,oid,size) for rel,(oid,size) in data.items())
+except Exception:
+  raise SystemExit(2)
+if len(data)!=793 or good!=793:raise SystemExit(3)
+print("AARIS_PROBE_TMP_793_LFS_SHA256_VERIFIED")
+PYVERIFY
+  then
+    echo AARIS_PROBE_TMP_LFS_VERIFICATION_FAILED
+    exit 15
+  fi
+elif test -s "$PROJECT/Tools/Codespaces/restore_preserved_source_lfs.py" &&
    python3 "$PROJECT/Tools/Codespaces/restore_preserved_source_lfs.py" "$PROJECT"; then
   echo AARIS_PROBE_LOCAL_FIRST_793_LFS_VERIFIED
 elif git lfs pull > "$RUN/private-lfs-pull.log" 2>&1; then
