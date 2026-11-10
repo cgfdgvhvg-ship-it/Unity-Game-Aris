@@ -1,0 +1,107 @@
+name: Aaris Chat Upload Git LFS ZIP parts
+on:
+  push:
+    branches: [export/chat-upload-parts-20261110]
+    paths: ['.github/workflows/aaris-chat-export.yml']
+permissions:
+  contents: write
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout source with real LFS
+        uses: actions/checkout@v4
+        with:
+          ref: b133465c134fb8ce54c8c6b9c7943f70b17b7244
+          lfs: true
+      - name: Hydrate Git LFS
+        run: |
+          set -Eeuo pipefail
+          git lfs pull
+          df -h .
+      - name: Export source ZIPs below 80 MiB
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          import os,subprocess,hashlib,json,zipfile,re
+          from pathlib import Path
+          base=Path.cwd();out=Path('aaris-chat-parts');out.mkdir(exist_ok=True)
+          cap=72*1048576; data=[]; entries=[]
+          def git(*a):return subprocess.check_output(['git',*a])
+          paths=sorted(os.fsdecode(x) for x in git('ls-files','-z').split(b'\0') if x)
+          lfs=set(git('lfs','ls-files','-n').decode().splitlines())
+          assert len(lfs)>=700,('Missing Git LFS inventory',len(lfs))
+          for idx,name in enumerate(paths):
+           p=Path(name)
+           if p.is_absolute() or '..' in p.parts:raise RuntimeError('unsafe path')
+           if p.is_symlink():
+            data.append(dict(path=name,type='symlink',target=os.readlink(p)));continue
+           if not p.is_file():raise RuntimeError('missing '+name)
+           size=p.stat().st_size
+           h=hashlib.sha256()
+           with p.open('rb') as f:
+            for chunk in iter(lambda:f.read(1048576),b''):h.update(chunk)
+           sha=h.hexdigest()
+           if name in lfs:
+            pointer=git('show','HEAD:'+name).decode()
+            m=re.search(r'^oid sha256:([a-f0-9]{64})$',pointer,re.M)
+            n=re.search(r'^size ([0-9]+)$',pointer,re.M)
+            if not m or not n or m.group(1)!=sha or int(n.group(1))!=size:
+             raise RuntimeError('invalid or unhydrated LFS: '+name)
+           record=dict(path=name,type='file',bytes=size,sha256=sha,lfs=name in lfs)
+           if size>cap:
+            seg=[]
+            for i,start in enumerate(range(0,size,cap)):
+             arc=f'.aaris_large_parts/{idx:06d}/{i:05d}.bin'
+             entries.append((arc,p,start,min(cap,size-start)));seg.append(arc)
+            record['segments']=seg
+           else:entries.append((name,p,0,size))
+           data.append(record)
+          vol=[];z=None;payload=0
+          for arc,p,start,n in entries:
+           if z is None or (payload and payload+max(1,n)>cap):
+            if z is not None:z.close()
+            fn=out/f'Aaris-Project-{len(vol)+1:03d}.zip'
+            z=zipfile.ZipFile(fn,'w',zipfile.ZIP_DEFLATED,compresslevel=1,allowZip64=True)
+            vol.append(fn);payload=0
+           with z.open(arc,'w',force_zip64=True) as w,p.open('rb') as r:
+            r.seek(start);left=n
+            while left:
+             b=r.read(min(1048576,left))
+             if not b:raise RuntimeError('unexpected EOF')
+             w.write(b);left-=len(b)
+           payload+=max(1,n)
+          if z:z.close()
+          assert vol
+          parts=[]
+          for p in vol:
+           if p.stat().st_size>80*1048576:raise RuntimeError('Oversized ZIP')
+           with zipfile.ZipFile(p) as z:
+            if z.testzip():raise RuntimeError('ZIP CRC failure')
+           h=hashlib.sha256()
+           with p.open('rb') as f:
+            for b in iter(lambda:f.read(1048576),b''):h.update(b)
+           parts.append(dict(name=p.name,bytes=p.stat().st_size,sha256=h.hexdigest()))
+          manifest=dict(format='aaris-git-lfs-chat-volumes-v1',source_commit=git('rev-parse','HEAD').decode().strip(),file_count=sum(x['type']=='file' for x in data),lfs_count=len(lfs),zip_volume_count=len(parts),volumes=parts,files=data)
+          (out/'Aaris-Project-manifest.json').write_text(json.dumps(manifest,indent=2),encoding='utf8')
+          print('AARIS_PACKED',len(data),'tracked items,',len(lfs),'LFS files,',len(vol),'ZIP files')
+          print('AARIS_LARGEST_ZIP_MIB',round(max(p.stat().st_size for p in vol)/1048576,1))
+          PY
+      - name: Publish independently downloadable parts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          TAG="aaris-chat-parts-$GITHUB_RUN_ID"
+          echo 'Full tracked Unity source and verified Git LFS bytes. Each ZIP under 80 MiB. Local unsaved Codespace files, editor binaries, temporary caches and .git are not included.' > /tmp/notes.txt
+          gh release create "$TAG" aaris-chat-parts/*.zip aaris-chat-parts/Aaris-Project-manifest.json -R "$GITHUB_REPOSITORY" --target b133465c134fb8ce54c8c6b9c7943f70b17b7244 --title 'Aaris Game - ChatGPT upload ZIP parts' --notes-file /tmp/notes.txt --prerelease
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq '.assets[] | [.name, (.size|tostring), .browser_download_url] | @tsv'
+      - name: Save small manifest to Actions too
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaris-chat-parts-manifest-${{ github.run_id }}
+          path: aaris-chat-parts/Aaris-Project-manifest.json
+          if-no-files-found: ignore
+          retention-days: 7
