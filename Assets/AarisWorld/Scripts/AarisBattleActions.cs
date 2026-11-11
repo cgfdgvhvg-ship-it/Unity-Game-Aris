@@ -68,6 +68,10 @@ namespace Aaris.MapReview
         public void Equip(AarisEquippedGun gun)
         {
             equippedGun = gun;
+            // A weapon transition invalidates the previous unarmed wind-up.
+            // Releasing Fire still permits contact; changing equipment does not.
+            punchContactTime = -1f;
+            lastPunchTime = -10f;
             nextAttack = 0f;
             semiShotQueued = false;
         }
