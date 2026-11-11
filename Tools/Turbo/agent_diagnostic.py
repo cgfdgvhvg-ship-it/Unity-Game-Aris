@@ -44,25 +44,32 @@ def main():
         print("TURBO_HEALTH_NETWORK_CLASS="+type(e.reason).__name__)
     except (OSError,ValueError) as e:
         print("TURBO_HEALTH_ERROR_CLASS="+type(e).__name__)
-    # Real authenticated request, but only HTTP status is observable; do not log token.
+    # Compare three safe requests to identify provider/edge 403 vs Worker 401.
+    # The real token never appears in output, exceptions or GitHub logs.
     machine=sys.argv[1] if len(sys.argv)>1 else ""
     if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{2,119}",machine) and token.is_file():
         url="https://aaris-turbo-terminal.aaris-game-control-6f9c.workers.dev/agent/"+machine+"/ping"
-        try:
-            credential=token.read_text(encoding="ascii").strip()
-            if re.fullmatch(r"[0-9a-f]{64}",credential):
-                request=urllib.request.Request(url,data=b"{}",method="POST",
-                    headers={"Authorization":"Bearer "+credential,"Content-Type":"application/json"})
+        credential=token.read_text(encoding="ascii").strip()
+        probes=[
+            ("AUTH_REAL",{"Authorization":"Bearer "+credential}),
+            ("AUTH_DUMMY",{"Authorization":"Bearer invalid"}),
+            ("CUSTOM_DUMMY",{"X-Aaris-Agent-Token":"invalid"}),
+        ]
+        for label,headers in probes:
+            request=urllib.request.Request(url,data=b"{}",method="POST",
+                headers={"Content-Type":"application/json",**headers})
+            try:
                 with urllib.request.urlopen(request,timeout=12) as res:
-                    print("TURBO_AUTH_PING_HTTP="+str(res.status))
-            else:
-                print("TURBO_AUTH_TOKEN_FORMAT=invalid")
-        except urllib.error.HTTPError as exc:
-            print("TURBO_AUTH_PING_HTTP="+str(exc.code))
-        except urllib.error.URLError as exc:
-            print("TURBO_AUTH_PING_NETWORK_CLASS="+type(exc.reason).__name__)
-        except (OSError,ValueError) as exc:
-            print("TURBO_AUTH_PING_ERROR_CLASS="+type(exc).__name__)
+                    print("TURBO_"+label+"_HTTP="+str(res.status))
+                    print("TURBO_"+label+"_JSON="+("yes" if "application/json" in
+                        res.headers.get("content-type","").lower() else "no"))
+            except urllib.error.HTTPError as exc:
+                print("TURBO_"+label+"_HTTP="+str(exc.code))
+                print("TURBO_"+label+"_JSON="+("yes" if "application/json" in
+                    exc.headers.get("content-type","").lower() else "no"))
+                print("TURBO_"+label+"_CHALLENGE="+("yes" if exc.headers.get("cf-mitigated","")=="challenge" else "no"))
+            except urllib.error.URLError as exc:
+                print("TURBO_"+label+"_NETWORK_CLASS="+type(exc.reason).__name__)
     print("TURBO_DIAG_SAFE_COMPLETE")
 if __name__=="__main__":
     main()
