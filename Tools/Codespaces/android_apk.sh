@@ -248,16 +248,72 @@ elif git lfs pull >"$BASE/private-lfs.log" 2>&1; then
   test "$(git lfs ls-files --name-only | wc -l)" -eq 796 || {
     echo APK_REMOTE_LFS_COUNT_INVALID; exit 25;
   }
-  # Checkout LFS is insufficient by itself: verify all pointers against
-  # real bytes, not a successfully downloaded but incomplete subcollection.
+  # An isolated worktree created with LFS smudge disabled can retain some
+  # genuine Git LFS pointer files even after "git lfs pull" succeeded.
+  # Checkout only that worktree from the authentic local LFS object store;
+  # never modify the original /workspaces project or skip hash verification.
+  git lfs checkout >>"$BASE/private-lfs.log" 2>&1 || {
+    echo APK_REMOTE_LFS_CHECKOUT_FAILED; exit 25;
+  }
   python3 - <<'PYLFS' || { echo APK_REMOTE_LFS_HASH_VERIFICATION_FAILED; exit 25; }
 from pathlib import Path
+from collections import Counter
 import sys
 sys.path.insert(0, "Tools/Codespaces")
-from restore_preserved_source_lfs import audit_pointers, candidate_matches
+from restore_preserved_source_lfs import audit_pointers, candidate_matches, original_cache_roots, object_path
 ptrs = audit_pointers(Path.cwd())
-assert len(ptrs) == 796
-assert all(candidate_matches(Path(path), oid, size) for path, (oid, size) in ptrs.items())
+assert len(ptrs) == 796, "APK_REMOTE_LFS_EXPECTED_COUNT_MISMATCH"
+invalid=[]
+categories=Counter()
+for relative, (oid, size) in ptrs.items():
+    path=Path(relative)
+    if candidate_matches(path, oid, size):
+        continue
+    invalid.append((relative,oid,size))
+    try:
+        if path.stat().st_size < 400 and path.read_bytes().startswith(b"version https://git-lfs.github.com/spec"):
+            categories["pointer_only"]+=1
+        elif path.is_file():
+            categories["wrong_bytes"]+=1
+        else:
+            categories["missing_file"]+=1
+    except OSError:
+        categories["missing_file"]+=1
+# Emit only counts, never names, filenames or LFS OIDs to the public log.
+print("APK_LFS_MISSING_AFTER_CHECKOUT="+str(len(invalid)))
+for category,count in sorted(categories.items()):
+    print("APK_LFS_"+category.upper()+"="+str(count))
+if invalid:
+    # Re-hydrate any LFS pointer left behind by worktree-specific filter setup,
+    # using *only* source objects whose actual bytes match HEAD oid+size.
+    import os,shutil,tempfile
+    stores=original_cache_roots(Path("/workspaces/Unity-Game-Aris"))
+    for relative,oid,size in invalid:
+        dest=Path(relative)
+        if dest.is_symlink():
+            raise RuntimeError("APK_UNSAFE_LFS_SYMLINK")
+        source=next((object_path(root,oid) for root in stores
+                     if candidate_matches(object_path(root,oid),oid,size)),None)
+        if source is None:
+            continue
+        with tempfile.NamedTemporaryFile(dir=dest.parent,prefix=".aaris-lfs-",delete=False) as tmp:
+            tmp_path=Path(tmp.name)
+            try:
+                with source.open("rb") as stream:
+                    shutil.copyfileobj(stream,tmp,1024*1024)
+                tmp.flush()
+                os.fsync(tmp.fileno())
+            except BaseException:
+                tmp_path.unlink(missing_ok=True)
+                raise
+        try:
+            if not candidate_matches(tmp_path,oid,size):
+                raise RuntimeError("APK_LFS_COPIED_HASH_MISMATCH")
+            os.replace(tmp_path,dest)
+        finally:
+            tmp_path.unlink(missing_ok=True)
+assert all(candidate_matches(Path(path),oid,size)
+           for path,(oid,size) in ptrs.items()),"APK_LFS_INTEGRITY_INCOMPLETE"
 PYLFS
   echo APK_REMOTE_796_LFS_SHA256_VERIFIED
 else
