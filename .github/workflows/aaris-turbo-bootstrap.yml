@@ -3,16 +3,17 @@ on:
   workflow_dispatch:
     inputs:
       machine:
-        description: "Exact Codespace name (blank only when one uniquely selectable)"
+        description: "auto = create if absent, otherwise reuse uniquely selected; or exact Codespace name"
         required: false
         type: string
-        default: ""
+        default: "auto"
   issue_comment:
     types: [created]
   pull_request:
     paths:
       - ".github/workflows/aaris-turbo-bootstrap.yml"
       - "Tools/Turbo/**"
+      - "Tools/Codespaces/termux_switch.sh"
 permissions:
   contents: read
 concurrency:
@@ -34,6 +35,7 @@ jobs:
           bash -n Tools/Turbo/remote_install.sh
           python3 -m py_compile Tools/Turbo/agent.py
           python3 Tools/Turbo/agent.py --selftest
+          python3 Tools/Turbo/select_machine.py --selftest
           node --check Tools/Turbo/worker.mjs
           python3 - <<'PY'
           from pathlib import Path
@@ -77,7 +79,7 @@ jobs:
        (github.event.comment.body == 'TURBO START' ||
         startsWith(github.event.comment.body, 'TURBO START ')))
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     permissions:
       id-token: write
       contents: read
@@ -101,31 +103,43 @@ jobs:
           if test -n "$ISSUE_BODY"; then
             REQUEST="$(printf '%s' "$ISSUE_BODY" | sed -E 's/^TURBO START ?//')"
           fi
-          if test -n "$REQUEST"; then
+          if test -n "$REQUEST" && test "$REQUEST" != auto; then
             [[ "$REQUEST" =~ ^[A-Za-z0-9][A-Za-z0-9-]{2,119}$ ]] || {
               echo "TURBO_INVALID_MACHINE_NAME"; exit 11;
             }
           fi
           gh codespace list -R "$GITHUB_REPOSITORY" \
-            --json name,state --limit 100 > "$RUNNER_TEMP/aaris-machines.json"
-          NAME="$(python3 - "$RUNNER_TEMP/aaris-machines.json" "$REQUEST" <<'PY'
-          import json,sys
-          allmachines=json.load(open(sys.argv[1]))
-          exact=sys.argv[2]
-          if exact:
-              hits=[m for m in allmachines if m.get('name')==exact]
-          else:
-              available=[m for m in allmachines if m.get('state')=='Available']
-              hits=available if available else allmachines
-          if len(hits)!=1:
-              print("TURBO_SELECTION_NOT_UNIQUE",file=sys.stderr)
-              sys.exit(12)
-          print(hits[0]['name'])
-          PY
-          )"
-          [[ "$NAME" =~ ^[A-Za-z0-9][A-Za-z0-9-]{2,119}$ ]] || exit 12
+            --json name,displayName,state --limit 100 > "$RUNNER_TEMP/aaris-machines.json"
+          python3 Tools/Turbo/select_machine.py "$RUNNER_TEMP/aaris-machines.json" "$REQUEST" \
+            > "$RUNNER_TEMP/turbo-selection.json"
+          ACTION="$(jq -r .action "$RUNNER_TEMP/turbo-selection.json")"
+          if test "$ACTION" = create; then
+            test "$REQUEST" = auto || { echo "TURBO_EXPLICIT_AUTO_REQUIRED"; exit 12; }
+            # Create a lightweight SSH Codespace once; no heavy Unity bootstrap
+            # or Git LFS migration is necessary for the terminal connection.
+            gh api "/repos/$GITHUB_REPOSITORY/codespaces/machines" \
+              --jq '.machines[].name' 2>/dev/null |
+              grep -qxF standardLinux32gb || {
+                echo "TURBO_4CORE_MACHINE_NOT_AVAILABLE"; exit 13;
+              }
+            NAME="$(timeout 1200 gh codespace create -R "$GITHUB_REPOSITORY" \
+              -b main -m standardLinux32gb \
+              --devcontainer-path .devcontainer/minimal-ubuntu/devcontainer.json \
+              --idle-timeout 240m --display-name aaris-ai-ubuntu-minimal \
+              --default-permissions 2>/dev/null)" || {
+                echo "TURBO_CREATE_FAILED_CHECK_ACCOUNT_QUOTA"; exit 14;
+              }
+            echo "TURBO_NEW_CODESPACE_CREATED"
+          elif test "$ACTION" = reuse; then
+            NAME="$(jq -r .name "$RUNNER_TEMP/turbo-selection.json")"
+            echo "TURBO_EXISTING_CODESPACE_SELECTED"
+          else
+            echo "TURBO_UNKNOWN_SELECTION_ACTION"; exit 15;
+          fi
+          [[ "$NAME" =~ ^[A-Za-z0-9][A-Za-z0-9-]{2,119}$ ]] || exit 16
           echo "CODESPACE=$NAME" >> "$GITHUB_ENV"
-          echo "TURBO_MACHINE_SELECTED"
+          # Machine identity is not secret; report only the exact selection.
+          printf 'TURBO_MACHINE=%s\n' "$NAME"
       - name: Reconcile lifecycle before starting Codespace
         run: |
           set -euo pipefail
@@ -153,7 +167,7 @@ jobs:
             ShuttingDown) echo "TURBO_CODESPACE_SHUTDOWN_STUCK"; exit 18 ;;
             *) echo "TURBO_CODESPACE_UNSAFE_STATE"; exit 15 ;;
           esac
-          for i in $(seq 1 36); do
+          for i in $(seq 1 90); do
             STATE="$(gh codespace view -c "$CODESPACE" --json state --jq .state 2>/dev/null || true)"
             if test "$STATE" = Available; then break; fi
             sleep 10
