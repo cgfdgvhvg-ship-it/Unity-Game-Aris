@@ -13,6 +13,21 @@ for candidate in "$EDITOR" "/workspaces/.aaris-unity-editors/$VERSION/Editor/Uni
   "/tmp/aaris-unity-runtime/editors/$VERSION/Editor/Unity"; do
   if test -x "$candidate"; then EDITOR="$candidate"; break; fi
 done
+# A previous attempt installed a complete *isolated* official Unity Editor.
+# Prefer that verified cached copy on retries instead of spending time
+# reinstalling Android modules into an unrelated, manually installed Editor.
+if test -d "$BASE/managed-editors"; then
+  while IFS= read -r candidate; do
+    mod="$(dirname "$candidate")/Data/PlaybackEngines/AndroidPlayer"
+    if test -x "$candidate" && test -d "$mod/Variations" &&
+       test -d "$mod/SDK/platform-tools" && test -d "$mod/SDK/build-tools" &&
+       test -d "$mod/NDK/toolchains" && test -x "$mod/OpenJDK/bin/java"; then
+      EDITOR="$candidate"
+      echo APK_CACHED_OFFICIAL_ANDROID_EDITOR_REUSED
+      break
+    fi
+  done < <(find "$BASE/managed-editors" -maxdepth 7 -path '*/Editor/Unity' -print 2>/dev/null)
+fi
 if ! test -x "$EDITOR"; then echo APK_EDITOR_MISSING; exit 11; fi
 E_ROOT="$(dirname "$EDITOR")"
 ANDROID="$E_ROOT/Data/PlaybackEngines/AndroidPlayer"
@@ -189,10 +204,19 @@ if test "$MODE" = build_hud; then
 fi
 git -C "$SOURCE" fetch --quiet origin "+refs/heads/$REF_NAME:refs/remotes/origin/$REF_NAME" || {
   echo APK_REVIEWED_REF_FETCH_FAILED; exit 20; }
-SHA="$(git -C "$SOURCE" rev-parse --verify "refs/remotes/origin/$REF_NAME^{commit}")"
-[[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo APK_MAIN_SHA_INVALID; exit 21; }
-if test -n "${AARIS_EXPECTED_BUILD_SHA:-}" && test "$SHA" != "$AARIS_EXPECTED_BUILD_SHA"; then
-  echo APK_MAIN_SOURCE_CHANGED_SINCE_REQUEST; exit 21
+SOURCE_HEAD="$(git -C "$SOURCE" rev-parse --verify "refs/remotes/origin/$REF_NAME^{commit}")"
+[[ "$SOURCE_HEAD" =~ ^[0-9a-f]{40}$ ]] || { echo APK_MAIN_SHA_INVALID; exit 21; }
+SHA="$SOURCE_HEAD"
+# Build the exact reviewed source commit, even when monitoring/workflow fixes
+# later landed on main. Ensure it remains an ancestor of main; never accept an
+# arbitrary SHA supplied through public issue comments.
+if test -n "${AARIS_EXPECTED_BUILD_SHA:-}"; then
+  [[ "$AARIS_EXPECTED_BUILD_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 21
+  git -C "$SOURCE" merge-base --is-ancestor "$AARIS_EXPECTED_BUILD_SHA" "$SOURCE_HEAD" || {
+    echo APK_REQUESTED_GAME_SNAPSHOT_NOT_ON_MAIN; exit 21;
+  }
+  SHA="$AARIS_EXPECTED_BUILD_SHA"
+  echo APK_REVIEWED_GAME_SNAPSHOT_PINNED
 fi
 echo APK_BUILD_SOURCE_PINNED
 ROOT=/tmp/aaris-native-android-build-worktrees
@@ -285,14 +309,38 @@ timeout --signal=TERM 12000 env DISPLAY=:99 LIBGL_ALWAYS_SOFTWARE=1 \
 RC=$?
 set -e
 if test "$RC" -ne 0; then
+  # Emit only fixed error categories. Private Unity logs, license state,
+  # shader paths, stack traces and identity values stay on the Codespace.
+  case "$RC" in
+    124) echo APK_EDITOR_TIMEOUT ;;
+    137) echo APK_EDITOR_KILLED_OR_OUT_OF_MEMORY ;;
+    139) echo APK_EDITOR_SEGMENTATION_FAULT ;;
+    134) echo APK_EDITOR_NATIVE_ABORT ;;
+    143) echo APK_EDITOR_TERMINATED_OR_CODESPACE_STOPPED ;;
+    *) echo APK_EDITOR_NONZERO_EXIT ;;
+  esac
   if grep -Eq 'error CS[0-9]{4}' "$BASE/private-editor.log" 2>/dev/null; then
     echo APK_CSHARP_COMPILE_FAILED
   elif grep -Eqi 'licen[sc]e.*(invalid|expired|missing|failed)' "$BASE/private-editor.log" 2>/dev/null; then
     echo APK_EDITOR_LICENSE_FAILED
-  elif test "$RC" = 124; then
-    echo APK_EDITOR_TIMEOUT
+  elif grep -Eqi 'SIGSEGV|segmentation fault' "$BASE/private-editor.log" 2>/dev/null; then
+    echo APK_EDITOR_NATIVE_CRASH_IN_LOG
+  elif test -s "$BASE/build-report.json"; then
+    python3 - "$BASE/build-report.json" <<'PYREPORT'
+import json,sys
+try:
+    reason=json.load(open(sys.argv[1])).get("reason","")
+except (OSError,ValueError):
+    reason=""
+if isinstance(reason,str) and reason.isupper() and
+   reason.isascii() and 3 <= len(reason) <= 70 and
+   all(x.isupper() or x.isdigit() or x=="_" for x in reason):
+    print("APK_BUILD_REASON_"+reason)
+else:
+    print("APK_BUILD_REPORT_FAILURE_UNCLASSIFIED")
+PYREPORT
   else
-    echo APK_EDITOR_BUILD_FAILED
+    echo APK_EDITOR_EXIT_BEFORE_BUILD_METHOD
   fi
   exit 30
 fi
