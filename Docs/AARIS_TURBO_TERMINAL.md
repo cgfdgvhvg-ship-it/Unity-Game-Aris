@@ -143,3 +143,38 @@ postStartCommand are deliberately unchanged. If the selected new account
 has no permission, its capacity/quota is exhausted, or the Codespace remains
 Provisioning/Shutdown, the agent cannot start; do not invent an online
 heartbeat. Only read command status/output from the real Cloudflare broker.
+
+## Private screen vision and GUI actions
+
+The existing authenticated terminal channel also supports screenshot-on-demand:
+Tools/Turbo/gui_agent.py. No temporary public trycloudflare.com URL is created.
+This is NOT a continuous WebRTC/video feed, and the chat does not run a
+background process indefinitely. A trusted assistant requests an action and
+reads the new frame from the Cloudflare Durable Object private command output.
+
+The owner-only Turbo bootstrap installs gui.py and gui_setup.sh in the private
+~/.local/share/aaris-turbo directory. The basic desktop dependencies
+(Xvfb, Fluxbox, xterm, scrot, xdotool, xclip, Python Pillow) are provisioned
+non-blockingly after the terminal handshake. An existing Unity DISPLAY is
+reused when set; otherwise the helper creates its own 1280x720 Xvfb :99
+virtual display. No native Unity scene changes are made.
+
+Run via the private Cloudflare commands queue (same machine object as terminal):
+argv_json = ["python3","/home/vscode/.local/share/aaris-turbo/gui.py","look"]
+Other allowlisted CLI subcommands are init, click x y, double_click x y,
+right_click x y, move x y, key keysym, scroll integer, type bounded-text,
+paste bounded-text. Never use them to bypass sign-in, license or other gates.
+Each command emits AARIS_GUI_FRAME_SIZE, AARIS_GUI_FRAME_BASE64 and
+AARIS_GUI_FRAME_COMPLETE to private output chunks. The agent stores these
+chunks in the same authenticated Durable Object and reports the exit code.
+
+The assistant can query chunks in order, join their text exactly, extract
+the JPEG base64 value and view the actual screenshot privately. Do not
+post screenshots or their base64 into public GitHub Issues, Actions logs,
+releases or source. GUI screenshots may contain private on-screen content.
+The snapshot includes a 100px coordinate grid and the current cursor.
+Maximum JPEG payload 64KiB; new frames are explicitly requested, never
+uploaded continuously.
+
+A screen showing an Xterm or desktop is NOT evidence that Unity has rendered
+the game scene; inspect real Editor and scene camera render separately.
