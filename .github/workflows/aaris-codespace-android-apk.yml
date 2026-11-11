@@ -44,7 +44,9 @@ jobs:
       - name: Checkout exact latest main controller and APK builder
         uses: actions/checkout@v4
         with:
-          ref: main
+          # Pin the controller checkout to the triggering commit, even if
+          # main advances while earlier APK runs are cancelling.
+          ref: ${{ github.sha }}
           lfs: false
           persist-credentials: false
       - name: Validate reviewer-controlled APK scripts and scene settings
