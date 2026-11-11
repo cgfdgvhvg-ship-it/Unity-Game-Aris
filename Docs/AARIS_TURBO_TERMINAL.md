@@ -178,3 +178,29 @@ uploaded continuously.
 
 A screen showing an Xterm or desktop is NOT evidence that Unity has rendered
 the game scene; inspect real Editor and scene camera render separately.
+
+## Low-latency fast preview and private retention
+
+Use the same trusted screenshot CLI with `--fast` to request a compact
+image (at most 32,768 JPEG bytes) and avoid transmitting a full-resolution
+frame for routine cursor/click feedback:
+
+```
+python3 ~/.local/share/aaris-turbo/gui.py look --fast
+python3 ~/.local/share/aaris-turbo/gui.py click 400 200 --fast
+python3 ~/.local/share/aaris-turbo/gui.py key Return --fast
+```
+
+The flag must be the **last argument**. Normal `look`, `click` and `key`
+return a higher-resolution image (up to 96,000 JPEG bytes). The helper saves
+the last frame dimensions privately and scales subsequent click coordinates
+back to the real X11 desktop, including after a fast preview. Send coordinates
+relative to the screenshot most recently received. Use full resolution when
+inspecting Unity settings, small labels or fine visual defects.
+
+For data minimization, the Cloudflare Durable Object automatically prunes
+completed/failed command records and their stdout/stderr/screenshot chunks
+after 24 hours. Expired unstarted commands are also pruned; active commands
+are never pruned mid-run. Cleanup checks are throttled to hourly intervals
+and require a valid authenticated agent ping. Avoid sensitive on-screen content
+and never publish base64 frames to GitHub issues or Actions logs.
