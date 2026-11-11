@@ -382,3 +382,8 @@ Use a harmless GUI capture and terminal command to prove live end-to-end.
 A normal desktop screenshot is not proof that Unity Editor's 3D scene is
 actually open. ChatGPT can inspect during an active chat but does not
 observe the computer continuously after the conversation stops.
+
+Viewer-generated `watch_*` snapshots do **not** count toward the last 20
+terminal command history, so continuous screenshots do not hide ChatGPT's
+real commands. The last mirrored JPEG is retained privately for up to 24
+hours and is replaced when the next authenticated capture succeeds.
