@@ -357,7 +357,7 @@ echo APK_NATIVE_UNITY_BUILD_STARTED
 set +e
 timeout --signal=TERM 12000 env DISPLAY=:99 LIBGL_ALWAYS_SOFTWARE=1 \
   AARIS_ANDROID_COMPILE_SDK="$COMPILE_SDK" TMPDIR="$BASE/UnityTemp" \
-  "$EDITOR" -batchmode -quit -force-glcore \
+  "$EDITOR" -batchmode -quit -force-glcore -job-worker-count 2 \
   -projectPath "$PROJECT" -buildTarget Android \
   -executeMethod Aaris.MapReview.Editor.AarisCodespaceAndroidBuild.BuildTestApk \
   -logFile "$BASE/private-editor.log" \
