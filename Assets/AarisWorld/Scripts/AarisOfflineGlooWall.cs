@@ -99,6 +99,7 @@ namespace Aaris.MapReview
             cover.Initialize(wallHealth, wallLifetime);
             carriedWalls--;
             nextDeployment = Time.time + deploymentCooldown;
+            AarisAudioDirector.GlooDeployed(point);
         }
 
         private void UpdatePlacement()

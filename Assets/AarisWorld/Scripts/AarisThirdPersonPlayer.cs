@@ -168,6 +168,9 @@ namespace Aaris.MapReview
             rightLegRest = rightLeg != null ? rightLeg.localRotation : Quaternion.identity;
             lastMouse = Input.mousePosition;
             PlaceCamera(true);
+            // The saved player and any later player spawn use the same audio setup.
+            if (GetComponent<AarisAudioDirector>() == null)
+                gameObject.AddComponent<AarisAudioDirector>();
         }
 
         private void OnDestroy()

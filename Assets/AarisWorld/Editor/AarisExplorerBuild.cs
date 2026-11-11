@@ -74,8 +74,14 @@ namespace Aaris.MapReview.Editor
             if (UnityEngine.Object.FindFirstObjectByType<AarisMobileRuntime>() == null || UnityEngine.Object.FindFirstObjectByType<AarisNearbyColliders>() == null)
                 throw new BuildFailedException("The saved scene must include mobile memory diagnostics and bounded building physics.");
             var binding = new SerializedObject(player).FindProperty("followCamera");
-            if (binding == null || binding.objectReferenceValue == null)
+            if (binding == null || !(binding.objectReferenceValue is Camera camera))
                 throw new BuildFailedException("The saved player must reference the shoulder camera.");
+            var listener = camera.GetComponent<AudioListener>();
+            if (listener == null || !listener.enabled)
+                throw new BuildFailedException("The saved gameplay camera must have an enabled AudioListener.");
+            foreach (string cue in AarisAudioDirector.RequiredCueKeys)
+                if (Resources.Load<AudioClip>("SFX/" + cue) == null)
+                    throw new BuildFailedException("Missing imported gameplay audio: Resources/SFX/" + cue);
             if (Mathf.Abs(player.GetComponent<CharacterController>().height - 1.78f) > 0.01f)
                 throw new BuildFailedException("The review player's reference height must stay 1.78 m.");
             if (LayerMask.NameToLayer("Player") != 8 || player.GetComponentsInChildren<Transform>(true).Any(t => t.gameObject.layer != 8))
