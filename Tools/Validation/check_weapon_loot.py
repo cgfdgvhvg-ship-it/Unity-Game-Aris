@@ -120,7 +120,9 @@ def run():
     assert "SetWeaponAimFov" in player and "ApplyWeaponRecoil" in player
     assert "AarisWeaponHUD.CapturesScreenPosition" in player
     assert "MaximumActiveLoot = 40" in world
-    assert "ActivationMetres = 42f" in world and "ReleaseMetres = 69f" in world
+    assert "ActivationMetres = 48f" in world and "ReleaseMetres = 75f" in world
+    assert "floors = Physics.RaycastAll(" in world
+    assert "candidate.collider.attachedRigidbody != null" in world
     assert "TryResolve" in world and "Physics.CheckCapsule" in world
     assert "if (roof.collider is TerrainCollider)" in world
     assert "float chance = indoor ? 0.72f :" in world
