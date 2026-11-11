@@ -8,25 +8,25 @@ Repository: sundamunda289-art/Unity-Game-Aris; branch: main. Public repository: 
 
 ### Operational decision tree — avoid slow GitHub Actions for routine work
 
-1. **Check Cloudflare first.** Cloudflare Worker script name: \`aaris-turbo-terminal\`. Durable Object binding \`MACHINES\`, class \`TurboMachine\`, namespace currently named \`aaris-turbo-terminal_TurboMachine\`. A Codespace-specific Durable Object is named \`machine:<exact-codespace-name>\`; there is also a shared \`registry\` object. Enumerate current registry with the linked Cloudflare management API; an old machine name or a historical \`connected\` stage alone is **not** proof it is online. Query \`last_seen\` and compute heartbeat age; prefer a fresh heartbeat (normally within 90 seconds) and prove with a harmless actual command before claiming control. Do not hardcode a Codespace name; multiple GitHub accounts/machines can rotate.
-2. **If a machine is active and its Turbo agent is responding:** ChatGPT submits commands **directly to its private Cloudflare Durable Object SQL queue**, reads stdout/stderr/status from the same queue, and takes private GUI screenshots with the same protocol. **NO new GitHub Actions job per command.** Never upload commands to public GitHub Issues, git commits, or a public \`cmd.txt\`.
-3. **If the chosen Codespace is shut down or the agent is missing/expired:** check GitHub Codespace state/account/quotas and bootstrap **once** with \`.github/workflows/aaris-turbo-bootstrap.yml\` via owner-only \`workflow_dispatch\` with exact \`machine\`, or one **owner-authored** Issue #77 comment \`TURBO START <exact-codespace-name>\`. The workflow uses repository secret \`CODESPACE_PAT\` (currently selected Codespaces GitHub account), official GitHub Codespaces SSH, signed GitHub Actions OIDC, and Cloudflare to start/reuse an authorized existing Codespace if needed, install/rotate its agent, and exit. A green bootstrap is only accepted after authenticated \`TURBO_CLOUDFLARE_HANDSHAKE_PASS\`; then verify a real command output. Do not start multiple bootstraps repeatedly, nor choose ambiguous machines.
-4. **If the user rotates GitHub Codespaces accounts:** use the single Termux helper \`Tools/Codespaces/termux_switch.sh\`, not an unscoped old GitHub token. The phone command \`bash "$HOME/aaris-switch.sh"\` prompts for official device/browser login for the new Codespaces account, updates repo Actions secret \`CODESPACE_PAT\`, and dispatches **one** \`aaris-turbo-bootstrap.yml\` run with \`machine=auto\`. To reuse the already authorized account without a second login, use \`bash "$HOME/aaris-switch.sh" --resume\`. Refresh that helper from its verified \`main\` GitHub source if an old local copy predates this workflow:
-   \`\`\`bash
+1. **Check Cloudflare first.** Cloudflare Worker script name: `aaris-turbo-terminal`. Durable Object binding `MACHINES`, class `TurboMachine`, namespace currently named `aaris-turbo-terminal_TurboMachine`. A Codespace-specific Durable Object is named `machine:<exact-codespace-name>`; there is also a shared `registry` object. Enumerate current registry with the linked Cloudflare management API; an old machine name or a historical `connected` stage alone is **not** proof it is online. Query `last_seen` and compute heartbeat age; prefer a fresh heartbeat (normally within 90 seconds) and prove with a harmless actual command before claiming control. Do not hardcode a Codespace name; multiple GitHub accounts/machines can rotate.
+2. **If a machine is active and its Turbo agent is responding:** ChatGPT submits commands **directly to its private Cloudflare Durable Object SQL queue**, reads stdout/stderr/status from the same queue, and takes private GUI screenshots with the same protocol. **NO new GitHub Actions job per command.** Never upload commands to public GitHub Issues, git commits, or a public `cmd.txt`.
+3. **If the chosen Codespace is shut down or the agent is missing/expired:** check GitHub Codespace state/account/quotas and bootstrap **once** with `.github/workflows/aaris-turbo-bootstrap.yml` via owner-only `workflow_dispatch` with exact `machine`, or one **owner-authored** Issue #77 comment `TURBO START <exact-codespace-name>`. The workflow uses repository secret `CODESPACE_PAT` (currently selected Codespaces GitHub account), official GitHub Codespaces SSH, signed GitHub Actions OIDC, and Cloudflare to start/reuse an authorized existing Codespace if needed, install/rotate its agent, and exit. A green bootstrap is only accepted after authenticated `TURBO_CLOUDFLARE_HANDSHAKE_PASS`; then verify a real command output. Do not start multiple bootstraps repeatedly, nor choose ambiguous machines.
+4. **If the user rotates GitHub Codespaces accounts:** use the single Termux helper `Tools/Codespaces/termux_switch.sh`, not an unscoped old GitHub token. The phone command `bash "$HOME/aaris-switch.sh"` prompts for official device/browser login for the new Codespaces account, updates repo Actions secret `CODESPACE_PAT`, and dispatches **one** `aaris-turbo-bootstrap.yml` run with `machine=auto`. To reuse the already authorized account without a second login, use `bash "$HOME/aaris-switch.sh" --resume`. Refresh that helper from its verified `main` GitHub source if an old local copy predates this workflow:
+   ```bash
    pkg install -y gh curl jq
    curl -fsSL https://raw.githubusercontent.com/sundamunda289-art/Unity-Game-Aris/main/Tools/Codespaces/termux_switch.sh -o "$HOME/aaris-switch.sh"
    bash "$HOME/aaris-switch.sh"
-   \`\`\`
-   \`auto\` reuses a uniquely selectable Codespace; **only if that selected account has none** does it create one minimal Ubuntu SSH Codespace. When several are ambiguous, selection fails closed—use an exact name. Codespaces quota cannot be bypassed. Do **not** touch the old exhausted account or delete its projects.
-5. **Auto-resume:** the updated **minimal Ubuntu** devcontainer invokes \`Tools/Turbo/ensure_agent.sh\` on start and reconnects the installed agent if its local seven-day grant has not expired. A new account/machine or expired grant needs the one-time owner-only bootstrap. Original full Unity Codespaces need their own verified startup handling.
+   ```
+   `auto` reuses a uniquely selectable Codespace; **only if that selected account has none** does it create one minimal Ubuntu SSH Codespace. When several are ambiguous, selection fails closed—use an exact name. Codespaces quota cannot be bypassed. Do **not** touch the old exhausted account or delete its projects.
+5. **Auto-resume:** the updated **minimal Ubuntu** devcontainer invokes `Tools/Turbo/ensure_agent.sh` on start and reconnects the installed agent if its local seven-day grant has not expired. A new account/machine or expired grant needs the one-time owner-only bootstrap. Original full Unity Codespaces need their own verified startup handling.
 
 ### How ChatGPT's connected Cloudflare tool actually sends commands
 
-The ChatGPT Cloudflare connector has an authenticated management API. In a new chat, discover its \`mcp__Cloudflare__execute\` action through the available connector tools (Code Mode exposes it as \`tools.mcp__Cloudflare__execute({code:"async () => { ... }"})\` when installed), not the public Worker URL. The action supports \`cloudflare.request({method:"POST",path:"/accounts/"+accountId+"/workers/durable_objects/namespaces/"+namespaceId+"/query/v2",body:{...}})\`. Discover/confirm the current account and namespace ID from the connected Cloudflare account; previously verified namespace ID \`14f5c66e402c4c0e94614293423f5630\` is a **hint, not a universal constant**. Never paste a Cloudflare API token into chat or GitHub. The Worker /health endpoint is for broker/agent health, **not** a public shell execution API.
+The ChatGPT Cloudflare connector has an authenticated management API. In a new chat, discover its `mcp__Cloudflare__execute` action through the available connector tools (Code Mode exposes it as `tools.mcp__Cloudflare__execute({code:"async () => { ... }"})` when installed), not the public Worker URL. The action supports `cloudflare.request({method:"POST",path:"/accounts/"+accountId+"/workers/durable_objects/namespaces/"+namespaceId+"/query/v2",body:{...}})`. Discover/confirm the current account and namespace ID from the connected Cloudflare account; previously verified namespace ID `14f5c66e402c4c0e94614293423f5630` is a **hint, not a universal constant**. Never paste a Cloudflare API token into chat or GitHub. The Worker /health endpoint is for broker/agent health, **not** a public shell execution API.
 
 **Get the machine registry:** send the following JSON body to that *private management query/v2 API*:
 
-\`\`\`json
+```json
 {
   "durable_object_name": "registry",
   "jurisdiction": "none",
@@ -36,13 +36,13 @@ The ChatGPT Cloudflare connector has an authenticated management API. In a new c
     }
   ]
 }
-\`\`\`
+```
 
-A matching current heartbeat is necessary, not sufficient. The most recently *verified* 2026-11-11 active minimal Codespace was \`aaris-ai-ubuntu-minimal-4qr6v94w9rwvhjgp6\` for Codespaces account \`cgfdgvhvg-ship-it\`, but this is **historical test evidence**, not a fixed future destination.
+A matching current heartbeat is necessary, not sufficient. The most recently *verified* 2026-11-11 active minimal Codespace was `aaris-ai-ubuntu-minimal-4qr6v94w9rwvhjgp6` for Codespaces account `cgfdgvhvg-ship-it`, but this is **historical test evidence**, not a fixed future destination.
 
 **Send a non-destructive command:** create a fresh unique alphanumeric/underscore/hyphen job ID per request; for example:
 
-\`\`\`json
+```json
 {
   "durable_object_name": "machine:<EXACT_MACHINE_NAME>",
   "jurisdiction": "none",
@@ -62,13 +62,13 @@ A matching current heartbeat is necessary, not sufficient. The most recently *ve
     }
   ]
 }
-\`\`\`
+```
 
-\`argv_json\` is a **JSON-encoded argv array string**, NOT raw shell commands or arbitrary JSON objects. Python example: \`"[\"python3\",\"-c\",\"print('AARIS_TURBO_TEST_PASS')\"]"\`. More complicated scripts may use an explicit argv such as \`["bash","-lc","<reviewed bounded script>"]\`, properly JSON-serialized. All jobs require a **real directory under /workspaces** for \`cwd\` (for this repo usually \`/workspaces/Unity-Game-Aris\`), bounded \`max_seconds\`, and a future expiry. The Codespace Python agent executes without \`shell=True\`, can dispatch up to two jobs, streams private UTF-8 output chunks, and returns exit code. An INSERT with \`queued\` status is *NOT proof* that the command ran.
+`argv_json` is a **JSON-encoded argv array string**, NOT raw shell commands or arbitrary JSON objects. Python example: `"[\"python3\",\"-c\",\"print('AARIS_TURBO_TEST_PASS')\"]"`. More complicated scripts may use an explicit argv such as `["bash","-lc","<reviewed bounded script>"]`, properly JSON-serialized. All jobs require a **real directory under /workspaces** for `cwd` (for this repo usually `/workspaces/Unity-Game-Aris`), bounded `max_seconds`, and a future expiry. The Codespace Python agent executes without `shell=True`, can dispatch up to two jobs, streams private UTF-8 output chunks, and returns exit code. An INSERT with `queued` status is *NOT proof* that the command ran.
 
-**Read execution status and output**, repeating with increasing \`seq\` until done:
+**Read execution status and output**, repeating with increasing `seq` until done:
 
-\`\`\`json
+```json
 {
   "durable_object_name": "machine:<EXACT_MACHINE_NAME>",
   "jurisdiction": "none",
@@ -83,35 +83,35 @@ A matching current heartbeat is necessary, not sufficient. The most recently *ve
     }
   ]
 }
-\`\`\`
+```
 
-Inspect \`result.results[i].columns\` and \`.rows\` (array rows), not just the first output or an assumed dictionary. Use \`seq > last_seen_seq\` to avoid duplicate output. For screenshot text/base64, request **small, consecutive chunk batches** (e.g. 4–6 chunk rows each) because tool responses may truncate large payloads. A command succeeds only when its status is \`completed\`, exit code is \`0\`, and its expected output appears. Failure statuses are never hidden.
+Inspect `result.results[i].columns` and `.rows` (array rows), not just the first output or an assumed dictionary. Use `seq > last_seen_seq` to avoid duplicate output. For screenshot text/base64, request **small, consecutive chunk batches** (e.g. 4–6 chunk rows each) because tool responses may truncate large payloads. A command succeeds only when its status is `completed`, exit code is `0`, and its expected output appears. Failure statuses are never hidden.
 
 ### How to SEE and CONTROL a real Linux desktop without ChatGPT Work
 
-The private GUI helper is \`Tools/Turbo/gui_agent.py\`, installed inside the selected Codespace at \`$HOME/.local/share/aaris-turbo/gui.py\`. \`Tools/Turbo/gui_setup.sh\` installs Xvfb, Fluxbox, xterm, scrot, xdotool, xclip, Pillow as needed. It reuses a valid existing X display when available or starts a virtual \`:99\` 1280x720 X11 screen. The desktop is a **virtual Linux desktop**, not necessarily Unity Editor.
+The private GUI helper is `Tools/Turbo/gui_agent.py`, installed inside the selected Codespace at `$HOME/.local/share/aaris-turbo/gui.py`. `Tools/Turbo/gui_setup.sh` installs Xvfb, Fluxbox, xterm, scrot, xdotool, xclip, Pillow as needed. It reuses a valid existing X display when available or starts a virtual `:99` 1280x720 X11 screen. The desktop is a **virtual Linux desktop**, not necessarily Unity Editor.
 
 Use the **same authenticated Cloudflare command queue**, with argv_json equivalent to:
 
-\`\`\`text
+```text
 ["bash","-lc","python3 \"$HOME/.local/share/aaris-turbo/gui.py\" look --fast"]
 ["bash","-lc","python3 \"$HOME/.local/share/aaris-turbo/gui.py\" click 300 200 --fast"]
 ["bash","-lc","python3 \"$HOME/.local/share/aaris-turbo/gui.py\" key Return --fast"]
 ["bash","-lc","python3 \"$HOME/.local/share/aaris-turbo/gui.py\" look"]
-\`\`\`
+```
 
-Place \`--fast\` **last**: \`look --fast\` produces an adaptive preview (typically 800x450, up to 32,768 JPEG bytes), while \`look\` provides full-res up to 1280x720 (up to 96,000 JPEG bytes). Other CLI actions: \`click x y\`, \`double_click x y\`, \`right_click x y\`, \`move x y\`, \`scroll +/-N\`, \`key X11_KEYS\`, \`type bounded_text\`, \`paste bounded_text\`. Each action captures a *new* screenshot in the same job. Output chunks contain \`AARIS_GUI_FRAME_SIZE=\`, \`AARIS_GUI_FRAME_MODE=\`, \`AARIS_GUI_FRAME_BASE64=<long JPEG base64>\`, \`AARIS_GUI_FRAME_COMPLETE\`. Reassemble all chunk texts **in seq order**; validate the complete marker, then show image via the connected tool's supported private image output if available (Code Mode supports \`image("data:image/jpeg;base64,"+base64)\` when permitted), not a fake/sandbox/public URL. The grid is every 100 displayed pixels and the pointer is red. **Click coordinates are relative to the latest screenshot**; the helper saves frame size and maps fast-preview coordinates back to X11. For example, 800x450 click \`300,200\` was verified at real X11 \`480,320\`.
+Place `--fast` **last**: `look --fast` produces an adaptive preview (typically 800x450, up to 32,768 JPEG bytes), while `look` provides full-res up to 1280x720 (up to 96,000 JPEG bytes). Other CLI actions: `click x y`, `double_click x y`, `right_click x y`, `move x y`, `scroll +/-N`, `key X11_KEYS`, `type bounded_text`, `paste bounded_text`. Each action captures a *new* screenshot in the same job. Output chunks contain `AARIS_GUI_FRAME_SIZE=`, `AARIS_GUI_FRAME_MODE=`, `AARIS_GUI_FRAME_BASE64=<long JPEG base64>`, `AARIS_GUI_FRAME_COMPLETE`. Reassemble all chunk texts **in seq order**; validate the complete marker, then show image via the connected tool's supported private image output if available (Code Mode supports `image("data:image/jpeg;base64,"+base64)` when permitted), not a fake/sandbox/public URL. The grid is every 100 displayed pixels and the pointer is red. **Click coordinates are relative to the latest screenshot**; the helper saves frame size and maps fast-preview coordinates back to X11. For example, 800x450 click `300,200` was verified at real X11 `480,320`.
 
-**Test evidence from 2026-11-11:** connected private terminal \`pwd\` returned \`/workspaces/Unity-Game-Aris\` with code 0; Python test returned \`AARIS_TURBO_E2E_PASS\`; 1280x720 screenshot was reconstructed privately from 62 chunks; a click at 450,280 produced a new cursor position; GUI typed \`echo AARIS_GUI_KEYBOARD_PASS\` and Enter, and screenshot visibly showed output; fast preview returned an 800x450 image in 20 chunks; the 800x450 click-to-1280x720 mapping was verified. These prove **Codespace terminal and X11 GUI control**, **not** that Unity Editor or the actual native game scene has loaded. Confirm Unity installation, active license, LFS hydration, Editor camera scene screenshot and Play Mode separately before reporting game changes tested. WebRTC, publicly exposed noVNC, public trycloudflare.com tunnels, and unapproved remote MCP services are not needed for this private on-demand screenshot protocol. The ordinary ChatGPT chat does **not** gain an always-running background monitor: each observation/action requires a tool call while assisting; use explicit automation only if requested and supported.
+**Test evidence from 2026-11-11:** connected private terminal `pwd` returned `/workspaces/Unity-Game-Aris` with code 0; Python test returned `AARIS_TURBO_E2E_PASS`; 1280x720 screenshot was reconstructed privately from 62 chunks; a click at 450,280 produced a new cursor position; GUI typed `echo AARIS_GUI_KEYBOARD_PASS` and Enter, and screenshot visibly showed output; fast preview returned an 800x450 image in 20 chunks; the 800x450 click-to-1280x720 mapping was verified. These prove **Codespace terminal and X11 GUI control**, **not** that Unity Editor or the actual native game scene has loaded. Confirm Unity installation, active license, LFS hydration, Editor camera scene screenshot and Play Mode separately before reporting game changes tested. WebRTC, publicly exposed noVNC, public trycloudflare.com tunnels, and unapproved remote MCP services are not needed for this private on-demand screenshot protocol. The ordinary ChatGPT chat does **not** gain an always-running background monitor: each observation/action requires a tool call while assisting; use explicit automation only if requested and supported.
 
 ### Security, privacy, resource constraints, and recovery
 
-- **Never** place Cloudflare/Actions bearer tokens, \`CODESPACE_PAT\`, Unity email/password/license, screenshots, clipboard contents, raw terminal logs, or full environment dumps in public Issues/PRs/commits/release artifacts. Do not print screenshots/base64 on the public Issue #77. The Cloudflare management SQL API is privileged terminal access—treat it as sensitive, respect user-approved scope and validate commands before executing.
+- **Never** place Cloudflare/Actions bearer tokens, `CODESPACE_PAT`, Unity email/password/license, screenshots, clipboard contents, raw terminal logs, or full environment dumps in public Issues/PRs/commits/release artifacts. Do not print screenshots/base64 on the public Issue #77. The Cloudflare management SQL API is privileged terminal access—treat it as sensitive, respect user-approved scope and validate commands before executing.
 - Cloudflare public Worker only exposes limited health and authenticated agent/bootstrap functions. The agent uses outbound HTTPS only, with a scoped rotating token granted by signed GitHub Actions OIDC. No inbound Codespace SSH port or permanent public desktop endpoint. The agent has a tested browser-like User-Agent because the default Python urllib UA returned HTML 403 from the Cloudflare edge; this was resolved in PR #321. No manual Cloudflare token paste is required when the Cloudflare connector is connected.
-- Latest code: \`Tools/Turbo/worker.mjs\`, \`agent.py\`, \`gui_agent.py\`, \`gui_setup.sh\`, \`remote_install.sh\`, \`ensure_agent.sh\`, \`select_machine.py\`, and workflow \`.github/workflows/aaris-turbo-bootstrap.yml\`. The Worker contains a **24-hour private-output retention cleanup policy**, but its scheduled cleanup must be independently verified—do not claim the garbage-collection job passed solely because the code was deployed.
-- Existing editor/APK jobs continue independently. Do not interrupt an active build, reset user worktrees, discard original \`.unity\`/\`.prefab\`/\`.mat\` LFS objects, or treat a green static CI or desktop screenshot as proof a native game build works. For truly long-running jobs, use the bounded command API, status polling and per-job exit codes; no repeated GitHub Actions runners.
-- For inactive or expired agent: check the current Codespaces account/selected machine, GitHub \`Available\` state, and the linked Cloudflare heartbeat; **one** bootstrap via owner-only workflow/Issue is the recovery path. If quota is exhausted or a Codespace remains \`Provisioning\`, report the blocker; do not create/delete more machines without need. If connected Cloudflare/GitHub tools are unavailable in the new chat, say so and help the user reconnect them instead of inventing an active control connection.
-- The reference instructions below and \`Docs/AARIS_TURBO_TERMINAL.md\` remain available for older pipelines and specialized Unity editor/release tasks, but routine live terminal/gui use follows this section.
+- Latest code: `Tools/Turbo/worker.mjs`, `agent.py`, `gui_agent.py`, `gui_setup.sh`, `remote_install.sh`, `ensure_agent.sh`, `select_machine.py`, and workflow `.github/workflows/aaris-turbo-bootstrap.yml`. The Worker contains a **24-hour private-output retention cleanup policy**, but its scheduled cleanup must be independently verified—do not claim the garbage-collection job passed solely because the code was deployed.
+- Existing editor/APK jobs continue independently. Do not interrupt an active build, reset user worktrees, discard original `.unity`/`.prefab`/`.mat` LFS objects, or treat a green static CI or desktop screenshot as proof a native game build works. For truly long-running jobs, use the bounded command API, status polling and per-job exit codes; no repeated GitHub Actions runners.
+- For inactive or expired agent: check the current Codespaces account/selected machine, GitHub `Available` state, and the linked Cloudflare heartbeat; **one** bootstrap via owner-only workflow/Issue is the recovery path. If quota is exhausted or a Codespace remains `Provisioning`, report the blocker; do not create/delete more machines without need. If connected Cloudflare/GitHub tools are unavailable in the new chat, say so and help the user reconnect them instead of inventing an active control connection.
+- The reference instructions below and `Docs/AARIS_TURBO_TERMINAL.md` remain available for older pipelines and specialized Unity editor/release tasks, but routine live terminal/gui use follows this section.
 
 ## Canonical world
 Unity 6000.3.26f1, URP 17.3.0. Native source scene: Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity; 2km by 2km world on four real TerrainData tiles. See Docs/MAP_LAYOUT.json, README.md, the existing AarisExplorerBuild.cs and Tools/Validation before edits. Many assets are Git LFS tracked: a pointer is NOT a valid Unity scene. A Release checkpoint does not replace permanent Git history.
