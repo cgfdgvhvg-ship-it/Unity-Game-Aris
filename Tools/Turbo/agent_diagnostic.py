@@ -92,6 +92,34 @@ def main():
             print("TURBO_"+label+"_SERVER="+re.sub(r"[^a-z]","",exc.headers.get("server","unknown").lower())[:32])
         except urllib.error.URLError as exc:
             print("TURBO_"+label+"_NETWORK_CLASS="+type(exc.reason).__name__)
+
+    # Safe GET /health probes: never print credentials, response bodies or URLs.
+    if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{2,119}",machine) and token.is_file():
+        private=token.read_text(encoding="ascii").strip()
+        combos=[
+            ("OP_ONLY",{"X-Aaris-Op":"ping"}),
+            ("MACHINE_ONLY",{"X-Aaris-Machine":machine}),
+            ("TOKEN_DUMMY",{"X-Aaris-Token":"0"*64}),
+            ("TOKEN_REAL",{"X-Aaris-Token":private}),
+            ("OP_MACHINE",{"X-Aaris-Op":"ping","X-Aaris-Machine":machine}),
+            ("OP_MACHINE_DUMMY",{"X-Aaris-Op":"ping","X-Aaris-Machine":machine,"X-Aaris-Token":"0"*64,"X-Aaris-Payload":"e30"}),
+            ("OP_MACHINE_REAL",{"X-Aaris-Op":"ping","X-Aaris-Machine":machine,"X-Aaris-Token":private,"X-Aaris-Payload":"e30"}),
+            ("AGENT_HEADER",{"X-Aaris-Op":"ping","X-Aaris-Machine":machine,"X-Aaris-Token":private,"X-Aaris-Payload":"e30","User-Agent":"Mozilla/5.0"}),
+        ]
+        for label,headers in combos:
+            req=urllib.request.Request(base+"/health",method="GET",headers=headers)
+            try:
+                with urllib.request.urlopen(req,timeout=8) as response:
+                    status=response.status
+                    mime=response.headers.get("content-type","")
+                    response.read(64)
+            except urllib.error.HTTPError as exc:
+                status=exc.code
+                mime=exc.headers.get("content-type","")
+            except urllib.error.URLError:
+                status=0; mime=""
+            print("TURBO_PROBE_"+label+"_HTTP="+str(status))
+            print("TURBO_PROBE_"+label+"_JSON="+("yes" if "application/json" in mime.lower() else "no"))
     print("TURBO_DIAG_SAFE_COMPLETE")
 if __name__=="__main__":
     main()
