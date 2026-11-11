@@ -5,6 +5,8 @@ umask 077
 test -n "$AARIS_AGENT_TOKEN" || exit 20
 test -n "$AARIS_ENDPOINT" || exit 20
 test -n "$AARIS_AGENT_BASE64" || exit 20
+test -n "$AARIS_GUI_BASE64" || exit 20
+test -n "$AARIS_GUI_SETUP_BASE64" || exit 20
 test -n "$AARIS_AGENT_EXPIRES_AT" || exit 20
 [[ "$AARIS_AGENT_TOKEN" =~ ^[0-9a-f]{64}$ ]] || exit 20
 [[ "$AARIS_ENDPOINT" =~ ^https://[a-z0-9.-]+/agent/[A-Za-z0-9-]+$ ]] || exit 21
@@ -21,6 +23,13 @@ printf '%s' "$AARIS_AGENT_BASE64" | base64 -d > "$BIN/agent.new.py"
 python3 -m py_compile "$BIN/agent.new.py"
 python3 "$BIN/agent.new.py" --selftest >/dev/null
 mv "$BIN/agent.new.py" "$BIN/agent.py"
+printf '%s' "$AARIS_GUI_BASE64" | base64 -d > "$BIN/gui.new.py"
+python3 -m py_compile "$BIN/gui.new.py"
+python3 "$BIN/gui.new.py" --selftest >/dev/null
+mv "$BIN/gui.new.py" "$BIN/gui.py"
+printf '%s' "$AARIS_GUI_SETUP_BASE64" | base64 -d > "$BIN/gui_setup.sh"
+bash -n "$BIN/gui_setup.sh"
+chmod 700 "$BIN/gui_setup.sh"
 printf '%s\n' "$AARIS_AGENT_TOKEN" > "$CONFIG/token"
 chmod 600 "$CONFIG/token"
 printf '%s\n' "$AARIS_ENDPOINT" > "$CONFIG/endpoint"
@@ -64,4 +73,8 @@ except Exception as exc:
     sys.exit(26)
 print("TURBO_CLOUDFLARE_HANDSHAKE_PASS")
 PY
+if test -x "$BIN/gui_setup.sh"; then
+  nohup bash "$BIN/gui_setup.sh" >> "$CONFIG/gui-setup.log" 2>&1 </dev/null &
+  echo "TURBO_GUI_DEPENDENCIES_SCHEDULED"
+fi
 echo "TURBO_NONDESTRUCTIVE_BOOTSTRAP_OK"
