@@ -60,8 +60,10 @@ jobs:
           # Force Unity foreground, capture just that window. Never print screenshot
           # bytes or capture full desktop in the public CI logs.
           remote_command="set -eu; cd ~; export DISPLAY=:99; w=\$(xdotool search --onlyvisible --name '^Unity - Unity-Game-Aris -' | head -n 1); test -n \"\$w\"; xdotool windowactivate --sync \"\$w\"; scrot -u -o -q 85 '${remote_file}'; test -s '${remote_file}'"
-          gh codespace ssh -c "${codespace}" "${remote_command}"
-          gh codespace cp -c "${codespace}" "remote:${remote_file}" "${RUNNER_TEMP}/AarisUnityScreen.jpg"
+          # The SSH stdout stays in a runner-local file; do not echo it in logs.
+          # Avoid gh codespace cp path-resolution differences between host and container.
+          gh codespace ssh -c "${codespace}" "${remote_command}; base64 -w0 '${remote_file}'" > "${RUNNER_TEMP}/AarisUnityScreen.base64"
+          base64 --decode "${RUNNER_TEMP}/AarisUnityScreen.base64" > "${RUNNER_TEMP}/AarisUnityScreen.jpg"
           test -s "${RUNNER_TEMP}/AarisUnityScreen.jpg"
           [[ "$(file --brief --mime-type "${RUNNER_TEMP}/AarisUnityScreen.jpg")" == "image/jpeg" ]] || {
             echo "::error::Codespace screenshot is not a JPEG."
