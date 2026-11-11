@@ -47,7 +47,7 @@ jobs:
             jq -e --arg m "$MACHINE" '[.[] | select(.name==$m and .state=="Available")] | length==1' >/dev/null || {
               echo "TURBO_DIAG_MACHINE_NOT_AVAILABLE"; exit 12;
             }
-          timeout 120 gh codespace ssh -c "$MACHINE" -- 'python3 -' \
+          timeout 120 gh codespace ssh -c "$MACHINE" -- "python3 - $MACHINE" \
             < Tools/Turbo/agent_diagnostic.py > "$RUNNER_TEMP/turbo-safe-output.txt" || {
               echo "TURBO_DIAG_SSH_FAILED"; exit 13;
             }
