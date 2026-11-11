@@ -90,7 +90,17 @@ export class TurboMachine {
         token.length !== 64 || await sha256(token) !== hashes[0].value) return json({error:"unauthorized"},401);
     const sql = this.ctx.storage.sql;
     if (path === "/agent/ping") {
-      sql.exec("INSERT INTO config(key,value) VALUES('last_seen',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",String(Math.floor(Date.now()/1000)));
+      const now = Math.floor(Date.now()/1000);
+      sql.exec("INSERT INTO config(key,value) VALUES('last_seen',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",String(now));
+      // Keep authenticated output privately for one day. Remove old image chunks,
+      // completed jobs and expired abandoned queue items; never prune running jobs.
+      const last = Array.from(sql.exec("SELECT value FROM config WHERE key='last_cleanup'"));
+      if (!last.length || now - Number(last[0].value) >= 3600) {
+        const stale = "(status IN ('completed','failed') AND COALESCE(finished_at,created_at) < unixepoch()-86400) OR (status='queued' AND expires_at < unixepoch()-86400)";
+        sql.exec("DELETE FROM chunks WHERE command_id IN (SELECT id FROM commands WHERE " + stale + ")");
+        sql.exec("DELETE FROM commands WHERE " + stale);
+        sql.exec("INSERT INTO config(key,value) VALUES('last_cleanup',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",String(now));
+      }
       return json({ok:true});
     }
     if (path === "/agent/next") {
