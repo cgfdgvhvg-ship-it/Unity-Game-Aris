@@ -22,7 +22,9 @@ import time
 SCREEN_W, SCREEN_H = 1280, 720
 MAX_IMAGE_BYTES = 65_536
 MAX_INPUT_CHARS = 2048
-DISPLAY = ":99"
+DISPLAY = os.environ.get("DISPLAY") or ":99"
+if not re.fullmatch(r":[0-9]{1,3}", DISPLAY):
+    DISPLAY = ":99"
 SAFE_KEY = re.compile(r"[A-Za-z0-9_+:-]{1,64}\Z")
 ACTIONS = {"look", "init", "click", "double_click", "right_click",
            "move", "key", "scroll", "type", "paste"}
@@ -59,7 +61,7 @@ def ensure_screen():
         return
     if not shutil.which("Xvfb"):
         raise RuntimeError("MISSING_XVFB")
-    if not Path("/tmp/.X11-unix/X99").exists():
+    if not Path("/tmp/.X11-unix/X"+DISPLAY[1:]).exists():
         spawn_bg(["Xvfb", DISPLAY, "-screen", "0",
                   f"{SCREEN_W}x{SCREEN_H}x24", "-nolisten", "tcp"], "virtual-screen")
     for _ in range(30):
