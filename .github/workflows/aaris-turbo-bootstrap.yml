@@ -126,7 +126,7 @@ jobs:
           [[ "$NAME" =~ ^[A-Za-z0-9][A-Za-z0-9-]{2,119}$ ]] || exit 12
           echo "CODESPACE=$NAME" >> "$GITHUB_ENV"
           echo "TURBO_MACHINE_SELECTED"
-      - name: Reconcile lifecycle: shutting down must finish before start
+      - name: Reconcile lifecycle before starting Codespace
         run: |
           set -euo pipefail
           STATE="$(gh codespace view -c "$CODESPACE" --json state --jq .state)"
