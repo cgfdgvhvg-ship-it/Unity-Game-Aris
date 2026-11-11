@@ -47,6 +47,26 @@ jobs:
           assert "start_new_session=True" in agent
           print("AARIS_TURBO_SECURITY_STATIC_PASS")
           PY
+      - name: Real Cloudflare HTTP smoke / reject unauthenticated commands
+        run: |
+          set -euo pipefail
+          URL=https://aaris-turbo-terminal.aaris-game-control-6f9c.workers.dev
+          curl --fail --silent --show-error --retry 3 --max-time 15 \
+            "$URL/health" > "$RUNNER_TEMP/turbo-health.json"
+          python3 - "$RUNNER_TEMP/turbo-health.json" <<'PY'
+          import json,sys
+          obj=json.load(open(sys.argv[1]))
+          assert obj['service']=='aaris-turbo' and obj['status']=='ready',obj
+          print('TURBO_LIVE_CLOUDFLARE_HEALTH_PASS')
+          PY
+          STATUS="$(curl -sS --max-time 15 -o /dev/null -w '%{http_code}' \
+            -X POST "$URL/bootstrap" -H 'Authorization: Bearer invalid' \
+            -H 'Content-Type: application/json' -d '{"machine":"aaris-turbo-test"}')"
+          test "$STATUS" = 401 || { echo "TURBO_UNAUTHORIZED_BOOTSTRAP_NOT_REJECTED"; exit 17; }
+          STATUS="$(curl -sS --max-time 15 -o /dev/null -w '%{http_code}' \
+            -X POST "$URL/agent/aaris-turbo-test/next" -H 'Content-Type: application/json' -d '{}')"
+          test "$STATUS" = 401 || { echo "TURBO_UNAUTHORIZED_AGENT_NOT_REJECTED"; exit 18; }
+          echo "TURBO_LIVE_CLOUDFLARE_AUTH_REJECTION_PASS"
   bootstrap:
     if: >-
       (github.event_name == 'workflow_dispatch' &&
