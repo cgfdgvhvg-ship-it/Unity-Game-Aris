@@ -1,0 +1,39 @@
+name: Aaris clean cancelled temporary Android editor
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+jobs:
+  reap-cancelled:
+    if: >-
+      github.event.issue.number == 77 &&
+      github.event.comment.user.login == 'sundamunda289-art' &&
+      github.event.comment.body == 'APK CLEAN OLD EDITOR'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Ensure old APK run really was cancelled
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/42933177860" --jq .conclusion)" = cancelled
+          python3 -m py_compile Tools/Codespaces/reap_cancelled_android_editor.py
+      - name: Clean only the obsolete cancelled worktree's Editor
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+        run: |
+          set -euo pipefail
+          CS=aaris-ai-ubuntu-minimal-xr4p7jj6p4qjc6q5x
+          test -n "${GH_TOKEN:-}"
+          gh codespace list -R "$GITHUB_REPOSITORY" --json name,state --limit 50 |
+            jq -e --arg n "$CS" '[.[] | select(.name == $n and .state == "Available")] | length == 1' >/dev/null
+          timeout 90 gh codespace ssh -c "$CS" -- 'python3 -s' < Tools/Codespaces/reap_cancelled_android_editor.py
