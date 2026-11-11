@@ -58,6 +58,8 @@ def validate_job(job):
 
 
 class Bridge:
+    # Validated from GitHub Codespace: default python-urllib UA was blocked by the edge.
+    USER_AGENT = "Mozilla/5.0"
     def __init__(self, endpoint, token):
         if not endpoint.startswith("https://") or "/agent/" not in endpoint:
             raise ValueError("https_endpoint_required")
@@ -87,7 +89,8 @@ class Bridge:
             req = urllib.request.Request(
                 self.endpoint + "/" + operation,
                 data=b,
-                headers={"Authorization": "Bearer " + self.token, "Content-Type": "application/json"},
+                headers={"Authorization": "Bearer " + self.token, "Content-Type": "application/json",
+                         "User-Agent": self.USER_AGENT},
                 method="POST")
             try:
                 with urllib.request.urlopen(req, timeout=12) as response:
@@ -107,8 +110,9 @@ class Bridge:
             raise ValueError("request_payload_too_large")
         req = urllib.request.Request(
             self.base + "/health", method="GET",
-            headers={"X-Aaris-Op": operation, "X-Aaris-Machine": self.machine,
-                     "X-Aaris-Token": self.token, "X-Aaris-Payload": blob})
+            headers={"User-Agent": self.USER_AGENT, "X-Aaris-Op": operation,
+                     "X-Aaris-Machine": self.machine, "X-Aaris-Token": self.token,
+                     "X-Aaris-Payload": blob})
         try:
             with urllib.request.urlopen(req, timeout=12) as response:
                 return self._check_result(operation, json.loads(response.read(65536)))
@@ -197,6 +201,7 @@ def selftest():
     else:
         raise AssertionError("unsafe_directory_accepted")
     assert MAX_ACTIVE == 2
+    assert Bridge.USER_AGENT == "Mozilla/5.0"
     print("AARIS_TURBO_AGENT_SELFTEST_PASS")
 
 
