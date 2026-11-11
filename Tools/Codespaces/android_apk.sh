@@ -332,9 +332,9 @@ try:
     reason=json.load(open(sys.argv[1])).get("reason","")
 except (OSError,ValueError):
     reason=""
-if isinstance(reason,str) and reason.isupper() and
-   reason.isascii() and 3 <= len(reason) <= 70 and
-   all(x.isupper() or x.isdigit() or x=="_" for x in reason):
+if (isinstance(reason,str) and reason.isupper() and
+    reason.isascii() and 3 <= len(reason) <= 70 and
+    all(x.isupper() or x.isdigit() or x=="_" for x in reason)):
     print("APK_BUILD_REASON_"+reason)
 else:
     print("APK_BUILD_REPORT_FAILURE_UNCLASSIFIED")
