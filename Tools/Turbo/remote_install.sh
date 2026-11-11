@@ -40,4 +40,23 @@ if grep -qxF AARIS_TURBO_AGENT_STARTED "$CONFIG/agent.log"; then
 else
   echo "TURBO_AGENT_PROCESS_ALIVE"
 fi
+# Prove that the credential works on this Codespace, not merely that a
+# detached Python process exists. Never print a token or raw response.
+python3 - "$BIN/agent.py" "$CONFIG/token" "$AARIS_ENDPOINT" <<'PY'
+import importlib.util
+from pathlib import Path
+import sys
+try:
+    spec = importlib.util.spec_from_file_location("aaris_turbo_agent", sys.argv[1])
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    token = Path(sys.argv[2]).read_text(encoding="ascii").strip()
+    result = module.Bridge(sys.argv[3], token).post("ping")
+    if result.get("ok") is not True:
+        raise RuntimeError("handshake_not_acknowledged")
+except Exception as exc:
+    print("TURBO_CLOUDFLARE_HANDSHAKE_FAILED_" + type(exc).__name__.upper())
+    sys.exit(26)
+print("TURBO_CLOUDFLARE_HANDSHAKE_PASS")
+PY
 echo "TURBO_NONDESTRUCTIVE_BOOTSTRAP_OK"

@@ -16,9 +16,6 @@ on:
       - "Tools/Codespaces/termux_switch.sh"
 permissions:
   contents: read
-concurrency:
-  group: aaris-turbo-bootstrap
-  cancel-in-progress: false
 jobs:
   static-check:
     if: github.event_name == 'pull_request'
@@ -69,8 +66,21 @@ jobs:
           STATUS="$(curl -sS --max-time 15 -o /dev/null -w '%{http_code}' \
             -X POST "$URL/agent/aaris-turbo-test/next" -H 'Content-Type: application/json' -d '{}')"
           test "$STATUS" = 401 || { echo "TURBO_UNAUTHORIZED_AGENT_NOT_REJECTED"; exit 18; }
+          # The single-endpoint fallback must never accept anonymous shell calls.
+          STATUS="$(curl -sS --max-time 15 -o "$RUNNER_TEMP/turbo-denied.json" -w '%{http_code}' \
+            "$URL/health" -H 'X-Aaris-Op: ping' -H 'X-Aaris-Machine: aaris-turbo-test' \
+            -H 'X-Aaris-Token: invalid')"
+          test "$STATUS" = 401 || { echo "TURBO_FALLBACK_UNAUTHENTICATED"; exit 19; }
+          python3 - "$RUNNER_TEMP/turbo-denied.json" <<'PY'
+          import json,sys
+          assert json.load(open(sys.argv[1])).get('error') == 'unauthorized'
+          print('TURBO_FALLBACK_AUTH_REJECTION_PASS')
+          PY
           echo "TURBO_LIVE_CLOUDFLARE_AUTH_REJECTION_PASS"
   bootstrap:
+    concurrency:
+      group: aaris-turbo-bootstrap
+      cancel-in-progress: false
     if: >-
       (github.event_name == 'workflow_dispatch' &&
        github.actor == 'sundamunda289-art') ||
