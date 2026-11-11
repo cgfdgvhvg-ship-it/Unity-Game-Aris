@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-PAINT_OFFSET_M = 0.02
+PAINT_OFFSET_M = 0.035
 
 def read_mesh(path):
     raw=Path(path).read_text()

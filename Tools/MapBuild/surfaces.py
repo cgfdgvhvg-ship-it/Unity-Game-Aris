@@ -37,16 +37,28 @@ def rect(path,x,z,w,d,y,template):
     return surface(path,xz,[0,1,2,0,2,3],np.full(4,y),template)
 
 def ribbon(path,points,width,h,template):
-    p=np.asarray(points,float);xz=p[:,[0,2]];delta=np.gradient(xz,axis=0);delta/=np.maximum(np.linalg.norm(delta,axis=1)[:,None],1e-8)
-    side=np.column_stack((-delta[:,1],delta[:,0]))*width/2
-    flat=np.stack((xz+side,xz-side),axis=1).reshape(-1,2)
-    # Conform shoulders as well as centers to avoid buried/hovering road edges.
-    y=sample(h,flat[:,0],flat[:,1])+.025
-    idx=[]
+    # Native road geometry must conform BETWEEN source road waypoints.
+    # A single wide quad can lie 0.4m beneath a curved Unity terrain tile.
+    p=np.asarray(points,float);xz=p[:,[0,2]]
+    tangent=np.gradient(xz,axis=0);tangent/=np.maximum(np.linalg.norm(tangent,axis=1)[:,None],1e-8)
+    side=np.column_stack((-tangent[:,1],tangent[:,0]))*width/2
+    left=xz+side;right=xz-side
+    rows=[];cross_sections=4;max_step=1.75
     for k in range(len(xz)-1):
-        a=2*k;idx.extend([a,a+2,a+1,a+1,a+2,a+3])
-    # Above ordering is inverted for this side vector: check and correct explicitly.
-    meshpos=np.column_stack((flat[:,0],y,flat[:,1]));tri=np.array(idx).reshape(-1,3)
+        steps=max(1,int(np.ceil(max(np.linalg.norm(left[k+1]-left[k]),np.linalg.norm(right[k+1]-right[k]))/max_step)))
+        for step in range(steps):
+            f=step/steps
+            a=left[k]*(1-f)+left[k+1]*f;b=right[k]*(1-f)+right[k+1]*f
+            rows.append(np.stack([a*(1-u)+b*u for u in np.linspace(0,1,cross_sections)]))
+    rows.append(np.stack([left[-1]*(1-u)+right[-1]*u for u in np.linspace(0,1,cross_sections)]))
+    flat=np.asarray(rows).reshape(-1,2)
+    y=sample(h,flat[:,0],flat[:,1])+.12
+    idx=[]
+    for k in range(len(rows)-1):
+        for col in range(cross_sections-1):
+            a=k*cross_sections+col;b=a+cross_sections
+            idx.extend([a,b,a+1,a+1,b,b+1])
+    meshpos=np.column_stack((flat[:,0],y,flat[:,1]));tri=np.asarray(idx).reshape(-1,3)
     if np.cross(meshpos[tri[0,1]]-meshpos[tri[0,0]],meshpos[tri[0,2]]-meshpos[tri[0,0]])[1]<0:tri=tri[:,[0,2,1]]
     return surface(path,flat,tri,y,template)
 
