@@ -73,6 +73,7 @@ export class TurboMachine {
       if (typeof data.token !== "string" || data.token.length !== 64) return json({error:"token"}, 400);
       this.ctx.storage.sql.exec("INSERT INTO config(key,value) VALUES('token_sha256',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", await sha256(data.token));
       this.ctx.storage.sql.exec("INSERT INTO config(key,value) VALUES('last_seen',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", String(Math.floor(Date.now()/1000)));
+      this.ctx.storage.sql.exec("INSERT INTO config(key,value) VALUES('token_expires',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", String(Math.floor(Date.now()/1000)+7*86400));
       return json({ok:true});
     }
     if (path === "/internal/register" && req.method === "POST") {
@@ -84,7 +85,9 @@ export class TurboMachine {
     if (!path.startsWith("/agent/") || req.method !== "POST") return json({error:"not_found"},404);
     const token = (req.headers.get("authorization") || "").replace(/^Bearer /, "");
     const hashes = Array.from(this.ctx.storage.sql.exec("SELECT value FROM config WHERE key='token_sha256'"));
-    if (!hashes.length || token.length !== 64 || await sha256(token) !== hashes[0].value) return json({error:"unauthorized"},401);
+    const expires = Array.from(this.ctx.storage.sql.exec("SELECT value FROM config WHERE key='token_expires'"));
+    if (!hashes.length || !expires.length || Number(expires[0].value) <= Math.floor(Date.now()/1000) ||
+        token.length !== 64 || await sha256(token) !== hashes[0].value) return json({error:"unauthorized"},401);
     const sql = this.ctx.storage.sql;
     if (path === "/agent/ping") {
       sql.exec("INSERT INTO config(key,value) VALUES('last_seen',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",String(Math.floor(Date.now()/1000)));
@@ -132,12 +135,18 @@ export default {
         if (!response.ok) return json({error:"grant_failed"},503);
         const registry = env.MACHINES.get(env.MACHINES.idFromName("registry"));
         await registry.fetch("https://internal/internal/register",{method:"POST",body:JSON.stringify({name:b.machine,stage:"bootstrapped"})});
-        return json({machine:b.machine,token,endpoint:u.origin+"/agent/"+encodeURIComponent(b.machine),expires_at:Math.floor(Date.now()/1000)+3600});
+        return json({machine:b.machine,token,endpoint:u.origin+"/agent/"+encodeURIComponent(b.machine),expires_at:Math.floor(Date.now()/1000)+7*86400});
       } catch (_) { return json({error:"unauthorized"},401); }
     }
     const match=u.pathname.match(/^\/agent\/([A-Za-z0-9-]{3,120})\/(ping|next|chunk|done)$/);
     if(!match || request.method!=="POST") return json({error:"not_found"},404);
     const stub=env.MACHINES.get(env.MACHINES.idFromName("machine:"+match[1]));
-    return stub.fetch(new Request("https://internal/agent/"+match[2],request));
+    const response = await stub.fetch(new Request("https://internal/agent/"+match[2],request));
+    if (match[2] === "ping" && response.ok) {
+      const registry = env.MACHINES.get(env.MACHINES.idFromName("registry"));
+      await registry.fetch("https://internal/internal/register", {method:"POST",
+        body:JSON.stringify({name:match[1],stage:"connected"})});
+    }
+    return response;
   }
 };
