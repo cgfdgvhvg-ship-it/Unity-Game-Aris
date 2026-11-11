@@ -112,7 +112,10 @@ jobs:
         run: |
           set -euo pipefail
           # Never execute untrusted Issue content as shell commands.
-          timeout 16900 gh codespace ssh -c "$CODESPACE" -- "bash -s -- $OPERATION" < Tools/Codespaces/android_apk.sh > apk-evidence/build-status.txt 2> "$RUNNER_TEMP/private-apk-build-ssh-errors.log" || {
+          # SSH does not inherit the Actions runner's environment. Pass the
+          # fixed, 40-hex reviewed source SHA to the remote build explicitly.
+          [[ "$AARIS_EXPECTED_BUILD_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 18
+          timeout 16900 gh codespace ssh -c "$CODESPACE" -- "env AARIS_EXPECTED_BUILD_SHA=$AARIS_EXPECTED_BUILD_SHA bash -s -- $OPERATION" < Tools/Codespaces/android_apk.sh > apk-evidence/build-status.txt 2> "$RUNNER_TEMP/private-apk-build-ssh-errors.log" || {
             echo 'APK_NATIVE_CODESPACE_BUILD_FAILED'
             grep -E '^APK_[A-Z0-9_]+$|^apk_(android_module|android_sdk|android_ndk|android_jdk)=[A-Za-z0-9.]+$' apk-evidence/build-status.txt > apk-evidence/build-status-safe.txt || true
             cat apk-evidence/build-status-safe.txt
