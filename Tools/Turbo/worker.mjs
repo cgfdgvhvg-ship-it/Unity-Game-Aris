@@ -123,9 +123,9 @@ export class TurboMachine {
       const live=last>0 && now-last<=90 && expires.length>0 && Number(expires[0].value)>now;
       const frames=Array.from(sql.exec("SELECT command_id,width,height,mode,updated_at FROM viewer_frame WHERE id=1"));
       const recent=Array.from(sql.exec(
-        "SELECT id,argv_json,status,exit_code,created_at FROM commands ORDER BY created_at DESC,id DESC LIMIT 20"));
+        "SELECT id,argv_json,status,exit_code,created_at FROM commands WHERE id NOT LIKE 'watch_%' ORDER BY created_at DESC,id DESC LIMIT 20"));
       const outputs=Array.from(sql.exec(
-        "SELECT c.id,ch.kind,substr(ch.text,1,900) AS content FROM chunks ch JOIN commands c ON c.id=ch.command_id WHERE c.id IN (SELECT id FROM commands ORDER BY created_at DESC,id DESC LIMIT 20) AND instr(c.argv_json,'gui.py')=0 AND instr(c.argv_json,'gui_agent.py')=0 AND c.id NOT LIKE 'watch_%' AND length(ch.text)<1200 ORDER BY c.created_at DESC,ch.seq DESC LIMIT 65"));
+        "SELECT c.id,ch.kind,substr(ch.text,1,900) AS content FROM chunks ch JOIN commands c ON c.id=ch.command_id WHERE c.id IN (SELECT id FROM commands WHERE id NOT LIKE 'watch_%' ORDER BY created_at DESC,id DESC LIMIT 20) AND instr(c.argv_json,'gui.py')=0 AND instr(c.argv_json,'gui_agent.py')=0 AND c.id NOT LIKE 'watch_%' AND length(ch.text)<1200 ORDER BY c.created_at DESC,ch.seq DESC LIMIT 65"));
       const logMap=new Map();
       for(const r of outputs.reverse()){
         const prev=logMap.get(r.id)||"";
@@ -192,6 +192,7 @@ export class TurboMachine {
         const stale = "(status IN ('completed','failed') AND COALESCE(finished_at,created_at) < unixepoch()-86400) OR (status='queued' AND expires_at < unixepoch()-86400)";
         sql.exec("DELETE FROM chunks WHERE command_id IN (SELECT id FROM commands WHERE " + stale + ")");
         sql.exec("DELETE FROM commands WHERE " + stale);
+        sql.exec("DELETE FROM viewer_frame WHERE updated_at < unixepoch()-86400");
         sql.exec("INSERT INTO config(key,value) VALUES('last_cleanup',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",String(now));
       }
       return json({ok:true});
