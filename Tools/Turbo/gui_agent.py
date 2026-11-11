@@ -10,6 +10,7 @@ Each action returns the next screenshot; never perpetual video streaming.
 from __future__ import annotations
 import base64
 import io
+import json
 import os
 from pathlib import Path
 import re
@@ -20,7 +21,7 @@ import tempfile
 import time
 
 SCREEN_W, SCREEN_H = 1280, 720
-MAX_IMAGE_BYTES = 65_536
+MAX_IMAGE_BYTES = 96_000
 MAX_INPUT_CHARS = 2048
 DISPLAY = os.environ.get("DISPLAY") or ":99"
 if not re.fullmatch(r":[0-9]{1,3}", DISPLAY):
@@ -116,11 +117,26 @@ def validate(action, args):
     return []
 
 
+def map_coords(x,y):
+    state=Path.home()/".cache"/"aaris-turbo"/"frame-info.json"
+    try:
+        data=json.loads(state.read_text(encoding="utf-8"))
+        fw,fh=data["frame_width"],data["frame_height"]
+        sw,sh=data["screen_width"],data["screen_height"]
+        if not all(isinstance(v,int) and 100<=v<=8192 for v in (fw,fh,sw,sh)):
+            raise ValueError("INVALID_FRAME_METADATA")
+        if x >= fw or y >= fh:
+            raise ValueError("COORD_OUTSIDE_FRAME")
+        return min(sw-1,round(x*sw/fw)),min(sh-1,round(y*sh/fh))
+    except FileNotFoundError:
+        return x,y
+
+
 def perform(action,args):
     if action in {"look","init"}:
         return
     if action in {"click","double_click","right_click","move"}:
-        x,y=args
+        x,y=map_coords(*args)
         exec_safe(["xdotool","mousemove","--sync",str(x),str(y)])
         clicks={"click":["click","1"],"double_click":["click","--repeat","2","--delay","90","1"],
                 "right_click":["click","3"]}
@@ -153,32 +169,45 @@ def capture_jpeg():
     try:
         exec_safe(["scrot","-z","-o",path],timeout=15)
         with Image.open(path) as source:
-            image=source.convert("RGB")
-        image.thumbnail((SCREEN_W,SCREEN_H))
-        width,height=image.size
-        draw=ImageDraw.Draw(image)
-        for x in range(100,width,100):
-            draw.line(((x,0),(x,height)),fill=(80,145,170),width=1)
-            draw.text((x+3,5),str(x),fill=(255,225,105))
-        for y in range(100,height,100):
-            draw.line(((0,y),(width,y)),fill=(80,145,170),width=1)
-            draw.text((6,y+3),str(y),fill=(255,225,105))
+            original=source.convert("RGB")
+        screen_width,screen_height=original.size
+        pointer=None
         try:
             position=exec_safe(["xdotool","getmouselocation","--shell"],timeout=3).stdout.decode()
             mx=re.search(r"^X=(\d+)$",position,re.M)
             my=re.search(r"^Y=(\d+)$",position,re.M)
-            if mx and my:
-                x,y=int(mx.group(1)),int(my.group(1))
+            if mx and my: pointer=(int(mx.group(1)),int(my.group(1)))
+        except (OSError,subprocess.SubprocessError,ValueError):
+            pass
+        for max_width,max_height in ((1280,720),(1024,576),(960,540),(800,450)):
+            image=original.copy()
+            image.thumbnail((max_width,max_height))
+            width,height=image.size
+            draw=ImageDraw.Draw(image)
+            for x in range(100,width,100):
+                draw.line(((x,0),(x,height)),fill=(80,145,170),width=1)
+                draw.text((x+3,5),str(x),fill=(255,225,105))
+            for y in range(100,height,100):
+                draw.line(((0,y),(width,y)),fill=(80,145,170),width=1)
+                draw.text((6,y+3),str(y),fill=(255,225,105))
+            if pointer:
+                x=round(pointer[0]*width/screen_width)
+                y=round(pointer[1]*height/screen_height)
                 draw.polygon([(x,y),(x,y+22),(x+6,y+15),(x+12,y+24),
                               (x+16,y+22),(x+10,y+13),(x+18,y+13)],
                              fill="red",outline="white")
-        except (OSError,subprocess.SubprocessError,ValueError):
-            pass
-        for quality in (68,55,42,32):
-            result=io.BytesIO()
-            image.save(result,format="JPEG",quality=quality,optimize=True)
-            if result.tell()<=MAX_IMAGE_BYTES:
-                return width,height,result.getvalue()
+            for quality in (68,55,42,32,24,18,12):
+                result=io.BytesIO()
+                image.save(result,format="JPEG",quality=quality,optimize=True)
+                if result.tell()<=MAX_IMAGE_BYTES:
+                    state=directory/"frame-info.json"
+                    tmp=directory/"frame-info.new"
+                    tmp.write_text(json.dumps({"frame_width":width,
+                             "frame_height":height,"screen_width":screen_width,
+                             "screen_height":screen_height}),encoding="utf-8")
+                    tmp.chmod(0o600)
+                    tmp.replace(state)
+                    return width,height,result.getvalue()
         raise RuntimeError("FRAME_EXCEEDS_BUDGET")
     finally:
         Path(path).unlink(missing_ok=True)
@@ -196,7 +225,7 @@ def selftest():
             pass
         else:
             raise AssertionError((action,args))
-    assert MAX_IMAGE_BYTES<=65536
+    assert MAX_IMAGE_BYTES<=96000
     print("AARIS_GUI_SELFTEST_PASS")
 
 
