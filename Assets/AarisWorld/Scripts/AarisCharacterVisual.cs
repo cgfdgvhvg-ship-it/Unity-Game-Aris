@@ -341,6 +341,18 @@ namespace Aaris.MapReview
             punchPlayable.SetSpeed(0d);
             shootPlayable.SetSpeed(Mathf.Clamp(shootClip.length / 0.2f, 0.7f, 4.0f));
             jumpLandPlayable.SetSpeed(Mathf.Clamp(jumpLand.length / 0.3f, 0.7f, 3.0f));
+            jumpStartPlayable.SetSpeed(Mathf.Clamp(jumpStart.length / 0.23f, 0.7f, 4.0f));
+            // Stance FBX clips are transitions into a pose, not continuous gaits.
+            // Freeze on the settled position: frame zero can still be standing.
+            crouchPlayable.SetSpeed(0d);
+            crouchPlayable.SetTime(crouchClip.length * 0.87d);
+            pronePlayable.SetTime((proneClip ?? crouchClip).length * 0.87d);
+            // Airborne looping is especially distracting when the jump clip
+            // contains landing frames. Hold distinct ascent/descent samples.
+            jumpPlayable.SetSpeed(0d);
+            jumpPlayable.SetTime(jump.length * 0.39d);
+            fallPlayable.SetSpeed(0d);
+            fallPlayable.SetTime(fall.length * 0.72d);
             idlePlayable.SetApplyFootIK(true);
             walkPlayable.SetApplyFootIK(true);
             runPlayable.SetApplyFootIK(true);
@@ -415,7 +427,7 @@ namespace Aaris.MapReview
 
             float dt = Mathf.Min(Time.deltaTime, 0.15f);
             float alpha = 1f - Mathf.Exp(-dt / Mathf.Max(0.04f, blendResponseSeconds));
-            float stanceAlpha = 1f - Mathf.Exp(-dt / 0.095f);
+            float stanceAlpha = 1f - Mathf.Exp(-dt / 0.16f);
             bool crouching = actions != null &&
                 actions.Stance == AarisBattleActions.PlayerStance.Crouching;
             bool prone = actions != null &&
@@ -428,7 +440,7 @@ namespace Aaris.MapReview
             Vector3 velocity = controller.velocity;
             float planar = new Vector2(velocity.x, velocity.z).magnitude;
             float leaning = Mathf.InverseLerp(4.2f, fullRunSpeed, planar) *
-                sprintForwardLeanDegrees * (primaryLoaded ? 0.35f : 1f) * (1f - proneBlend);
+                sprintForwardLeanDegrees * (primaryLoaded ? 0.8f : 1f) * (1f - proneBlend);
             visual.transform.localRotation = restingLocalRotation *
                 Quaternion.Euler(Mathf.Lerp(leaning, 80f, fallbackProne), 0f, 0f);
             // Visual-only skydiving pose; never tilt the physical CharacterController.
@@ -455,8 +467,8 @@ namespace Aaris.MapReview
             {
                 float horizontal = planar;
                 float movementTarget = Mathf.InverseLerp(0.08f, 1.2f, horizontal);
-                float runTarget = Mathf.InverseLerp(2.1f, 4.1f, horizontal);
-                float sprintTarget = Mathf.InverseLerp(4.3f, Mathf.Max(4.4f, fullRunSpeed), horizontal);
+                float runTarget = Mathf.InverseLerp(3.3f, 4.9f, horizontal);
+                float sprintTarget = Mathf.InverseLerp(5.15f, Mathf.Max(5.3f, fullRunSpeed), horizontal);
                 float airTarget = controller.isGrounded ? 0f : 1f;
                 runBlend = Mathf.Lerp(runBlend, movementTarget, alpha);
                 walkRunBlend = Mathf.Lerp(walkRunBlend, runTarget, alpha);
