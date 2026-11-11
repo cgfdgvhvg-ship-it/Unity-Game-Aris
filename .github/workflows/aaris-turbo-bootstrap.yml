@@ -130,13 +130,15 @@ jobs:
         run: |
           set -euo pipefail
           STATE="$(gh codespace view -c "$CODESPACE" --json state --jq .state)"
+          # This is only a non-sensitive GitHub lifecycle classification.
+          printf 'TURBO_OBSERVED_STATE=%s\n' "$STATE"
           if test "$STATE" != Available; then
             case "$STATE" in
               Shutdown|Stopped)
                 gh api -X POST "/user/codespaces/$CODESPACE/start" >/dev/null
                 echo "TURBO_CODESPACE_START_REQUESTED"
                 ;;
-              Starting|Queued|Provisioning) echo "TURBO_CODESPACE_ALREADY_STARTING" ;;
+              Starting|Queued|Provisioning|Rebuilding|ShuttingDown) echo "TURBO_CODESPACE_ALREADY_STARTING" ;;
               *) echo "TURBO_CODESPACE_UNSAFE_STATE"; exit 15 ;;
             esac
           fi
