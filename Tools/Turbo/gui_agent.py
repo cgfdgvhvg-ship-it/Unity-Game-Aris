@@ -155,7 +155,7 @@ def perform(action,args):
         exec_safe(["xdotool","type","--clearmodifiers","--delay","4","--",args[0]],timeout=30)
 
 
-def capture_jpeg():
+def capture_jpeg(*, fast=False):
     try:
         from PIL import Image, ImageDraw
     except ImportError as exc:
@@ -179,7 +179,9 @@ def capture_jpeg():
             if mx and my: pointer=(int(mx.group(1)),int(my.group(1)))
         except (OSError,subprocess.SubprocessError,ValueError):
             pass
-        for max_width,max_height in ((1280,720),(1024,576),(960,540),(800,450)):
+        resolutions = ((800,450),(640,360),(512,288)) if fast else ((1280,720),(1024,576),(960,540),(800,450))
+        byte_budget = 32_768 if fast else MAX_IMAGE_BYTES
+        for max_width,max_height in resolutions:
             image=original.copy()
             image.thumbnail((max_width,max_height))
             width,height=image.size
@@ -199,7 +201,7 @@ def capture_jpeg():
             for quality in (68,55,42,32,24,18,12):
                 result=io.BytesIO()
                 image.save(result,format="JPEG",quality=quality,optimize=True)
-                if result.tell()<=MAX_IMAGE_BYTES:
+                if result.tell()<=byte_budget:
                     state=directory/"frame-info.json"
                     tmp=directory/"frame-info.new"
                     tmp.write_text(json.dumps({"frame_width":width,
@@ -226,6 +228,8 @@ def selftest():
         else:
             raise AssertionError((action,args))
     assert MAX_IMAGE_BYTES<=96000
+    assert validate("look", []) == []
+    assert validate("click", ["799", "449"]) == [799,449]
     print("AARIS_GUI_SELFTEST_PASS")
 
 
@@ -234,13 +238,18 @@ def main():
         selftest()
         return 0
     action=sys.argv[1] if len(sys.argv)>1 else "look"
-    args=validate(action,sys.argv[2:])
+    raw_args=sys.argv[2:]
+    fast=bool(raw_args and raw_args[-1]=="--fast")
+    if fast:
+        raw_args=raw_args[:-1]
+    args=validate(action,raw_args)
     os.environ["DISPLAY"]=DISPLAY
     ensure_screen()
     perform(action,args)
     time.sleep(.22)
-    width,height,data=capture_jpeg()
+    width,height,data=capture_jpeg(fast=fast)
     print(f"AARIS_GUI_FRAME_SIZE={width}x{height}")
+    print("AARIS_GUI_FRAME_MODE="+("fast" if fast else "full"))
     print("AARIS_GUI_FRAME_BASE64="+base64.b64encode(data).decode("ascii"))
     print("AARIS_GUI_FRAME_COMPLETE")
     return 0
