@@ -7,6 +7,7 @@ No incoming ports, public Codespace terminal, arbitrary Issue comments, or
 GitHub commit-per-command polling are used.
 """
 from __future__ import annotations
+import base64
 import json
 import os
 from pathlib import Path
@@ -64,21 +65,57 @@ class Bridge:
             raise ValueError("token")
         self.endpoint = endpoint.rstrip("/")
         self.token = token
+        self.base, self.machine = self.endpoint.rsplit("/agent/", 1)
+        if not NAME_RE.fullmatch(self.machine):
+            raise ValueError("machine")
+        self.transport = "direct"
+
+    def _check_result(self, operation, result):
+        if not isinstance(result, dict):
+            raise ConnectionError("response_type")
+        if operation == "next" and "job" not in result:
+            raise ConnectionError("response_missing_job")
+        if operation != "next" and result.get("ok") is not True:
+            raise ConnectionError("response_missing_ack")
+        return result
 
     def post(self, operation, payload=None):
+        if operation not in {"ping", "next", "chunk", "done"}:
+            raise ValueError("operation")
         b = json.dumps(payload or {}, ensure_ascii=False).encode("utf-8")
+        if self.transport == "direct":
+            req = urllib.request.Request(
+                self.endpoint + "/" + operation,
+                data=b,
+                headers={"Authorization": "Bearer " + self.token, "Content-Type": "application/json"},
+                method="POST")
+            try:
+                with urllib.request.urlopen(req, timeout=12) as response:
+                    return self._check_result(operation, json.loads(response.read(65536)))
+            except urllib.error.HTTPError as exc:
+                if exc.code == 403:
+                    # Network or edge rejects Codespace /agent routes; switch once.
+                    self.transport = "health"
+                elif exc.code == 401:
+                    raise PermissionError("session_expired") from None
+                else:
+                    raise ConnectionError("remote_http_" + str(exc.code)) from None
+        # The same authenticated Durable Object operations, routed through one
+        # HTTPS GET endpoint. Output and tokens live in headers, never URLs.
+        blob = base64.urlsafe_b64encode(b).decode("ascii").rstrip("=")
+        if len(blob) > 11000:
+            raise ValueError("request_payload_too_large")
         req = urllib.request.Request(
-            self.endpoint + "/" + operation,
-            data=b,
-            headers={"Authorization": "Bearer " + self.token, "Content-Type": "application/json"},
-            method="POST")
+            self.base + "/health", method="GET",
+            headers={"X-Aaris-Op": operation, "X-Aaris-Machine": self.machine,
+                     "X-Aaris-Token": self.token, "X-Aaris-Payload": blob})
         try:
-            with urllib.request.urlopen(req, timeout=20) as response:
-                return json.loads(response.read(65536))
+            with urllib.request.urlopen(req, timeout=12) as response:
+                return self._check_result(operation, json.loads(response.read(65536)))
         except urllib.error.HTTPError as exc:
             if exc.code == 401:
                 raise PermissionError("session_expired") from None
-            raise ConnectionError("remote_http_" + str(exc.code)) from None
+            raise ConnectionError("fallback_http_" + str(exc.code)) from None
 
     def stream_job(self, job):
         job_id = str(job.get("id", ""))[:128]
@@ -88,9 +125,9 @@ class Bridge:
             nonlocal seq
             if not text:
                 return
-            for off in range(0, len(text), 4000):
+            for off in range(0, len(text), 1000):
                 self.post("chunk", {"id": job_id, "seq": seq, "kind": kind,
-                                    "text": text[off:off + 4000]})
+                                    "text": text[off:off + 1000]})
                 seq += 1
 
         try:
