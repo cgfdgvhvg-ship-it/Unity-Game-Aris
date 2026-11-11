@@ -163,4 +163,47 @@ print("apk_denied_mentions="+str(count))
 print("apk_denied_family="+family)
 print("apk_editor_csharp_errors="+str(min(999,len(re.findall(r"error CS\d{4}",tail(private_logs["editor"]),re.I)))))
 print("apk_error_class="+classify())
+# Separate broad crash/startup classifications from C# errors. The full Unity
+# log stays on the authorized Codespace; only fixed diagnostic labels leave it.
+def native_diagnostic():
+    sources = {name: tail(root/filename) for name,filename in (
+        ("editor", "private-editor.log"),
+        ("stdout", "private-stdout.log"),
+        ("stderr", "private-stderr.log"),
+    )}
+    patterns=[
+        ("sigsegv", r"SIGSEGV|signal 11|segmentation fault|crash handler"),
+        ("sigabrt", r"SIGABRT|signal 6|abort signal|Assertion failed"),
+        ("killed_oom", r"out of memory|oom-killer|cannot allocate memory|Killed process"),
+        ("native_crash", r"fatal error in|native crash|unity crashed|crash dump|mono crash"),
+        ("license_failure", r"license.{0,80}(failed|invalid|not found|expired|activation)"),
+        ("package_failure", r"package manager.{0,100}(error|failed)|failed to resolve packages|upm.{0,100}error"),
+        ("import_failure", r"asset import.{0,100}(failed|error)|import worker.{0,100}(crash|error)|importing asset failed"),
+        ("assembly_failure", r"assembly[- ]csharp|compilation failed|all compiler errors have to be fixed|scripts have compiler errors"),
+        ("execute_method_missing", r"executeMethod.{0,100}(not found|could not|failed)|Unable to find method"),
+        ("build_pipeline_failure", r"ANDROID_BUILD_PIPELINE_FAILED|Build completed with a result of 'Failed'|BuildPipeline.BuildPlayer failed"),
+        ("gradle_failure", r"Gradle build failed|gradle.{0,90}(exception|failed)|Execution failed for task"),
+        ("permission_denied", r"permission denied|unauthorizedaccessexception|access to the path.{0,80}denied"),
+        ("headless_graphics", r"failed to create graphics device|unable to initialize graphics|failed to initialize graphics|no matching fbconfigs"),
+        ("missing_dependency", r"error while loading shared libraries|lib.{0,50}not found|dllnotfoundexception"),
+        ("unity_terminated", r"exiting batchmode|batchmode quit|shutting down Unity"),
+        ("unity_build_invoked", r"AARIS_TERRAIN_ANDROID_PREFLIGHT|AARIS_ANDROID_APK_NATIVE_BUILD"),
+    ]
+    editor=sources["editor"]
+    print("apk_stdout_log_bytes="+str(size(root/"private-stdout.log")))
+    print("apk_stderr_log_bytes="+str(size(root/"private-stderr.log")))
+    for label,pattern in patterns:
+        matches={name: len(re.findall(pattern,body,re.I)) for name,body in sources.items()}
+        print("apk_diag_"+label+"="+str(min(99,sum(matches.values()))))
+    # Native-log stage markers prove which phase Unity reached, without quoting logs.
+    stage=[
+      ("apk_editor_method_reached", r"AARIS_TERRAIN_ANDROID_PREFLIGHT|AARIS_ANDROID_APK_NATIVE_BUILD"),
+      ("apk_editor_loading", r"Loading project|Loading package|Importing Assets|AssetImport"),
+      ("apk_editor_compiling", r"Compiling|CompileAssembly|bee_backend|Scripts compilation"),
+      ("apk_editor_shaders", r"ShaderCompiler|shader variants|Shader compiler"),
+      ("apk_editor_gradle", r"Gradle|AndroidPlayer|il2cpp"),
+    ]
+    for label,pattern in stage:
+        print(label+"="+("yes" if re.search(pattern,editor,re.I) else "no"))
+native_diagnostic()
 PY
