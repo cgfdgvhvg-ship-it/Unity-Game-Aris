@@ -204,3 +204,106 @@ after 24 hours. Expired unstarted commands are also pruned; active commands
 are never pruned mid-run. Cleanup checks are throttled to hourly intervals
 and require a valid authenticated agent ping. Avoid sensitive on-screen content
 and never publish base64 frames to GitHub issues or Actions logs.
+
+## AUTHORITATIVE FRESH CODESPACE REDEPLOYMENT (same private terminal and screen in any new account)
+
+If user says the old Codespace has exhausted quota, do NOT try to revive it. The
+agent in a new Codespace requires its own token; the Cloudflare Worker and
+Durable Object namespace are reused across all Codespaces and accounts.
+
+### Actual one-time sequence
+
+1. **GitHub account authorization:** On user's Termux run the canonical
+   `Tools/Codespaces/termux_switch.sh` once. It uses GitHub's official browser
+   login, stores the two account profiles in the phone's private config,
+   replaces repo Actions secret `CODESPACE_PAT` with the selected Codespaces
+   account's token, and dispatches **one** `aaris-turbo-bootstrap.yml`.
+   Already authenticated with the right account? `bash "$HOME/aaris-switch.sh" --resume`.
+   The ChatGPT GitHub connector may directly dispatch the owner workflow if
+   account credentials are already configured. No token is ever pasted in chat.
+2. **Start/select new Codespace:** The workflow uses the currently selected
+   account to list Codespaces, reuses a uniquely eligible instance, or
+   creates one lightweight Ubuntu SSH Codespace if no instance exists
+   (`.devcontainer/minimal-ubuntu/devcontainer.json`). Ambiguous results
+   require the **exact machine name**; never guess. Wait until the machine
+   actually reports `Available`, not just `Created` or `Provisioning`.
+3. **Worker connection/authorization:** Existing JavaScript Worker code
+   `Tools/Turbo/worker.mjs` is **already deployed to Cloudflare** as
+   `aaris-turbo-terminal`, with Durable Object class `TurboMachine`.
+   **Do not install Node.js/npm in the Codespace just for the Worker.**
+   Its code runs on Cloudflare; the Codespace runs the **Python** agent.
+   GitHub Actions sends a signed OIDC JWT with audience
+   `aaris-turbo-bootstrap-v1` to the Worker's `POST /bootstrap` endpoint.
+   The Worker authenticates the GitHub repository/actor/workflow and issues
+   an expiring machine-scoped secret. The workflow transfers it only via
+   authenticated SSH; no public access URL for arbitrary shell commands.
+4. **Private files placed in Codespace:**
+
+   | Private destination | Trusted GitHub source | Runtime dependency |
+   | --- | --- | --- |
+   | `~/.local/share/aaris-turbo/agent.py` | `Tools/Turbo/agent.py` | Python 3 built-in libraries, no pip |
+   | `~/.local/share/aaris-turbo/gui.py` | `Tools/Turbo/gui_agent.py` | Python Pillow plus Xvfb/X11 capture |
+   | `~/.local/share/aaris-turbo/gui_setup.sh` | `Tools/Turbo/gui_setup.sh` | sudo + apt for optional GUI packages |
+   | `~/.config/aaris-turbo/token` | OIDC bootstrap result | mode 0600, never print |
+   | `~/.config/aaris-turbo/endpoint` | OIDC bootstrap result | machine-specific endpoint |
+   | `~/.config/aaris-turbo/expires_at` | OIDC bootstrap result | seven-day token expiry |
+
+   The SSH installer `Tools/Turbo/remote_install.sh` checks Python syntax
+   and self-tests, installs these files, starts detached `agent.py` via
+   `nohup`, checks process status and **proves authenticated Cloudflare ping**.
+   The agent uses Python imports `urllib.request`, `urllib.error`,
+   `json`, `base64`, `subprocess`, `selectors`, `threading`,
+   `pathlib`, etc. These are already in Python 3's standard library.
+   The GUI helper additionally needs `from PIL import Image, ImageDraw`.
+   On Ubuntu `gui_setup.sh` runs `apt-get install --no-install-recommends
+   xvfb fluxbox scrot xdotool xterm xclip python3-pil` only when needed.
+   No FastMCP, public tunnel, WebRTC server, pip dependency, or separate
+   Cloudflare API key is required for the existing bridge.
+5. **Verify terminal end-to-end, without further GitHub Actions:** Look for
+   `TURBO_CLOUDFLARE_HANDSHAKE_PASS` in the bootstrap run, then use
+   ChatGPT's connected Cloudflare **private management API** to query the
+   registry; check a recently updated `last_seen` field. Send command
+   `["pwd"]` to `machine:<exact_name>` by the SQL query/v2 instructions
+   above, then a second command
+   `["python3","-c","print('AARIS_E2E_PASS')"]`. Demand actual stdout
+   and `exit_code=0`; **queued is not completed**.
+6. **Verify screen end-to-end over same private channel:** When GUI
+   dependencies finish, send via the terminal bridge
+   `["bash","-lc","python3 \"$HOME/.local/share/aaris-turbo/gui.py\" look --fast"]`.
+   Read the ordered `chunks` rows from Cloudflare in small batches, join
+   stdout, extract `AARIS_GUI_FRAME_BASE64`, and verify
+   `AARIS_GUI_FRAME_COMPLETE` and `exit_code=0`. Decode the JPEG privately
+   using a supported image rendering tool; never post the base64 to public
+   GitHub issues. Then send a `click 300 200 --fast` command and verify
+   the cursor moved in the next frame. Full `look` gives up to 1280x720;
+   fast preview typically gives 800x450. Coordinate mapping automatically
+   scales from most recent preview to the underlying X11 screen.
+7. **Restart without repeating installation:** The updated minimal devcontainer
+   runs `Tools/Turbo/ensure_agent.sh` at startup. If unexpired credentials
+   are still stored locally, the agent resumes without GitHub Actions.
+   Otherwise one owner-authenticated bootstrap is needed.
+8. **Unity GAME is additional setup:** A minimal Ubuntu Codespace may not
+   have Unity Editor, 6000.3.26f1 licensing, Git LFS hydrated large binaries,
+   Android SDK/NDK/JDK, or a running game scene. To claim "whole project
+   migrated," validate those independently and safely with actual Unity
+   logs/screenshots; preserve dirty work and the currently running APK build.
+
+### If the next AI sees a half-finished setup
+
+- `Created` / `Provisioning` but not `Available`: report GitHub startup
+  state and quota; don't spawn more machines without need.
+- `Available` but no fresh Cloudflare heartbeat: inspect agent process,
+  token expiry/ownership and one OIDC bootstrap. If Cloudflare responds
+  HTML 403 to Python urllib, use the reviewed `User-Agent: Mozilla/5.0`
+  handling from `Tools/Turbo/agent.py`, not anonymous access.
+- Terminal works, screenshots fail: run a **private** environment check
+  for `Xvfb`, `scrot`, `xdotool` and `python3 -c 'from PIL import Image'`;
+  install `gui_setup.sh` once if dependencies are missing. The Python
+  screenshot helper runs under an Xvfb `:99` virtual desktop or an
+  existing verified DISPLAY; do not confuse that with Unity Editor.
+- GUI works, Unity map not visible: inspect Editor installation, license,
+  source scene `Assets/TerrainDemoScene_URP/Scenes/TerrainDemoScene.unity`,
+  Git LFS assets and renderer separately. Do not claim success from Xterm.
+- Connected GitHub/Cloudflare apps missing in a later chat: explain the
+  need to connect them; `AGENTS.md` is documentation, not automatic
+  persistent permissions or background execution.
