@@ -89,28 +89,36 @@ for ATTEMPT in 1 2; do
   SSH_PID=$!
   set -e
   OPENED=0
+  echo 'CLOUDFLARE_STARTING_REMOTE_WRANGLER_LOGIN'
   for LOGIN_CHECK in $(seq 1 900); do
     if ! kill -0 "$SSH_PID" 2>/dev/null; then break; fi
     if ((LOGIN_AGAIN==0 && OPENED==0)); then
-      # The *plain* /oauth2/device page is not a valid approval request.
-      # Open only the complete URL containing Wrangler's one-time code.
-      LOGIN_LINK="$(grep -Eo 'https://dash\.cloudflare\.com/oauth2/device\?user_code=[A-Za-z0-9_-]+' "$TMP/deploy.log" | tail -n 1 || true)"
-      if [[ -z "$LOGIN_LINK" ]]; then
-        # Wrangler --browser=false can print a bare device URL followed
-        # separately by 'and enter the code:' and the one-time code.
-        DEVICE_CODE="$(sed -n '/and enter the code:/{n;s/^[[:space:]]*//;s/[[:space:]]*$//;p;}' "$TMP/deploy.log" | tail -n 1)"
-        if [[ "$DEVICE_CODE" =~ ^[A-Za-z0-9_-]{6,20}$ ]]; then
+      # Open the actual official verification URL Wrangler prints.
+      LOGIN_LINK="$(grep -Eo 'https://dash\.cloudflare\.com/oauth2/device(/verify)?(\?user_code=[A-Za-z0-9_-]+)?' "$TMP/deploy.log" | tail -n 1 || true)"
+      DEVICE_CODE="$(sed -n '/and enter the code:/{n;s/^[[:space:]]*//;s/[[:space:]]*$//;p;}' "$TMP/deploy.log" | tail -n 1)"
+      if [[ "$LOGIN_LINK" == *'?user_code='* ]]; then
+        DEVICE_CODE="$(printf '%s' "$LOGIN_LINK" | sed 's/^.*user_code=//')"
+      fi
+      if [[ "$DEVICE_CODE" =~ ^[A-Za-z0-9_-]{6,20}$ && "$LOGIN_LINK" =~ ^https://dash\.cloudflare\.com/oauth2/device(/verify)?(\?user_code=[A-Za-z0-9_-]+)?$ ]]; then
+        if [[ "$LOGIN_LINK" == 'https://dash.cloudflare.com/oauth2/device' ]]; then
           LOGIN_LINK="https://dash.cloudflare.com/oauth2/device?user_code=$DEVICE_CODE"
         fi
-      fi
-      if [[ -n "$LOGIN_LINK" ]]; then
-        echo "Open official Cloudflare login and approve the device code:"
-        echo "$LOGIN_LINK"
+        echo 'CLOUDFLARE_LOGIN_READY: approve this device code now'
+        echo "Device code: $DEVICE_CODE"
+        echo "Official URL: $LOGIN_LINK"
+        if command -v termux-clipboard-set >/dev/null 2>&1; then
+          if printf '%s' "$DEVICE_CODE" | timeout 5 termux-clipboard-set >/dev/null 2>&1; then
+            echo 'Device code copied to clipboard.'
+          fi
+        fi
         if command -v termux-open-url >/dev/null 2>&1; then
           termux-open-url "$LOGIN_LINK" || true
         fi
         OPENED=1
       fi
+    fi
+    if ((LOGIN_CHECK % 30 == 0)); then
+      echo 'CLOUDFLARE_REMOTE_LOGIN_OR_DEPLOY_IN_PROGRESS'
     fi
     sleep 1
   done
