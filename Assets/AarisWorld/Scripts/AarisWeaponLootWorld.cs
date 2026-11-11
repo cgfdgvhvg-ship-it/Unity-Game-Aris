@@ -41,8 +41,8 @@ namespace Aaris.MapReview
     [DisallowMultipleComponent, DefaultExecutionOrder(-80)]
     public sealed class AarisWeaponLootWorld : MonoBehaviour
     {
-        private const float ActivationMetres = 42f; // below the 55m collider streaming radius
-        private const float ReleaseMetres = 69f;
+        private const float ActivationMetres = 48f; // below the 55m collider streaming radius
+        private const float ReleaseMetres = 75f;
         private const int MaximumActiveLoot = 40;
         private const int StreamFramesPerRefresh = 3;
         private const int MaximumBuildAttemptsPerFrame = 2;
@@ -288,16 +288,25 @@ namespace Aaris.MapReview
             int hits = Physics.RaycastNonAlloc(new Ray(start, Vector3.down),
                 candidateFloorHits, 3.3f, Physics.DefaultRaycastLayers,
                 QueryTriggerInteraction.Ignore);
-            if (hits >= candidateFloorHits.Length) return false;
+            RaycastHit[] floors = candidateFloorHits;
+            if (hits >= candidateFloorHits.Length)
+            {
+                // Only dense scenes use the allocating full query.
+                floors = Physics.RaycastAll(new Ray(start, Vector3.down),
+                    3.3f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                hits = floors.Length;
+            }
             RaycastHit floor = default(RaycastHit);
             bool foundFloor = false;
             float closestHeight = .85f;
             for (int i = 0; i < hits; i++)
             {
-                RaycastHit candidate = candidateFloorHits[i];
+                RaycastHit candidate = floors[i];
                 if (candidate.collider == null ||
-                    candidate.normal.y < (indoor ? .966f : .970f) ||
-                    (!indoor && !(candidate.collider is TerrainCollider)))
+                    candidate.normal.y < (indoor ? .966f : .94f) ||
+                    (!indoor && !(candidate.collider is TerrainCollider) &&
+                     (candidate.collider.attachedRigidbody != null ||
+                      Mathf.Abs(candidate.point.y - expectedGround) > .35f)))
                     continue;
                 float difference = Mathf.Abs(candidate.point.y - expectedGround);
                 if (difference >= closestHeight) continue;
@@ -318,11 +327,8 @@ namespace Aaris.MapReview
                 if (roof.collider is TerrainCollider) return false;
                 if (roof.distance < 1.05f) return false; // unusably low roof
             }
-            else if (!(floor.collider is TerrainCollider))
-            {
-                // An outdoor loot entry must never turn into roof loot.
-                return false;
-            }
+            // Outdoor static mesh floors must be within 35cm of the sampled
+            // terrain, excluding elevated roof loot and moving props.
 
             Vector3 center = floor.point + Vector3.up * 0.43f;
             if (Physics.CheckCapsule(center + Vector3.down * .05f,
