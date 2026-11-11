@@ -16,9 +16,6 @@ on:
       - "Tools/Codespaces/termux_switch.sh"
 permissions:
   contents: read
-concurrency:
-  group: aaris-turbo-bootstrap
-  cancel-in-progress: false
 jobs:
   static-check:
     if: github.event_name == 'pull_request'
@@ -81,6 +78,9 @@ jobs:
           PY
           echo "TURBO_LIVE_CLOUDFLARE_AUTH_REJECTION_PASS"
   bootstrap:
+    concurrency:
+      group: aaris-turbo-bootstrap
+      cancel-in-progress: false
     if: >-
       (github.event_name == 'workflow_dispatch' &&
        github.actor == 'sundamunda289-art') ||
