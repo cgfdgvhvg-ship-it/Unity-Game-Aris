@@ -116,7 +116,9 @@ def run():
     assert "private bool CanReachPickup(AarisWeaponPickup pickup)" in world
     assert "Physics.RaycastNonAlloc(new Ray(eye, toTarget / distance)" in world
     assert "CanReachPickup(pickup)" in world
-    assert "if (hits >= pickupObstructions.Length) return false;" in world
+    assert "if (hits >= pickupObstructions.Length)" in world
+    assert "sightHits = Physics.RaycastAll(" in world
+    assert "var collider = sightHits[i].collider;" in world
     assert "SetWeaponAimFov" in player and "ApplyWeaponRecoil" in player
     assert "AarisWeaponHUD.CapturesScreenPosition" in player
     assert "MaximumActiveLoot = 40" in world
