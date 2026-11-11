@@ -16,6 +16,9 @@ on:
       - "Tools/Codespaces/termux_switch.sh"
 permissions:
   contents: read
+env:
+  # Public non-secret URL. Updated only after the alternate Worker passes health checks.
+  AARIS_BROKER: ${{ vars.AARIS_BROKER_URL || 'https://aaris-turbo-terminal.aaris-game-control-6f9c.workers.dev' }}
 jobs:
   static-check:
     if: github.event_name == 'pull_request'
@@ -35,6 +38,18 @@ jobs:
           python3 Tools/Turbo/gui_agent.py --selftest
           bash -n Tools/Turbo/ensure_agent.sh
           bash -n Tools/Codespaces/termux_switch.sh
+          bash -n Tools/Codespaces/termux_cloudflare_switch.sh
+          bash -n Tools/Turbo/cloudflare_account_switch_linux.sh
+          python3 -m json.tool Tools/Turbo/wrangler.jsonc >/dev/null
+          python3 - <<'PYCONFIG'
+          import json
+          config=json.load(open('Tools/Turbo/wrangler.jsonc'))
+          assert config['main']=='./worker.mjs'
+          assert config['durable_objects']['bindings']==[{'name':'MACHINES','class_name':'TurboMachine'}]
+          assert config['migrations'][0]['new_sqlite_classes']==['TurboMachine']
+          assert 'account_id' not in config
+          print('AARIS_CF_SWITCH_DEPLOY_CONFIG_PASS')
+          PYCONFIG
           python3 -m py_compile Tools/Turbo/agent.py
           python3 Tools/Turbo/agent.py --selftest
           python3 Tools/Turbo/select_machine.py --selftest
@@ -56,7 +71,8 @@ jobs:
       - name: Real Cloudflare HTTP smoke / reject unauthenticated commands
         run: |
           set -euo pipefail
-          URL=https://aaris-turbo-terminal.aaris-game-control-6f9c.workers.dev
+          URL="$AARIS_BROKER"
+          [[ "$URL" =~ ^https://[a-z0-9.-]+\.workers\.dev$ ]] || { echo 'TURBO_INVALID_BROKER_URL'; exit 20; }
           curl --fail --silent --show-error --retry 3 --max-time 15 \
             "$URL/health" > "$RUNNER_TEMP/turbo-health.json"
           python3 - "$RUNNER_TEMP/turbo-health.json" <<'PY'
@@ -105,7 +121,6 @@ jobs:
       GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
       ISSUE_BODY: ${{ github.event_name == 'issue_comment' && github.event.comment.body || '' }}
       INPUT_MACHINE: ${{ inputs.machine || '' }}
-      AARIS_BROKER: https://aaris-turbo-terminal.aaris-game-control-6f9c.workers.dev
     steps:
       - uses: actions/checkout@v4
         with:
