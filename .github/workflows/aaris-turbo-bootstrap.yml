@@ -126,23 +126,34 @@ jobs:
           [[ "$NAME" =~ ^[A-Za-z0-9][A-Za-z0-9-]{2,119}$ ]] || exit 12
           echo "CODESPACE=$NAME" >> "$GITHUB_ENV"
           echo "TURBO_MACHINE_SELECTED"
-      - name: Start only if stopped; never create, reset or clean workspace
+      - name: Reconcile lifecycle: shutting down must finish before start
         run: |
           set -euo pipefail
           STATE="$(gh codespace view -c "$CODESPACE" --json state --jq .state)"
-          # This is only a non-sensitive GitHub lifecycle classification.
-          printf 'TURBO_OBSERVED_STATE=%s\n' "$STATE"
-          if test "$STATE" != Available; then
-            case "$STATE" in
-              Shutdown|Stopped)
-                gh api -X POST "/user/codespaces/$CODESPACE/start" >/dev/null
-                echo "TURBO_CODESPACE_START_REQUESTED"
-                ;;
-              Starting|Queued|Provisioning|Rebuilding|ShuttingDown) echo "TURBO_CODESPACE_ALREADY_STARTING" ;;
-              *) echo "TURBO_CODESPACE_UNSAFE_STATE"; exit 15 ;;
-            esac
+          printf 'TURBO_INITIAL_STATE=%s\n' "$STATE"
+          # Do not confuse a machine still shutting down with a machine starting.
+          if test "$STATE" = ShuttingDown; then
+            for i in $(seq 1 30); do
+              sleep 6
+              STATE="$(gh codespace view -c "$CODESPACE" --json state --jq .state 2>/dev/null || true)"
+              case "$STATE" in
+                ShuttingDown) continue ;;
+                Shutdown|Stopped|Available|Starting|Queued|Provisioning|Rebuilding) break ;;
+                *) echo "TURBO_UNSAFE_LIFECYCLE_AFTER_SHUTDOWN"; exit 17 ;;
+              esac
+            done
           fi
-          for i in $(seq 1 40); do
+          case "$STATE" in
+            Available) echo "TURBO_CODESPACE_ALREADY_READY" ;;
+            Shutdown|Stopped)
+              gh api -X POST "/user/codespaces/$CODESPACE/start" >/dev/null
+              echo "TURBO_CODESPACE_START_REQUESTED"
+              ;;
+            Starting|Queued|Provisioning|Rebuilding) echo "TURBO_CODESPACE_START_IN_PROGRESS" ;;
+            ShuttingDown) echo "TURBO_CODESPACE_SHUTDOWN_STUCK"; exit 18 ;;
+            *) echo "TURBO_CODESPACE_UNSAFE_STATE"; exit 15 ;;
+          esac
+          for i in $(seq 1 36); do
             STATE="$(gh codespace view -c "$CODESPACE" --json state --jq .state 2>/dev/null || true)"
             if test "$STATE" = Available; then break; fi
             sleep 10
