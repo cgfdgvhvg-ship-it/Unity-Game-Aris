@@ -55,6 +55,29 @@ async function sha256(s) {
   return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
     b => b.toString(16).padStart(2, "0")).join("");
 }
+
+function constantTimeEqual(a,b) {
+  if (typeof a !== "string" || typeof b !== "string" || a.length !== b.length) return false;
+  let diff=0;for(let i=0;i<a.length;i++)diff |= a.charCodeAt(i)^b.charCodeAt(i);
+  return diff===0;
+}
+function redactViewerText(value) {
+  let s=String(value||"").slice(0,1800);
+  s=s.replace(/github_pat_[A-Za-z0-9_]+|ghp_[A-Za-z0-9_]+|sk-[A-Za-z0-9_-]{12,}/g,"[redacted]");
+  s=s.replace(/(Bearer\s+)[A-Za-z0-9._-]+/gi,"$1[redacted]");
+  s=s.replace(/((?:token|password|secret|api_key)\s*[=:]\s*)[^\s"'&]+/gi,"$1[redacted]");
+  return s;
+}
+function viewerCommandLabel(argvJson,id) {
+  if (id.startsWith("watch_")) return "GUI • watch snapshot";
+  try {
+    const a=JSON.parse(argvJson);
+    if(!Array.isArray(a))return "command";
+    if(a.some(x=>typeof x==="string" && (x.includes("gui.py")||x.includes("gui_agent.py"))))
+      return "GUI • screenshot or mouse/keyboard";
+    return redactViewerText(a.map(x=>String(x).slice(0,220)).join(" ")).slice(0,300);
+  } catch (_) {return "command";}
+}
 export class TurboMachine {
   constructor(ctx, env) {
     this.ctx = ctx;
@@ -65,6 +88,7 @@ export class TurboMachine {
     sql.exec("CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY, argv_json TEXT NOT NULL, cwd TEXT NOT NULL DEFAULT '/workspaces', max_seconds INTEGER NOT NULL DEFAULT 120, expires_at INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'queued', created_at INTEGER NOT NULL DEFAULT (unixepoch()), started_at INTEGER, finished_at INTEGER, exit_code INTEGER, error TEXT)");
     sql.exec("CREATE TABLE IF NOT EXISTS chunks (command_id TEXT NOT NULL, seq INTEGER NOT NULL, kind TEXT NOT NULL, text TEXT NOT NULL, ts INTEGER NOT NULL DEFAULT (unixepoch()), PRIMARY KEY (command_id, seq))");
     sql.exec("CREATE INDEX IF NOT EXISTS chunks_command ON chunks (command_id, seq)");
+    sql.exec("CREATE TABLE IF NOT EXISTS viewer_frame (id INTEGER PRIMARY KEY, command_id TEXT NOT NULL, base64 TEXT NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL, mode TEXT NOT NULL, updated_at INTEGER NOT NULL)");
   }
   async fetch(req) {
     const path = new URL(req.url).pathname;
@@ -81,6 +105,74 @@ export class TurboMachine {
       if (!validMachine(data.name)) return json({error:"name"}, 400);
       this.ctx.storage.sql.exec("INSERT INTO machines(name,last_seen,stage) VALUES(?,unixepoch(),?) ON CONFLICT(name) DO UPDATE SET last_seen=unixepoch(),stage=excluded.stage", data.name, data.stage === "connected" ? "connected" : "bootstrapped");
       return json({ok:true});
+    }
+
+    // Internal Durable Object routes are only reached through the authenticated Worker.
+    if (path === "/internal/watch/registry" && req.method === "GET") {
+      const machines=Array.from(this.ctx.storage.sql.exec(
+        "SELECT name,stage,last_seen FROM machines ORDER BY last_seen DESC LIMIT 30"));
+      return json({machines});
+    }
+    if (path === "/internal/watch/state" && req.method === "GET") {
+      const sql=this.ctx.storage.sql;
+      const now=Math.floor(Date.now()/1000);
+      const heartbeat=Array.from(sql.exec("SELECT value FROM config WHERE key='last_seen'"));
+      const last=heartbeat.length?Number(heartbeat[0].value):0;
+      const expires=Array.from(sql.exec("SELECT value FROM config WHERE key='token_expires'"));
+      const live=last>0 && now-last<=90 && expires.length>0 && Number(expires[0].value)>now;
+      const frames=Array.from(sql.exec("SELECT command_id,width,height,mode,updated_at FROM viewer_frame WHERE id=1"));
+      const recent=Array.from(sql.exec(
+        "SELECT id,argv_json,status,exit_code,created_at FROM commands ORDER BY created_at DESC,id DESC LIMIT 20"));
+      const outputs=Array.from(sql.exec(
+        "SELECT c.id,ch.kind,substr(ch.text,1,900) AS content FROM chunks ch JOIN commands c ON c.id=ch.command_id WHERE c.id IN (SELECT id FROM commands ORDER BY created_at DESC,id DESC LIMIT 20) AND instr(c.argv_json,'gui.py')=0 AND instr(c.argv_json,'gui_agent.py')=0 AND c.id NOT LIKE 'watch_%' AND length(ch.text)<1200 ORDER BY c.created_at DESC,ch.seq DESC LIMIT 65"));
+      const logMap=new Map();
+      for(const r of outputs.reverse()){
+        const prev=logMap.get(r.id)||"";
+        if(prev.length<1800)logMap.set(r.id,(prev+(r.kind==="stderr"?"[stderr] ":"")+r.content).slice(-1800));
+      }
+      return json({live,heartbeat_age:last?now-last:null,frame:frames.length?
+        {id:frames[0].command_id,width:frames[0].width,height:frames[0].height,
+          updated_at:frames[0].updated_at,mode:frames[0].mode}:null,
+        jobs:recent.map(r=>({id:r.id,command:viewerCommandLabel(r.argv_json,r.id),
+          status:r.status,exit_code:r.exit_code,created_at:r.created_at,
+          output:redactViewerText(logMap.get(r.id)||"").slice(-1500)}))});
+    }
+    if (path === "/internal/watch/frame" && req.method === "GET") {
+      const id=new URL(req.url).searchParams.get("id");
+      const frames=Array.from(this.ctx.storage.sql.exec(
+        "SELECT command_id,base64 FROM viewer_frame WHERE id=1"));
+      if(!frames.length || id!==frames[0].command_id)return json({error:"not_found"},404);
+      if(frames[0].base64.length>195000)return json({error:"invalid_frame"},500);
+      return new Response(decodeB64(frames[0].base64),{headers:{
+        "content-type":"image/jpeg","cache-control":"private, no-store",
+        "x-content-type-options":"nosniff"}});
+    }
+    if (path === "/internal/watch/capture" && req.method === "POST") {
+      const d=await req.json();
+      const sql=this.ctx.storage.sql;
+      const mode=d.quality==="full"?"full":"fast";
+      const now=Math.floor(Date.now()/1000);
+      const seen=Array.from(sql.exec("SELECT value FROM config WHERE key='last_seen'"));
+      const last=seen.length?Number(seen[0].value):0;
+      if (!last || now-last>90)return json({scheduled:false,reason:"offline"});
+      const pending=Array.from(sql.exec(
+        "SELECT id FROM commands WHERE id LIKE 'watch_%' AND ((status='queued' AND expires_at>unixepoch()) OR (status='running' AND started_at>unixepoch()-120)) LIMIT 1"));
+      if(pending.length)return json({scheduled:false,reason:"already_pending",id:pending[0].id});
+      const requested=Array.from(sql.exec("SELECT value FROM config WHERE key='watch_requested'"));
+      const since=requested.length?now-Number(requested[0].value):999;
+      if(since<3)return json({scheduled:false,reason:"cooldown"});
+      const previous=Array.from(sql.exec("SELECT updated_at,mode FROM viewer_frame WHERE id=1"));
+      if(!d.force && previous.length && now-previous[0].updated_at<3 &&
+         previous[0].mode===mode)return json({scheduled:false,reason:"fresh_frame"});
+      const lastCwd=Array.from(sql.exec(
+        "SELECT cwd FROM commands WHERE cwd LIKE '/workspaces/%' ORDER BY created_at DESC LIMIT 1"));
+      const cwd=lastCwd.length?lastCwd[0].cwd:"/workspaces/Unity-Game-Aris";
+      const id="watch_"+crypto.randomUUID().replace(/-/g,"");
+      const shell="python3 \"$HOME/.local/share/aaris-turbo/gui.py\" look"+(mode==="fast"?" --fast":"");
+      sql.exec("INSERT INTO commands(id,argv_json,cwd,max_seconds,expires_at,status) VALUES(?,?,?,?,unixepoch()+180,'queued')",
+        id,JSON.stringify(["bash","-lc",shell]),cwd,90);
+      sql.exec("INSERT INTO config(key,value) VALUES('watch_requested',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",String(now));
+      return json({scheduled:true,id});
     }
     if (!path.startsWith("/agent/") || req.method !== "POST") return json({error:"not_found"},404);
     const token = (req.headers.get("authorization") || "").replace(/^Bearer /, "");
@@ -122,6 +214,24 @@ export class TurboMachine {
     if (path === "/agent/done") {
       const d=await req.json();
       if (typeof d.id !=="string" || d.id.length>128 || !Number.isInteger(d.exit_code) || d.exit_code< -255 || d.exit_code>255) return json({error:"done"},400);
+      const record=Array.from(sql.exec(
+        "SELECT argv_json,status FROM commands WHERE id=?",d.id));
+      if(record.length && record[0].status==="running" && d.exit_code===0 &&
+          (record[0].argv_json.includes("gui.py")||record[0].argv_json.includes("gui_agent.py"))) {
+        const chunks=Array.from(sql.exec(
+          "SELECT text FROM chunks WHERE command_id=? AND kind='stdout' ORDER BY seq LIMIT 100",d.id));
+        const payload=chunks.map(x=>x.text).join("").slice(0,175000);
+        const b64=payload.match(/AARIS_GUI_FRAME_BASE64=([A-Za-z0-9+/=]+)\s+AARIS_GUI_FRAME_COMPLETE/);
+        const size=payload.match(/AARIS_GUI_FRAME_SIZE=(\d{3,4})x(\d{3,4})/);
+        const mode=payload.match(/AARIS_GUI_FRAME_MODE=(fast|full)/);
+        if(b64 && size && b64[1].length>100 && b64[1].length<150000) {
+          const width=Number(size[1]),height=Number(size[2]);
+          if(width<=1920 && height<=1080 && width>=100 && height>=100){
+            sql.exec("INSERT INTO viewer_frame(id,command_id,base64,width,height,mode,updated_at) VALUES(1,?,?,?,?,?,unixepoch()) ON CONFLICT(id) DO UPDATE SET command_id=excluded.command_id,base64=excluded.base64,width=excluded.width,height=excluded.height,mode=excluded.mode,updated_at=excluded.updated_at",
+              d.id,b64[1],width,height,mode?.[1]||"full");
+          }
+        }
+      }
       sql.exec("UPDATE commands SET status=?,exit_code=?,finished_at=unixepoch(),error=? WHERE id=? AND status='running'",
         d.exit_code===0?"completed":"failed",d.exit_code,
         typeof d.error==="string"?d.error.slice(0,100):"",d.id);
