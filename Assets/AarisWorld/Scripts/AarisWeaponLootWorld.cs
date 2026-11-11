@@ -355,10 +355,19 @@ namespace Aaris.MapReview
             int hits = Physics.RaycastNonAlloc(new Ray(eye, toTarget / distance),
                 pickupObstructions, distance,
                 Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
-            if (hits >= pickupObstructions.Length) return false;
+            RaycastHit[] sightHits = pickupObstructions;
+            if (hits >= pickupObstructions.Length)
+            {
+                // A truncated ray can omit the wall in front of the loot.
+                // Keep full occlusion checks, but allocate only on saturation.
+                sightHits = Physics.RaycastAll(new Ray(eye, toTarget / distance),
+                    distance, Physics.DefaultRaycastLayers,
+                    QueryTriggerInteraction.Ignore);
+                hits = sightHits.Length;
+            }
             for (int i = 0; i < hits; i++)
             {
-                var collider = pickupObstructions[i].collider;
+                var collider = sightHits[i].collider;
                 if (collider == null || collider.transform.IsChildOf(player)) continue;
                 return false;
             }
@@ -440,13 +449,19 @@ namespace Aaris.MapReview
                 Ray ray = new Ray(place + Vector3.up * 1.6f, Vector3.down);
                 int count = Physics.RaycastNonAlloc(ray, dropFloorHits, 3.5f,
                     Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
-                if (count >= dropFloorHits.Length) continue;
+                RaycastHit[] floorHits = dropFloorHits;
+                if (count >= dropFloorHits.Length)
+                {
+                    floorHits = Physics.RaycastAll(ray, 3.5f,
+                        Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                    count = floorHits.Length;
+                }
                 float best = float.PositiveInfinity;
                 Collider floor = null;
                 Vector3 hitPoint = Vector3.zero;
                 for (int i = 0; i < count; i++)
                 {
-                    var hit = dropFloorHits[i];
+                    var hit = floorHits[i];
                     if (hit.collider == null ||
                         hit.collider.transform.IsChildOf(player) ||
                         hit.normal.y < 0.83f || hit.distance >= best ||
@@ -463,11 +478,19 @@ namespace Aaris.MapReview
                     middle + Vector3.down * .06f, middle + Vector3.up * .19f,
                     .22f, dropBlockers, Physics.DefaultRaycastLayers,
                     QueryTriggerInteraction.Ignore);
-                if (blockers >= dropBlockers.Length) continue;
+                Collider[] obstructionHits = dropBlockers;
+                if (blockers >= dropBlockers.Length)
+                {
+                    obstructionHits = Physics.OverlapCapsule(
+                        middle + Vector3.down * .06f, middle + Vector3.up * .19f,
+                        .22f, Physics.DefaultRaycastLayers,
+                        QueryTriggerInteraction.Ignore);
+                    blockers = obstructionHits.Length;
+                }
                 bool clear = true;
                 for (int i = 0; i < blockers; i++)
                 {
-                    var obstacle = dropBlockers[i];
+                    var obstacle = obstructionHits[i];
                     if (obstacle == null || obstacle == floor ||
                         obstacle.transform.IsChildOf(player)) continue;
                     clear = false;
