@@ -30,6 +30,7 @@ jobs:
         run: |
           set -euo pipefail
           bash -n Tools/Turbo/remote_install.sh
+          bash -n Tools/Turbo/ensure_agent.sh
           bash -n Tools/Codespaces/termux_switch.sh
           python3 -m py_compile Tools/Turbo/agent.py
           python3 Tools/Turbo/agent.py --selftest
@@ -216,10 +217,12 @@ jobs:
           set -euo pipefail
           AARIS_AGENT_TOKEN="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["token"])' "$RUNNER_TEMP/turbo-grant.json")"
           AARIS_ENDPOINT="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["endpoint"])' "$RUNNER_TEMP/turbo-grant.json")"
+          AARIS_AGENT_EXPIRES_AT="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["expires_at"])' "$RUNNER_TEMP/turbo-grant.json")"
           AARIS_AGENT_BASE64="$(base64 -w0 Tools/Turbo/agent.py)"
           {
             printf 'AARIS_AGENT_TOKEN=%q\n' "$AARIS_AGENT_TOKEN"
             printf 'AARIS_ENDPOINT=%q\n' "$AARIS_ENDPOINT"
+            printf 'AARIS_AGENT_EXPIRES_AT=%q\n' "$AARIS_AGENT_EXPIRES_AT"
             printf 'AARIS_AGENT_BASE64=%q\n' "$AARIS_AGENT_BASE64"
             cat Tools/Turbo/remote_install.sh
           } | timeout 240 gh codespace ssh -c "$CODESPACE" -- 'bash -s'
