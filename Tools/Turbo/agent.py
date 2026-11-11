@@ -129,9 +129,9 @@ class Bridge:
             nonlocal seq
             if not text:
                 return
-            for off in range(0, len(text), 1000):
+            for off in range(0, len(text), 3000):
                 self.post("chunk", {"id": job_id, "seq": seq, "kind": kind,
-                                    "text": text[off:off + 1000]})
+                                    "text": text[off:off + 3000]})
                 seq += 1
 
         try:
