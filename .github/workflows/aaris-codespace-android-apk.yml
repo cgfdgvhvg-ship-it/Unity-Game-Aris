@@ -1,5 +1,7 @@
 name: Aaris Android APK on existing Codespace to GitHub Release
 on:
+  push:
+    branches: [main]
   issue_comment:
     types: [created]
   workflow_dispatch:
@@ -16,6 +18,9 @@ permissions:
 jobs:
   codespace-android-apk:
     if: >-
+      (github.event_name == 'push' &&
+       github.actor == 'sundamunda289-art' &&
+       contains(github.event.head_commit.message, '[build-apk]')) ||
       (github.event_name == 'workflow_dispatch' &&
        github.actor == 'sundamunda289-art') ||
       (github.event_name == 'issue_comment' &&
@@ -36,9 +41,9 @@ jobs:
       issues: write
     env:
       GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
-      OPERATION: ${{ github.event_name == 'workflow_dispatch' && inputs.operation || (github.event.comment.body == 'APK HUD BUILD' && 'build_hud' || github.event.comment.body == 'APK BUILD' && 'build' || 'preflight') }}
-      # Build exactly the reviewed PR #302 gameplay + PR #306 source snapshot.
-      AARIS_EXPECTED_BUILD_SHA: 7b40f4def440b099d2f2be31449bb4b1e004dd3e
+      OPERATION: ${{ github.event_name == 'push' && 'build' || github.event_name == 'workflow_dispatch' && inputs.operation || (github.event.comment.body == 'APK HUD BUILD' && 'build_hud' || github.event.comment.body == 'APK BUILD' && 'build' || 'preflight') }}
+      # The run's immutable main commit supplies the game and its bundled audio.
+      AARIS_EXPECTED_BUILD_SHA: ${{ github.sha }}
       AARIS_CONTROLLER_SHA: ${{ github.sha }}
     steps:
       - name: Checkout exact latest main controller and APK builder
@@ -116,6 +121,10 @@ jobs:
           # Never execute untrusted Issue content as shell commands.
           # SSH does not inherit the Actions runner's environment. Pass the
           # fixed, 40-hex reviewed source SHA to the remote build explicitly.
+          if test "$OPERATION" = build_hud; then
+            AARIS_EXPECTED_BUILD_SHA="$(git ls-remote --exit-code "https://github.com/$GITHUB_REPOSITORY.git" \
+              refs/heads/fix/android-ugui-shader-parachute-20261110 | cut -f1)"
+          fi
           [[ "$AARIS_EXPECTED_BUILD_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 18
           timeout 16900 gh codespace ssh -c "$CODESPACE" -- "env AARIS_EXPECTED_BUILD_SHA=$AARIS_EXPECTED_BUILD_SHA bash -s -- $OPERATION" < Tools/Codespaces/android_apk.sh > apk-evidence/build-status.txt 2> "$RUNNER_TEMP/private-apk-build-ssh-errors.log" || {
             echo 'APK_NATIVE_CODESPACE_BUILD_FAILED'

@@ -117,6 +117,13 @@ namespace Aaris.MapReview.Editor
                         materials++;
                     }
                     Check(materials > 0, "Native tree materials loaded");
+                    var soundClips = Resources.LoadAll<AudioClip>("SFX");
+                    Check(soundClips.Length >= 43 && soundClips.All(clip =>
+                        clip.samples > 1000 && clip.channels == 1), "All 43 offline AudioClips load from Resources");
+                    var glooClip = soundClips.Single(clip => clip.name == "gloo_deploy");
+                    var waveform = new float[glooClip.samples];
+                    Check(glooClip.GetData(waveform, 0) && waveform.Any(sample => Mathf.Abs(sample) > 0.05f),
+                        "Gloo deployment clip contains audio samples");
                     if (SceneManager.GetActiveScene().path != Scene)
                         EditorSceneManager.OpenScene(Scene, OpenSceneMode.Single);
                     Check(SceneManager.GetActiveScene().path == Scene, "Native terrain scene open");
@@ -144,10 +151,39 @@ namespace Aaris.MapReview.Editor
                 Check(player.AimCamera != null, "Play Mode player and camera");
                 rig = visual.GetComponentInChildren<Animator>(true);
                 Check(rig != null && rig.isHuman, "Runtime Humanoid graph active");
-                player.transform.position = new Vector3(SessionState.GetFloat(Session + "X", 0), SessionState.GetFloat(Session + "Y", 0), SessionState.GetFloat(Session + "Z", 0));
+                var audio = player.GetComponent<AarisAudioDirector>();
+                var listener = player.AimCamera.GetComponent<AudioListener>();
+                Check(audio != null && audio.isActiveAndEnabled && listener != null && listener.isActiveAndEnabled &&
+                    Object.FindObjectsByType<AudioListener>(FindObjectsSortMode.None).Count(item => item.isActiveAndEnabled) == 1,
+                    "Gameplay has one active camera AudioListener and an audio director");
+                var audioRoot = (GameObject)typeof(AarisAudioDirector).GetField("audioRoot", Private).GetValue(audio);
+                var sources = audioRoot.GetComponentsInChildren<AudioSource>();
+                Check(sources.Length == 15, "Audio sources are pooled with 12 spatial voices and 3 loops");
+                bool Cue(string name) => sources.Any(source => source.clip != null && source.clip.name == name);
+                void TickAudio() => typeof(AarisAudioDirector).GetMethod("LateUpdate", Private).Invoke(audio, null);
                 var drop = player.GetComponent<AarisOfflineDrop>();
-                if (drop != null && !drop.HasLanded)
-                    typeof(AarisOfflineDrop).GetMethod("Land", Private).Invoke(drop, null);
+                Check(drop != null && drop.Phase == AarisOfflineDrop.DropPhase.InPlane, "Audio test starts in the airplane");
+                TickAudio();
+                Check(Cue("plane_engine_loop"), "Airplane starts its engine audio");
+                drop.OnAction();
+                TickAudio();
+                Check(drop.IsFreefall && Cue("jump_whoosh") && Cue("wind_rush_loop"), "Plane exit starts whoosh and freefall wind");
+                typeof(AarisOfflineDrop).GetField("airborneSince", Private).SetValue(drop, Time.time - 1f);
+                drop.OnAction();
+                TickAudio();
+                Check(drop.IsUnderCanopy && Cue("parachute_open"), "Parachute opening emits its cue");
+                player.transform.position = new Vector3(SessionState.GetFloat(Session + "X", 0), SessionState.GetFloat(Session + "Y", 0), SessionState.GetFloat(Session + "Z", 0));
+                typeof(AarisOfflineDrop).GetMethod("Land", Private).Invoke(drop, null);
+                TickAudio();
+                Check(Cue("parachute_land"), "Parachute touchdown emits its cue");
+                var jumpTimestamp = typeof(AarisThirdPersonPlayer).GetField("lastJumpStarted", Private);
+                float previousJump = player.LastJumpStartedTime;
+                jumpTimestamp.SetValue(player, Time.unscaledTime);
+                TickAudio();
+                jumpTimestamp.SetValue(player, previousJump);
+                Check(Cue("jump_start"), "Player jump event emits its cue");
+                AarisAudioDirector.GunShot("SMG", "", player.transform.position);
+                Check(Cue("smg_shot"), "Gunfire selects its weapon-category cue");
                 Physics.SyncTransforms();
                 battle = player.GetComponent<AarisBattleActions>();
                 wall = player.GetComponent<AarisOfflineGlooWall>();
@@ -236,12 +272,14 @@ namespace Aaris.MapReview.Editor
                 Physics.SyncTransforms();
                 wall.ReleaseAndDeploy();
                 Check(wall.Count == walls, "Blocked Gloo retained inventory");
+                Check(!Cue("gloo_deploy"), "Blocked Gloo stays silent");
                 Object.DestroyImmediate(obstacle);
                 Physics.SyncTransforms();
                 wall.BeginAim();
                 wall.ReleaseAndDeploy();
                 view.rotation = saved;
                 Check(wall.Count == walls - 1, "Valid Gloo consumed exactly one wall");
+                Check(Cue("gloo_deploy"), "Successful Gloo deployment emits its cue");
                 var cover = Object.FindFirstObjectByType<AarisGlooWallHealth>();
                 Check(cover != null && cover.GetComponent<BoxCollider>() != null, "Gloo has a solid collider and health");
                 Note("PLAY_SMOKE_COMPLETE");
