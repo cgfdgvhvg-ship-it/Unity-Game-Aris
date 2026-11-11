@@ -173,7 +173,7 @@ the JPEG base64 value and view the actual screenshot privately. Do not
 post screenshots or their base64 into public GitHub Issues, Actions logs,
 releases or source. GUI screenshots may contain private on-screen content.
 The snapshot includes a 100px coordinate grid and the current cursor.
-Maximum JPEG payload 64KiB; new frames are explicitly requested, never
+Maximum JPEG payload 96,000 bytes; adaptive resolution and saved click-coordinate mapping preserve accurate GUI targeting. New frames are explicitly requested, never
 uploaded continuously.
 
 A screen showing an Xterm or desktop is NOT evidence that Unity has rendered
