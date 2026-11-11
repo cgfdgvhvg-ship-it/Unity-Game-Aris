@@ -1,0 +1,33 @@
+name: Aaris stop stale APK retry (one time)
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+jobs:
+  cancel-only-known-run:
+    if: >-
+      github.event.issue.number == 77 &&
+      github.event.comment.user.login == 'sundamunda289-art' &&
+      github.event.comment.body == 'APK CANCEL STALE RETRY'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Cancel only the incorrect-source APK retry
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          RUN=42933177860
+          RUN_SHA="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN" --jq .head_sha)"
+          test "$RUN_SHA" = 53a25731850010e9a49b5157c35b85fd8c74ab39 || exit 12
+          RUN_STATUS="$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN" --jq .status)"
+          case "$RUN_STATUS" in
+            queued|pending|in_progress)
+              gh api -X POST "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN/cancel" >/dev/null
+              echo STALE_APK_RETRY_CANCEL_REQUESTED ;;
+            completed) echo STALE_APK_RETRY_ALREADY_FINISHED ;;
+            *) echo STALE_APK_RETRY_UNEXPECTED_STATE; exit 13 ;;
+          esac
