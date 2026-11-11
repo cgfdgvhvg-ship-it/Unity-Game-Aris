@@ -897,8 +897,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 19.600000381469727, z: 0.0}
   m_Size: 39.20000076293945
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -1039,8 +1039,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 3.0030763149261475, z: 0.0}
   m_Size: 9.055999755859375
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -1182,8 +1182,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 2.9789230823516846, z: 0.0}
   m_Size: 12.899999618530273
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -1325,8 +1325,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 3.3558080196380615, z: 0.0}
   m_Size: 12.812000274658203
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -1470,8 +1470,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.573375701904297, z: 0.0}
   m_Size: 14.670000076293945
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -1615,8 +1615,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.294700622558594, z: 0.0}
   m_Size: 9.609999656677246
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -1760,8 +1760,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.232878684997559, z: 0.0}
   m_Size: 9.910000801086426
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -1903,8 +1903,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 3.3558080196380615, z: 0.0}
   m_Size: 12.812000274658203
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -2048,8 +2048,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.573375701904297, z: 0.0}
   m_Size: 14.670000076293945
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -2193,8 +2193,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.294700622558594, z: 0.0}
   m_Size: 9.609999656677246
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -2346,8 +2346,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 1.9200000762939453, z: 0.0}
   m_Size: 14.100000381469727
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -2489,8 +2489,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 3.1849405765533447, z: 0.0}
   m_Size: 24.617630004882812
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -2634,8 +2634,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.294700622558594, z: 0.0}
   m_Size: 9.609999656677246
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -2787,8 +2787,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 1.9200000762939453, z: 0.0}
   m_Size: 14.100000381469727
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -2932,8 +2932,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.573375701904297, z: 0.0}
   m_Size: 18.719999313354492
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -3074,8 +3074,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 3.0030763149261475, z: 0.0}
   m_Size: 9.055999755859375
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -3224,8 +3224,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 8.100069999694824, z: 0.0}
   m_Size: 72.31037902832031
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -3367,8 +3367,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.199999809265137, z: 0.0}
   m_Size: 30.5
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -3512,8 +3512,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.294700622558594, z: 0.0}
   m_Size: 9.609999656677246
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -3659,8 +3659,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 2.360049247741699, z: 0.0}
   m_Size: 24.119876861572266
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -3802,8 +3802,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.199999809265137, z: 0.0}
   m_Size: 30.5
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -3945,8 +3945,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.199999809265137, z: 0.0}
   m_Size: 30.5
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -4090,8 +4090,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.294700622558594, z: 0.0}
   m_Size: 9.609999656677246
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -4243,8 +4243,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 1.9200000762939453, z: 0.0}
   m_Size: 14.100000381469727
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -4390,8 +4390,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 7.501143932342529, z: 0.0}
   m_Size: 33.261680603027344
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -4535,8 +4535,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.573375701904297, z: 0.0}
   m_Size: 14.670000076293945
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -4680,8 +4680,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.294700622558594, z: 0.0}
   m_Size: 9.609999656677246
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -4833,8 +4833,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 1.9200000762939453, z: 0.0}
   m_Size: 14.100000381469727
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -4978,8 +4978,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.573375701904297, z: 0.0}
   m_Size: 18.719999313354492
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -5125,8 +5125,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 3.0690858364105225, z: 0.0}
   m_Size: 33.415000915527344
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -5278,8 +5278,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 1.9200000762939453, z: 0.0}
   m_Size: 14.100000381469727
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -5423,8 +5423,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.573375701904297, z: 0.0}
   m_Size: 18.719999313354492
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -5565,8 +5565,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 3.0030763149261475, z: 0.0}
   m_Size: 9.055999755859375
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -5708,8 +5708,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 2.9789230823516846, z: 0.0}
   m_Size: 12.899999618530273
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -5853,8 +5853,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.294700622558594, z: 0.0}
   m_Size: 9.609999656677246
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -5996,8 +5996,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 3.3558080196380615, z: 0.0}
   m_Size: 12.812000274658203
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -6138,8 +6138,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 3.0030763149261475, z: 0.0}
   m_Size: 9.055999755859375
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -6281,8 +6281,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 2.9789230823516846, z: 0.0}
   m_Size: 12.899999618530273
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -6424,8 +6424,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 3.3558080196380615, z: 0.0}
   m_Size: 12.812000274658203
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -6569,8 +6569,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.573375701904297, z: 0.0}
   m_Size: 14.670000076293945
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -6714,8 +6714,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.573375701904297, z: 0.0}
   m_Size: 18.719999313354492
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -6857,8 +6857,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 3.3558080196380615, z: 0.0}
   m_Size: 12.812000274658203
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -7002,8 +7002,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.573375701904297, z: 0.0}
   m_Size: 14.670000076293945
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -7147,8 +7147,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.294700622558594, z: 0.0}
   m_Size: 9.609999656677246
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -7300,8 +7300,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 1.9200000762939453, z: 0.0}
   m_Size: 14.100000381469727
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -7445,8 +7445,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.294700622558594, z: 0.0}
   m_Size: 9.609999656677246
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -7590,8 +7590,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.573375701904297, z: 0.0}
   m_Size: 14.670000076293945
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -7735,8 +7735,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.294700622558594, z: 0.0}
   m_Size: 9.609999656677246
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -7888,8 +7888,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 1.9200000762939453, z: 0.0}
   m_Size: 14.100000381469727
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -8033,8 +8033,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.573375701904297, z: 0.0}
   m_Size: 18.719999313354492
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -8175,8 +8175,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 3.0030763149261475, z: 0.0}
   m_Size: 9.055999755859375
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -8320,8 +8320,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.294700622558594, z: 0.0}
   m_Size: 9.609999656677246
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -8463,8 +8463,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 2.9789230823516846, z: 0.0}
   m_Size: 12.899999618530273
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -8608,8 +8608,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 4.573375701904297, z: 0.0}
   m_Size: 18.719999313354492
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -8750,8 +8750,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 3.0030763149261475, z: 0.0}
   m_Size: 9.055999755859375
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -8893,8 +8893,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 2.9789230823516846, z: 0.0}
   m_Size: 12.899999618530273
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -9036,8 +9036,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 3.3558080196380615, z: 0.0}
   m_Size: 12.812000274658203
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -9183,8 +9183,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 18.625, z: 0.0}
   m_Size: 37.25
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22
@@ -9326,8 +9326,8 @@ LODGroup:
   serializedVersion: 2
   m_LocalReferencePoint: {x: 0.0, y: 7.041321277618408, z: 0.0}
   m_Size: 14.082642555236816
-  m_FadeMode: 1
-  m_AnimateCrossFading: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
   m_LODs:
   - screenRelativeHeight: 0.22

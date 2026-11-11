@@ -44,7 +44,7 @@ class Scene:
         if lod and bounds:
             ext=bounds['m_Extent'];size=2*max(ext.values())
             self.component(go,gd,205,'LODGroup',{'serializedVersion':2,'m_LocalReferencePoint':bounds['m_Center'],'m_Size':size,
-                'm_FadeMode':1,'m_AnimateCrossFading':1,'m_LastLODIsBillboard':0,
+                'm_FadeMode':0,'m_AnimateCrossFading':0,'m_LastLODIsBillboard':0,
                 'm_LODs':[{'screenRelativeHeight':0.012,'fadeTransitionWidth':0.15,'renderers':[{'renderer':ref(renderer)}]}],
                 'm_Enabled':1})
         return go,tr
