@@ -90,3 +90,39 @@ timing; no fixed end-to-end latency is guaranteed.
   Android build correctness use their independent validation procedures.
 - An offline Codespace is detected through missing heartbeat; invoke one
   bootstrap workflow only when necessary.
+
+## One Termux command for future account switches
+
+The reviewed `Tools/Codespaces/termux_switch.sh` script now rotates the
+selected account's `CODESPACE_PAT` and dispatches just ONE
+`aaris-turbo-bootstrap.yml` GitHub workflow with `machine=auto`.
+No manual Codespaces list/start commands or second workflow dispatch.
+
+Install/refresh the phone helper from the canonical public repository:
+
+```bash
+pkg install -y gh curl jq
+curl -fsSL https://raw.githubusercontent.com/sundamunda289-art/Unity-Game-Aris/main/Tools/Codespaces/termux_switch.sh -o "$HOME/aaris-switch.sh"
+bash "$HOME/aaris-switch.sh"
+```
+
+The user authorizes a new Codespaces GitHub account in the browser once per
+switch; the main account login is reused. To reuse both saved identities
+and launch the same one-workflow bootstrap without a second browser login:
+
+```bash
+bash "$HOME/aaris-switch.sh" --resume
+```
+
+Bootstrap `auto` uses only the currently selected Codespaces token. If a
+unique machine is visible it reuses that machine, including a stopped machine.
+If none exists it creates one minimal Ubuntu SSH Codespace under the account's
+own quota, then installs the private Cloudflare agent. If the account owns
+multiple ambiguous Codespaces it fails closed, never chooses randomly.
+Use an explicit exact machine instead when selection is ambiguous.
+
+It cannot bypass GitHub Codespaces monthly quotas, temporary GitHub
+provisioning delays, account permissions, or an absent Unity Personal license.
+A successful GitHub bootstrap proves an agent was installed, not that the
+Cloudflare command channel has passed a real end-to-end test. Verify registry
+heartbeat and the stdout/exit code for a concrete command.
