@@ -44,6 +44,25 @@ def main():
         print("TURBO_HEALTH_NETWORK_CLASS="+type(e.reason).__name__)
     except (OSError,ValueError) as e:
         print("TURBO_HEALTH_ERROR_CLASS="+type(e).__name__)
+    # Real authenticated request, but only HTTP status is observable; do not log token.
+    machine=sys.argv[1] if len(sys.argv)>1 else ""
+    if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{2,119}",machine) and token.is_file():
+        url="https://aaris-turbo-terminal.aaris-game-control-6f9c.workers.dev/agent/"+machine+"/ping"
+        try:
+            credential=token.read_text(encoding="ascii").strip()
+            if re.fullmatch(r"[0-9a-f]{64}",credential):
+                request=urllib.request.Request(url,data=b"{}",method="POST",
+                    headers={"Authorization":"Bearer "+credential,"Content-Type":"application/json"})
+                with urllib.request.urlopen(request,timeout=12) as res:
+                    print("TURBO_AUTH_PING_HTTP="+str(res.status))
+            else:
+                print("TURBO_AUTH_TOKEN_FORMAT=invalid")
+        except urllib.error.HTTPError as exc:
+            print("TURBO_AUTH_PING_HTTP="+str(exc.code))
+        except urllib.error.URLError as exc:
+            print("TURBO_AUTH_PING_NETWORK_CLASS="+type(exc.reason).__name__)
+        except (OSError,ValueError) as exc:
+            print("TURBO_AUTH_PING_ERROR_CLASS="+type(exc).__name__)
     print("TURBO_DIAG_SAFE_COMPLETE")
 if __name__=="__main__":
     main()
