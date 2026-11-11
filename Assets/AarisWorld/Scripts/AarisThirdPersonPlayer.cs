@@ -313,6 +313,13 @@ namespace Aaris.MapReview
                 if (verticalVelocity < 0f) verticalVelocity = -groundedDownVelocity;
             }
             bool launchJump = now <= jumpUntil && now - lastGrounded <= 0.15f;
+            // A prone/crouched capsule must not jump through walls or ceilings.
+            // Stand only when clearance permits; keep a single motor authority.
+            if (launchJump && battle != null && !battle.TryStand())
+            {
+                launchJump = false;
+                jumpUntil = -10f;
+            }
             if (launchJump)
             {
                 verticalVelocity = Mathf.Sqrt(2f * gravity * jumpHeight);

@@ -117,8 +117,36 @@ namespace Aaris.MapReview
             Vector3 player = transform.position;
             float desired = Mathf.Lerp(minimumDistance, Mathf.Max(maximumDistance, minimumDistance),
                 Mathf.InverseLerp(-0.75f, 0.4f, look.y));
+            // Favor the first walkable surface under the aiming reticle.
+            // The old fixed-distance approximation made the wall appear
+            // disconnected from where the player actually pointed.
+            float nearestGround = float.PositiveInfinity;
+            int cameraHits = Physics.RaycastNonAlloc(
+                motor.AimCamera.transform.position, look, forwardHits,
+                maximumDistance + 8f, groundAndCoverMask, QueryTriggerInteraction.Ignore);
+            if (cameraHits < forwardHits.Length)
+                for (int i = 0; i < cameraHits; i++)
+                {
+                    RaycastHit hit = forwardHits[i];
+                    if (hit.collider == null ||
+                        hit.collider.transform.IsChildOf(transform) ||
+                        hit.collider.GetComponentInParent<AarisGlooWallHealth>() != null ||
+                        hit.normal.y < MinimumSupportNormal) continue;
+                    Vector3 flat = hit.point - player;
+                    flat.y = 0f;
+                    float targetDistance = flat.magnitude;
+                    if (targetDistance >= minimumDistance * 0.7f &&
+                        targetDistance <= maximumDistance + 1f &&
+                        hit.distance < nearestGround)
+                    {
+                        nearestGround = hit.distance;
+                        desired = Mathf.Clamp(targetDistance, minimumDistance, maximumDistance);
+                        ahead = flat.normalized;
+                    }
+                }
             float distance = FindOpenDistance(player, ahead, desired);
-            proposedRotation = Quaternion.LookRotation(ahead, Vector3.up);
+            // The curved, highlighted face must look back toward its owner.
+            proposedRotation = Quaternion.LookRotation(-ahead, Vector3.up);
             proposedPoint = player + ahead * Mathf.Max(minimumDistance, distance);
 
             if (TryFindSupport(proposedPoint, player.y, out float centerY))
@@ -250,17 +278,17 @@ namespace Aaris.MapReview
         {
             if (!initialized || float.IsNaN(amount) || float.IsInfinity(amount) || amount <= 0f) return;
             health = Mathf.Max(0f, health - amount);
-            AarisGlooWallVisuals.Tint(renderers,
-                Color.Lerp(new Color(0.84f, 0.25f, 0.36f), new Color(0.13f, 0.60f, 0.92f),
-                    health / maximum));
+            // Preserve the authored ice and frost submaterials even after damage.
+            // Damage shifts each existing layer independently toward cracked ice.
+            AarisGlooWallVisuals.TintDamage(renderers, health / maximum);
             if (health <= 0f) Destroy(gameObject);
         }
     }
 
     internal static class AarisGlooWallVisuals
     {
-        internal static readonly Vector3 CoverCenter = new Vector3(0f, 1.15f, -0.06f);
-        internal static readonly Vector3 CoverSize = new Vector3(3.78f, 2.30f, 0.67f);
+        internal static readonly Vector3 CoverCenter = new Vector3(0f, 1.15f, -0.13f);
+        internal static readonly Vector3 CoverSize = new Vector3(3.78f, 2.30f, 0.84f);
 
         private static Material solid, preview;
         private static readonly MaterialPropertyBlock block = new MaterialPropertyBlock();
@@ -309,10 +337,22 @@ namespace Aaris.MapReview
                     c.enabled = false;
                     Object.Destroy(c);
                 }
+                // The OBJ contains ArcticBlue and FrostHighlight submeshes.
+                // Using one opaque material erased its authored ice contrast.
+                var ice = Resources.Load<Material>("AarisCombat/Materials/GlooWall-ArcticBlue");
+                var frost = Resources.Load<Material>("AarisCombat/Materials/GlooWall-FrostHighlight");
                 foreach (var renderer in art.GetComponentsInChildren<Renderer>(true))
                 {
                     var slots = renderer.sharedMaterials;
-                    for (int i = 0; i < slots.Length; i++) slots[i] = material;
+                    for (int i = 0; i < slots.Length; i++)
+                    {
+                        if (ghost) { slots[i] = material; continue; }
+                        string imported = slots[i] != null ? slots[i].name : string.Empty;
+                        bool highlight = imported.IndexOf("Frost", System.StringComparison.OrdinalIgnoreCase) >= 0
+                            || (slots.Length > 1 && i > 0);
+                        slots[i] = highlight ? (frost != null ? frost : material)
+                            : (ice != null ? ice : material);
+                    }
                     renderer.sharedMaterials = slots;
                 }
             }
@@ -351,6 +391,33 @@ namespace Aaris.MapReview
                 Object.Destroy(collider);
             }
             cube.GetComponent<Renderer>().sharedMaterial = material;
+        }
+
+        // Damage preserves two authored material tones. Only the preview uses a
+        // single color; no duplicated material instances are allocated.
+        public static void TintDamage(Renderer[] renderers, float healthFraction)
+        {
+            if (renderers == null) return;
+            float cracks = 1f - Mathf.Clamp01(healthFraction);
+            foreach (var renderer in renderers)
+            {
+                if (renderer == null) continue;
+                var slots = renderer.sharedMaterials;
+                for (int slot = 0; slot < slots.Length; slot++)
+                {
+                    bool frost = slots[slot] != null && slots[slot].name.IndexOf("Frost",
+                        System.StringComparison.OrdinalIgnoreCase) >= 0;
+                    Color tint = frost
+                        ? Color.Lerp(new Color(0.62f, 0.88f, 0.96f),
+                            new Color(1f, 0.62f, 0.58f), cracks)
+                        : Color.Lerp(new Color(0.14f, 0.46f, 0.78f),
+                            new Color(0.84f, 0.25f, 0.36f), cracks);
+                    block.Clear();
+                    block.SetColor("_BaseColor", tint);
+                    block.SetColor("_Color", tint);
+                    renderer.SetPropertyBlock(block, slot);
+                }
+            }
         }
 
         public static void Tint(Renderer[] renderers, Color tint)
