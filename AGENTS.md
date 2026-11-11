@@ -45,6 +45,54 @@ Repository: sundamunda289-art/Unity-Game-Aris; branch: main. Public repository: 
 
 **Stage 7 — recovery and handoff:** If only terminal works but GUI fails, run a Cloudflare queued, non-secret \`command -v Xvfb scrot xdotool\` and \`python3 -c 'from PIL import Image'\` diagnostic, then use \`gui_setup.sh\` once and retry; don't recreate Codespace. If the agent does not ping, check private process health, expired grant, Worker \`/health\`, GitHub state and one bootstrap, not a run for every command. If an old Codespace quota ends, switch the account in Termux once, select/create a new machine and replay Stages 1–5. Preserve public repo, Cloudflare Worker, namespace and SQL state rather than redeploying them unnecessarily. Clean up sensitive frames using the Worker 24-hour private retention policy (its live cleanup behavior must still be verified); never publish frames/credentials to Issue #77. When presenting status to user, distinguish **created / started / authenticated / terminal E2E / GUI E2E / Unity scene E2E** explicitly.
 
+### Permanent private Chrome monitor (2026-11-11)
+
+The **same** Cloudflare Worker `aaris-turbo-terminal` also hosts a stable,
+mobile-friendly **read-only** dashboard at
+`https://aaris-turbo-terminal.aaris-game-control-6f9c.workers.dev/watch`.
+The user can bookmark their private **`/watch#key=<64-hex-secret>`** link once.
+The capability key belongs in Cloudflare Worker secret
+`WATCH_TOKEN_HASH` as its SHA-256 hash; **NEVER put the key or hash in
+AGENTS.md, source code, GitHub Issues, screenshots, terminal logs, or query
+parameters**. The browser URL fragment is not sent in HTTP requests; the
+dashboard sends the key exclusively as a same-origin HTTPS Authorization
+Bearer header to `/watch/api`, `/watch/frame`, and `/watch/capture`.
+Only a holder of that private bookmark can see the mirrored screen and
+terminal activity. If the key is exposed, rotate the Worker secret and
+privately issue a replacement bookmark; there is otherwise no per-Codespace
+URL rotation.
+
+**What appears on the dashboard:** the latest successfully completed GUI
+frame (screenshot-on-action from `gui.py`, whether requested by ChatGPT
+or the viewer), last 20 bounded/redacted command summaries and stdout/stderr,
+current machine name, last heartbeat and frame timestamp. Existing
+`TurboMachine` Durable Objects mirror the latest frame to private SQLite
+state, while the global `registry` chooses the most recently connected
+machine with a fresh heartbeat. The viewer can select a specific registered
+machine. When GitHub accounts/Codespaces change, **the browser link and
+Cloudflare Worker stay the same**; only the selected active machine changes.
+
+**Refresh logic:** when Chrome tab is visible and viewer not paused, the
+browser polls at 3/5/10-second options. Authenticated `/watch/api` can queue
+a bounded fast `gui.py look --fast` job only if the agent is connected,
+the last image is stale, and no other viewer capture is already queued/running.
+`Snap now` requests one capture via `POST /watch/capture`; `GET
+/watch/frame` returns the actual private JPEG. The client fetches a frame
+**only when the frame ID changes**; hidden tabs and paused pages request
+neither frames nor new captures. This is *not* continuous WebRTC/video and
+does not make ChatGPT run while the chat is inactive; normal terminal and
+GUI actions still use the connected Cloudflare management SQL bridge.
+
+**Security:** protect the private bookmark like a password. The dashboard
+has NO arbitrary-shell input, NO unauthenticated mouse control, NO public
+screen URL, and no new Codespace tunnel. Tokens must be managed as
+Cloudflare Worker secrets, never literal fallback strings. Before claiming
+a working viewer, verify that an unauthorized `/watch/api` request gets
+401, the authorized browser shows an actual changed frame and recent
+command output, machine switching works, and the existing agent's
+`/health`/OIDC bootstrap still work. Detailed installation, API and
+security notes live in `Docs/AARIS_TURBO_TERMINAL.md`.
+
 ### How ChatGPT's connected Cloudflare tool actually sends commands
 
 The ChatGPT Cloudflare connector has an authenticated management API. In a new chat, discover its `mcp__Cloudflare__execute` action through the available connector tools (Code Mode exposes it as `tools.mcp__Cloudflare__execute({code:"async () => { ... }"})` when installed), not the public Worker URL. The action supports `cloudflare.request({method:"POST",path:"/accounts/"+accountId+"/workers/durable_objects/namespaces/"+namespaceId+"/query/v2",body:{...}})`. Discover/confirm the current account and namespace ID from the connected Cloudflare account; previously verified namespace ID `14f5c66e402c4c0e94614293423f5630` is a **hint, not a universal constant**. Never paste a Cloudflare API token into chat or GitHub. The Worker /health endpoint is for broker/agent health, **not** a public shell execution API.

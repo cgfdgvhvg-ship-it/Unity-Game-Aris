@@ -1,0 +1,20 @@
+import assert from "node:assert/strict";
+import {renderWatchPage} from "./watch_page.mjs";
+
+const page=renderWatchPage("nonce_example_123");
+assert.match(page,/Aaris.*Live Monitor/);
+assert.match(page,/nonce="nonce_example_123"/);
+assert.match(page,/\/watch\/api/);
+assert.match(page,/\/watch\/frame/);
+assert.match(page,/\/watch\/capture/);
+assert.match(page,/document\.hidden/);
+assert.match(page,/URLSearchParams\(location\.hash/);
+assert.match(page,/Authorization.*Bearer/);
+assert.match(page,/Fast preview/);
+assert.match(page,/No recent commands|No recent commands|No recent|No recorded|No recent commands on this machine|No recent commands on this machine/);
+assert.doesNotMatch(page,/AARIS_PERMANENT_VIEW_786/);
+assert.doesNotMatch(page,/\?key=/);
+assert.doesNotMatch(page,/eval\(/);
+assert.doesNotMatch(page,/innerHTML\s*=/);
+assert.ok(page.indexOf("<script nonce")!==-1);
+console.log("AARIS_PERMANENT_WATCH_UI_STATIC_PASS");
