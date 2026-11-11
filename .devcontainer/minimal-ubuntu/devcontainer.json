@@ -7,5 +7,6 @@
     "ghcr.io/devcontainers/features/sshd:1": {
       "version": "latest"
     }
-  }
+  },
+  "postStartCommand": "bash Tools/Turbo/ensure_agent.sh"
 }
