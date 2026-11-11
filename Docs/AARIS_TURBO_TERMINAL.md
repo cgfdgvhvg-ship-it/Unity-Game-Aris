@@ -126,3 +126,20 @@ provisioning delays, account permissions, or an absent Unity Personal license.
 A successful GitHub bootstrap proves an agent was installed, not that the
 Cloudflare command channel has passed a real end-to-end test. Verify registry
 heartbeat and the stdout/exit code for a concrete command.
+
+## Safe reconnect on minimal Codespace restart
+
+The new minimal Ubuntu devcontainer uses postStartCommand to invoke
+Tools/Turbo/ensure_agent.sh. After a successful, authenticated one-time
+bootstrap, the installer stores the endpoint and seven-day grant expiry as
+owner-private files in ~/.config/aaris-turbo alongside a mode-0600 token.
+On a normal stop/start, an unexpired grant resumes the agent automatically
+without a second GitHub Actions bootstrap. The hook is idempotent and does
+nothing if its session files do not exist, are unsafe, or have expired.
+
+This behavior applies to minimal Codespaces created with the updated
+devcontainer configuration. Existing full Unity Codespaces and their
+postStartCommand are deliberately unchanged. If the selected new account
+has no permission, its capacity/quota is exhausted, or the Codespace remains
+Provisioning/Shutdown, the agent cannot start; do not invent an online
+heartbeat. Only read command status/output from the real Cloudflare broker.
