@@ -85,12 +85,19 @@ jobs:
           cd "$root"
           for check in check_vehicle_system.py check_vehicle_drive_hardening.py check_weapon_loot.py check_single_weapon_transactions.py; do
             if test ! -f "Tools/Validation/$check"; then echo "remote_test_missing=$check"; continue; fi
-            if timeout 90 python3 "Tools/Validation/$check" >/dev/null 2>&1; then
+            if timeout 90 python3 "Tools/Validation/$check" >/tmp/aaris-pr307-remote-audit.log 2>&1; then
               echo "remote_test_pass=$check"
             else
               echo "remote_test_failed=$check"
+              # Bounded diagnostic; do not expose credentials, repo-specific private paths or raw environment.
+              grep -E '^(AssertionError|Traceback|  File |    assert |SyntaxError)' /tmp/aaris-pr307-remote-audit.log | tail -9 | cut -c1-220 || true
             fi
           done
           echo 'AARIS_REMOTE_TESTS_RECORDED'
+          printf 'local_gloo_diff_lines='
+          git diff --numstat -- Assets/AarisWorld/Scripts/AarisOfflineGlooWall.cs | awk '{print $1 "+" $2}' | head -1
+          echo 'local_gloo_relevant_physics_lines_start'
+          grep -nE 'forwardHits.Length|groundHits.Length|overlaps.Length|Physics.RaycastAll|Physics.OverlapBox' Assets/AarisWorld/Scripts/AarisOfflineGlooWall.cs | head -22 || true
+          echo 'local_gloo_relevant_physics_lines_end'
           REMOTE
           echo 'AARIS_EXISTING_CODESPACE_DIAGNOSTIC_COMPLETE'
