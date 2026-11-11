@@ -5,8 +5,10 @@ umask 077
 test -n "$AARIS_AGENT_TOKEN" || exit 20
 test -n "$AARIS_ENDPOINT" || exit 20
 test -n "$AARIS_AGENT_BASE64" || exit 20
+test -n "$AARIS_AGENT_EXPIRES_AT" || exit 20
 [[ "$AARIS_AGENT_TOKEN" =~ ^[0-9a-f]{64}$ ]] || exit 20
 [[ "$AARIS_ENDPOINT" =~ ^https://[a-z0-9.-]+/agent/[A-Za-z0-9-]+$ ]] || exit 21
+[[ "$AARIS_AGENT_EXPIRES_AT" =~ ^[0-9]{10,12}$ ]] || exit 21
 command -v python3 >/dev/null || { echo "TURBO_REMOTE_PYTHON_MISSING"; exit 22; }
 HOME_DIR="$(getent passwd "$(id -u)" | cut -d: -f6)"
 if [[ ! -d "$HOME_DIR" || ! -w "$HOME_DIR" ]]; then HOME_DIR="$HOME"; fi
@@ -21,6 +23,9 @@ python3 "$BIN/agent.new.py" --selftest >/dev/null
 mv "$BIN/agent.new.py" "$BIN/agent.py"
 printf '%s\n' "$AARIS_AGENT_TOKEN" > "$CONFIG/token"
 chmod 600 "$CONFIG/token"
+printf '%s\n' "$AARIS_ENDPOINT" > "$CONFIG/endpoint"
+printf '%s\n' "$AARIS_AGENT_EXPIRES_AT" > "$CONFIG/expires_at"
+chmod 600 "$CONFIG/endpoint" "$CONFIG/expires_at"
 if test -s "$CONFIG/agent.pid"; then
   OLD="$(cat "$CONFIG/agent.pid")"
   if [[ "$OLD" =~ ^[0-9]+$ ]] && [[ -r "/proc/$OLD/cmdline" ]] &&
