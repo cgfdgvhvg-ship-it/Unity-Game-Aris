@@ -1,3 +1,4 @@
+import { renderWatchPage } from "./watch_page.mjs";
 // Aaris Turbo Broker. No public command submission endpoint.
 // Only owner-authorized Cloudflare Durable Object SQL API may enqueue commands.
 const REPO = "sundamunda289-art/Unity-Game-Aris";
@@ -243,6 +244,84 @@ export class TurboMachine {
 export default {
   async fetch(request, env) {
     const u = new URL(request.url);
+
+    // Permanent browser URL; fragment-held key is never in the HTTP request URL.
+    if (u.pathname === "/watch" && request.method==="GET") {
+      const nonce=btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(18))))
+        .replace(/=/g,"").replace(/\+/g,"-").replace(/\//g,"_");
+      const policy="default-src 'none'; script-src 'nonce-"+nonce+
+        "'; style-src 'unsafe-inline'; img-src blob:; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'";
+      return new Response(renderWatchPage(nonce),{headers:{
+        "content-type":"text/html; charset=utf-8",
+        "content-security-policy":policy,
+        "referrer-policy":"no-referrer","cache-control":"private, no-store",
+        "x-content-type-options":"nosniff","x-frame-options":"DENY"}});
+    }
+    if (u.pathname.startsWith("/watch/")) {
+      const presented=(request.headers.get("authorization")||"").match(/^Bearer ([0-9a-f]{64})$/);
+      if(!env.WATCH_TOKEN_HASH || !presented ||
+         !constantTimeEqual(await sha256(presented[1]),String(env.WATCH_TOKEN_HASH)))
+        return json({error:"unauthorized"},401);
+      const registry=env.MACHINES.get(env.MACHINES.idFromName("registry"));
+      const response=await registry.fetch("https://internal/internal/watch/registry");
+      if(!response.ok)return json({error:"registry_unavailable"},503);
+      const {machines:rows=[]}=await response.json();
+      const now=Math.floor(Date.now()/1000);
+      const machines=rows.filter(m=>validMachine(m.name)).map(m=>({
+        name:m.name,stage:m.stage,last_seen:m.last_seen,
+        live:m.stage==="connected"&&now-Number(m.last_seen)<=90&&now>=Number(m.last_seen)-60
+      }));
+      const requested=u.pathname==="/watch/capture" ?
+        null : u.searchParams.get("machine");
+      let requestedName=requested;
+      let payload={};
+      if(u.pathname==="/watch/capture" && request.method==="POST"){
+        if(request.headers.get("origin") && request.headers.get("origin")!==u.origin)
+          return json({error:"origin"},403);
+        try{payload=await request.json();}catch(_){return json({error:"json"},400);}
+        if(payload && payload.machine)requestedName=payload.machine;
+      }
+      if(requestedName && (!validMachine(requestedName)||!machines.some(m=>m.name===requestedName)))
+        return json({error:"unknown_machine"},404);
+      const selected=requestedName?machines.find(m=>m.name===requestedName):
+        (machines.find(m=>m.live)||machines[0]);
+      if(!selected){
+        return json({machine:null,live:false,heartbeat_age:null,
+          machines,jobs:[],frame:null});
+      }
+      const stub=env.MACHINES.get(env.MACHINES.idFromName("machine:"+selected.name));
+      if(u.pathname==="/watch/api" && request.method==="GET") {
+        if(u.searchParams.get("capture")==="1" && selected.live) {
+          const quality=u.searchParams.get("quality")==="full"?"full":"fast";
+          await stub.fetch("https://internal/internal/watch/capture",{method:"POST",
+            body:JSON.stringify({quality,force:false})});
+        }
+        const data=await stub.fetch("https://internal/internal/watch/state");
+        if(!data.ok)return json({error:"machine_state"},503);
+        const state=await data.json();
+        return json({machine:selected.name,live:state.live&&selected.live,
+          heartbeat_age:state.heartbeat_age,frame:state.frame,
+          jobs:state.jobs,machines});
+      }
+      if(u.pathname==="/watch/frame" && request.method==="GET") {
+        const id=u.searchParams.get("id");
+        if(!id || !/^[A-Za-z0-9_-]{1,128}$/.test(id))return json({error:"invalid_frame"},400);
+        const frame=await stub.fetch("https://internal/internal/watch/frame?id="+encodeURIComponent(id));
+        const headers=new Headers(frame.headers);
+        headers.set("referrer-policy","no-referrer");
+        headers.set("cache-control","private, no-store");
+        headers.set("x-content-type-options","nosniff");
+        return new Response(frame.body,{status:frame.status,headers});
+      }
+      if(u.pathname==="/watch/capture" && request.method==="POST") {
+        if(!selected.live)return json({scheduled:false,reason:"offline"},409);
+        const result=await stub.fetch("https://internal/internal/watch/capture",{method:"POST",
+          body:JSON.stringify({quality:payload?.quality==="full"?"full":"fast",force:true})});
+        return new Response(result.body,{status:result.status,headers:{
+          "content-type":"application/json","cache-control":"private, no-store"}});
+      }
+      return json({error:"not_found"},404);
+    }
     if (u.pathname === "/health" && request.method==="GET") {
       const operation = request.headers.get("x-aaris-op");
       if (!operation) return json({service:"aaris-turbo",version:2,status:"ready"});
