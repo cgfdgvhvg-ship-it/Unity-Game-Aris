@@ -33,6 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           bash -n Tools/Turbo/remote_install.sh
+          bash -n Tools/Codespaces/termux_switch.sh
           python3 -m py_compile Tools/Turbo/agent.py
           python3 Tools/Turbo/agent.py --selftest
           python3 Tools/Turbo/select_machine.py --selftest
