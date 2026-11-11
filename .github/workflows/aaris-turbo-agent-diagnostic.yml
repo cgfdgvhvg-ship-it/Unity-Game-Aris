@@ -1,0 +1,73 @@
+name: Aaris Turbo Agent Connection Diagnostic
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/aaris-turbo-agent-diagnostic.yml"
+      - "Tools/Turbo/agent_diagnostic.py"
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+jobs:
+  static-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - run: |
+          python3 -m py_compile Tools/Turbo/agent_diagnostic.py
+          python3 Tools/Turbo/agent_diagnostic.py
+  diagnose:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.number == 77 &&
+      github.event.comment.user.login == 'sundamunda289-art' &&
+      startsWith(github.event.comment.body,'TURBO DIAG ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ secrets.CODESPACE_PAT }}
+      ISSUE_BODY: ${{ github.event.comment.body }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          persist-credentials: false
+      - name: Read selected machine's safe agent diagnostics only
+        run: |
+          set -euo pipefail
+          MACHINE="$(printf '%s' "$ISSUE_BODY" | sed 's/^TURBO DIAG //')"
+          [[ "$MACHINE" =~ ^[A-Za-z0-9][A-Za-z0-9-]{2,119}$ ]] || exit 11
+          gh codespace list -R "$GITHUB_REPOSITORY" --json name,state --limit 100 |
+            jq -e --arg m "$MACHINE" '[.[] | select(.name==$m and .state=="Available")] | length==1' >/dev/null || {
+              echo "TURBO_DIAG_MACHINE_NOT_AVAILABLE"; exit 12;
+            }
+          timeout 120 gh codespace ssh -c "$MACHINE" -- 'python3 -' \
+            < Tools/Turbo/agent_diagnostic.py > "$RUNNER_TEMP/turbo-safe-output.txt" || {
+              echo "TURBO_DIAG_SSH_FAILED"; exit 13;
+            }
+          cat "$RUNNER_TEMP/turbo-safe-output.txt"
+          echo "TURBO_DIAG_REMOTE_COMPLETE"
+      - name: Return bounded safe diagnostics to owner Issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "**Aaris Turbo Agent Diagnostics**"
+            echo '~~~text'
+            if test -s "$RUNNER_TEMP/turbo-safe-output.txt"; then
+              grep -E '^TURBO_[A-Z_]+=(yes|no|unknown|[0-9]+|[0-9]{3}|[A-Za-z_,]+)$|^TURBO_DIAG_SAFE_COMPLETE$' \
+                "$RUNNER_TEMP/turbo-safe-output.txt" | head -35
+            else
+              echo "TURBO_DIAG_REPORT_NOT_CREATED"
+            fi
+            echo '~~~'
+            printf '[Diagnostic run](https://github.com/%s/actions/runs/%s)\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/turbo-safe-comment.md"
+          gh issue comment 77 -R "$GITHUB_REPOSITORY" -F "$RUNNER_TEMP/turbo-safe-comment.md"
