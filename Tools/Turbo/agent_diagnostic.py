@@ -70,6 +70,28 @@ def main():
                 print("TURBO_"+label+"_CHALLENGE="+("yes" if exc.headers.get("cf-mitigated","")=="challenge" else "no"))
             except urllib.error.URLError as exc:
                 print("TURBO_"+label+"_NETWORK_CLASS="+type(exc.reason).__name__)
+    # Distinguish a blocked POST method from a blocked /agent route.
+    base="https://aaris-turbo-terminal.aaris-game-control-6f9c.workers.dev"
+    route="/agent/"+machine+"/ping" if machine else "/agent/test-only/ping"
+    tests=[
+        ("HEALTH_POST","/health","POST"),
+        ("AGENT_GET",route,"GET"),
+        ("MISSING_GET","/invalid-safe-probe","GET"),
+        ("MISSING_POST","/invalid-safe-probe","POST"),
+    ]
+    for label,path,method in tests:
+        req=urllib.request.Request(base+path,
+            data=b"{}" if method=="POST" else None,method=method,
+            headers={"Content-Type":"application/json"})
+        try:
+            with urllib.request.urlopen(req,timeout=8) as res:
+                print("TURBO_"+label+"_HTTP="+str(res.status))
+                print("TURBO_"+label+"_SERVER="+re.sub(r"[^a-z]", "",res.headers.get("server","unknown").lower())[:32])
+        except urllib.error.HTTPError as exc:
+            print("TURBO_"+label+"_HTTP="+str(exc.code))
+            print("TURBO_"+label+"_SERVER="+re.sub(r"[^a-z]","",exc.headers.get("server","unknown").lower())[:32])
+        except urllib.error.URLError as exc:
+            print("TURBO_"+label+"_NETWORK_CLASS="+type(exc.reason).__name__)
     print("TURBO_DIAG_SAFE_COMPLETE")
 if __name__=="__main__":
     main()
