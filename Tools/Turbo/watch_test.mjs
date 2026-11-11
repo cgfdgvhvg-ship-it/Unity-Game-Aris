@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {renderWatchPage} from "./watch_page.mjs";
 
 const page=renderWatchPage("nonce_example_123");
@@ -18,3 +19,10 @@ assert.doesNotMatch(page,/eval\(/);
 assert.doesNotMatch(page,/innerHTML\s*=/);
 assert.ok(page.indexOf("<script nonce")!==-1);
 console.log("AARIS_PERMANENT_WATCH_UI_STATIC_PASS");
+
+const workerSource=readFileSync(new URL("./worker.mjs",import.meta.url),"utf8");
+assert.match(workerSource,/DELETE FROM viewer_frame WHERE updated_at/);
+assert.ok(workerSource.includes("WHERE id NOT LIKE 'watch_%'"));
+assert.match(workerSource,/WATCH_TOKEN_HASH/);
+assert.doesNotMatch(workerSource,/AARIS_PERMANENT_VIEW_786/);
+console.log("AARIS_WATCH_RETENTION_STATIC_PASS");
