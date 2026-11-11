@@ -39,6 +39,8 @@ jobs:
           python3 Tools/Turbo/agent.py --selftest
           python3 Tools/Turbo/select_machine.py --selftest
           node --check Tools/Turbo/worker.mjs
+          node --check Tools/Turbo/watch_page.mjs
+          node Tools/Turbo/watch_test.mjs
           python3 - <<'PY'
           from pathlib import Path
           source = Path("Tools/Turbo/worker.mjs").read_text()
