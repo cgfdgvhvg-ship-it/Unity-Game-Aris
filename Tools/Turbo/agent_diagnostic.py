@@ -120,6 +120,34 @@ def main():
                 status=0; mime=""
             print("TURBO_PROBE_"+label+"_HTTP="+str(status))
             print("TURBO_PROBE_"+label+"_JSON="+("yes" if "application/json" in mime.lower() else "no"))
+    # Benign, non-secret URL variants. Do not place any credential in a URL.
+    safe_urls=[
+        ("PLAIN_HEALTH",base+"/health"),
+        ("QUERY_HEALTH",base+"/health?probe=diagnostic20261111"),
+        ("QUERY_EMPTY",base+"/health?"),
+        ("DOT_PATH",base+"/health/../health"),
+        ("UPPER_HEALTH",base+"/HEALTH"),
+        ("CHALLENGE_ROUTE",base+"/"),
+    ]
+    for label,url in safe_urls:
+        request=urllib.request.Request(url,method="GET")
+        try:
+            with urllib.request.urlopen(request,timeout=8) as response:
+                status=response.status
+                mime=response.headers.get("content-type","")
+                body=response.read(8192)
+        except urllib.error.HTTPError as exc:
+            status=exc.code
+            mime=exc.headers.get("content-type","")
+            body=exc.read(8192)
+        except urllib.error.URLError:
+            status=0; mime=""; body=b""
+        print("TURBO_QUERY_"+label+"_HTTP="+str(status))
+        print("TURBO_QUERY_"+label+"_JSON="+("yes" if "application/json" in mime.lower() else "no"))
+        # Cloudflare's standard error code only; never publish HTML/raw body.
+        matched=re.search(rb"Error\s+(10[0-9]{2}|11[0-9]{2})\b",body,re.I)
+        if matched:
+            print("TURBO_QUERY_"+label+"_CFCODE="+matched.group(1).decode())
     print("TURBO_DIAG_SAFE_COMPLETE")
 if __name__=="__main__":
     main()
