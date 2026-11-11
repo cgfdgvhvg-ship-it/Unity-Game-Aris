@@ -94,8 +94,9 @@ export class TurboMachine {
       return json({ok:true});
     }
     if (path === "/agent/next") {
-      const active = Array.from(sql.exec("SELECT id FROM commands WHERE status='running' LIMIT 1"));
-      if (active.length) return json({job:null});
+      sql.exec("UPDATE commands SET status='failed',error='agent_lease_expired',finished_at=unixepoch() WHERE status='running' AND started_at + max_seconds + 90 < unixepoch()");
+      const active = Array.from(sql.exec("SELECT COUNT(*) AS n FROM commands WHERE status='running'"));
+      if (active[0].n >= 2) return json({job:null});
       const rows = Array.from(sql.exec("UPDATE commands SET status='running', started_at=unixepoch() WHERE id=(SELECT id FROM commands WHERE status='queued' AND expires_at>unixepoch() ORDER BY created_at,id LIMIT 1) RETURNING id,argv_json,cwd,max_seconds"));
       return json({job:rows[0]||null});
     }
@@ -122,7 +123,31 @@ export class TurboMachine {
 export default {
   async fetch(request, env) {
     const u = new URL(request.url);
-    if (u.pathname === "/health" && request.method==="GET") return json({service:"aaris-turbo",version:1,status:"ready"});
+    if (u.pathname === "/health" && request.method==="GET") {
+      const operation = request.headers.get("x-aaris-op");
+      if (!operation) return json({service:"aaris-turbo",version:2,status:"ready"});
+      const machine = request.headers.get("x-aaris-machine");
+      const credential = request.headers.get("x-aaris-token");
+      const encoded = request.headers.get("x-aaris-payload") || "";
+      if (!["ping","next","chunk","done"].includes(operation) ||
+          !validMachine(machine) || !/^[0-9a-f]{64}$/.test(credential || "") ||
+          encoded.length > 11000 || !/^[A-Za-z0-9_-]*$/.test(encoded)) return json({error:"unauthorized"},401);
+      let payload;
+      try {
+        payload=encoded ? JSON.parse(new TextDecoder().decode(decodeB64(encoded))) : {};
+        if (!payload || typeof payload !== "object" || Array.isArray(payload)) throw Error("not_object");
+      } catch (_) { return json({error:"bad_payload"},400); }
+      const stub=env.MACHINES.get(env.MACHINES.idFromName("machine:"+machine));
+      const response=await stub.fetch("https://internal/agent/"+operation,
+        {method:"POST",headers:{"authorization":"Bearer "+credential,"content-type":"application/json"},
+          body:JSON.stringify(payload)});
+      if (operation === "ping" && response.ok) {
+        const registry = env.MACHINES.get(env.MACHINES.idFromName("registry"));
+        await registry.fetch("https://internal/internal/register",{
+          method:"POST",body:JSON.stringify({name:machine,stage:"connected"})});
+      }
+      return response;
+    }
     if (u.pathname === "/bootstrap" && request.method==="POST") {
       try {
         const bearer = (request.headers.get("authorization")||"").replace(/^Bearer /, "");
